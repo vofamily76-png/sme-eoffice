@@ -865,10 +865,20 @@
 
         // Khi mở trang: nạp cache cục bộ trước (để không mất tài khoản/dữ liệu vừa tạo),
         // sau đó nếu đã cấu hình Google Sheet thì đồng bộ đè lên bằng dữ liệu mới nhất từ Sheet.
-        window.addEventListener("load", () => {
-            loadLocalCache();
-            if (isScriptUrlConfigured()) loadFromCloud(false);
-        });
-    </script>
-</body>
-</html>
+       // Khi mở trang: nạp cache cục bộ trước, tự nạp link vào ô nhập, và tự động đồng bộ từ đám mây
+window.addEventListener("load", () => {
+    // 1. Nạp lại dữ liệu tạm thời từ bộ nhớ trình duyệt để hiển thị giao diện trước
+    loadLocalCache(); 
+    
+    // 2. TỰ ĐỘNG ĐIỀN: Đổ giá trị link thật vào ô input hiển thị trên giao diện quản trị Admin
+    if (isScriptUrlConfigured()) {
+        document.getElementById("adm-script-url").value = SCRIPT_URL;
+    }
+
+    // 3. TỰ ĐỘNG ĐỒNG BỘ: Chuyển tham số sang 'true' để hệ thống tự động kéo và cập nhật dữ liệu online mới nhất
+    if (isScriptUrlConfigured()) {
+        loadFromCloud(true); 
+    } else {
+        updateSystemData(); 
+    }
+});
