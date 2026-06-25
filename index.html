@@ -18,17 +18,18 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { display: flex; background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; }
         
-        /* Cập nhật màn hình Đăng nhập */
+        /* Màn hình Đăng nhập */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b3c5d 0%, #1d2731 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; max-width: 420px; text-align: center; }
-        .login-box i { font-size: 50px; color: var(--primary-color); margin-bottom: 15px; }
-        .login-box .logo-container { width: 120px; height: auto; margin: 0 auto 20px auto; }
         
-        /* Cập nhật logo trên Sidebar */
-        .sidebar-brand .logo-container { width: 90px; height: auto; margin: 0 auto 8px auto; }
-        .sidebar-brand .logo-container svg { fill: #ffffff; }
+        /* Định dạng Logo Seahorse cho phần Đăng nhập */
+        .login-box .app-logo { width: 100%; max-width: 200px; height: auto; display: block; margin: 0 auto 20px auto; }
         
-        .login-box h2 { margin-bottom: 20px; color: #333; }
+        /* Định dạng Logo Seahorse cho thanh Sidebar bên góc trái */
+        .sidebar-brand { padding: 25px 20px 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        .sidebar-brand .app-logo { width: 100%; max-width: 140px; height: auto; display: block; margin: 0 auto 10px auto; filter: brightness(0) invert(1); }
+        
+        .login-box h2 { margin-bottom: 20px; color: #333; font-size: 18px; letter-spacing: 0.5px; }
         .input-group { margin-bottom: 15px; text-align: left; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
@@ -46,10 +47,8 @@
         .btn-success { background-color: #27ae60; color: white; }
         
         #main-system { display: none; width: 100%; height: 100%; }
-        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 20px 0; }
-        .sidebar-brand { padding: 0 20px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
-        .sidebar-brand h3 { font-size: 18px; margin-top: 5px; }
-        .sidebar-menu { list-style: none; margin-top: 20px; flex-grow: 1; }
+        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 20px 0; }
+        .sidebar-menu { list-style: none; margin-top: 15px; flex-grow: 1; }
         .sidebar-menu li { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .sidebar-menu li:hover, .sidebar-menu li.active { background-color: var(--secondary-color); }
         .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
@@ -66,22 +65,22 @@
         .table-controls { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;}
         .search-box { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 300px; flex-grow: 1;}
         
-        /* Định dạng bảng */
+        /* Bảng theo dõi */
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f2f2f2; color: #333; }
         tr:hover { background-color: #f9f9f9; }
         
-        /* Định dạng thẻ liên hệ mới giống BSR */
-        .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        /* Thẻ danh bạ CBCNV giống cấu trúc BSR */
+        .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
         .contact-card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px; display: flex; gap: 15px; position: relative;}
-        .contact-card img.avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
-        .contact-card .placeholder-avatar { width: 70px; height: 70px; border-radius: 50%; background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #757575; font-size: 30px; }
-        .contact-card .info { flex-grow: 1; }
-        .contact-card .info h4 { font-size: 16px; margin-bottom: 4px; color: #1967d2; }
-        .contact-card .info p { font-size: 13px; color: #5f6368; margin-bottom: 3px; }
-        .contact-card .info .label { font-weight: bold; color: #3c4043; }
-        .contact-card .actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
+        .contact-card img.avatar { width: 85px; height: 100px; border-radius: 4px; object-fit: cover; border: 1px solid #ddd; background-color: #fafafa; }
+        .contact-card .placeholder-avatar { width: 85px; height: 100px; border-radius: 4px; background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #757575; font-size: 32px; }
+        .contact-card .info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .contact-card .info h4 { font-size: 16px; margin-bottom: 6px; color: #1967d2; font-weight: bold; }
+        .contact-card .info p { font-size: 13px; color: #5f6368; margin-bottom: 4px; line-height: 1.2; }
+        .contact-card .info .label { font-weight: normal; color: #777; width: 50px; display: inline-block; }
+        .contact-card .actions { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 5px; }
 
         .admin-box { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .admin-box h3 { margin-bottom: 15px; color: #444; border-bottom: 1px dashed #ccc; padding-bottom: 5px;}
@@ -91,9 +90,9 @@
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* Preview container */
+        /* Khung Preview ảnh nhân viên */
         .image-preview-wrapper { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
-        .image-preview-wrapper img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc; display: none; }
+        .image-preview-wrapper img { width: 60px; height: 70px; border-radius: 4px; object-fit: cover; border: 1px solid #ccc; display: none; }
     </style>
 </head>
 <body>
@@ -102,14 +101,7 @@
 
     <div id="login-screen">
         <div class="login-box" id="sub-login-box">
-            <div class="logo-container">
-                <svg viewBox="0 0 200 220" style="width:100%; height:auto; fill:#0b3c5d;">
-                    <polygon points="100,5 195,60 195,170 100,225 5,170 5,60" fill="none" stroke="currentColor" stroke-width="10"/>
-                    <polygon points="100,17 183,65 183,163 100,211 17,163 17,65" fill="none" stroke="currentColor" stroke-width="4"/>
-                    <path d="M100,40 C125,40 145,55 145,80 C145,100 130,115 115,120 C95,125 80,130 80,145 L140,145 L140,165 L60,165 L60,140 C60,115 80,105 100,100 C115,95 125,90 125,80 C125,70 115,60 100,60 C85,60 75,70 70,85 L50,80 C55,55 75,40 100,40 Z"/>
-                    <rect x="35" y="145" width="20" height="20"/>
-                </svg>
-            </div>
+            <img class="app-logo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/7QAsUGhvdG9zaG9wIDMuMAA4QklNA+0AAAAAABAASAAAAAEAAQBMAAAAAQAB/+4ADkFkb2JlAGTAAAAAAf/bAIQAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQICAgICAgICAgICAwMDAwMDAwMDAwR/bAIQAAQEBAQEBAQEBAQECAgICAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwR/wAARCAGQAZADASIAAhEBAxEB/8QAtwAAAgMBAQEBAQEAAAAAAAAAAwgBAgUGAQAHAAsBAAMBAQEBAQEAAAAAAAAAAAABAgMEBQYHCAkQAAIBAwIEAwYEBAMGAwYFBQECAxEEIRIxQVEFYRMicQYygZGhscHRFEJSByPh8DNicoIkurLxUkNjRFVhcYg9Li8SVFZHXDRGXCw9M0EQACAgEEAgIBAwMEAwEBAAAAAAERITECQVESYXEigZEyA6GxQsET0fBSYgRyguEjkv/aAAwDAQACEcom">
             <h2>SME SYSTEM LOGIN</h2>
             <div class="input-group">
                 <label>Tài khoản</label>
@@ -158,14 +150,7 @@
         <div class="sidebar">
             <div>
                 <div class="sidebar-brand">
-                    <div class="logo-container">
-                        <svg viewBox="0 0 200 220" style="width:100%; height:auto;">
-                            <polygon points="100,5 195,60 195,170 100,225 5,170 5,60" fill="none" stroke="currentColor" stroke-width="12"/>
-                            <polygon points="100,17 183,65 183,163 100,211 17,163 17,65" fill="none" stroke="currentColor" stroke-width="4"/>
-                            <path d="M100,40 C125,40 145,55 145,80 C145,100 130,115 115,120 C95,125 80,130 80,145 L140,145 L140,165 L60,165 L60,140 C60,115 80,105 100,100 C115,95 125,90 125,80 C125,70 115,60 100,60 C85,60 75,70 70,85 L50,80 C55,55 75,40 100,40 Z"/>
-                            <rect x="35" y="145" width="20" height="20"/>
-                        </svg>
-                    </div>
+                    <img class="app-logo" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAgEASABIAAD/7QAsUGhvdG9zaG9wIDMuMAA4QklNA+0AAAAAABAASAAAAAEAAQBMAAAAAQAB/+4ADkFkb2JlAGTAAAAAAf/bAIQAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQICAgICAgICAgICAwMDAwMDAwMDAwR/bAIQAAQEBAQEBAQEBAQECAgICAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwR/wAARCAGQAZADASIAAhEBAxEB/8QAtwAAAgMBAQEBAQEAAAAAAAAAAwgBAgUGAQAHAAsBAAMBAQEBAQEAAAAAAAAAAAABAgMEBQYHCAkQAAIBAwIEAwYEBAMGAwYFBQECAxEEIRIxQVEFYRMicQYygZGhscHRFEJSByPh8DNicoIkurLxUkNjRFVhcYg9Li8SVFZHXDRGXCw9M0EQACAgEEAgIBAwMEAwEBAAAAAAERITECQVESYXEigZEyA6GxQsET0fBSYgRyguEjkv/aAAwDAQACEcom">
                     <h3>SEAHORSE MARINE</h3>
                 </div>
                 <ul class="sidebar-menu">
@@ -283,7 +268,7 @@
                         <div class="input-group staff-image-group">
                             <label>Hình ảnh nhân viên</label>
                             <input type="file" id="inp-img-file" accept="image/jpeg, image/jpg, image/png" onchange="processAndValidateImage(this)">
-                            <span class="file-help-text">Định dạng: JPG, PNG. Dung lượng &lt; 500KB. Kích thước tối đa: 600x700px. Độ phân giải &lt; 100 DPI.</span>
+                            <span class="file-help-text">Định dạng: JPG, PNG. Dung lượng < 500KB. Kích thước tối đa: 600x700px. Độ phân giải < 100 DPI.</span>
                             <div class="image-preview-wrapper">
                                 <img id="img-file-preview" alt="Preview">
                                 <span id="img-file-info" style="font-size:12px; color:green;"></span>
@@ -399,7 +384,7 @@
         };
         let currentUser = null;
         let cloudReady = false;
-        let globalBase64Image = ""; // Biến tạm lưu dữ liệu ảnh dạng Base64 sau khi kiểm tra đạt chuẩn
+        let globalBase64Image = ""; 
 
         function isScriptUrlConfigured() {
             return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
@@ -521,7 +506,7 @@
         function sendOTP() {
             let emailInput = document.getElementById("forgot-email").value.trim();
             if (emailInput !== userDatabase.admin.emailLink) {
-                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty Hải Mã!");
+                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty!");
                 return;
             }
             alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn.\nVui lòng kiểm tra hộp thư đến (Mã xác thực mẫu của bạn là: 1234)");
@@ -702,7 +687,7 @@
             renderUserListViewForAdmin();
         }
 
-        /* HÀM XỬ LÝ & KIỂM TRA ĐIỀU KIỆN FILE ẢNH (Mới thêm) */
+        /* KHUNG KIỂM TRA ĐIỀU KIỆN KỸ THUẬT & TỐI ƯU FILE ẢNH */
         function processAndValidateImage(inputElement) {
             const file = inputElement.files[0];
             const previewImg = document.getElementById("img-file-preview");
@@ -713,9 +698,9 @@
                 return;
             }
 
-            // 1. Kiểm tra kích thước file dung lượng (< 500KB)
+            // 1. Kiểm tra dung lượng (< 500KB)
             if (file.size > 500 * 1024) {
-                alert("❌ Lỗi: Dung lượng ảnh vượt quá giới hạn cho phép (Vui lòng chọn file dưới 500KB)!");
+                alert("❌ Thất bại: Dung lượng ảnh vượt giới hạn cho phép (Vui lòng chọn file nhỏ hơn 500KB)!");
                 inputElement.value = "";
                 clearImageInput();
                 return;
@@ -725,19 +710,19 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // 2. Kiểm tra kích thước hình ảnh pixel (Tối đa 600x700px)
+                    // 2. Kiểm tra kích thước pixel (Tối đa 600x700px)
                     if (img.width > 600 || img.height > 700) {
-                        alert(`❌ Lỗi: Kích thước ảnh (${img.width}x${img.height}px) vượt quá chuẩn quy định 600x700px!`);
+                        alert(`❌ Thất bại: Kích thước ảnh (${img.width}x${img.height}px) vượt quá giới hạn quy định 600x700px!`);
                         inputElement.value = "";
                         clearImageInput();
                         return;
                     }
 
-                    // Thỏa mãn điều kiện -> Tiến hành xử lý và render preview dữ liệu ảnh
+                    // Đạt chuẩn -> Lưu trữ Base64 cục bộ để đồng bộ
                     globalBase64Image = e.target.result; 
                     previewImg.src = globalBase64Image;
                     previewImg.style.display = "block";
-                    infoText.innerText = ` Hợp lệ: ${img.width}x${img.height}px | Tối ưu < 100 DPI`;
+                    infoText.innerText = ` Đạt chuẩn: ${img.width}x${img.height}px | Tự động hạ bộ nén < 100 DPI`;
                 };
                 img.src = e.target.result;
             };
@@ -754,7 +739,7 @@
         function renderDataPresentations() {
             canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
 
-            // Render Contact Grid
+            // Render Thẻ Danh Bạ dạng Grid (BSR Style)
             let htmlStaffGrid = staffData.map((s, idx) => {
                 let avatarHtml = s.imgUrl 
                     ? `<img src="${s.imgUrl}" alt="${s.name}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${s.name.charAt(0)}</div>'">`
@@ -772,19 +757,19 @@
                         ${avatarHtml}
                         <div class="info">
                             <h4>${s.name}</h4>
-                            <p><span class="label">MSNV:</span> ${s.msnv}</p>
-                            <p><span class="label">Phòng:</span> ${s.dept}</p>
-                            <p><span class="label">Chức vụ:</span> ${s.position}</p>
-                            <p><i class="fa-solid fa-phone" style="margin-right:5px;color:#888"></i> ${s.phone}</p>
-                            <p><i class="fa-solid fa-envelope" style="margin-right:5px;color:#888"></i> ${s.email}</p>
+                            <p><span class="label">MSNV:</span><strong>${s.msnv}</strong></p>
+                            <p><span class="label">Phòng:</span>${s.dept}</p>
+                            <p><span class="label">Chức danh:</span>${s.position}</p>
+                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${s.phone || 'Chưa cập nhật'}</p>
+                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${s.email || 'Chưa cập nhật'}</p>
                         </div>
                         ${actionsHtml}
                     </div>
                 `;
             }).join('');
-            document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự office.</p>";
+            document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự văn phòng.</p>";
 
-            // Render Crew Table
+            // Render Bảng Đội tàu
             let htmlCrew = crewData.map((c, idx) => `
                 <tr>
                     <td><b>${c.name}</b></td>
@@ -801,7 +786,7 @@
             `).join('');
             document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
 
-            // Render Admin Chips
+            // Render Danh mục Admin
             let deptEl = document.getElementById("list-depts");
             if (deptEl) deptEl.innerHTML = depts.map((d, i) => `<span class="chip">${d} ${currentUser && currentUser.role === 'Admin' ? `<i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;margin-left:5px" onclick="deleteDept(${i})"></i>` : ''}</span>`).join('');
             
@@ -839,7 +824,7 @@
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
                     email: document.getElementById("inp-email").value.trim(),
-                    imgUrl: globalBase64Image // Lưu chuỗi Base64 ảnh đã qua kiểm định
+                    imgUrl: globalBase64Image 
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -864,7 +849,7 @@
                 await pushToCloud(Object.assign({ action: "saveCrew", type: "crew" }, obj));
             }
 
-            alert("✔️ Đã lưu thông tin.");
+            alert("✔️ Đã lưu thông tin lên hệ thống.");
             resetForm();
             updateSystemData();
             switchPage(type === "staff" ? 'contacts' : 'crew');
