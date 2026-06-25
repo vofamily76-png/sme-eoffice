@@ -316,7 +316,7 @@
         // CẤU HÌNH KẾT NỐI GOOGLE SHEET (Google Apps Script Web App)
         // Dán URL /exec của bạn vào đây HOẶC nhập trong trang Admin -> "Kết nối Google Sheet"
         // ============================================================
-        let SCRIPT_URL = localStorage.getItem("sme_script_url") || "DÁN_URL_WEB_APP_CỦA_BẠN_VÀO_ĐÂY";
+        let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
         // Dữ liệu cục bộ (sẽ được nạp/ghi đè bởi dữ liệu từ Google Sheet sau khi đồng bộ)
         let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
@@ -854,6 +854,7 @@
                 document.getElementById("inp-new-vessel").value = "";
             }
         }
+
         async function deleteVessel(index) {
             if (confirm("Xóa tàu này?")) {
                 vessels.splice(index, 1);
@@ -863,11 +864,27 @@
             }
         }
 
-        // Khi mở trang: nạp cache cục bộ trước (để không mất tài khoản/dữ liệu vừa tạo),
-        // sau đó nếu đã cấu hình Google Sheet thì đồng bộ đè lên bằng dữ liệu mới nhất từ Sheet.
+        // ============================================================
+        // SỰ KIỆN KHI MỞ TRANG (FIX LỖI KHÔNG TRUY CẬP ĐƯỢC)
+        // ============================================================
         window.addEventListener("load", () => {
-            loadLocalCache();
-            if (isScriptUrlConfigured()) loadFromCloud(false);
+            // 1. Nạp lại dữ liệu tạm thời từ bộ nhớ trình duyệt để hiển thị giao diện trước
+            loadLocalCache(); 
+            
+            // 2. TỰ ĐỘNG ĐIỀN: Đổ giá trị link thật vào ô input hiển thị trên giao diện quản trị Admin
+            if (isScriptUrlConfigured()) {
+                const adminInput = document.getElementById("adm-script-url");
+                if (adminInput) {
+                    adminInput.value = SCRIPT_URL;
+                }
+            }
+
+            // 3. TỰ ĐỘNG ĐỒNG BỘ: Kéo và cập nhật dữ liệu online mới nhất từ Google Sheet
+            if (isScriptUrlConfigured()) {
+                loadFromCloud(true); 
+            } else {
+                updateSystemData(); 
+            }
         });
     </script>
 </body>
