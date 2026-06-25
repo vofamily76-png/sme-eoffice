@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SME Crew & Contact Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=0cRGyoKst40XpWtmgP_3xX-RXNIKfXnLG19egvzUd_z_FO7bnHMFHonrIHmNN3SNg75NaaRvkkR2NyBjhtQQj-iQqznXyLMyboFhIOqZ8pT9gm4sxd6NbHngwkWn5C6dQztTX38azgIZqOMzoEg2FnTPA3nbz2dDosPF6S6UnZ9xPyn1xU7Qx4otxcWrEd9DbyBHrGpyULVXdn97_uGHLC1bcvN5EAYNAY3FMWOMNzqJJWbTTzJxMCTkFcPtRzEA6uu7WqN0yfffnblvq2jl2s2Dc7ZXng6LWyheA8lMugaj5tK3a8l1LYJJ1H6p19IY" charset="UTF-8"></script><style>
+    <style>
         :root {
             --primary-color: #0b3c5d;
             --secondary-color: #328cc1;
@@ -69,579 +69,824 @@
     <div id="sync-banner"><i class="fa-solid fa-spinner spin"></i> <span id="sync-text">Đang đồng bộ với Google Sheet...</span></div>
 
     <div id="login-screen">
-        <form class="login-box" id="sub-login-box" onsubmit="event.preventDefault(); handleLogin();" autocomplete="off">
-            <img class="app-logo" src="data:image/png;base64,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";
-    
-    // Tự động gán link thật vào biến, thay thế liên kết cũ của bạn
-    let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
+        <div class="login-box" id="sub-login-box">
+            <img class="app-logo" src="data:image/png;base64,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" alt="Seahorse Logo">
+            <h2>SME SYSTEM LOGIN</h2>
+            <div class="input-group">
+                <label>Tài khoản</label>
+                <input type="text" id="username" placeholder="Nhập admin hoặc tên user">
+            </div>
+            <div class="input-group">
+                <label>Mật khẩu</label>
+                <input type="password" id="password" placeholder="Mật khẩu">
+            </div>
+            <button class="btn" id="btn-login" onclick="handleLogin()">Đăng nhập</button>
+            <div style="margin-top: 15px;">
+                <a href="#" onclick="toggleForgotPasswordForm(true)" style="font-size: 13px; color: var(--secondary-color); text-decoration:none;">Quên mật khẩu Admin? Đổi qua Email liên kết 🔑</a>
+            </div>
+            <p id="login-error" style="color: red; margin-top: 10px; display: none;">Sai thông tin đăng nhập!</p>
+        </div>
 
-    let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
-    let vessels = ["M/V Geo Mariner", "M/V Geo Supporter", "M/V Seahorse Sinergy", "M/V Seahorse Keystone"];
-    let staffData = [];
-    let crewData = [];
-    let userDatabase = {
-        "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
-    };
-    let currentUser = null;
-    let cloudReady = false;
+        <div class="login-box" id="sub-forgot-box" style="display: none;">
+            <i class="fa-solid fa-envelope-shield" style="color: var(--secondary-color);"></i>
+            <h2>ĐỔI MẬT KHẨU ADMIN</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">Mật khẩu mới sẽ được thiết lập sau khi xác thực Email liên kết quản trị viên (`admin@seahorse.com.vn`)</p>
+            <div id="forgot-step-1">
+                <div class="input-group">
+                    <label>Nhập Email liên kết Admin</label>
+                    <input type="email" id="forgot-email" placeholder="admin@seahorse.com.vn">
+                </div>
+                <button class="btn" onclick="sendOTP()">Gửi mã xác nhận OTP 📩</button>
+            </div>
+            <div id="forgot-step-2" style="display: none;">
+                <div class="input-group">
+                    <label style="color: green; font-weight: bold;">Mã OTP đã được gửi! Nhập mã OTP (Mã mẫu: 1234)</label>
+                    <input type="text" id="forgot-otp" placeholder="Nhập mã OTP gồm 4 số">
+                </div>
+                <div class="input-group">
+                    <label>Nhập Mật khẩu mới</label>
+                    <input type="password" id="forgot-new-password" placeholder="Nhập mật khẩu mới mong muốn">
+                </div>
+                <button class="btn btn-success" onclick="verifyOTPAndChangePassword()">Xác nhận Đổi Mật Khẩu ✔️</button>
+            </div>
+            <div style="margin-top: 15px;">
+                <a href="#" onclick="toggleForgotPasswordForm(false)" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
+            </div>
+        </div>
+    </div>
 
-    function isScriptUrlConfigured() {
-        return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
-    }
+    <div id="main-system">
+        <div class="sidebar">
+            <div>
+                <div class="sidebar-brand">
+                    <img class="app-logo" src="data:image/png;base64,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" alt="Seahorse Logo">
+                    <h3>SME HẢI MÃ</h3>
+                </div>
+                <ul class="sidebar-menu">
+                    <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
+                    <li class="menu-item menu-permission" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
+                    <li class="menu-item menu-permission" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
+                    <li class="menu-item menu-permission" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
+                    <li class="menu-item menu-permission" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
+                </ul>
+            </div>
+            <div class="sidebar-footer">
+                <p><i class="fa-solid fa-user"></i> <span id="user-display">User</span></p>
+                <a href="#" onclick="handleLogout()" style="color: #ff8888; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Đăng xuất 🚪</a>
+            </div>
+        </div>
 
-    function saveLocalCache() {
-        try {
-            localStorage.setItem("sme_local_cache", JSON.stringify({
-                depts: depts, vessels: vessels, staffData: staffData,
-                crewData: crewData, userDatabase: userDatabase
-            }));
-        } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
-    }
+        <div class="content-area">
+            <div id="page-dashboard" class="page-content active">
+                <h2 class="page-title">Bảng điều khiển tổng quan</h2>
+                <div class="dashboard-grid">
+                    <div class="card"><div class="card-info"><p>Phòng ban</p><h3 id="dash-dept-count">0</h3></div><i class="fa-solid fa-building card-icon"></i></div>
+                    <div class="card"><div class="card-info"><p>Tàu quản lý</p><h3 id="dash-vessel-count">0</h3></div><i class="fa-solid fa-ship card-icon"></i></div>
+                    <div class="card"><div class="card-info"><p>Nhân sự văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
+                    <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
+                </div>
+                <div class="admin-box" style="background-color: #e3f2fd;">
+                    <h4>📌 Nhật ký hệ thống & Phân quyền:</h4>
+                    <p style="margin-top: 5px; font-size: 14px; color: #555;" id="permission-status-text">Đang tải...</p>
+                </div>
+                <div class="admin-box" style="background-color:#fff8e1;">
+                    <h4>☁️ Trạng thái đồng bộ Google Sheet:</h4>
+                    <p style="margin-top:5px; font-size:14px; color:#555;" id="cloud-status-text">Chưa kết nối.</p>
+                    <button class="btn" style="width:auto; padding:8px 16px; margin-top:10px;" onclick="loadFromCloud(true)"><i class="fa-solid fa-rotate"></i> Đồng bộ lại từ Google Sheet</button>
+                </div>
+            </div>
 
-    function loadLocalCache() {
-        try {
-            let raw = localStorage.getItem("sme_local_cache");
-            if (!raw) return false;
-            let cache = JSON.parse(raw);
-            if (cache.depts && cache.depts.length) depts = cache.depts;
-            if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
-            if (cache.staffData) staffData = cache.staffData;
-            if (cache.crewData) crewData = cache.crewData;
-            if (cache.userDatabase) {
-                userDatabase = cache.userDatabase;
-                userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
-                userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
-            }
-            return true;
-        } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
-    }
+            <div id="page-contacts" class="page-content">
+                <h2 class="page-title">Danh bạ Cán bộ Công nhân viên Văn phòng</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-contacts" class="search-box" oninput="filterStaffTable()" placeholder="Tìm theo tên, MSNV, chức vụ...">
+                    <select id="filter-dept" class="search-box" onchange="filterStaffTable()" style="width: 200px;"></select>
+                </div>
+                <table id="tbl-contacts">
+                    <thead><tr><th>MSNV</th><th>Họ & tên</th><th>Ngày sinh</th><th>Phòng ban</th><th>Chức vụ</th><th>Ngày vào làm</th><th>Số di động</th><th>Email liên hệ</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    function showSyncBanner(text) {
-        document.getElementById("sync-text").innerText = text;
-        document.getElementById("sync-banner").style.display = "block";
-    }
-    function hideSyncBanner() {
-        document.getElementById("sync-banner").style.display = "none";
-    }
+            <div id="page-crew" class="page-content">
+                <h2 class="page-title">Theo dõi thông tin Đội tàu</h2>
+                <div class="table-controls">
+                    <input type="text" id="search-crew" class="search-box" oninput="filterCrewTable()" placeholder="Tìm theo tên, chức danh...">
+                    <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="width: 250px;"></select>
+                </div>
+                <table id="tbl-crew">
+                    <thead><tr><th>Họ & tên</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
 
-    async function loadFromCloud(manual) {
-        let statusEl = document.getElementById("cloud-status-text");
-        if (!isScriptUrlConfigured()) {
-            if (statusEl) statusEl.innerHTML = "⚠️ Chưa nhập URL Google Apps Script. Hệ thống đang chạy bằng dữ liệu lưu cục bộ trên trình duyệt này.";
-            return false;
+            <div id="page-add-person" class="page-content">
+                <h2 class="page-title">Khai báo thông tin Nhân sự / Thuyền viên mới</h2>
+                <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3 id="form-title"><i class="fa-solid fa-id-card"></i> Nhập thông tin chi tiết</h3>
+                    <input type="hidden" id="edit-index-global" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Phân loại đối tượng</label>
+                            <select id="inp-type" onchange="handleFormFieldsSwitch(this.value)">
+                                <option value="staff">Nhân viên Văn phòng</option>
+                                <option value="crew">Thuyền viên Đội tàu</option>
+                            </select>
+                        </div>
+                        <div class="input-group id-group">
+                            <label>Mã nhân viên (MSNV)</label>
+                            <input type="text" id="inp-msnv" placeholder="Ví dụ: SME0040">
+                        </div>
+                        <div class="input-group">
+                            <label>Họ & tên</label>
+                            <input type="text" id="inp-name" placeholder="Nhập họ và tên đầy đủ">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày tháng năm sinh</label>
+                            <input type="date" id="inp-dob">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group select-dept-group">
+                            <label>Phòng ban trực thuộc</label>
+                            <select id="inp-dept"></select>
+                        </div>
+                        <div class="input-group select-vessel-group" style="display:none;">
+                            <label>Tàu công tác điều động</label>
+                            <select id="inp-vessel"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Chức vụ / Chức danh dưới tàu</label>
+                            <input type="text" id="inp-position" placeholder="Ví dụ: Thuyền trưởng / Kế toán viên">
+                        </div>
+                        <div class="input-group date-join-group">
+                            <label id="lbl-date-join">Ngày vào làm</label>
+                            <input type="date" id="inp-date-join">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group email-group">
+                            <label>Email liên hệ</label>
+                            <input type="text" id="inp-email" placeholder="name@seahorse.com.vn">
+                        </div>
+                        <div class="input-group phone-group">
+                            <label>Số điện thoại di động</label>
+                            <input type="text" id="inp-phone" placeholder="09xxxxxxxx">
+                        </div>
+                        <div class="input-group months-group" style="display:none;">
+                            <label>Số tháng dưới tàu tính đến hiện tại</label>
+                            <input type="number" id="inp-months" step="0.1" value="0">
+                        </div>
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
+                            <button class="btn" style="background-color: #27ae60;" onclick="saveData()">Lưu vào hệ thống dữ liệu ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit" onclick="resetForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-admin" class="page-content">
+                <h2 class="page-title">⚙️ Tùy biến Cấu trúc Doanh nghiệp & Tạo Tài khoản (Admin Only)</h2>
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-cloud"></i> Kết nối Google Sheet</h3>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Web App URL của Google Apps Script (kết thúc bằng /exec)</label>
+                            <input type="text" id="adm-script-url" placeholder="https://script.google.com/macros/s/XXXXX/exec">
+                        </div>
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
+                            <button class="btn" onclick="saveScriptUrl()">Lưu & Đồng bộ ngay</button>
+                        </div>
+                    </div>
+                    <p style="font-size:13px; color:#666;">URL này được lưu trong bộ nhớ trình duyệt của bạn (localStorage) để lần sau không phải nhập lại.</p>
+                </div>
+
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-user-gear"></i> Tạo tài khoản người dùng & Phân quyền</h3>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Tên đăng nhập mới (Username)</label>
+                            <input type="text" id="adm-new-username" placeholder="Ví dụ: nhansu_sme">
+                        </div>
+                        <div class="input-group">
+                            <label>Mật khẩu khởi tạo</label>
+                            <input type="password" id="adm-new-password" placeholder="Mật khẩu tài khoản">
+                        </div>
+                        <div class="input-group">
+                            <label>Cấp độ / Phân quyền chức năng</label>
+                            <select id="adm-new-role">
+                                <option value="ReadWrite">Toàn quyền (Được thêm/sửa nhân sự)</option>
+                                <option value="ReadOnly">Chỉ Xem (Không có nút Hành động & tab Thêm mới)</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
+                            <button class="btn" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <label style="font-weight: bold; font-size:13px; color: #555;">Danh sách User hệ thống hiện hành:</label>
+                        <div id="adm-user-list-view" style="margin-top: 5px;"></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="admin-box">
+                        <h3><i class="fa-solid fa-building"></i> Quản lý danh mục Phòng ban</h3>
+                        <div class="table-controls">
+                            <input type="text" id="inp-new-dept" class="search-box" style="width:70%;" placeholder="Tên phòng ban mới...">
+                            <button class="btn" style="width:25%; padding: 8px;" onclick="addDept()">Thêm</button>
+                        </div>
+                        <div class="chip-list" id="list-depts"></div>
+                    </div>
+                    <div class="admin-box">
+                        <h3><i class="fa-solid fa-ship"></i> Quản lý danh mục Đội tàu SME</h3>
+                        <div class="table-controls">
+                            <input type="text" id="inp-new-vessel" class="search-box" style="width:70%;" placeholder="Tên tàu mới...">
+                            <button class="btn" style="width:25%; padding: 8px;" onclick="addVessel()">Thêm</button>
+                        </div>
+                        <div class="chip-list" id="list-vessels"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // CẤU HÌNH KẾT NỐI GOOGLE SHEET (Google Apps Script Web App)
+        // ============================================================
+        let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
+
+        // Dữ liệu cục bộ (sẽ được nạp/ghi đè bởi dữ liệu từ Google Sheet sau khi đồng bộ)
+        let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
+        let vessels = ["M/V Geo Mariner", "M/V Geo Supporter", "M/V Seahorse Sinergy", "M/V Seahorse Keystone"];
+        let staffData = [];
+        let crewData = [];
+        let userDatabase = {
+            "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
+        };
+        let currentUser = null;
+        let cloudReady = false;
+
+        function isScriptUrlConfigured() {
+            return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
         }
-        try {
-            showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
-            let res = await fetch(SCRIPT_URL, { method: "GET" });
-            let data = await res.json();
-            if (data.status === "ERROR") throw new Error(data.message);
 
-            staffData = data.staff || [];
-            crewData = data.crew || [];
-            if (data.depts && data.depts.length) depts = data.depts;
-            if (data.vessels && data.vessels.length) vessels = data.vessels;
-            if (data.users) {
-                userDatabase = data.users;
-                userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
-                userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
+        // ---------------- LƯU CACHE CỤC BỘ (localStorage) ----------------
+        function saveLocalCache() {
+            try {
+                localStorage.setItem("sme_local_cache", JSON.stringify({
+                    depts: depts, vessels: vessels, staffData: staffData,
+                    crewData: crewData, userDatabase: userDatabase
+                }));
+            } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
+        }
+
+        function loadLocalCache() {
+            try {
+                let raw = localStorage.getItem("sme_local_cache");
+                if (!raw) return false;
+                let cache = JSON.parse(raw);
+                if (cache.depts && cache.depts.length) depts = cache.depts;
+                if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
+                if (cache.staffData) staffData = cache.staffData;
+                if (cache.crewData) crewData = cache.crewData;
+                if (cache.userDatabase) {
+                    userDatabase = cache.userDatabase;
+                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
+                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
+                }
+                return true;
+            } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
+        }
+
+        function showSyncBanner(text) {
+            document.getElementById("sync-text").innerText = text;
+            document.getElementById("sync-banner").style.display = "block";
+        }
+        function hideSyncBanner() {
+            document.getElementById("sync-banner").style.display = "none";
+        }
+
+        // ---------------- GIAO TIẾP VỚI GOOGLE SHEET ----------------
+        async function loadFromCloud(manual) {
+            let statusEl = document.getElementById("cloud-status-text");
+            if (!isScriptUrlConfigured()) {
+                if (statusEl) statusEl.innerHTML = "⚠️ Chưa nhập URL Google Apps Script. Hệ thống đang chạy bằng dữ liệu lưu cục bộ trên trình duyệt này. Vào tab <b>Cài đặt hệ thống (Admin)</b> để kết nối Google Sheet.";
+                return false;
             }
-            cloudReady = true;
+            try {
+                showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
+                let res = await fetch(SCRIPT_URL, { method: "GET" });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+
+                staffData = data.staff || [];
+                crewData = data.crew || [];
+                if (data.depts && data.depts.length) depts = data.depts;
+                if (data.vessels && data.vessels.length) vessels = data.vessels;
+                if (data.users) {
+                    userDatabase = data.users;
+                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
+                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
+                }
+                cloudReady = true;
+                saveLocalCache();
+                if (statusEl) statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
+                if (manual) { updateSystemData(); }
+                return true;
+            } catch (err) {
+                if (statusEl) statusEl.innerHTML = "❌ Lỗi khi tải dữ liệu từ Google Sheet: " + err.message + " (Đang dùng dữ liệu cục bộ tạm thời)";
+                console.error(err);
+                return false;
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
+        async function pushToCloud(payload) {
+            if (!isScriptUrlConfigured()) {
+                alert("⚠️ Chưa kết nối Google Sheet. Vào tab Cài đặt hệ thống (Admin) để nhập URL Web App trước.");
+                return false;
+            }
+            try {
+                showSyncBanner("Đang lưu lên Google Sheet...");
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                return true;
+            } catch (err) {
+                alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
+                console.error(err);
+                return false;
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
+        function saveScriptUrl() {
+            let url = document.getElementById("adm-script-url").value.trim();
+            if (!url) { alert("Vui lòng nhập URL Web App hợp lệ!"); return; }
+            SCRIPT_URL = url;
+            localStorage.setItem("sme_script_url", url);
+            alert("✔️ Đã lưu URL kết nối. Đang đồng bộ dữ liệu...");
+            loadFromCloud(true).then(() => updateSystemData());
+        }
+
+        // --- QUẢN LÝ ĐỔI MẬT KHẨU QUA EMAIL LIÊN KẾT ---
+        function toggleForgotPasswordForm(show) {
+            document.getElementById("sub-login-box").style.display = show ? "none" : "block";
+            document.getElementById("sub-forgot-box").style.display = show ? "block" : "none";
+            document.getElementById("forgot-step-1").style.display = "block";
+            document.getElementById("forgot-step-2").style.display = "none";
+            document.getElementById("forgot-email").value = "";
+            document.getElementById("forgot-otp").value = "";
+            document.getElementById("forgot-new-password").value = "";
+        }
+
+        function sendOTP() {
+            let emailInput = document.getElementById("forgot-email").value.trim();
+            if (emailInput !== userDatabase.admin.emailLink) {
+                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty Hải Mã!");
+                return;
+            }
+            alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn.\nVui lòng kiểm tra hộp thư đến (Mã xác thực mẫu của bạn là: 1234)");
+            document.getElementById("forgot-step-1").style.display = "none";
+            document.getElementById("forgot-step-2").style.display = "block";
+        }
+
+        async function verifyOTPAndChangePassword() {
+            let otp = document.getElementById("forgot-otp").value.trim();
+            let newPass = document.getElementById("forgot-new-password").value;
+            if (otp !== "1234") { alert("❌ Mã OTP không chính xác hoặc đã hết hiệu lực!"); return; }
+            if (!newPass) { alert("❌ Vui lòng không để trống mật khẩu mới!"); return; }
+
+            userDatabase.admin.password = newPass;
             saveLocalCache();
-            if (statusEl) statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
-            if (manual) { updateSystemData(); }
-            return true;
-        } catch (err) {
-            if (statusEl) statusEl.innerHTML = "❌ Lỗi khi tải dữ liệu từ Google Sheet: " + err.message;
-            console.error(err);
-            return false;
-        } finally {
-            hideSyncBanner();
+            await pushToCloud({ action: "createUser", username: "admin", password: newPass, role: "Admin" });
+            alert("🎉 Đổi mật khẩu Admin thành công! Hệ thống đang chuyển bạn về màn hình đăng nhập.");
+            toggleForgotPasswordForm(false);
         }
-    }
 
-    async function pushToCloud(payload) {
-        if (!isScriptUrlConfigured()) {
-            alert("⚠️ Chưa kết nối Google Sheet.");
-            return false;
+        // --- ADMIN TẠO MỚI & PHÂN QUYỀN USER ---
+        async function createNewUserByAdmin() {
+            let uName = document.getElementById("adm-new-username").value.trim();
+            let uPass = document.getElementById("adm-new-password").value;
+            let uRole = document.getElementById("adm-new-role").value;
+
+            if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
+            if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
+
+            userDatabase[uName] = { password: uPass, role: uRole };
+            saveLocalCache(); 
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
+            if (ok) alert(`✔️ Đã khởi tạo và lưu lên Google Sheet tài khoản: ${uName}\nPhân quyền: ${uRole === 'ReadOnly' ? 'Chỉ Xem' : 'Toàn quyền'}`);
+            else alert(`✔️ Đã khởi tạo tài khoản: ${uName} (lưu cục bộ trên trình duyệt này). Hãy kết nối Google Sheet để đồng bộ tài khoản trên nhiều máy.`);
+
+            document.getElementById("adm-new-username").value = "";
+            document.getElementById("adm-new-password").value = "";
+            renderUserListViewForAdmin();
         }
-        try {
-            showSyncBanner("Đang lưu lên Google Sheet...");
-            let res = await fetch(SCRIPT_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify(payload)
+
+        async function resetUserPassword(username) {
+            let newPass = prompt(`Nhập mật khẩu MỚI cho tài khoản "${username}":`);
+            if (newPass === null) return; 
+            newPass = newPass.trim();
+            if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
+
+            userDatabase[username].password = newPass;
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
+            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}" và lưu lên Google Sheet.` : `✔️ Đã đặt lại mật khẩu cho "${username}" (lưu cục bộ).`);
+            renderUserListViewForAdmin();
+        }
+
+        async function deleteUserAccount(username) {
+            if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin gốc của hệ thống!"); return; }
+            if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${username}"?`)) return;
+
+            delete userDatabase[username];
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "deleteUser", username: username });
+            alert(ok ? `✔️ Đã xóa tài khoản "${username}" trên cả hệ thống và Google Sheet.` : `✔️ Đã xóa tài khoản "${username}" (lưu cục bộ).`);
+            renderUserListViewForAdmin();
+        }
+
+        function renderUserListViewForAdmin() {
+            let html = "";
+            for (let u in userDatabase) {
+                let badge = "";
+                if (userDatabase[u].role === "Admin") badge = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Quản trị tối cao</span>';
+                else if (userDatabase[u].role === "ReadWrite") badge = '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Toàn quyền sửa đổi</span>';
+                else badge = '<span style="background:#777; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Chỉ xem (Read-only)</span>';
+
+                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${u}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i> Reset MK</button>`;
+                if (u !== "admin") {
+                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+                }
+
+                html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <span>• Tài khoản: <b>${u}</b> | Mật khẩu: <code>${userDatabase[u].password}</code> | Quyền: ${badge}</span>
+                    <span>${actionsHtml}</span>
+                </div>`;
+            }
+            document.getElementById("adm-user-list-view").innerHTML = html;
+        }
+
+        // --- XỬ LÝ HỆ THỐNG ĐĂNG NHẬP CHUNG ---
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return "-";
+            let parts = dateStr.toString().split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        async function handleLogin() {
+            let btn = document.getElementById("btn-login");
+            let u = document.getElementById("username").value.trim();
+            let p = document.getElementById("password").value;
+            let err = document.getElementById("login-error");
+
+            btn.disabled = true;
+            btn.innerText = "Đang kiểm tra dữ liệu...";
+            await loadFromCloud(false); 
+            btn.disabled = false;
+            btn.innerText = "Đăng nhập";
+
+            if (userDatabase[u] && userDatabase[u].password === p) {
+                currentUser = userDatabase[u];
+                err.style.display = "none";
+                document.getElementById("login-screen").style.display = "none";
+
+                let sys = document.getElementById("main-system");
+                sys.style.display = "flex";
+
+                document.getElementById("user-display").innerText = u + " (" + currentUser.role + ")";
+                document.getElementById("adm-script-url").value = isScriptUrlConfigured() ? SCRIPT_URL : "";
+
+                applyUserPermissions();
+                
+                if (isScriptUrlConfigured()) {
+                    loadFromCloud(true); 
+                } else {
+                    updateSystemData();
+                }
+                
+                switchPage('dashboard');
+            } else {
+                err.style.display = "block";
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById("username").value = "";
+            document.getElementById("password").value = "";
+            document.getElementById("login-screen").style.display = "flex";
+            document.getElementById("main-system").style.display = "none";
+        }
+
+        function applyUserPermissions() {
+            document.getElementById("menu-contacts").style.display = "flex";
+            document.getElementById("menu-crew").style.display = "flex";
+
+            if (currentUser.role === "Admin") {
+                document.getElementById("menu-add-person").style.display = "flex";
+                document.getElementById("menu-admin").style.display = "flex";
+                document.getElementById("permission-status-text").innerHTML = "⚡ Chào mừng <b>Quản trị viên</b>. Bạn có toàn quyền cấu hình sơ đồ danh mục hệ thống và cấp phát tài khoản nhân viên.";
+            } else if (currentUser.role === "ReadWrite") {
+                document.getElementById("menu-add-person").style.display = "flex";
+                document.getElementById("menu-admin").style.display = "none";
+                document.getElementById("permission-status-text").innerHTML = "✔️ Chào mừng <b>Nhân viên nghiệp vụ</b>. Bạn có quyền tra cứu thông tin và bổ sung dữ liệu nhân sự mới bằng tab Thêm nhân sự.";
+            } else if (currentUser.role === "ReadOnly") {
+                document.getElementById("menu-add-person").style.display = "none";
+                document.getElementById("menu-admin").style.display = "none";
+                document.getElementById("permission-status-text").innerHTML = "🔒 Chào mừng bạn. Tài khoản của bạn được cấp quyền <b>Chỉ Xem (Read-only)</b>. Bạn có quyền tra cứu danh bạ, không được phép can thiệp chỉnh sửa dữ liệu.";
+            }
+
+            let actionHeaders = document.querySelectorAll(".admin-action-header");
+            actionHeaders.forEach(th => { th.style.display = (currentUser.role === "Admin") ? "" : "none"; });
+        }
+
+        function switchPage(pageId) {
+            document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
+            document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
+            document.getElementById("page-" + pageId).classList.add("active");
+            if (event && event.currentTarget) event.currentTarget.classList.add("active");
+        }
+
+        function updateSystemData() {
+            document.getElementById("dash-dept-count").innerText = depts.length;
+            document.getElementById("dash-vessel-count").innerText = vessels.length;
+            document.getElementById("dash-staff-count").innerText = staffData.length;
+            document.getElementById("dash-crew-count").innerText = crewData.length;
+
+            let deptOptions = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            document.getElementById("filter-dept").innerHTML = deptOptions;
+            document.getElementById("inp-dept").innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            let vesselOptions = '<option value="Tất cả">-- Tất cả các tàu --</option>' + vessels.map(v => `<option value="${v}">${v}</option>`).join('');
+            document.getElementById("filter-vessel").innerHTML = vesselOptions;
+            document.getElementById("inp-vessel").innerHTML = vessels.map(v => `<option value="${v}">${v}</option>`).join('');
+
+            renderTables();
+            renderUserListViewForAdmin();
+        }
+
+        function renderTables() {
+            let isAdmin = (currentUser && currentUser.role === "Admin");
+
+            let htmlStaff = staffData.map((s, idx) => `
+                <tr>
+                    <td>${s.msnv}</td>
+                    <td><b>${s.name}</b></td>
+                    <td>${formatDateDisplay(s.dob)}</td>
+                    <td>${s.dept}</td>
+                    <td>${s.position}</td>
+                    <td>${formatDateDisplay(s.dateJoin)}</td>
+                    <td>${s.phone}</td>
+                    <td>${s.email}</td>
+                    <td style="display: ${isAdmin ? '' : 'none'}">
+                        <button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteData('staff', ${idx})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            document.querySelector("#tbl-contacts tbody").innerHTML = htmlStaff;
+
+            let htmlCrew = crewData.map((c, idx) => `
+                <tr>
+                    <td><b>${c.name}</b></td>
+                    <td>${formatDateDisplay(c.dob)}</td>
+                    <td><i class="fa-solid fa-ship"></i> ${c.vessel}</td>
+                    <td>${c.position}</td>
+                    <td>${formatDateDisplay(c.dateJoin)}</td>
+                    <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${c.months} tháng</span></td>
+                    <td style="display: ${isAdmin ? '' : 'none'}">
+                        <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+            document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
+
+            document.getElementById("list-depts").innerHTML = depts.map((d, i) => `<span class="chip">${d} <i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;" onclick="deleteDept(${i})"></i></span>`).join('');
+            document.getElementById("list-vessels").innerHTML = vessels.map((v, i) => `<span class="chip">${v} <i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;" onclick="deleteVessel(${i})"></i></span>`).join('');
+        }
+
+        function handleFormFieldsSwitch(type) {
+            if (type === "staff") {
+                document.querySelector(".id-group").style.display = "block";
+                document.querySelector(".select-dept-group").style.display = "block";
+                document.querySelector(".select-vessel-group").style.display = "none";
+                document.querySelector(".months-group").style.display = "none";
+                document.getElementById("lbl-date-join").innerText = "Ngày vào làm chính thức";
+            } else {
+                document.querySelector(".id-group").style.display = "none";
+                document.querySelector(".select-dept-group").style.display = "none";
+                document.querySelector(".select-vessel-group").style.display = "block";
+                document.querySelector(".months-group").style.display = "block";
+                document.getElementById("lbl-date-join").innerText = "Ngày điều động xuống tàu";
+            }
+        }
+
+        async function saveData() {
+            let type = document.getElementById("inp-type").value;
+            let index = document.getElementById("edit-index-global").value;
+            let isEdit = (index !== "");
+
+            if (type === "staff") {
+                let msnv = document.getElementById("inp-msnv").value.trim();
+                let name = document.getElementById("inp-name").value.trim();
+                if (!msnv || !name) { alert("Vui lòng điền mã số và họ tên nhân viên!"); return; }
+
+                let obj = {
+                    msnv: msnv, name: name,
+                    dob: document.getElementById("inp-dob").value,
+                    dept: document.getElementById("inp-dept").value,
+                    position: document.getElementById("inp-position").value.trim(),
+                    dateJoin: document.getElementById("inp-date-join").value,
+                    phone: document.getElementById("inp-phone").value.trim(),
+                    email: document.getElementById("inp-email").value.trim()
+                };
+
+                if (isEdit) staffData[index] = obj; else staffData.push(obj);
+                saveLocalCache();
+                await pushToCloud(Object.assign({ type: "staff" }, obj));
+            } else {
+                let name = document.getElementById("inp-name").value.trim();
+                if (!name) { alert("Vui lòng điền họ tên thuyền viên!"); return; }
+
+                let obj = {
+                    name: name,
+                    dob: document.getElementById("inp-dob").value,
+                    vessel: document.getElementById("inp-vessel").value,
+                    position: document.getElementById("inp-position").value.trim(),
+                    dateJoin: document.getElementById("inp-date-join").value,
+                    phone: document.getElementById("inp-phone").value.trim(),
+                    months: parseFloat(document.getElementById("inp-months").value) || 0
+                };
+
+                if (isEdit) crewData[index] = obj; else crewData.push(obj);
+                saveLocalCache();
+                await pushToCloud(Object.assign({ type: "crew" }, obj));
+            }
+
+            alert("✔️ Hệ thống đã lưu dữ liệu thành công!");
+            resetForm();
+            updateSystemData();
+            switchPage(type === "staff" ? 'contacts' : 'crew');
+        }
+
+        function startEditData(type, idx) {
+            switchPage('add-person');
+            document.getElementById("edit-index-global").value = idx;
+            document.getElementById("inp-type").value = type;
+            document.getElementById("inp-type").disabled = true;
+            handleFormFieldsSwitch(type);
+
+            if (type === "staff") {
+                let d = staffData[idx];
+                document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Chỉnh sửa nhân viên văn phòng: ${d.name}`;
+                document.getElementById("inp-msnv").value = d.msnv;
+                document.getElementById("inp-name").value = d.name;
+                document.getElementById("inp-dob").value = d.dob || "";
+                document.getElementById("inp-dept").value = d.dept;
+                document.getElementById("inp-position").value = d.position;
+                document.getElementById("inp-date-join").value = d.dateJoin || "";
+                document.getElementById("inp-phone").value = d.phone;
+                document.getElementById("inp-email").value = d.email;
+            } else {
+                let d = crewData[idx];
+                document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Chỉnh sửa thuyền viên: ${d.name}`;
+                document.getElementById("inp-name").value = d.name;
+                document.getElementById("inp-dob").value = d.dob || "";
+                document.getElementById("inp-vessel").value = d.vessel;
+                document.getElementById("inp-position").value = d.position;
+                document.getElementById("inp-date-join").value = d.dateJoin || "";
+                document.getElementById("inp-phone").value = d.phone;
+                document.getElementById("inp-months").value = d.months;
+            }
+            document.getElementById("btn-cancel-edit").style.display = "inline-block";
+        }
+
+        function resetForm() {
+            document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-id-card"></i> Nhập thông tin chi tiết`;
+            document.getElementById("edit-index-global").value = "";
+            document.getElementById("inp-type").disabled = false;
+            document.getElementById("inp-msnv").value = "";
+            document.getElementById("inp-name").value = "";
+            document.getElementById("inp-dob").value = "";
+            document.getElementById("inp-position").value = "";
+            document.getElementById("inp-date-join").value = "";
+            document.getElementById("inp-phone").value = "";
+            document.getElementById("inp-email").value = "";
+            document.getElementById("inp-months").value = "0";
+            document.getElementById("btn-cancel-edit").style.display = "none";
+        }
+
+        async function deleteData(type, idx) {
+            let name = (type === 'staff') ? staffData[idx].name : crewData[idx].name;
+            if (confirm(`Xác nhận xóa vĩnh viễn dữ liệu của: ${name}?`)) {
+                if (type === 'staff') staffData.splice(idx, 1);
+                else crewData.splice(idx, 1);
+                saveLocalCache();
+                await pushToCloud({ action: "replaceAll", type: type, staff: staffData, crew: crewData });
+                updateSystemData();
+            }
+        }
+
+        function filterStaffTable() {
+            let search = document.getElementById("search-contacts").value.toLowerCase();
+            let dept = document.getElementById("filter-dept").value;
+            let rows = document.querySelectorAll("#tbl-contacts tbody tr");
+            rows.forEach((row, i) => {
+                let data = staffData[i];
+                if (!data) return;
+                let matchSearch = data.name.toLowerCase().includes(search) || data.msnv.toLowerCase().includes(search);
+                let matchDept = (dept === "Tất cả" || data.dept === dept);
+                row.style.display = (matchSearch && matchDept) ? "" : "none";
             });
-            let data = await res.json();
-            if (data.status === "ERROR") throw new Error(data.message);
-            return true;
-        } catch (err) {
-            alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
-            console.error(err);
-            return false;
-        } finally {
-            hideSyncBanner();
         }
-    }
 
-    function saveScriptUrl() {
-        let url = document.getElementById("adm-script-url").value.trim();
-        if (!url) { alert("Vui lòng nhập URL Web App hợp lệ!"); return; }
-        SCRIPT_URL = url;
-        localStorage.setItem("sme_script_url", url);
-        alert("✔️ Đã lưu URL kết nối. Đang đồng bộ dữ liệu...");
-        loadFromCloud(true).then(() => updateSystemData());
-    }
-
-    function toggleForgotPasswordForm(show) {
-        document.getElementById("sub-login-box").style.display = show ? "none" : "block";
-        document.getElementById("sub-forgot-box").style.display = show ? "block" : "none";
-        document.getElementById("forgot-step-1").style.display = "block";
-        document.getElementById("forgot-step-2").style.display = "none";
-        document.getElementById("forgot-email").value = "";
-        document.getElementById("forgot-otp").value = "";
-        document.getElementById("forgot-new-password").value = "";
-    }
-
-    function sendOTP() {
-        let emailInput = document.getElementById("forgot-email").value.trim();
-        if (emailInput !== userDatabase.admin.emailLink) {
-            alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin!");
-            return;
+        function filterCrewTable() {
+            let search = document.getElementById("search-crew").value.toLowerCase();
+            let vessel = document.getElementById("filter-vessel").value;
+            let rows = document.querySelectorAll("#tbl-crew tbody tr");
+            rows.forEach((row, i) => {
+                let data = crewData[i];
+                if (!data) return;
+                let matchSearch = data.name.toLowerCase().includes(search) || data.position.toLowerCase().includes(search);
+                let matchVessel = (vessel === "Tất cả" || data.vessel === vessel);
+                row.style.display = (matchSearch && matchVessel) ? "" : "none";
+            });
         }
-        alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn (Mã xác thực mẫu của bạn là: 1234)");
-        document.getElementById("forgot-step-1").style.display = "none";
-        document.getElementById("forgot-step-2").style.display = "block";
-    }
 
-    async function verifyOTPAndChangePassword() {
-        let otp = document.getElementById("forgot-otp").value.trim();
-        let newPass = document.getElementById("forgot-new-password").value;
-        if (otp !== "1234") { alert("❌ Mã OTP không chính xác hoặc đã hết hiệu lực!"); return; }
-        if (!newPass) { alert("❌ Vui lòng không để trống mật khẩu mới!"); return; }
+        async function addDept() {
+            let val = document.getElementById("inp-new-dept").value.trim();
+            if (val && !depts.includes(val)) {
+                depts.push(val);
+                saveLocalCache();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
+                updateSystemData();
+                document.getElementById("inp-new-dept").value = "";
+            }
+        }
+        async function deleteDept(index) {
+            if (confirm("Xóa phòng ban này?")) {
+                depts.splice(index, 1);
+                saveLocalCache();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
+                updateSystemData();
+            }
+        }
 
-        userDatabase.admin.password = newPass;
-        saveLocalCache();
-        await pushToCloud({ action: "createUser", username: "admin", password: newPass, role: "Admin" });
-        alert("🎉 Đổi mật khẩu Admin thành công!");
-        toggleForgotPasswordForm(false);
-    }
+        async function addVessel() {
+            let val = document.getElementById("inp-new-vessel").value.trim();
+            if (val && !vessels.includes(val)) {
+                vessels.push(val);
+                saveLocalCache();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
+                updateSystemData();
+                document.getElementById("inp-new-vessel").value = "";
+            }
+        }
 
-    async function createNewUserByAdmin() {
-        let uName = document.getElementById("adm-new-username").value.trim();
-        let uPass = document.getElementById("adm-new-password").value;
-        let uRole = document.getElementById("adm-new-role").value;
+        async function deleteVessel(index) {
+            if (confirm("Xóa tàu này?")) {
+                vessels.splice(index, 1);
+                saveLocalCache();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
+                updateSystemData();
+            }
+        }
 
-        if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
-        if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
-
-        userDatabase[uName] = { password: uPass, role: uRole };
-        saveLocalCache(); 
-        let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
-        if (ok) alert(`✔️ Đã khởi tạo và lưu tài khoản thành công.`);
-        
-        document.getElementById("adm-new-username").value = "";
-        document.getElementById("adm-new-password").value = "";
-        renderUserListViewForAdmin();
-    }
-
-    async function resetUserPassword(username) {
-        let newPass = prompt(`Nhập mật khẩu MỚI cho tài khoản "${username}":`);
-        if (newPass === null) return; 
-        newPass = newPass.trim();
-        if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
-
-        userDatabase[username].password = newPass;
-        saveLocalCache();
-        let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
-        alert(ok ? `✔️ Đã đặt lại mật khẩu thành công.` : `✔️ Đã đặt lại mật khẩu (lưu cục bộ).`);
-        renderUserListViewForAdmin();
-    }
-
-    async function deleteUserAccount(username) {
-        if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin gốc!"); return; }
-        if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${username}"?`)) return;
-
-        delete userDatabase[username];
-        saveLocalCache();
-        let ok = await pushToCloud({ action: "deleteUser", username: username });
-        alert(ok ? `✔️ Đã xóa tài khoản.` : `✔️ Đã xóa tài khoản (lưu cục bộ).`);
-        renderUserListViewForAdmin();
-    }
-
-    function renderUserListViewForAdmin() {
-        let html = "";
-        for (let u in userDatabase) {
-            let badge = "";
-            if (userDatabase[u].role === "Admin") badge = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Quản trị tối cao</span>';
-            else if (userDatabase[u].role === "ReadWrite") badge = '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Toàn quyền sửa đổi</span>';
-            else badge = '<span style="background:#777; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Chỉ xem (Read-only)</span>';
-
-            let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${u}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i> Reset MK</button>`;
-            if (u !== "admin") {
-                actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+        // ============================================================
+        // SỰ KIỆN KHI MỞ TRANG (TỰ ĐỘNG ĐIỀN VÀ TỰ ĐỒNG BỘ)
+        // ============================================================
+        window.addEventListener("load", () => {
+            // 1. Nạp lại dữ liệu tạm thời từ bộ nhớ trình duyệt để hiển thị giao diện trước
+            loadLocalCache(); 
+            
+            // 2. TỰ ĐỘNG ĐIỀN: Đổ giá trị link thật vào ô input hiển thị trên giao diện quản trị Admin
+            if (isScriptUrlConfigured()) {
+                const adminInput = document.getElementById("adm-script-url");
+                if (adminInput) {
+                    adminInput.value = SCRIPT_URL;
+                }
             }
 
-            html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <span>• Tài khoản: <b>${u}</b> | Mật khẩu: <code>${userDatabase[u].password}</code> | Quyền: ${badge}</span>
-                <span>${actionsHtml}</span>
-            </div>`;
-        }
-        const userView = document.getElementById("adm-user-list-view");
-        if(userView) userView.innerHTML = html;
-    }
-
-    function formatDateDisplay(dateStr) {
-        if (!dateStr) return "-";
-        let parts = dateStr.toString().split('-');
-        if (parts.length !== 3) return dateStr;
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-
-    async function handleLogin() {
-        let btn = document.getElementById("btn-login");
-        let u = document.getElementById("username").value.trim();
-        let p = document.getElementById("password").value;
-        let err = document.getElementById("login-error");
-
-        btn.disabled = true;
-        btn.innerText = "Đang kiểm tra dữ liệu...";
-        await loadFromCloud(false); 
-        btn.disabled = false;
-        btn.innerText = "Đăng nhập";
-
-        // FIX LỖI SO SÁNH: Chuyển đổi cả hai giá trị mật khẩu sang kiểu String chuỗi để tránh lỗi lệch kiểu dữ liệu (Số vs Chuỗi) từ Google Sheet đổ về
-        if (userDatabase[u] && String(userDatabase[u].password).trim() === String(p).trim()) {
-            currentUser = userDatabase[u];
-            err.style.display = "none";
-            document.getElementById("login-screen").style.display = "none";
-
-            let sys = document.getElementById("main-system");
-            sys.style.display = "flex";
-
-            document.getElementById("user-display").innerText = u + " (" + currentUser.role + ")";
-            
-            const adminInput = document.getElementById("adm-script-url");
-            if (adminInput) {
-                adminInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
-            }
-
-            applyUserPermissions();
-            
-            // TỰ ĐỘNG ĐỒNG BỘ KHI ĐĂNG NHẬP THÀNH CÔNG: Tải trực tiếp dữ liệu mới nhất
+            // 3. TỰ ĐỘNG ĐỒNG BỘ: Kéo và cập nhật dữ liệu online mới nhất từ Google Sheet
             if (isScriptUrlConfigured()) {
                 loadFromCloud(true); 
             } else {
-                updateSystemData();
+                updateSystemData(); 
             }
-            
-            switchPage('dashboard');
-        } else {
-            err.style.display = "block";
-        }
-    }
-
-    function handleLogout() {
-        currentUser = null;
-        document.getElementById("username").value = "";
-        document.getElementById("password").value = "";
-        document.getElementById("login-screen").style.display = "flex";
-        document.getElementById("main-system").style.display = "none";
-    }
-
-    function applyUserPermissions() {
-        document.getElementById("menu-contacts").style.display = "flex";
-        document.getElementById("menu-crew").style.display = "flex";
-
-        if (currentUser.role === "Admin") {
-            document.getElementById("menu-add-person").style.display = "flex";
-            document.getElementById("menu-admin").style.display = "flex";
-            document.getElementById("permission-status-text").innerHTML = "⚡ Chào mừng <b>Quản trị viên</b>. Bạn có toàn quyền cấu hình sơ đồ danh mục hệ thống và cấp phát tài khoản nhân viên.";
-        } else if (currentUser.role === "ReadWrite") {
-            document.getElementById("menu-add-person").style.display = "flex";
-            document.getElementById("menu-admin").style.display = "none";
-            document.getElementById("permission-status-text").innerHTML = "✔️ Chào mừng <b>Nhân viên nghiệp vụ</b>. Bạn có quyền tra cứu thông tin và bổ sung dữ liệu nhân sự mới bằng tab Thêm nhân sự.";
-        } else if (currentUser.role === "ReadOnly") {
-            document.getElementById("menu-add-person").style.display = "none";
-            document.getElementById("menu-admin").style.display = "none";
-            document.getElementById("permission-status-text").innerHTML = "🔒 Chào mừng bạn. Tài khoản của bạn được cấp quyền <b>Chỉ Xem (Read-only)</b>. Bạn có quyền tra cứu danh bạ, không được phép can thiệp chỉnh sửa dữ liệu.";
-        }
-
-        let actionHeaders = document.querySelectorAll(".admin-action-header");
-        actionHeaders.forEach(th => { th.style.display = (currentUser.role === "Admin") ? "" : "none"; });
-    }
-
-    function switchPage(pageId) {
-        document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
-        document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
-        document.getElementById("page-" + pageId).classList.add("active");
-        if (event && event.currentTarget) event.currentTarget.classList.add("active");
-    }
-
-    function updateSystemData() {
-        document.getElementById("dash-dept-count").innerText = depts.length;
-        document.getElementById("dash-vessel-count").innerText = vessels.length;
-        document.getElementById("dash-staff-count").innerText = staffData.length;
-        document.getElementById("dash-crew-count").innerText = crewData.length;
-
-        let deptOptions = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
-        document.getElementById("filter-dept").innerHTML = deptOptions;
-        document.getElementById("inp-dept").innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
-
-        let vesselOptions = '<option value="Tất cả">-- Tất cả các tàu --</option>' + vessels.map(v => `<option value="${v}">${v}</option>`).join('');
-        document.getElementById("filter-vessel").innerHTML = vesselOptions;
-        document.getElementById("inp-vessel").innerHTML = vessels.map(v => `<option value="${v}">${v}</option>`).join('');
-
-        renderTables();
-        renderUserListViewForAdmin();
-    }
-
-    function renderTables() {
-        let isAdmin = (currentUser && currentUser.role === "Admin");
-
-        let htmlStaff = staffData.map((s, idx) => `
-            <tr>
-                <td>${s.msnv}</td>
-                <td><b>${s.name}</b></td>
-                <td>${formatDateDisplay(s.dob)}</td>
-                <td>${s.dept}</td>
-                <td>${s.position}</td>
-                <td>${formatDateDisplay(s.dateJoin)}</td>
-                <td>${s.phone}</td>
-                <td>${s.email}</td>
-                <td style="display: ${isAdmin ? '' : 'none'}">
-                    <button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteData('staff', ${idx})"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
-        document.querySelector("#tbl-contacts tbody").innerHTML = htmlStaff;
-
-        let htmlCrew = crewData.map((c, idx) => `
-            <tr>
-                <td><b>${c.name}</b></td>
-                <td>${formatDateDisplay(c.dob)}</td>
-                <td><i class="fa-solid fa-ship"></i> ${c.vessel}</td>
-                <td>${c.position}</td>
-                <td>${formatDateDisplay(c.dateJoin)}</td>
-                <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${c.months} tháng</span></td>
-                <td style="display: ${isAdmin ? '' : 'none'}">
-                    <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
-        document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
-
-        document.getElementById("list-depts").innerHTML = depts.map((d, i) => `<span class="chip">${d} <i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;" onclick="deleteDept(${i})"></i></span>`).join('');
-        document.getElementById("list-vessels").innerHTML = vessels.map((v, i) => `<span class="chip">${v} <i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;" onclick="deleteVessel(${i})"></i></span>`).join('');
-    }
-
-    function handleFormFieldsSwitch(type) {
-        if (type === "staff") {
-            document.querySelector(".id-group").style.display = "block";
-            document.querySelector(".select-dept-group").style.display = "block";
-            document.querySelector(".select-vessel-group").style.display = "none";
-            document.querySelector(".months-group").style.display = "none";
-            document.getElementById("lbl-date-join").innerText = "Ngày vào làm chính thức";
-        } else {
-            document.querySelector(".id-group").style.display = "none";
-            document.querySelector(".select-dept-group").style.display = "none";
-            document.querySelector(".select-vessel-group").style.display = "block";
-            document.querySelector(".months-group").style.display = "block";
-            document.getElementById("lbl-date-join").innerText = "Ngày điều động xuống tàu";
-        }
-    }
-
-    async function saveData() {
-        let type = document.getElementById("inp-type").value;
-        let index = document.getElementById("edit-index-global").value;
-        let isEdit = (index !== "");
-
-        if (type === "staff") {
-            let msnv = document.getElementById("inp-msnv").value.trim();
-            let name = document.getElementById("inp-name").value.trim();
-            if (!msnv || !name) { alert("Vui lòng điền mã số và họ tên nhân viên!"); return; }
-
-            let obj = {
-                msnv: msnv, name: name,
-                dob: document.getElementById("inp-dob").value,
-                dept: document.getElementById("inp-dept").value,
-                position: document.getElementById("inp-position").value.trim(),
-                dateJoin: document.getElementById("inp-date-join").value,
-                phone: document.getElementById("inp-phone").value.trim(),
-                email: document.getElementById("inp-email").value.trim()
-            };
-
-            if (isEdit) staffData[index] = obj; else staffData.push(obj);
-            saveLocalCache();
-            await pushToCloud(Object.assign({ type: "staff" }, obj));
-        } else {
-            let name = document.getElementById("inp-name").value.trim();
-            if (!name) { alert("Vui lòng điền họ tên thuyền viên!"); return; }
-
-            let obj = {
-                name: name,
-                dob: document.getElementById("inp-dob").value,
-                vessel: document.getElementById("inp-vessel").value,
-                position: document.getElementById("inp-position").value.trim(),
-                dateJoin: document.getElementById("inp-date-join").value,
-                phone: document.getElementById("inp-phone").value.trim(),
-                months: parseFloat(document.getElementById("inp-months").value) || 0
-            };
-
-            if (isEdit) crewData[index] = obj; else crewData.push(obj);
-            saveLocalCache();
-            await pushToCloud(Object.assign({ type: "crew" }, obj));
-        }
-
-        alert("✔️ Hệ thống đã lưu dữ liệu thành công!");
-        resetForm();
-        updateSystemData();
-        switchPage(type === "staff" ? 'contacts' : 'crew');
-    }
-
-    function startEditData(type, idx) {
-        switchPage('add-person');
-        document.getElementById("edit-index-global").value = idx;
-        document.getElementById("inp-type").value = type;
-        document.getElementById("inp-type").disabled = true;
-        handleFormFieldsSwitch(type);
-
-        if (type === "staff") {
-            let d = staffData[idx];
-            document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Chỉnh sửa nhân viên văn phòng: ${d.name}`;
-            document.getElementById("inp-msnv").value = d.msnv;
-            document.getElementById("inp-name").value = d.name;
-            document.getElementById("inp-dob").value = d.dob || "";
-            document.getElementById("inp-dept").value = d.dept;
-            document.getElementById("inp-position").value = d.position;
-            document.getElementById("inp-date-join").value = d.dateJoin || "";
-            document.getElementById("inp-phone").value = d.phone;
-            document.getElementById("inp-email").value = d.email;
-        } else {
-            let d = crewData[idx];
-            document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Chỉnh sửa thuyền viên: ${d.name}`;
-            document.getElementById("inp-name").value = d.name;
-            document.getElementById("inp-dob").value = d.dob || "";
-            document.getElementById("inp-vessel").value = d.vessel;
-            document.getElementById("inp-position").value = d.position;
-            document.getElementById("inp-date-join").value = d.dateJoin || "";
-            document.getElementById("inp-phone").value = d.phone;
-            document.getElementById("inp-months").value = d.months;
-        }
-        document.getElementById("btn-cancel-edit").style.display = "inline-block";
-    }
-
-    function resetForm() {
-        document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-id-card"></i> Nhập thông tin chi tiết`;
-        document.getElementById("edit-index-global").value = "";
-        document.getElementById("inp-type").disabled = false;
-        document.getElementById("inp-msnv").value = "";
-        document.getElementById("inp-name").value = "";
-        document.getElementById("inp-dob").value = "";
-        document.getElementById("inp-position").value = "";
-        document.getElementById("inp-date-join").value = "";
-        document.getElementById("inp-phone").value = "";
-        document.getElementById("inp-email").value = "";
-        document.getElementById("inp-months").value = "0";
-        document.getElementById("btn-cancel-edit").style.display = "none";
-    }
-
-    async function deleteData(type, idx) {
-        let name = (type === 'staff') ? staffData[idx].name : crewData[idx].name;
-        if (confirm(`Xác nhận xóa vĩnh viễn dữ liệu của: ${name}?`)) {
-            if (type === 'staff') staffData.splice(idx, 1);
-            else crewData.splice(idx, 1);
-            saveLocalCache();
-            await pushToCloud({ action: "replaceAll", type: type, staff: staffData, crew: crewData });
-            updateSystemData();
-        }
-    }
-
-    function filterStaffTable() {
-        let search = document.getElementById("search-contacts").value.toLowerCase();
-        let dept = document.getElementById("filter-dept").value;
-        let rows = document.querySelectorAll("#tbl-contacts tbody tr");
-        rows.forEach((row, i) => {
-            let data = staffData[i];
-            if (!data) return;
-            let matchSearch = data.name.toLowerCase().includes(search) || data.msnv.toLowerCase().includes(search);
-            let matchDept = (dept === "Tất cả" || data.dept === dept);
-            row.style.display = (matchSearch && matchDept) ? "" : "none";
         });
-    }
-
-    function filterCrewTable() {
-        let search = document.getElementById("search-crew").value.toLowerCase();
-        let vessel = document.getElementById("filter-vessel").value;
-        let rows = document.querySelectorAll("#tbl-crew tbody tr");
-        rows.forEach((row, i) => {
-            let data = crewData[i];
-            if (!data) return;
-            let matchSearch = data.name.toLowerCase().includes(search) || data.position.toLowerCase().includes(search);
-            let matchVessel = (vessel === "Tất cả" || data.vessel === vessel);
-            row.style.display = (matchSearch && matchVessel) ? "" : "none";
-        });
-    }
-
-    async function addDept() {
-        let val = document.getElementById("inp-new-dept").value.trim();
-        if (val && !depts.includes(val)) {
-            depts.push(val);
-            saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-            updateSystemData();
-            document.getElementById("inp-new-dept").value = "";
-        }
-    }
-    async function deleteDept(index) {
-        if (confirm("Xóa phòng ban này?")) {
-            depts.splice(index, 1);
-            saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-            updateSystemData();
-        }
-    }
-
-    async function addVessel() {
-        let val = document.getElementById("inp-new-vessel").value.trim();
-        if (val && !vessels.includes(val)) {
-            vessels.push(val);
-            saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-            updateSystemData();
-            document.getElementById("inp-new-vessel").value = "";
-        }
-    }
-
-    async function deleteVessel(index) {
-        if (confirm("Xóa tàu này?")) {
-            vessels.splice(index, 1);
-            saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-            updateSystemData();
-        }
-    }
-
-    // ============================================================
-    // SỰ KIỆN KHI MỞ TRANG (TỰ ĐỘNG ĐIỀN VÀ TỰ ĐỒNG BỘ NGẦM)
-    // ============================================================
-    window.addEventListener("load", () => {
-        loadLocalCache(); 
-        
-        if (isScriptUrlConfigured()) {
-            const adminInput = document.getElementById("adm-script-url");
-            if (adminInput) {
-                adminInput.value = SCRIPT_URL;
-            }
-        }
-
-        if (isScriptUrlConfigured()) {
-            loadFromCloud(true); 
-        } else {
-            updateSystemData(); 
-        }
-    });
-</script>
+    </script>
 </body>
 </html>
