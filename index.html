@@ -561,7 +561,7 @@
             btn.disabled = false;
             btn.innerText = "Đăng nhập";
 
-            if (userDatabase[u] && userDatabase[u].password === p) {
+            if (userDatabase[u] && String(userDatabase[u].password).trim() === String(p).trim()) {
                 currentUser = userDatabase[u];
                 err.style.display = "none";
                 document.getElementById("login-screen").style.display = "none";
