@@ -316,7 +316,7 @@
         // CẤU HÌNH KẾT NỐI GOOGLE SHEET (Google Apps Script Web App)
         // Dán URL /exec của bạn vào đây HOẶC nhập trong trang Admin -> "Kết nối Google Sheet"
         // ============================================================
-        let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
+        let SCRIPT_URL = localStorage.getItem("sme_script_url") || "DÁN_URL_WEB_APP_CỦA_BẠN_VÀO_ĐÂY";
 
         // Dữ liệu cục bộ (sẽ được nạp/ghi đè bởi dữ liệu từ Google Sheet sau khi đồng bộ)
         let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
@@ -562,27 +562,20 @@
             btn.innerText = "Đăng nhập";
 
             if (userDatabase[u] && userDatabase[u].password === p) {
-       currentUser = userDatabase[u];
-       err.style.display = "none";
-       document.getElementById("login-screen").style.display = "none";
+                currentUser = userDatabase[u];
+                err.style.display = "none";
+                document.getElementById("login-screen").style.display = "none";
 
-       let sys = document.getElementById("main-system");
-       sys.style.display = "flex";
+                let sys = document.getElementById("main-system");
+                sys.style.display = "flex";
 
-       document.getElementById("user-display").innerText = u + " (" + currentUser.role + ")";
-       document.getElementById("adm-script-url").value = isScriptUrlConfigured() ? SCRIPT_URL : "";
+                document.getElementById("user-display").innerText = u + " (" + currentUser.role + ")";
+                document.getElementById("adm-script-url").value = isScriptUrlConfigured() ? SCRIPT_URL : "";
 
-       applyUserPermissions();
-       
-       // THÊM DÒNG NÀY: Tự động chạy lệnh đồng bộ dữ liệu từ Google Sheet ngay khi vừa đăng nhập thành công
-       if (isScriptUrlConfigured()) {
-           loadFromCloud(true); 
-       } else {
-           updateSystemData();
-       }
-       
-       switchPage('dashboard');
-   } else {
+                applyUserPermissions();
+                updateSystemData();
+                switchPage('dashboard');
+            } else {
                 err.style.display = "block";
             }
         }
@@ -874,7 +867,7 @@
         // sau đó nếu đã cấu hình Google Sheet thì đồng bộ đè lên bằng dữ liệu mới nhất từ Sheet.
         window.addEventListener("load", () => {
             loadLocalCache();
-            if (isScriptUrlConfigured()) loadFromCloud(true);
+            if (isScriptUrlConfigured()) loadFromCloud(false);
         });
     </script>
 </body>
