@@ -908,21 +908,40 @@
         }
 
         async function deleteData(type, idx) {
-            let name = (type === 'staff') ? staffData[idx].name : crewData[idx].name;
+            // 1. Xác định chính xác đối tượng dữ liệu dựa trên mảng hiện hành
+            let currentData = (type === 'staff') ? staffData[idx] : crewData[idx];
+            if (!currentData) {
+                alert("❌ Không tìm thấy dữ liệu nhân sự cần xóa!");
+                return;
+            }
 
-            if (confirm(`Xác nhận xóa dữ liệu của: ${name}?`)) {
-                let payload = { action: "deletePerson", type: type };
+            // 2. Hiện hộp thoại xác nhận với tên cụ thể
+            if (confirm(`Xác nhận XÓA VĨNH VIỄN dữ liệu của: ${currentData.name}?`)) {
+                let payload = { 
+                    action: "deletePerson", 
+                    type: type 
+                };
 
+                // 3. Đóng gói định danh chính xác để Google Sheet tìm hàng dựa vào
                 if (type === 'staff') {
-                    payload.msnv = staffData[idx].msnv;
-                    staffData.splice(idx, 1);
+                    payload.msnv = currentData.msnv;
+                    // Xóa tạm thời ở local trước để UI mượt mà
+                    staffData.splice(idx, 1); 
                 } else {
-                    payload.name = crewData[idx].name;
+                    payload.name = currentData.name;
+                    // Xóa tạm thời ở local trước
                     crewData.splice(idx, 1);
                 }
 
+                // 4. Cập nhật giao diện tạm thời & lưu bộ nhớ cache trình duyệt
                 saveLocalCache();
+                renderDataPresentations(); 
+
+                // 5. Đẩy lệnh xóa đồng bộ lên Google Sheet 
+                // Hàm pushToCloud() mặc định sẽ tự gọi loadFromCloud() ngay sau khi hoàn thành để đồng bộ ngược data sạch từ Cloud.
                 await pushToCloud(payload); 
+                
+                alert(`✔️ Đã đồng bộ xóa nhân sự: ${currentData.name} trên hệ thống.`);
             }
         }
 
