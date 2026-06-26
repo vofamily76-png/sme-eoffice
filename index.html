@@ -18,13 +18,11 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { display: flex; background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; }
         
-        /* Cập nhật màn hình Đăng nhập */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b3c5d 0%, #1d2731 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; max-width: 420px; text-align: center; }
         .login-box i { font-size: 50px; color: var(--primary-color); margin-bottom: 15px; }
         .login-box .logo-container { width: 120px; height: auto; margin: 0 auto 20px auto; }
         
-        /* Cập nhật logo trên Sidebar */
         .sidebar-brand .logo-container { width: 90px; height: auto; margin: 0 auto 8px auto; }
         .sidebar-brand .logo-container svg { fill: #ffffff; }
         
@@ -66,13 +64,11 @@
         .table-controls { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;}
         .search-box { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 300px; flex-grow: 1;}
         
-        /* Định dạng bảng */
         table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f2f2f2; color: #333; }
         tr:hover { background-color: #f9f9f9; }
         
-        /* Định dạng thẻ liên hệ mới giống BSR */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .contact-card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px; display: flex; gap: 15px; position: relative;}
         .contact-card img.avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; }
@@ -91,7 +87,6 @@
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* Preview container */
         .image-preview-wrapper { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
         .image-preview-wrapper img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc; display: none; }
     </style>
@@ -123,7 +118,7 @@
             <div style="margin-top: 15px;">
                 <a href="#" onclick="toggleForgotPasswordForm(true)" style="font-size: 13px; color: var(--secondary-color); text-decoration:none;">Quên mật khẩu Admin? Đổi qua Email liên kết 🔑</a>
             </div>
-            <p id="login-error" style="color: red; margin-top: 10px; display: none;">Sai thông tin đăng nhập!</p>
+            <p id="login-error" style="color: red; margin-top: 10px; display: none;">Sai thông tin đăng nhập hoặc tài khoản đã bị xóa!</p>
         </div>
 
         <div class="login-box" id="sub-forgot-box" style="display: none;">
@@ -389,17 +384,14 @@
 
         let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
         let vessels = ["M/V Geo Mariner", "M/V Geo Supporter", "M/V Seahorse Sinergy", "M/V Seahorse Keystone"];
-        let staffData = [
-            {msnv: "SME001", name: "Lê Minh Tuấn", dob: "1985-05-15", dept: "BAN GIÁM ĐỐC - BOD", position: "Giám đốc điều hành", dateJoin: "2010-01-01", phone: "0901234567", email: "tuan.lm@seahorse.com.vn", imgUrl: ""},
-            {msnv: "SME008", name: "Phạm Thị Lan", dob: "1990-08-22", dept: "PHÒNG KẾ TOÁN", position: "Kế toán trưởng", dateJoin: "2015-03-10", phone: "0908887776", email: "lan.pt@seahorse.com.vn", imgUrl: ""}
-        ];
+        let staffData = [];
         let crewData = [];
         let userDatabase = {
             "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
         };
         let currentUser = null;
         let cloudReady = false;
-        let globalBase64Image = ""; // Biến tạm lưu dữ liệu ảnh dạng Base64 sau khi kiểm tra đạt chuẩn
+        let globalBase64Image = "";
 
         function isScriptUrlConfigured() {
             return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
@@ -443,11 +435,11 @@
         async function loadFromCloud(manual) {
             let statusEl = document.getElementById("cloud-status-text");
             if (!isScriptUrlConfigured()) {
-                if (statusEl) statusEl.innerHTML = "⚠️ Chưa nhập URL Google Apps Script. Hệ thống đang chạy bằng dữ liệu mẫu và lưu cục bộ. Vào tab <b>Admin</b> để kết nối Google Sheet.";
+                if (statusEl) statusEl.innerHTML = "⚠️ Chưa nhập URL Google Apps Script. Vào tab Admin để kết nối.";
                 return false;
             }
             try {
-                showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
+                if (manual) showSyncBanner("Đang đồng bộ dữ liệu thời gian thực...");
                 let res = await fetch(SCRIPT_URL, { method: "GET" });
                 let data = await res.json();
                 if (data.status === "ERROR") throw new Error(data.message);
@@ -463,11 +455,11 @@
                 }
                 cloudReady = true;
                 saveLocalCache();
-                if (statusEl) statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
-                if (manual) { updateSystemData(); }
+                if (statusEl) statusEl.innerHTML = "✅ Đã đồng bộ thời gian thực với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
+                updateSystemData();
                 return true;
             } catch (err) {
-                if (statusEl) statusEl.innerHTML = "❌ Lỗi kết nối Google Sheet: " + err.message + " (Đang dùng dữ liệu cục bộ tạm thời)";
+                if (statusEl) statusEl.innerHTML = "❌ Lỗi kết nối Google Sheet: " + err.message;
                 console.error(err);
                 return false;
             } finally {
@@ -477,11 +469,11 @@
 
         async function pushToCloud(payload) {
             if (!isScriptUrlConfigured()) {
-                console.warn("Chưa kết nối Cloud. Dữ liệu chỉ lưu local.");
+                console.warn("Chưa kết nối Cloud.");
                 return false;
             }
             try {
-                showSyncBanner("Đang lưu lên Google Sheet...");
+                showSyncBanner("Đang gửi lệnh cập nhật lên Google Sheet...");
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -489,9 +481,12 @@
                 });
                 let data = await res.json();
                 if (data.status === "ERROR") throw new Error(data.message);
+                
+                // Realtime: Đọc lại toàn bộ data sạch từ Cloud ngay sau khi sửa đổi thành công
+                await loadFromCloud(false);
                 return true;
             } catch (err) {
-                alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
+                alert("❌ Lỗi đồng bộ Google Sheet: " + err.message);
                 console.error(err);
                 return false;
             } finally {
@@ -504,8 +499,8 @@
             if (!url) { alert("Vui lòng nhập URL Web App hợp lệ!"); return; }
             SCRIPT_URL = url;
             localStorage.setItem("sme_script_url", url);
-            alert("✔️ Đã lưu URL kết nối. Đang đồng bộ dữ liệu...");
-            loadFromCloud(manual=true).then(() => updateSystemData());
+            alert("✔️ Đã lưu cấu hình. Đang đồng bộ thời gian thực...");
+            loadFromCloud(true);
         }
 
         function toggleForgotPasswordForm(show) {
@@ -521,10 +516,10 @@
         function sendOTP() {
             let emailInput = document.getElementById("forgot-email").value.trim();
             if (emailInput !== userDatabase.admin.emailLink) {
-                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty Hải Mã!");
+                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin!");
                 return;
             }
-            alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn.\nVui lòng kiểm tra hộp thư đến (Mã xác thực mẫu của bạn là: 1234)");
+            alert("✔️ Mã OTP mẫu là: 1234");
             document.getElementById("forgot-step-1").style.display = "none";
             document.getElementById("forgot-step-2").style.display = "block";
         }
@@ -532,13 +527,13 @@
         async function verifyOTPAndChangePassword() {
             let otp = document.getElementById("forgot-otp").value.trim();
             let newPass = document.getElementById("forgot-new-password").value;
-            if (otp !== "1234") { alert("❌ Mã OTP không chính xác hoặc đã hết hiệu lực!"); return; }
-            if (!newPass) { alert("❌ Vui lòng không để trống mật khẩu mới!"); return; }
+            if (otp !== "1234") { alert("❌ Mã OTP không chính xác!"); return; }
+            if (!newPass) { alert("❌ Vui lòng điền mật khẩu mới!"); return; }
 
             userDatabase.admin.password = newPass;
             saveLocalCache();
             await pushToCloud({ action: "createUser", username: "admin", password: newPass, role: "Admin" });
-            alert("🎉 Đổi mật khẩu Admin thành công! Hệ thống đang chuyển bạn về màn hình đăng nhập.");
+            alert("🎉 Đổi mật khẩu Admin thành công!");
             toggleForgotPasswordForm(false);
         }
 
@@ -547,18 +542,14 @@
             let uPass = document.getElementById("adm-new-password").value;
             let uRole = document.getElementById("adm-new-role").value;
 
-            if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
-            if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
-
+            if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ thông tin!"); return; }
+            
             userDatabase[uName] = { password: uPass, role: uRole };
             saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
-            if (ok) alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Đã đồng bộ Google Sheet).`);
-            else alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Lưu cục bộ).`);
-
+            await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
+            
             document.getElementById("adm-new-username").value = "";
             document.getElementById("adm-new-password").value = "";
-            renderUserListViewForAdmin();
         }
 
         async function resetUserPassword(username) {
@@ -569,20 +560,16 @@
 
             userDatabase[username].password = newPass;
             saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
-            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}" (Đã đồng bộ).` : `✔️ Đã đặt lại mật khẩu cho "${username}" (Lưu cục bộ).`);
-            renderUserListViewForAdmin();
+            await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
         }
 
         async function deleteUserAccount(username) {
-            if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin gốc!"); return; }
-            if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${username}"?`)) return;
+            if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin!"); return; }
+            if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản người dùng "${username}"?`)) return;
 
             delete userDatabase[username];
             saveLocalCache();
-            let ok = await pushToCloud({ action: "deleteUser", username: username });
-            alert(ok ? `✔️ Đã xóa tài khoản "${username}" (Đã đồng bộ).` : `✔️ Đã xóa tài khoản "${username}" (Lưu cục bộ).`);
-            renderUserListViewForAdmin();
+            await pushToCloud({ action: "deleteUser", username: username });
         }
 
         function renderUserListViewForAdmin() {
@@ -621,8 +608,13 @@
             let err = document.getElementById("login-error");
 
             btn.disabled = true;
-            btn.innerText = "Đang kiểm tra...";
-            if (isScriptUrlConfigured()) await loadFromCloud(manual=false); 
+            btn.innerText = "Đang kiểm tra thời gian thực...";
+            
+            // Realtime: Ép buộc tải data mới nhất từ Cloud trước khi đối chiếu đăng nhập
+            if (isScriptUrlConfigured()) {
+                await loadFromCloud(false);
+            }
+            
             btn.disabled = false;
             btn.innerText = "Đăng nhập";
 
@@ -661,15 +653,15 @@
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
                 document.getElementById("menu-admin").style.display = "flex";
-                document.getElementById("permission-status-text").innerHTML = "⚡ Chào mừng <b>Admin</b>. Bạn có toàn quyền hệ thống, quản lý danh mục và tài khoản.";
+                document.getElementById("permission-status-text").innerHTML = "⚡ Chào mừng <b>Admin</b>. Bạn có toàn quyền cấu hình dữ liệu và tài khoản.";
             } else if (currentUser.role === "ReadWrite") {
                 document.getElementById("menu-add-person").style.display = "flex";
                 document.getElementById("menu-admin").style.display = "none";
-                document.getElementById("permission-status-text").innerHTML = "✔️ Chào mừng <b>Ghi Quyền</b>. Bạn có quyền xem và thêm/sửa dữ liệu nhân sự.";
+                document.getElementById("permission-status-text").innerHTML = "✔️ Chào mừng <b>Ghi Quyền</b>. Bạn có quyền thao tác dữ liệu nhân sự.";
             } else if (currentUser.role === "ReadOnly") {
                 document.getElementById("menu-add-person").style.display = "none";
                 document.getElementById("menu-admin").style.display = "none";
-                document.getElementById("permission-status-text").innerHTML = "🔒 Chào mừng bạn. Bạn được cấp quyền <b>Chỉ Xem</b>. Không được phép thêm/sửa dữ liệu.";
+                document.getElementById("permission-status-text").innerHTML = "🔒 Chào mừng bạn. Quyền hạn hiện hành: <b>Chỉ Xem</b>.";
             }
         }
 
@@ -702,7 +694,6 @@
             renderUserListViewForAdmin();
         }
 
-        /* HÀM XỬ LÝ & KIỂM TRA ĐIỀU KIỆN FILE ẢNH */
         function processAndValidateImage(inputElement) {
             const file = inputElement.files[0];
             const previewImg = document.getElementById("img-file-preview");
@@ -713,9 +704,8 @@
                 return;
             }
 
-            // 1. Kiểm tra kích thước file dung lượng (< 500KB)
             if (file.size > 500 * 1024) {
-                alert("❌ Lỗi: Dung lượng ảnh vượt quá giới hạn cho phép (Vui lòng chọn file dưới 500KB)!");
+                alert("❌ Lỗi: Dung lượng ảnh vượt quá giới hạn cho phép (<500KB)!");
                 inputElement.value = "";
                 clearImageInput();
                 return;
@@ -725,19 +715,16 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // 2. Kiểm tra kích thước hình ảnh pixel (Tối đa 600x700px)
                     if (img.width > 600 || img.height > 700) {
-                        alert(`❌ Lỗi: Kích thước ảnh (${img.width}x${img.height}px) vượt quá chuẩn quy định 600x700px!`);
+                        alert(`❌ Lỗi: Vượt quá chuẩn quy định 600x700px!`);
                         inputElement.value = "";
                         clearImageInput();
                         return;
                     }
-
-                    // Thỏa mãn điều kiện -> Tiến hành xử lý và render preview dữ liệu ảnh
                     globalBase64Image = e.target.result; 
                     previewImg.src = globalBase64Image;
                     previewImg.style.display = "block";
-                    infoText.innerText = ` Hợp lệ: ${img.width}x${img.height}px | Tối ưu < 100 DPI`;
+                    infoText.innerText = ` Hợp lệ: ${img.width}x${img.height}px`;
                 };
                 img.src = e.target.result;
             };
@@ -754,7 +741,6 @@
         function renderDataPresentations() {
             canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
 
-            // Render Contact Grid
             let htmlStaffGrid = staffData.map((s, idx) => {
                 let avatarHtml = s.imgUrl 
                     ? `<img src="${s.imgUrl}" alt="${s.name}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${s.name.charAt(0)}</div>'">`
@@ -782,9 +768,8 @@
                     </div>
                 `;
             }).join('');
-            document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự office.</p>";
+            document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự văn phòng.</p>";
 
-            // Render Crew Table
             let htmlCrew = crewData.map((c, idx) => `
                 <tr>
                     <td><b>${c.name}</b></td>
@@ -801,7 +786,6 @@
             `).join('');
             document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
 
-            // Render Admin Chips
             let deptEl = document.getElementById("list-depts");
             if (deptEl) deptEl.innerHTML = depts.map((d, i) => `<span class="chip">${d} ${currentUser && currentUser.role === 'Admin' ? `<i class="fa-solid fa-circle-xmark" style="cursor:pointer;color:red;margin-left:5px" onclick="deleteDept(${i})"></i>` : ''}</span>`).join('');
             
@@ -839,7 +823,7 @@
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
                     email: document.getElementById("inp-email").value.trim(),
-                    imgUrl: globalBase64Image // Lưu chuỗi Base64 ảnh đã qua kiểm định
+                    imgUrl: globalBase64Image
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -866,7 +850,6 @@
 
             alert("✔️ Đã lưu thông tin.");
             resetForm();
-            updateSystemData();
             switchPage(type === "staff" ? 'contacts' : 'crew');
         }
 
@@ -928,12 +911,8 @@
             let name = (type === 'staff') ? staffData[idx].name : crewData[idx].name;
 
             if (confirm(`Xác nhận xóa dữ liệu của: ${name}?`)) {
-                let payload = { 
-                    action: "deletePerson", 
-                    type: type 
-                };
+                let payload = { action: "deletePerson", type: type };
 
-                // Phân tách chính xác khóa định danh gửi lên Google Sheet dựa theo đối tượng để xóa hàng đồng bộ
                 if (type === 'staff') {
                     payload.msnv = staffData[idx].msnv;
                     staffData.splice(idx, 1);
@@ -943,9 +922,7 @@
                 }
 
                 saveLocalCache();
-                // Đồng bộ trực tiếp lệnh xóa chuẩn hóa lên Google Sheet thông qua kết nối API Cloud
                 await pushToCloud(payload); 
-                updateSystemData();
             }
         }
 
@@ -986,7 +963,6 @@
                 depts.push(val);
                 saveLocalCache();
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-                updateSystemData();
                 document.getElementById("inp-new-dept").value = "";
             }
         }
@@ -995,7 +971,6 @@
                 depts.splice(index, 1);
                 saveLocalCache();
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-                updateSystemData();
             }
         }
 
@@ -1005,7 +980,6 @@
                 vessels.push(val);
                 saveLocalCache();
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-                updateSystemData();
                 document.getElementById("inp-new-vessel").value = "";
             }
         }
@@ -1015,13 +989,12 @@
                 vessels.splice(index, 1);
                 saveLocalCache();
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels });
-                updateSystemData();
             }
         }
 
         async function changeAdminPassword(){
             try{
-                if(typeof currentUser==='undefined' || !currentUser || currentUser.role!=='Admin'){
+                if(!currentUser || currentUser.role!=='Admin'){
                     alert('Chỉ Admin mới được phép thực hiện!');
                     return;
                 }
@@ -1029,11 +1002,6 @@
                 const currentPass=document.getElementById('admin-current-password').value;
                 const newPass=document.getElementById('admin-new-password').value;
                 const confirmPass=document.getElementById('admin-confirm-password').value;
-
-                if(!userDatabase || !userDatabase.admin){
-                    alert('Lỗi dữ liệu!');
-                    return;
-                }
 
                 if(currentPass!==userDatabase.admin.password){
                     alert('Mật khẩu hiện tại không đúng!');
@@ -1069,7 +1037,8 @@
             loadLocalCache(); 
             updateSystemData(); 
             if (isScriptUrlConfigured()) {
-                loadFromCloud(manual=false).then(()=>updateSystemData()); 
+                // Khởi tạo tải dữ liệu sạch từ Cloud lúc mở app
+                loadFromCloud(false); 
             }
         });
     </script>
