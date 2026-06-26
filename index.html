@@ -702,7 +702,7 @@
             renderUserListViewForAdmin();
         }
 
-        /* HÀM XỬ LÝ & KIỂM TRA ĐIỀU KIỆN FILE ẢNH (Mới thêm) */
+        /* HÀM XỬ LÝ & KIỂM TRA ĐIỀU KIỆN FILE ẢNH */
         function processAndValidateImage(inputElement) {
             const file = inputElement.files[0];
             const previewImg = document.getElementById("img-file-preview");
@@ -926,13 +926,25 @@
 
         async function deleteData(type, idx) {
             let name = (type === 'staff') ? staffData[idx].name : crewData[idx].name;
-            let msnvOrName = (type === 'staff') ? staffData[idx].msnv : crewData[idx].name;
 
             if (confirm(`Xác nhận xóa dữ liệu của: ${name}?`)) {
-                if (type === 'staff') staffData.splice(idx, 1);
-                else crewData.splice(idx, 1);
+                let payload = { 
+                    action: "deletePerson", 
+                    type: type 
+                };
+
+                // Phân tách chính xác khóa định danh gửi lên Google Sheet dựa theo đối tượng để xóa hàng đồng bộ
+                if (type === 'staff') {
+                    payload.msnv = staffData[idx].msnv;
+                    staffData.splice(idx, 1);
+                } else {
+                    payload.name = crewData[idx].name;
+                    crewData.splice(idx, 1);
+                }
+
                 saveLocalCache();
-                await pushToCloud({ action: "deletePerson", type: type, id: msnvOrName }); 
+                // Đồng bộ trực tiếp lệnh xóa chuẩn hóa lên Google Sheet thông qua kết nối API Cloud
+                await pushToCloud(payload); 
                 updateSystemData();
             }
         }
