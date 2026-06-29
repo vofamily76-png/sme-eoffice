@@ -20,8 +20,10 @@
         
         /* Màn hình Đăng nhập */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b3c5d 0%, #1d2731 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; max-width: 420px; text-align: center; }
+        .login-box { background: white; padding: 30px 40px 40px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; max-width: 420px; text-align: center; }
         .login-box h2 { margin-bottom: 20px; color: #333; font-size: 18px; letter-spacing: 0.5px; }
+        .login-logo { max-width: 180px; height: auto; margin-bottom: 15px; }
+        .sidebar-logo { width: 28px; height: 28px; object-fit: contain; background: white; padding: 2px; border-radius: 4px; }
         .input-group { margin-bottom: 15px; text-align: left; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
@@ -97,6 +99,7 @@
 
     <div id="login-screen">
         <div class="login-box" id="sub-login-box">
+            <img src="Logo Seahorse.jpg" class="login-logo" alt="Seahorse Logo">
             <h2>SME SYSTEM LOGIN</h2>
             <div class="input-group">
                 <label>Tài khoản</label>
@@ -145,6 +148,7 @@
         <div class="sidebar">
             <div>
                 <div class="sidebar-brand" style="display: flex; align-items: center; padding: 15px; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0b3a60;">
+                    <img src="Logo Seahorse.jpg" class="sidebar-logo" alt="Icon Logo">
                     <h3 style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;">SEAHORSE MARINE</h3>
                 </div>
                 <ul class="sidebar-menu">
@@ -262,7 +266,7 @@
                         <div class="input-group staff-image-group">
                             <label>Hình ảnh nhân viên</label>
                             <input type="file" id="inp-img-file" accept="image/jpeg, image/jpg, image/png" onchange="processAndValidateImage(this)">
-                            <span class="file-help-text">Định dạng: JPG, PNG. Dung lượng < 1MB. Kích thước tối đa: 1920x1920px. Độ phân giải khuyên dùng < 150 DPI. (Tự động đồng bộ lên Cloud)</span>
+                            <span class="file-help-text">Định dạng: JPG, PNG. Dung lượng &lt; 1MB. Kích thước tối đa: 1920x1920px. Độ phân giải khuyên dùng &lt; 150 DPI. (Tự động đồng bộ lên Cloud)</span>
                             <div class="image-preview-wrapper">
                                 <img id="img-file-preview" alt="Preview">
                                 <span id="img-file-info" style="font-size:12px; color:green;"></span>
@@ -660,6 +664,9 @@
                 // Admin thì hiển thị đầy đủ thông tin hệ thống
                 document.getElementById("box-sys-log").style.display = "block";
                 document.getElementById("box-cloud-sync").style.display = "block";
+                
+                // Gọi kết xuất ngay danh sách tài khoản hiện tại cho Admin xem
+                renderUserListViewForAdmin();
             } else {
                 // Toàn bộ tài khoản User thông thường sẽ bị ẩn Nhật ký và Trạng thái Google Sheet
                 document.getElementById("box-sys-log").style.display = "none";
