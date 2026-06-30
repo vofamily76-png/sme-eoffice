@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SME Crew & Contact Management System</title>
+    <title>SEAHORSE MARINE & ENERGY JSC - Crew & Contact Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -21,9 +21,9 @@
         /* Màn hình Đăng nhập */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b3c5d 0%, #1d2731 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         .login-box { background: white; padding: 30px 40px 40px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 100%; max-width: 420px; text-align: center; }
-        .login-box h2 { margin-bottom: 20px; color: #333; font-size: 18px; letter-spacing: 0.5px; }
+        .login-box h2 { margin-bottom: 20px; color: #333; font-size: 16px; letter-spacing: 0.5px; font-weight: bold; line-height: 1.4; }
         .login-logo { max-width: 180px; height: auto; margin-bottom: 15px; }
-        .sidebar-logo { width: 28px; height: 28px; object-fit: contain; background: white; padding: 2px; border-radius: 4px; }
+        .sidebar-logo { width: 35px; height: 35px; object-fit: contain; background: white; padding: 2px; border-radius: 4px; flex-shrink: 0; }
         .input-group { margin-bottom: 15px; text-align: left; }
         .input-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
         .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
@@ -100,7 +100,7 @@
     <div id="login-screen">
         <div class="login-box" id="sub-login-box">
             <img src="Logo Seahorse.jpg" class="login-logo" alt="Seahorse Logo">
-            <h2>SME SYSTEM LOGIN</h2>
+            <h2>SEAHORSE MARINE & ENERGY JSC</h2>
             <div class="input-group">
                 <label>Tài khoản</label>
                 <input type="text" id="username" placeholder="Nhập admin hoặc tên user">
@@ -148,8 +148,8 @@
         <div class="sidebar">
             <div>
                 <div class="sidebar-brand" style="display: flex; align-items: center; padding: 15px; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0b3a60;">
-                    <img src="Logo Seahorse.jpg" class="sidebar-logo" alt="Icon Logo">
-                    <h3 style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;">SEAHORSE MARINE</h3>
+                    <img src="Logo Seahorse.jpg" class="sidebar-logo" alt="Icon Logo" style="width: 32px; height: 32px; object-fit: contain;">
+                    <h3 style="margin: 0; color: #ffffff; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; white-space: normal; line-height: 1.3;">SEAHORSE MARINE & ENERGY JSC</h3>
                 </div>
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
@@ -651,7 +651,6 @@
             document.getElementById("main-system").style.display = "none";
         }
 
-        /* KHỐI ĐIỀU CHỈNH CHÍNH: ẨN CÁC DÒNG HỆ THỐNG ĐỐI VỚI TÀI KHOẢN KHÔNG PHẢI ADMIN */
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
@@ -661,14 +660,11 @@
                 document.getElementById("menu-admin").style.display = "flex";
                 document.getElementById("permission-status-text").innerHTML = "⚡ Chào mừng <b>Admin</b>. Bạn có toàn quyền hệ thống, quản lý danh mục và tài khoản.";
                 
-                // Admin thì hiển thị đầy đủ thông tin hệ thống
                 document.getElementById("box-sys-log").style.display = "block";
                 document.getElementById("box-cloud-sync").style.display = "block";
                 
-                // Gọi kết xuất ngay danh sách tài khoản hiện tại cho Admin xem
                 renderUserListViewForAdmin();
             } else {
-                // Toàn bộ tài khoản User thông thường sẽ bị ẩn Nhật ký và Trạng thái Google Sheet
                 document.getElementById("box-sys-log").style.display = "none";
                 document.getElementById("box-cloud-sync").style.display = "none";
 
