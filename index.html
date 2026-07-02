@@ -131,6 +131,17 @@
         .app-launcher-note { background: #fff8e1; color: #856404; font-size: 12px; padding: 6px 20px; }
         .inline-add-app-row { display: grid; grid-template-columns: 1fr 1.4fr auto auto; gap: 10px; margin-bottom: 15px; align-items: center; }
         @media (max-width: 700px) { .inline-add-app-row { grid-template-columns: 1fr; } }
+        .doc-type-box { border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
+        .doc-type-box h4 { color: var(--primary-color); margin-bottom: 10px; display:flex; align-items:center; gap:8px; }
+        .doc-upload-row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; margin-bottom: 10px; }
+        .doc-upload-row input[type="file"] { flex-grow:1; min-width:220px; border:1px solid #ccc; border-radius:4px; padding:6px; }
+        .doc-list { list-style:none; margin-top:5px; }
+        .doc-list li { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:#f7f9fb; border-radius:4px; margin-bottom:6px; font-size:14px; }
+        .doc-list li a { color: var(--secondary-color); text-decoration:none; font-weight:bold; }
+        .doc-list li a:hover { text-decoration:underline; }
+        .doc-list li .doc-meta { color:#888; font-size:12px; margin-left:8px; }
+        .doc-list li .doc-del { color:#c0392b; cursor:pointer; font-size:13px; }
+        .doc-empty { color:#999; font-size:13px; font-style: italic; }
     </style>
 </head>
 <body>
@@ -195,6 +206,7 @@
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
+                    <li class="menu-item" id="menu-profile-docs" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
@@ -321,6 +333,28 @@
                             <button class="btn" style="width:auto; background-color: #27ae60;" onclick="saveData()">Lưu vào hệ thống dữ liệu ✔️</button>
                             <button class="btn btn-danger" id="btn-cancel-edit" onclick="resetForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="page-profile-docs" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</h2>
+                <div class="admin-box">
+                    <h3><i class="fa-solid fa-user-check"></i> Chọn nhân viên</h3>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Tìm theo MSNV / Họ tên</label>
+                            <select id="doc-staff-select" class="search-box" style="width:100%;" onchange="onProfileDocStaffChange()">
+                                <option value="">-- Chọn nhân viên --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="doc-staff-panel" style="display:none;">
+                    <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
+                        <h3 id="doc-staff-name-title"><i class="fa-solid fa-id-card"></i> Hồ sơ của: </h3>
+                        <div id="doc-upload-sections"></div>
                     </div>
                 </div>
             </div>
@@ -510,6 +544,13 @@
         let currentUsername = null;
         let cloudReady = false;
         let globalBase64Image = ""; 
+        let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
+        const DOC_TYPES = [
+            { code: "SYLL",    label: "1. Sơ yếu lý lịch",                icon: "fa-id-card" },
+            { code: "HDLD",    label: "2. Hợp đồng lao động / Phụ lục",   icon: "fa-file-contract" },
+            { code: "BANGCAP", label: "3. Bằng cấp liên quan",            icon: "fa-graduation-cap" },
+            { code: "KSK",     label: "4. Giấy khám sức khỏe",            icon: "fa-notes-medical" }
+        ];
 
         function isScriptUrlConfigured() {
             return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
@@ -520,7 +561,7 @@
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups
+                    mailGroups: mailGroups, documentsData: documentsData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -543,6 +584,7 @@
                 if (cache.crewData) crewData = cache.crewData;
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
+                if (cache.documentsData) documentsData = cache.documentsData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -586,6 +628,7 @@
                 if (data.vessels && data.vessels.length) vessels = data.vessels;
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
+                if (data.documents) documentsData = data.documents;
                 if (data.users) {
                     userDatabase = data.users;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -899,6 +942,94 @@
             }
         }
 
+        function renderProfileDocStaffSelect() {
+            let sel = document.getElementById("doc-staff-select");
+            if (!sel) return;
+            let keep = sel.value;
+            let options = '<option value="">-- Chọn nhân viên --</option>' +
+                staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
+            sel.innerHTML = options;
+            if (keep && sel.querySelector(`option[value="${keep}"]`)) {
+                sel.value = keep;
+                onProfileDocStaffChange();
+            }
+        }
+
+        function onProfileDocStaffChange() {
+            let msnv = document.getElementById("doc-staff-select").value;
+            let panel = document.getElementById("doc-staff-panel");
+            if (!msnv) { panel.style.display = "none"; return; }
+            let staff = staffData.find(s => s.msnv === msnv);
+            panel.style.display = "block";
+            document.getElementById("doc-staff-name-title").innerHTML =
+                `<i class="fa-solid fa-id-card"></i> Hồ sơ của: ${staff ? staff.name : msnv} (${msnv})`;
+            renderProfileDocSections(msnv);
+        }
+
+        function renderProfileDocSections(msnv) {
+            let container = document.getElementById("doc-upload-sections");
+            container.innerHTML = DOC_TYPES.map(dt => {
+                let files = documentsData.filter(d => d.msnv === msnv && d.docType === dt.code);
+                let listHtml = files.length
+                    ? '<ul class="doc-list">' + files.map(f => `
+                        <li>
+                            <span><a href="${f.fileUrl}" target="_blank"><i class="fa-solid fa-file"></i> ${f.fileName}</a>
+                            <span class="doc-meta">${f.uploadDate || ""}</span></span>
+                            <span class="doc-del" onclick="deleteStaffDocument('${f.fileId}', '${msnv}')"><i class="fa-solid fa-trash"></i> Xóa</span>
+                        </li>`).join('') + '</ul>'
+                    : '<p class="doc-empty">Chưa có file nào được tải lên.</p>';
+                return `
+                    <div class="doc-type-box">
+                        <h4><i class="fa-solid ${dt.icon}"></i> ${dt.label}</h4>
+                        ${listHtml}
+                        <div class="doc-upload-row">
+                            <input type="file" id="doc-file-${dt.code}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                            <button class="btn" style="width:auto; padding:8px 16px;" onclick="uploadStaffDocument('${dt.code}', '${msnv}')">
+                                <i class="fa-solid fa-upload"></i> Tải lên
+                            </button>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function uploadStaffDocument(docType, msnv) {
+            let input = document.getElementById(`doc-file-${docType}`);
+            let file = input.files[0];
+            if (!file) { alert("Vui lòng chọn file trước khi tải lên!"); return; }
+            if (file.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+
+            let reader = new FileReader();
+            reader.onload = async function () {
+                let base64Data = reader.result.split(",")[1];
+                let ok = await pushToCloud({
+                    action: "uploadStaffDocument",
+                    msnv: msnv,
+                    docType: docType,
+                    fileName: file.name,
+                    mimeType: file.type || "application/octet-stream",
+                    fileData: base64Data
+                });
+                if (ok) {
+                    input.value = "";
+                    await loadFromCloud(true);
+                    renderProfileDocSections(msnv);
+                    alert("✔️ Đã tải lên hồ sơ thành công.");
+                }
+            };
+            reader.onerror = function () { alert("Không thể đọc file, vui lòng thử lại."); };
+            reader.readAsDataURL(file);
+        }
+
+        async function deleteStaffDocument(fileId, msnv) {
+            if (!confirm("Bạn có chắc muốn xóa file này không?")) return;
+            let ok = await pushToCloud({ action: "deleteStaffDocument", fileId: fileId });
+            if (ok) {
+                await loadFromCloud(true);
+                renderProfileDocSections(msnv);
+            }
+        }
+
         function updateSystemData() {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
@@ -936,6 +1067,7 @@
             renderOtherAppsAdminList();
             renderDeptVesselLists();
             renderMailGroupsAdminList();
+            renderProfileDocStaffSelect();
         }
 
         function renderDeptVesselLists() {
