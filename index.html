@@ -309,7 +309,7 @@
                         <div class="input-group staff-image-group">
                             <label>Hình ảnh nhân viên</label>
                             <input type="file" id="inp-img-file" accept="image/jpeg, image/jpg, image/png" onchange="processAndValidateImage(this)">
-                            <span class="file-help-text">Định dạng: JPG, PNG. Dung lượng &lt; 1MB. Kích thước tối đa: 1920x1920px. Độ phân giải khuyên dùng &lt; 150 DPI. (Tự động đồng bộ lên Cloud)</span>
+                            <span class="file-help-text">Định dạng: JPG, PNG. Hệ thống tự động resize & nén ảnh (~320px) để phù hợp giới hạn lưu trữ của Google Sheet. (Tự động đồng bộ lên Cloud)</span>
                             <div class="image-preview-wrapper">
                                 <img id="img-file-preview" alt="Preview">
                                 <span id="img-file-info" style="font-size:12px; color:green;"></span>
@@ -1000,8 +1000,8 @@
                 return;
             }
 
-            if (file.size > 1024 * 1024) {
-                alert("❌ Thất bại: Dung lượng ảnh vượt giới hạn cho phép (Vui lòng chọn file nhỏ hơn 1MB)!");
+            if (file.size > 5 * 1024 * 1024) {
+                alert("❌ Thất bại: Dung lượng ảnh vượt giới hạn cho phép (Vui lòng chọn file nhỏ hơn 5MB)!");
                 inputElement.value = "";
                 clearImageInput();
                 return;
@@ -1011,17 +1011,34 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    if (img.width > 1920 || img.height > 1920) {
-                        alert(`❌ Thất bại: Kích thước ảnh (${img.width}x${img.height}px) vượt quá giới hạn quy định 1920x1920px!`);
+                    // Google Sheet giới hạn ~50.000 ký tự/ô => tự động resize + nén ảnh về khổ đại diện (~320px)
+                    const MAX_DIM = 320;
+                    let w = img.width, h = img.height;
+                    if (w >= h && w > MAX_DIM) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+                    else if (h > w && h > MAX_DIM) { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+
+                    let quality = 0.75;
+                    let compressed = canvas.toDataURL("image/jpeg", quality);
+                    while (compressed.length > 45000 && quality > 0.3) {
+                        quality -= 0.1;
+                        compressed = canvas.toDataURL("image/jpeg", quality);
+                    }
+
+                    if (compressed.length > 45000) {
+                        alert("❌ Ảnh vẫn quá lớn sau khi nén tự động. Vui lòng chọn ảnh khác đơn giản/nhỏ hơn.");
                         inputElement.value = "";
                         clearImageInput();
                         return;
                     }
 
-                    globalBase64Image = e.target.result; 
+                    globalBase64Image = compressed;
                     previewImg.src = globalBase64Image;
                     previewImg.style.display = "block";
-                    infoText.innerText = ` Đạt chuẩn: ${img.width}x${img.height}px | Độ phân giải hiển thị khuyến nghị < 150 DPI`;
+                    infoText.innerText = ` Đã tự động nén ảnh còn ~${Math.round(compressed.length/1024)}KB (${w}x${h}px), sẵn sàng đồng bộ lên Google Sheet.`;
                 };
                 img.src = e.target.result;
             };
