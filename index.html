@@ -104,8 +104,17 @@
         .app-card .app-icon { width: 46px; height: 46px; border-radius: 8px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; }
         .app-card h4 { font-size: 15px; color: #222; }
         .app-card p.app-url { font-size: 12px; color: #888; word-break: break-all; }
-        .app-card .app-delete-btn { position: absolute; top: 12px; right: 12px; }
-        .app-card .app-open-hint { font-size: 12px; color: var(--secondary-color); margin-top: auto; display: flex; align-items: center; gap: 5px; font-weight: 500; }
+        .app-card .app-open-tab { position: absolute; top: 12px; right: 12px; color: #aaa; font-size: 13px; }
+        .app-card .app-open-tab:hover { color: var(--secondary-color); }
+        .app-card .app-delete-btn { position: absolute; bottom: 12px; right: 12px; }
+        .app-launcher-wrap { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9500; flex-direction: column; }
+        .app-launcher-header { background: var(--primary-color); color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .app-launcher-header h4 { font-size: 15px; }
+        .app-launcher-header .actions { display: flex; gap: 8px; }
+        .app-launcher-header button { background: rgba(255,255,255,0.15); color: white; border: none; padding: 7px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+        .app-launcher-header button:hover { background: rgba(255,255,255,0.3); }
+        .app-launcher-wrap iframe { flex-grow: 1; width: 100%; border: none; }
+        .app-launcher-note { background: #fff8e1; color: #856404; font-size: 12px; padding: 6px 20px; }
         .inline-add-app-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 10px; margin-bottom: 15px; }
         @media (max-width: 700px) { .inline-add-app-row { grid-template-columns: 1fr; } }
     </style>
@@ -178,6 +187,8 @@
             </div>
             <div class="sidebar-footer">
                 <p><i class="fa-solid fa-user"></i> <span id="user-display">User</span></p>
+                <a href="#" onclick="openChangePasswordModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
+                <br>
                 <a href="#" onclick="handleLogout()" style="color: #ff8888; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Đăng xuất 🚪</a>
             </div>
         </div>
@@ -399,6 +410,41 @@
         </div>
     </div>
 
+    <div id="change-password-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 380px;">
+            <h2><i class="fa-solid fa-key"></i> Đổi mật khẩu</h2>
+            <div class="input-group">
+                <label>Mật khẩu hiện tại</label>
+                <input type="password" id="cpw-current" placeholder="Nhập mật khẩu hiện tại">
+            </div>
+            <div class="input-group">
+                <label>Mật khẩu mới</label>
+                <input type="password" id="cpw-new" placeholder="Nhập mật khẩu mới">
+            </div>
+            <div class="input-group">
+                <label>Xác nhận mật khẩu mới</label>
+                <input type="password" id="cpw-confirm" placeholder="Nhập lại mật khẩu mới">
+            </div>
+            <div id="cpw-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="width:auto; flex-grow:1;" onclick="submitChangePassword()">Xác nhận ✔️</button>
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeChangePasswordModal()">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-launcher-wrap" id="app-launcher-wrap">
+        <div class="app-launcher-header">
+            <h4 id="app-launcher-title"><i class="fa-solid fa-plug"></i> Đang mở phần mềm...</h4>
+            <div class="actions">
+                <button onclick="openExternalAppNewTab()"><i class="fa-solid fa-up-right-from-square"></i> Mở tab mới</button>
+                <button onclick="closeExternalApp()"><i class="fa-solid fa-xmark"></i> Đóng</button>
+            </div>
+        </div>
+        <div class="app-launcher-note">⚠️ Nếu phần mềm không hiển thị do giới hạn bảo mật của nhà cung cấp, vui lòng bấm "Mở tab mới".</div>
+        <iframe id="app-launcher-iframe" src="about:blank"></iframe>
+    </div>
+
     <script>
         let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
@@ -416,6 +462,7 @@
             "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
         };
         let currentUser = null;
+        let currentUsername = null;
         let cloudReady = false;
         let globalBase64Image = ""; 
 
@@ -580,6 +627,57 @@
             toggleForgotPasswordForm(false);
         }
 
+        function openChangePasswordModal() {
+            document.getElementById("cpw-current").value = "";
+            document.getElementById("cpw-new").value = "";
+            document.getElementById("cpw-confirm").value = "";
+            document.getElementById("cpw-error").style.display = "none";
+            document.getElementById("change-password-modal").style.display = "flex";
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById("change-password-modal").style.display = "none";
+        }
+
+        async function submitChangePassword() {
+            let errEl = document.getElementById("cpw-error");
+            errEl.style.display = "none";
+
+            if (!currentUsername || !userDatabase[currentUsername]) {
+                errEl.innerText = "❌ Không xác định được người dùng hiện tại. Vui lòng đăng nhập lại.";
+                errEl.style.display = "block";
+                return;
+            }
+
+            let curPass = document.getElementById("cpw-current").value;
+            let newPass = document.getElementById("cpw-new").value;
+            let confirmPass = document.getElementById("cpw-confirm").value;
+
+            if (String(curPass).trim() !== String(userDatabase[currentUsername].password).trim()) {
+                errEl.innerText = "❌ Mật khẩu hiện tại không đúng!";
+                errEl.style.display = "block";
+                return;
+            }
+            if (!newPass || !newPass.trim()) {
+                errEl.innerText = "⚠️ Vui lòng nhập mật khẩu mới!";
+                errEl.style.display = "block";
+                return;
+            }
+            if (newPass.trim() !== confirmPass.trim()) {
+                errEl.innerText = "❌ Xác nhận mật khẩu mới không khớp!";
+                errEl.style.display = "block";
+                return;
+            }
+
+            userDatabase[currentUsername].password = newPass.trim();
+            currentUser = userDatabase[currentUsername];
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "createUser", username: currentUsername, password: newPass.trim(), role: userDatabase[currentUsername].role });
+            alert(ok ? "🎉 Đổi mật khẩu thành công! (Đã đồng bộ)" : "🎉 Đổi mật khẩu thành công! (Lưu cục bộ)");
+            closeChangePasswordModal();
+            if (currentUser.role === "Admin") renderUserListViewForAdmin();
+        }
+
         async function createNewUserByAdmin() {
             let uName = document.getElementById("adm-new-username").value.trim();
             let uPass = document.getElementById("adm-new-password").value;
@@ -623,21 +721,39 @@
             renderUserListViewForAdmin();
         }
 
+        async function changeUserRole(username, newRole) {
+            if (username === "admin") { alert("⚠️ Không thể thay đổi phân quyền của tài khoản Admin gốc!"); renderUserListViewForAdmin(); return; }
+            if (!userDatabase[username]) return;
+
+            userDatabase[username].role = newRole;
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "createUser", username: username, password: userDatabase[username].password, role: newRole });
+            alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}" (Đã đồng bộ).` : `✔️ Đã cập nhật phân quyền cho "${username}" (Lưu cục bộ).`);
+            renderUserListViewForAdmin();
+        }
+
         function renderUserListViewForAdmin() {
             let html = "";
             for (let u in userDatabase) {
-                let badge = "";
-                if (userDatabase[u].role === "Admin") badge = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
-                else if (userDatabase[u].role === "ReadWrite") badge = '<span style="background:#27ae60; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Ghi Quyền</span>';
-                else badge = '<span style="background:#777; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Chỉ Xem</span>';
+                let roleControl = "";
+                if (u === "admin") {
+                    roleControl = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
+                } else {
+                    let rw = userDatabase[u].role === "ReadWrite" ? "selected" : "";
+                    let ro = userDatabase[u].role === "ReadOnly" ? "selected" : "";
+                    roleControl = `<select style="padding:3px 6px; font-size:12px; border-radius:3px; border:1px solid #ccc;" onchange="changeUserRole('${u}', this.value)" title="Điều chỉnh phân quyền">
+                        <option value="ReadWrite" ${rw}>Toàn quyền (Ghi)</option>
+                        <option value="ReadOnly" ${ro}>Chỉ Xem</option>
+                    </select>`;
+                }
 
                 let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${u}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 if (u !== "admin") {
                     actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
-                html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                    <span><b>${u}</b> (<code>${userDatabase[u].password}</code>) ${badge}</span>
+                html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                    <span><b>${u}</b> (<code>${userDatabase[u].password}</code>) ${roleControl}</span>
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -666,13 +782,14 @@
 
             if (userDatabase[u] && String(userDatabase[u].password).trim() === String(p).trim()) {
                 currentUser = userDatabase[u];
+                currentUsername = u;
                 err.style.display = "none";
                 document.getElementById("login-screen").style.display = "none";
 
                 let sys = document.getElementById("main-system");
                 sys.style.display = "flex";
 
-                document.getElementById("user-display").innerText = u + " (" + currentUser.role + ")";
+                document.getElementById("user-display").innerText = u;
                 let scriptUrlInput = document.getElementById("adm-script-url");
                 if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
 
@@ -686,6 +803,7 @@
 
         function handleLogout() {
             currentUser = null;
+            currentUsername = null;
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
             document.getElementById("login-screen").style.display = "flex";
@@ -1168,11 +1286,11 @@
                 let domain = app.url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
                 let deleteBtn = canManage ? `<button class="btn btn-sm btn-danger app-delete-btn" onclick="event.stopPropagation(); deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>` : "";
                 return `
-                    <div class="app-card" onclick="openExternalApp('${app.url.replace(/'/g, "\\'")}', '${app.name.replace(/'/g, "\\'")}')" title="Bấm để mở ${app.name}">
+                    <div class="app-card" onclick="openExternalApp('${app.url.replace(/'/g, "\\'")}', '${app.name.replace(/'/g, "\\'")}')">
+                        <a class="app-open-tab" href="${app.url}" target="_blank" rel="noopener" title="Mở trong tab mới" onclick="event.stopPropagation()"><i class="fa-solid fa-up-right-from-square"></i></a>
                         <div class="app-icon">${initial}</div>
                         <h4>${app.name}</h4>
                         <p class="app-url"><i class="fa-solid fa-link"></i> ${domain}</p>
-                        <p class="app-open-hint"><i class="fa-solid fa-up-right-from-square"></i> Bấm để mở liên kết</p>
                         ${deleteBtn}
                     </div>
                 `;
@@ -1196,12 +1314,21 @@
             `).join('');
         }
 
-        // Mở phần mềm liên kết trong tab mới. Hầu hết các hệ thống ngoài (như chữ ký số,
-        // kế toán, ERP...) đều tự chặn việc bị nhúng vào trang khác (X-Frame-Options/CSP)
-        // vì lý do bảo mật, nên trình duyệt sẽ luôn hiện trang trắng nếu nhúng bằng iframe.
-        // Mở tab mới là cách duy nhất đảm bảo kết nối thành công 100% với mọi phần mềm.
         function openExternalApp(url, name) {
-            window.open(url, "_blank", "noopener");
+            document.getElementById("app-launcher-title").innerHTML = `<i class="fa-solid fa-plug"></i> ${name}`;
+            document.getElementById("app-launcher-iframe").src = url;
+            document.getElementById("app-launcher-wrap").dataset.currentUrl = url;
+            document.getElementById("app-launcher-wrap").style.display = "flex";
+        }
+
+        function openExternalAppNewTab() {
+            let url = document.getElementById("app-launcher-wrap").dataset.currentUrl;
+            if (url) window.open(url, "_blank", "noopener");
+        }
+
+        function closeExternalApp() {
+            document.getElementById("app-launcher-wrap").style.display = "none";
+            document.getElementById("app-launcher-iframe").src = "about:blank";
         }
 
         async function changeAdminPassword(){
