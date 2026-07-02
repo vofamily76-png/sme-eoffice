@@ -89,6 +89,20 @@
         .chip-removable .chip-remove-btn:hover { background: #a83a37; transform: scale(1.1); }
         .chip-empty-text { color: #999; font-size: 13px; padding: 6px 0; display: block; }
         .chip-dept { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; display: inline-block; margin-top: 4px;}
+
+        /* Group Mail */
+        .mailgroup-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 15px; margin-bottom: 15px; background: #fafbfc; }
+        .mailgroup-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .mailgroup-title { display: flex; flex-direction: column; }
+        .mailgroup-title b { font-size: 15px; color: var(--primary-color); }
+        .mailgroup-title span.mg-email { font-size: 13px; color: #328cc1; }
+        .mailgroup-count-badge { background: var(--primary-color); color: #fff; font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+        .mailgroup-members { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd; }
+        .mailgroup-add-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .mailgroup-add-row select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; flex-grow: 1; min-width: 160px; }
+        .member-chip { display: inline-flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 4px 6px 4px 10px; border-radius: 16px; margin-right: 6px; margin-bottom: 6px; font-size: 12px; color: #333; }
+        .member-chip .chip-remove-btn { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #d9534f; color: #fff; font-size: 10px; cursor: pointer; line-height: 1; flex-shrink: 0; }
+        .member-chip .chip-remove-btn:hover { background: #a83a37; }
         
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
         .chip-list { margin-top: 10px; }
@@ -182,6 +196,7 @@
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
+                    <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
                 </ul>
             </div>
@@ -201,6 +216,7 @@
                     <div class="card"><div class="card-info"><p>Tàu quản lý</p><h3 id="dash-vessel-count">0</h3></div><i class="fa-solid fa-ship card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Nhân sự Văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
+                    <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
                 </div>
                 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -313,6 +329,30 @@
                 <h2 class="page-title"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</h2>
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các phần mềm/hệ thống liên kết được Admin cấu hình. Bấm vào thẻ để mở phần mềm ngay trong hệ thống.</p>
                 <div class="app-grid" id="app-grid"></div>
+            </div>
+
+            <div id="page-groupmail" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</h2>
+                <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các nhóm email (Group Mail) nội bộ và số lượng thành viên hiện có trong từng nhóm.</p>
+
+                <div class="admin-box" id="groupmail-create-box" style="border-left: 4px solid var(--primary-color); display:none;">
+                    <h3><i class="fa-solid fa-square-plus"></i> Tạo Group Mail mới</h3>
+                    <div class="form-row" style="margin-bottom: 10px;">
+                        <div class="input-group">
+                            <label>Tên Group Mail</label>
+                            <input type="text" id="mg-new-name" placeholder="Ví dụ: Nhóm Phòng Kế Toán">
+                        </div>
+                        <div class="input-group">
+                            <label>Địa chỉ Email Group</label>
+                            <input type="text" id="mg-new-email" placeholder="Ví dụ: ketoan@seahorse.com.vn">
+                        </div>
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
+                            <button class="btn" style="width:auto" onclick="createMailGroup()">Tạo Group Mail ➕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="list-mail-groups-view"></div>
             </div>
 
             <div id="page-admin" class="page-content">
@@ -458,6 +498,7 @@
         let otherApps = [
             { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
         ];
+        let mailGroups = [];
         let userDatabase = {
             "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
         };
@@ -474,7 +515,8 @@
             try {
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
-                    crewData: crewData, userDatabase: userDatabase, otherApps: otherApps
+                    crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
+                    mailGroups: mailGroups
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -496,6 +538,7 @@
                 }
                 if (cache.crewData) crewData = cache.crewData;
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
+                if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -538,6 +581,7 @@
                 if (data.depts && data.depts.length) depts = data.depts;
                 if (data.vessels && data.vessels.length) vessels = data.vessels;
                 if (data.apps && data.apps.length) otherApps = data.apps;
+                if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.users) {
                     userDatabase = data.users;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -814,6 +858,8 @@
             document.getElementById("menu-contacts").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
+            document.getElementById("menu-groupmail").style.display = "flex";
+            document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
@@ -854,6 +900,7 @@
             document.getElementById("dash-vessel-count").innerText = vessels.length;
             document.getElementById("dash-staff-count").innerText = staffData.length;
             document.getElementById("dash-crew-count").innerText = crewData.length;
+            document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
@@ -884,6 +931,7 @@
             renderOtherAppsGrid();
             renderOtherAppsAdminList();
             renderDeptVesselLists();
+            renderMailGroupsAdminList();
         }
 
         function renderDeptVesselLists() {
@@ -1312,6 +1360,148 @@
                     <button class="btn btn-sm btn-danger" onclick="deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>
                 </div>
             `).join('');
+        }
+
+        // ===== Group Mail Management =====
+        async function createMailGroup() {
+            let nameInput = document.getElementById("mg-new-name");
+            let emailInput = document.getElementById("mg-new-email");
+            let name = nameInput.value.trim();
+            let email = emailInput.value.trim();
+
+            if (!name || !email) { alert("⚠️ Vui lòng nhập đầy đủ Tên Group Mail và Địa chỉ Email!"); return; }
+            if (mailGroups.some(g => g.email.toLowerCase() === email.toLowerCase())) {
+                alert("❌ Địa chỉ email Group này đã tồn tại!"); return;
+            }
+
+            mailGroups.push({ name: name, email: email, members: [] });
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "updateMailGroups", mailGroups: mailGroups });
+            alert(ok ? `✔️ Đã tạo Group Mail "${name}" (Đã đồng bộ).` : `✔️ Đã tạo Group Mail "${name}" (Lưu cục bộ).`);
+
+            nameInput.value = "";
+            emailInput.value = "";
+            renderMailGroupsAdminList();
+        }
+
+        async function deleteMailGroup(idx) {
+            if (!confirm(`Xóa Group Mail "${mailGroups[idx].name}"?`)) return;
+            mailGroups.splice(idx, 1);
+            saveLocalCache();
+            await pushToCloud({ action: "updateMailGroups", mailGroups: mailGroups });
+            renderMailGroupsAdminList();
+        }
+
+        async function addDeptMembersToGroup(idx) {
+            let selectEl = document.getElementById(`mg-dept-select-${idx}`);
+            let deptName = selectEl ? selectEl.value : "";
+            if (!deptName) { alert("⚠️ Vui lòng chọn phòng ban cần thêm!"); return; }
+
+            let group = mailGroups[idx];
+            let deptStaff = staffData.filter(s => Array.isArray(s.dept) ? s.dept.includes(deptName) : s.dept === deptName);
+            let addedCount = 0;
+            deptStaff.forEach(s => {
+                if (s.email && !group.members.includes(s.msnv)) {
+                    group.members.push(s.msnv);
+                    addedCount++;
+                }
+            });
+
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "updateMailGroups", mailGroups: mailGroups });
+            alert(addedCount > 0
+                ? `✔️ Đã thêm ${addedCount} nhân sự phòng "${deptName}" vào Group "${group.name}"${ok ? ' (Đã đồng bộ)' : ' (Lưu cục bộ)'}.`
+                : `ℹ️ Không có nhân sự mới nào (đã có sẵn trong nhóm hoặc chưa có email) để thêm từ phòng "${deptName}".`);
+            renderMailGroupsAdminList();
+        }
+
+        async function addSingleMemberToGroup(idx) {
+            let selectEl = document.getElementById(`mg-staff-select-${idx}`);
+            let msnv = selectEl ? selectEl.value : "";
+            if (!msnv) { alert("⚠️ Vui lòng chọn nhân sự cần thêm!"); return; }
+
+            let group = mailGroups[idx];
+            let staff = staffData.find(s => s.msnv === msnv);
+            if (!staff) return;
+            if (!staff.email) { alert(`⚠️ Nhân sự "${staff.name}" chưa có địa chỉ email để thêm vào Group Mail!`); return; }
+            if (group.members.includes(msnv)) { alert("ℹ️ Nhân sự này đã có trong Group Mail!"); return; }
+
+            group.members.push(msnv);
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "updateMailGroups", mailGroups: mailGroups });
+            alert(ok ? `✔️ Đã thêm "${staff.name}" vào Group "${group.name}" (Đã đồng bộ).` : `✔️ Đã thêm "${staff.name}" vào Group "${group.name}" (Lưu cục bộ).`);
+            renderMailGroupsAdminList();
+        }
+
+        async function removeMemberFromGroup(idx, msnv) {
+            let group = mailGroups[idx];
+            group.members = group.members.filter(m => m !== msnv);
+            saveLocalCache();
+            await pushToCloud({ action: "updateMailGroups", mailGroups: mailGroups });
+            renderMailGroupsAdminList();
+        }
+
+        function renderMailGroupsAdminList() {
+            let listEl = document.getElementById("list-mail-groups-view");
+            if (!listEl) return;
+
+            let canManage = (currentUser && currentUser.role === "Admin");
+
+            if (!mailGroups.length) {
+                listEl.innerHTML = "<p style='color:#888; font-size:13px; margin-top:5px;'>Chưa có Group Mail nào được tạo" + (canManage ? "." : " trong hệ thống.") + "</p>";
+                return;
+            }
+
+            let deptOptionsHtml = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            listEl.innerHTML = mailGroups.map((group, idx) => {
+                let memberStaff = group.members
+                    .map(msnv => staffData.find(s => s.msnv === msnv))
+                    .filter(s => !!s);
+
+                let staffOptionsHtml = '<option value="">-- Chọn nhân sự --</option>' + staffData
+                    .filter(s => !group.members.includes(s.msnv))
+                    .map(s => `<option value="${s.msnv}">${s.name}${s.email ? '' : ' (chưa có email)'}</option>`).join('');
+
+                let membersHtml = memberStaff.length
+                    ? memberStaff.map(s => `
+                        <span class="member-chip" title="${s.email || 'Chưa có email'}">
+                            ${s.name}
+                            ${canManage ? `<span class="chip-remove-btn" onclick="removeMemberFromGroup(${idx}, '${s.msnv}')" title="Xóa khỏi nhóm"><i class="fa-solid fa-xmark"></i></span>` : ''}
+                        </span>
+                    `).join('')
+                    : `<span class="chip-empty-text">Chưa có thành viên nào trong nhóm này.</span>`;
+
+                let manageRowHtml = canManage ? `
+                        <div class="mailgroup-add-row">
+                            <select id="mg-dept-select-${idx}">${deptOptionsHtml}</select>
+                            <button class="btn btn-sm" style="background:var(--secondary-color);" onclick="addDeptMembersToGroup(${idx})"><i class="fa-solid fa-building"></i> Thêm cả phòng ban</button>
+                            <select id="mg-staff-select-${idx}">${staffOptionsHtml}</select>
+                            <button class="btn btn-sm btn-success" onclick="addSingleMemberToGroup(${idx})"><i class="fa-solid fa-user-plus"></i> Thêm cá nhân</button>
+                        </div>
+                    ` : '';
+
+                let deleteBtnHtml = canManage ? `<button class="btn btn-sm btn-danger" onclick="deleteMailGroup(${idx})" title="Xóa Group Mail"><i class="fa-solid fa-trash"></i></button>` : '';
+
+                return `
+                    <div class="mailgroup-card">
+                        <div class="mailgroup-header">
+                            <div class="mailgroup-title">
+                                <b><i class="fa-solid fa-users-rectangle"></i> ${group.name}</b>
+                                <span class="mg-email">${group.email}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="mailgroup-count-badge"><i class="fa-solid fa-user-group"></i> ${memberStaff.length} thành viên</span>
+                                ${deleteBtnHtml}
+                            </div>
+                        </div>
+                        ${manageRowHtml}
+                        <div class="mailgroup-members">
+                            ${membersHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         function openExternalApp(url, name) {
