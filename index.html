@@ -129,7 +129,7 @@
         .app-launcher-header button:hover { background: rgba(255,255,255,0.3); }
         .app-launcher-wrap iframe { flex-grow: 1; width: 100%; border: none; }
         .app-launcher-note { background: #fff8e1; color: #856404; font-size: 12px; padding: 6px 20px; }
-        .inline-add-app-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 10px; margin-bottom: 15px; }
+        .inline-add-app-row { display: grid; grid-template-columns: 1fr 1.4fr auto auto; gap: 10px; margin-bottom: 15px; align-items: center; }
         @media (max-width: 700px) { .inline-add-app-row { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -335,6 +335,13 @@
                 <h2 class="page-title"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</h2>
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các nhóm email (Group Mail) nội bộ và số lượng thành viên hiện có trong từng nhóm.</p>
 
+                <div id="groupmail-sync-warning" class="admin-box" style="display:none; background-color:#fff3cd; border-left: 4px solid #f0ad4e;">
+                    <p style="font-size:13px; color:#856404; margin:0;">
+                        ⚠️ <b>Lưu ý đồng bộ:</b> Google Apps Script (backend) hiện <b>chưa có sheet/hàm xử lý riêng cho Group Mail</b>, nên dữ liệu Group Mail hiện chỉ được lưu <b>cục bộ trên trình duyệt của bạn</b> (localStorage), chưa được ghi lên Google Sheet.
+                        Vì vậy, các tài khoản khác đăng nhập trên máy/trình duyệt khác sẽ <b>không thấy</b> Group Mail bạn vừa tạo. Cần bổ sung mã Google Apps Script để lưu và trả về dữ liệu Group Mail (xem hướng dẫn Claude đã gửi) rồi triển khai lại Web App.
+                    </p>
+                </div>
+
                 <div class="admin-box" id="groupmail-create-box" style="border-left: 4px solid var(--primary-color); display:none;">
                     <h3><i class="fa-solid fa-square-plus"></i> Tạo Group Mail mới</h3>
                     <div class="form-row" style="margin-bottom: 10px;">
@@ -438,10 +445,14 @@
 
                 <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
                     <h3><i class="fa-solid fa-th-large"></i> Quản lý "Các phần mềm khác" (Liên kết hệ thống ngoài)</h3>
-                    <p style="font-size:13px; color:#666; margin-bottom:12px;">Nhập Tên phần mềm và đường dẫn (URL) rồi bấm Thêm. Liên kết sẽ tự động xuất hiện dưới dạng thẻ (tab) trong mục "Các phần mềm khác" cho tất cả người dùng, và mở ngay trong hệ thống khi được bấm vào.</p>
+                    <p style="font-size:13px; color:#666; margin-bottom:12px;">Nhập Tên phần mềm và đường dẫn (URL) rồi bấm Thêm. Liên kết sẽ tự động xuất hiện dưới dạng thẻ (tab) trong mục "Các phần mềm khác" cho tất cả người dùng.</p>
+                    <p style="font-size:12px; color:#a67c00; background:#fff8e1; padding:8px 10px; border-radius:4px; margin-bottom:12px;">⚠️ Đa số phần mềm ngoài (Google, ERP, phần mềm kế toán...) có chặn nhúng iframe vì lý do bảo mật nên sẽ báo lỗi "đã từ chối kết nối" nếu mở trong hệ thống. Vì vậy tick sẵn "Mở tab trình duyệt mới" — chỉ bỏ tick nếu bạn chắc chắn hệ thống đó cho phép nhúng.</p>
                     <div class="inline-add-app-row">
                         <input type="text" id="inp-new-app-name" class="search-box" placeholder="Tên phần mềm (VD: Chữ ký số SignFlow)">
                         <input type="text" id="inp-new-app-url" class="search-box" placeholder="Đường dẫn URL (VD: http://sme.signflow.vn/)">
+                        <label style="display:flex; align-items:center; gap:6px; font-size:13px; white-space:nowrap;">
+                            <input type="checkbox" id="inp-new-app-newtab" checked style="width:auto;"> Mở tab mới
+                        </label>
                         <button class="btn" style="width:auto; padding: 8px 18px;" onclick="addOtherApp()">Thêm liên kết ➕</button>
                     </div>
                     <div id="list-other-apps"></div>
@@ -860,6 +871,7 @@
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
+            document.getElementById("groupmail-sync-warning").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
@@ -1295,20 +1307,41 @@
         async function addOtherApp() {
             let nameInput = document.getElementById("inp-new-app-name");
             let urlInput = document.getElementById("inp-new-app-url");
+            let newTabInput = document.getElementById("inp-new-app-newtab");
             let name = nameInput.value.trim();
             let url = urlInput.value.trim();
+            let openInNewTab = newTabInput ? newTabInput.checked : true;
 
             if (!name || !url) { alert("⚠️ Vui lòng nhập đầy đủ Tên phần mềm và URL liên kết!"); return; }
             url = normalizeAppUrl(url);
 
-            otherApps.push({ name: name, url: url });
+            otherApps.push({ name: name, url: url, openInNewTab: openInNewTab });
             saveLocalCache();
             let ok = await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
             alert(ok ? `✔️ Đã thêm liên kết "${name}" (Đã đồng bộ).` : `✔️ Đã thêm liên kết "${name}" (Lưu cục bộ).`);
 
             nameInput.value = "";
             urlInput.value = "";
+            if (newTabInput) newTabInput.checked = true;
             updateSystemData();
+        }
+
+        async function toggleAppOpenMode(idx, checked) {
+            if (!otherApps[idx]) return;
+            otherApps[idx].openInNewTab = checked;
+            saveLocalCache();
+            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+            updateSystemData();
+        }
+
+        function handleAppCardClick(idx) {
+            let app = otherApps[idx];
+            if (!app) return;
+            if (app.openInNewTab !== false) {
+                window.open(app.url, "_blank", "noopener");
+            } else {
+                openExternalApp(app.url, app.name);
+            }
         }
 
         async function deleteOtherApp(index) {
@@ -1334,7 +1367,7 @@
                 let domain = app.url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
                 let deleteBtn = canManage ? `<button class="btn btn-sm btn-danger app-delete-btn" onclick="event.stopPropagation(); deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>` : "";
                 return `
-                    <div class="app-card" onclick="openExternalApp('${app.url.replace(/'/g, "\\'")}', '${app.name.replace(/'/g, "\\'")}')">
+                    <div class="app-card" onclick="handleAppCardClick(${idx})">
                         <a class="app-open-tab" href="${app.url}" target="_blank" rel="noopener" title="Mở trong tab mới" onclick="event.stopPropagation()"><i class="fa-solid fa-up-right-from-square"></i></a>
                         <div class="app-icon">${initial}</div>
                         <h4>${app.name}</h4>
@@ -1355,9 +1388,14 @@
             }
 
             listEl.innerHTML = otherApps.map((app, idx) => `
-                <div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${app.name}</b> — <a href="${app.url}" target="_blank" rel="noopener" style="color:#328cc1;">${app.url}</a></span>
-                    <button class="btn btn-sm btn-danger" onclick="deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <label style="display:flex; align-items:center; gap:4px; font-size:12px; cursor:pointer; white-space:nowrap;">
+                            <input type="checkbox" style="width:auto;" ${app.openInNewTab !== false ? 'checked' : ''} onchange="toggleAppOpenMode(${idx}, this.checked)"> Mở tab mới
+                        </label>
+                        <button class="btn btn-sm btn-danger" onclick="deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>
+                    </span>
                 </div>
             `).join('');
         }
