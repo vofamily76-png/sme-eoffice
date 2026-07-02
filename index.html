@@ -206,7 +206,7 @@
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
-                    <li class="menu-item" id="menu-profile-docs" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
+                    <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
@@ -441,6 +441,20 @@
                                 <option value="ReadOnly">Chỉ Xem (Không có nút Hành động & tab Thêm mới)</option>
                             </select>
                         </div>
+                        <div class="input-group">
+                            <label>Quyền riêng: Hồ sơ Nhân viên</label>
+                            <div style="display:flex; gap:14px; align-items:center; height:38px; flex-wrap:wrap;">
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-view" style="width:auto;"> Xem tab
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-upload" style="width:auto;"> Tải lên
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-delete" style="width:auto;"> Xóa
+                                </label>
+                            </div>
+                        </div>
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
                             <button class="btn" style="width:auto" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
                         </div>
@@ -538,8 +552,10 @@
         ];
         let mailGroups = [];
         let userDatabase = {
-            "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
+            "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn", docsView: true, docsUpload: true, docsDelete: true }
         };
+        let currentUserCanUploadDocs = false;
+        let currentUserCanDeleteDocs = false;
         let currentUser = null;
         let currentUsername = null;
         let cloudReady = false;
@@ -773,18 +789,24 @@
             let uName = document.getElementById("adm-new-username").value.trim();
             let uPass = document.getElementById("adm-new-password").value;
             let uRole = document.getElementById("adm-new-role").value;
+            let uDocsView = document.getElementById("adm-new-docs-view").checked;
+            let uDocsUpload = document.getElementById("adm-new-docs-upload").checked;
+            let uDocsDelete = document.getElementById("adm-new-docs-delete").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            userDatabase[uName] = { password: uPass, role: uRole };
+            userDatabase[uName] = { password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete };
             saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete });
             if (ok) alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Đã đồng bộ Google Sheet).`);
             else alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Lưu cục bộ).`);
 
             document.getElementById("adm-new-username").value = "";
             document.getElementById("adm-new-password").value = "";
+            document.getElementById("adm-new-docs-view").checked = false;
+            document.getElementById("adm-new-docs-upload").checked = false;
+            document.getElementById("adm-new-docs-delete").checked = false;
             renderUserListViewForAdmin();
         }
 
@@ -796,7 +818,7 @@
 
             userDatabase[username].password = newPass;
             saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}" (Đã đồng bộ).` : `✔️ Đã đặt lại mật khẩu cho "${username}" (Lưu cục bộ).`);
             renderUserListViewForAdmin();
         }
@@ -818,8 +840,36 @@
 
             userDatabase[username].role = newRole;
             saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: username, password: userDatabase[username].password, role: newRole });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: userDatabase[username].password, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}" (Đã đồng bộ).` : `✔️ Đã cập nhật phân quyền cho "${username}" (Lưu cục bộ).`);
+            renderUserListViewForAdmin();
+        }
+
+        // Bật/tắt quyền "Xem tab", "Tải lên" hoặc "Xóa" hồ sơ NV cho 1 user cụ thể (dành cho HR)
+        async function toggleUserDocsPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            userDatabase[username][field] = checked;
+            // Nếu tắt quyền Xem thì cũng tự động tắt Tải lên & Xóa (không thấy tab thì không thao tác được)
+            if (field === "docsView" && !checked) {
+                userDatabase[username].docsUpload = false;
+                userDatabase[username].docsDelete = false;
+            }
+            // Nếu bật Tải lên hoặc Xóa thì tự động bật luôn quyền Xem
+            if ((field === "docsUpload" || field === "docsDelete") && checked) {
+                userDatabase[username].docsView = true;
+            }
+
+            saveLocalCache();
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                password: userDatabase[username].password,
+                role: userDatabase[username].role,
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete
+            });
+            if (!ok) alert(`⚠️ Đã lưu cục bộ, nhưng chưa đồng bộ được lên Google Sheet cho "${username}".`);
             renderUserListViewForAdmin();
         }
 
@@ -843,8 +893,30 @@
                     actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
+                let docsControl = "";
+                if (u === "admin") {
+                    docsControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-folder-open"></i> Toàn quyền hồ sơ NV</span>';
+                } else {
+                    let vChecked = userDatabase[u].docsView ? "checked" : "";
+                    let upChecked = userDatabase[u].docsUpload ? "checked" : "";
+                    let delChecked = userDatabase[u].docsDelete ? "checked" : "";
+                    docsControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-folder-open" title="Hồ sơ Nhân viên"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${vChecked} onchange="toggleUserDocsPermission('${u}', 'docsView', this.checked)"> Xem
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${upChecked} onchange="toggleUserDocsPermission('${u}', 'docsUpload', this.checked)"> Tải lên
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${delChecked} onchange="toggleUserDocsPermission('${u}', 'docsDelete', this.checked)"> Xóa
+                        </label>
+                    </span>`;
+                }
+
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${u}</b> (<code>${userDatabase[u].password}</code>) ${roleControl}</span>
+                    ${docsControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -908,6 +980,15 @@
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
+            // ==== Quyền riêng cho tab "Hồ sơ Nhân viên" ====
+            // Admin luôn có toàn quyền. Các role khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
+            let canViewDocs = (currentUser.role === "Admin") || !!currentUser.docsView;
+            let canUploadDocs = (currentUser.role === "Admin") || !!currentUser.docsUpload;
+            let canDeleteDocs = (currentUser.role === "Admin") || !!currentUser.docsDelete;
+            currentUserCanUploadDocs = canUploadDocs;
+            currentUserCanDeleteDocs = canDeleteDocs;
+            document.getElementById("menu-profile-docs").style.display = canViewDocs ? "flex" : "none";
+
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
                 document.getElementById("menu-admin").style.display = "flex";
@@ -932,6 +1013,10 @@
         }
 
         function switchPage(pageId) {
+            if (pageId === "profile-docs") {
+                let canViewDocs = currentUser && ((currentUser.role === "Admin") || !!currentUser.docsView);
+                if (!canViewDocs) { alert("⚠️ Bạn không có quyền xem Hồ sơ Nhân viên. Liên hệ Admin để được cấp quyền."); return; }
+            }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
             document.getElementById("page-" + pageId).classList.add("active");
@@ -975,21 +1060,26 @@
                         <li>
                             <span><a href="${f.fileUrl}" target="_blank"><i class="fa-solid fa-file"></i> ${f.fileName}</a>
                             <span class="doc-meta">${f.uploadDate || ""}</span></span>
-                            <span class="doc-del" onclick="deleteStaffDocument('${f.fileId}', '${msnv}')"><i class="fa-solid fa-trash"></i> Xóa</span>
+                            ${currentUserCanDeleteDocs ? `<span class="doc-del" onclick="deleteStaffDocument('${f.fileId}', '${msnv}')"><i class="fa-solid fa-trash"></i> Xóa</span>` : ''}
                         </li>`).join('') + '</ul>'
                     : '<p class="doc-empty">Chưa có file nào được tải lên.</p>';
-                return `
-                    <div class="doc-type-box">
-                        <h4><i class="fa-solid ${dt.icon}"></i> ${dt.label}</h4>
-                        ${listHtml}
+                let uploadRowHtml = currentUserCanUploadDocs ? `
                         <div class="doc-upload-row">
                             <input type="file" id="doc-file-${dt.code}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                             <button class="btn" style="width:auto; padding:8px 16px;" onclick="uploadStaffDocument('${dt.code}', '${msnv}')">
                                 <i class="fa-solid fa-upload"></i> Tải lên
                             </button>
-                        </div>
+                        </div>` : '';
+                return `
+                    <div class="doc-type-box">
+                        <h4><i class="fa-solid ${dt.icon}"></i> ${dt.label}</h4>
+                        ${listHtml}
+                        ${uploadRowHtml}
                     </div>`;
             }).join('');
+            if (!currentUserCanUploadDocs && !currentUserCanDeleteDocs) {
+                container.innerHTML = '<p class="doc-empty" style="margin-bottom:10px;"><i class="fa-solid fa-lock"></i> Bạn chỉ có quyền xem hồ sơ. Liên hệ Admin nếu cần quyền tải lên/xóa.</p>' + container.innerHTML;
+            }
         }
 
         function uploadStaffDocument(docType, msnv) {
