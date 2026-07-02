@@ -335,13 +335,6 @@
                 <h2 class="page-title"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</h2>
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các nhóm email (Group Mail) nội bộ và số lượng thành viên hiện có trong từng nhóm.</p>
 
-                <div id="groupmail-sync-warning" class="admin-box" style="display:none; background-color:#fff3cd; border-left: 4px solid #f0ad4e;">
-                    <p style="font-size:13px; color:#856404; margin:0;">
-                        ⚠️ <b>Lưu ý đồng bộ:</b> Google Apps Script (backend) hiện <b>chưa có sheet/hàm xử lý riêng cho Group Mail</b>, nên dữ liệu Group Mail hiện chỉ được lưu <b>cục bộ trên trình duyệt của bạn</b> (localStorage), chưa được ghi lên Google Sheet.
-                        Vì vậy, các tài khoản khác đăng nhập trên máy/trình duyệt khác sẽ <b>không thấy</b> Group Mail bạn vừa tạo. Cần bổ sung mã Google Apps Script để lưu và trả về dữ liệu Group Mail (xem hướng dẫn Claude đã gửi) rồi triển khai lại Web App.
-                    </p>
-                </div>
-
                 <div class="admin-box" id="groupmail-create-box" style="border-left: 4px solid var(--primary-color); display:none;">
                     <h3><i class="fa-solid fa-square-plus"></i> Tạo Group Mail mới</h3>
                     <div class="form-row" style="margin-bottom: 10px;">
@@ -871,7 +864,6 @@
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
-            document.getElementById("groupmail-sync-warning").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
