@@ -561,6 +561,25 @@
         let cloudReady = false;
         let globalBase64Image = ""; 
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
+
+        // Chuẩn hóa trường "dept" về đúng dạng mảng (Array), kể cả với dữ liệu cũ từng bị
+        // lưu lồng JSON 2 lớp (lỗi double-encode trước đây). Lặp giải mã tối đa vài lần
+        // cho tới khi ra mảng thật, tránh vòng lặp vô hạn nếu dữ liệu bất thường.
+        function normalizeDept(dept) {
+            let value = dept;
+            for (let i = 0; i < 3 && typeof value === "string"; i++) {
+                try {
+                    let parsed = JSON.parse(value);
+                    if (parsed === value) break;
+                    value = parsed;
+                } catch (e) {
+                    break;
+                }
+            }
+            if (Array.isArray(value)) return value;
+            if (value) return [value];
+            return [];
+        }
         const DOC_TYPES = [
             { code: "SYLL",    label: "1. Sơ yếu lý lịch",                icon: "fa-id-card" },
             { code: "HDLD",    label: "2. Hợp đồng lao động / Phụ lục",   icon: "fa-file-contract" },
@@ -591,9 +610,7 @@
                 if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
                 if (cache.staffData) {
                     staffData = cache.staffData.map(item => {
-                        if (typeof item.dept === "string") {
-                            try { item.dept = JSON.parse(item.dept); } catch(e) { item.dept = [item.dept]; }
-                        }
+                        item.dept = normalizeDept(item.dept);
                         return item;
                     });
                 }
@@ -634,9 +651,7 @@
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 staffData = (data.staff || []).map(item => {
-                    if (typeof item.dept === "string") {
-                        try { item.dept = JSON.parse(item.dept); } catch(e) { item.dept = [item.dept]; }
-                    }
+                    item.dept = normalizeDept(item.dept);
                     return item;
                 });
                 crewData = data.crew || [];
@@ -671,9 +686,9 @@
             }
             try {
                 showSyncBanner("Đang lưu lên Google Sheet...");
-                if (payload.dept && Array.isArray(payload.dept)) {
-                    payload.dept = JSON.stringify(payload.dept);
-                }
+                // LƯU Ý: KHÔNG stringify payload.dept ở đây — backend (Apps Script) đã tự
+                // JSON.stringify(data.dept) khi lưu vào Sheet. Nếu stringify thêm ở đây sẽ
+                // gây lỗi "double-encode" khiến phòng ban hiển thị sai và lọc không ra kết quả.
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
