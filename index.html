@@ -206,7 +206,6 @@
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
-                    <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
@@ -230,7 +229,6 @@
                     <div class="card"><div class="card-info"><p>Nhân sự Văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
-                    <div class="card" style="cursor:pointer;" onclick="switchPage('equipment')"><div class="card-info"><p>Thiết bị</p><h3 id="dash-equipment-count">0</h3></div><i class="fa-solid fa-toolbox card-icon"></i></div>
                 </div>
                 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -336,106 +334,6 @@
                             <button class="btn btn-danger" id="btn-cancel-edit" onclick="resetForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div id="page-equipment" class="page-content">
-                <h2 class="page-title"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</h2>
-
-                <div class="admin-box" id="equipment-form-box" style="border-top: 4px solid var(--secondary-color);">
-                    <h3 id="equipment-form-title"><i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị</h3>
-                    <input type="hidden" id="eq-edit-id" value="">
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>Họ tên nhân viên</label>
-                            <select id="eq-staff-select" onchange="onEquipmentStaffChange()">
-                                <option value="">-- Chọn nhân viên --</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Phòng làm việc</label>
-                            <select id="eq-dept-select">
-                                <option value="">-- Chọn phòng ban --</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Loại thiết bị</label>
-                            <select id="eq-category"></select>
-                        </div>
-                        <div class="input-group">
-                            <label>Mã số thiết bị</label>
-                            <input type="text" id="eq-code" placeholder="Ví dụ: TB-0012">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="input-group" style="grid-column: span 2;">
-                            <label>Tên thiết bị</label>
-                            <input type="text" id="eq-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
-                        </div>
-                        <div class="input-group">
-                            <label>Tình trạng thiết bị</label>
-                            <select id="eq-condition">
-                                <option>Mới</option>
-                                <option>Đang sử dụng tốt</option>
-                                <option>Cần bảo trì</option>
-                                <option>Hư hỏng</option>
-                                <option>Đã thanh lý</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>Đơn vị tính</label>
-                            <input type="text" id="eq-unit" placeholder="Cái, Chiếc, Bộ...">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>Số lượng</label>
-                            <input type="number" id="eq-qty" min="0" step="1" value="1">
-                        </div>
-                        <div class="input-group">
-                            <label>Ngày nhân sự nhận thiết bị</label>
-                            <input type="date" id="eq-date-receive">
-                        </div>
-                        <div class="input-group">
-                            <label>Ngày nhân sự bàn giao</label>
-                            <input type="date" id="eq-date-return">
-                        </div>
-                        <div class="input-group">
-                            <label>Vị trí làm việc</label>
-                            <input type="text" id="eq-location" placeholder="Ví dụ: Văn phòng SME Quảng Ngãi - Tầng 2">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>Ghi chú</label>
-                            <textarea id="eq-note" rows="2" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc; font-family:inherit;" placeholder="Ghi chú thêm..."></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row" style="margin-top:10px">
-                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
-                            <button class="btn" style="width:auto; background-color: #27ae60;" onclick="saveEquipment()">Lưu thiết bị ✔️</button>
-                            <button class="btn btn-danger" id="btn-cancel-equipment-edit" onclick="resetEquipmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-controls" style="margin-top:20px;">
-                    <input type="text" id="search-equipment" class="search-box" oninput="filterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
-                    <select id="eq-filter-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
-                    <select id="eq-filter-dept" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
-                    <select id="eq-filter-category" class="search-box" onchange="filterEquipmentTable()" style="max-width: 200px;"></select>
-                </div>
-                <div style="overflow-x:auto;">
-                <table id="tbl-equipment">
-                    <thead>
-                        <tr>
-                            <th>Mã TB</th><th>Tên thiết bị</th><th>Loại</th><th>Nhân viên sử dụng</th><th>Phòng ban</th>
-                            <th>Tình trạng</th><th>ĐVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th><th>Vị trí</th><th>Ghi chú</th>
-                            <th class="admin-action-header">Thao tác</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
                 </div>
             </div>
 
@@ -649,8 +547,6 @@
             {msnv: "SME008", name: "Phạm Thị Lan", dob: "1990-08-22", dept: ["PHÒNG KẾ TOÁN"], position: "Kế toán trưởng", dateJoin: "2015-03-10", phone: "0908887776", email: "lan.pt@seahorse.com.vn", imgUrl: ""}
         ];
         let crewData = [];
-        let equipmentData = [];
-        const EQUIPMENT_CATEGORIES = ["Nội Thất", "Laptop", "Desktop", "Điện thoại", "Máy in", "Thiết bị điện", "Máy đo khí", "Xe đạp", "Xe ô tô", "Thiết bị khác"];
         let otherApps = [
             { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
         ];
@@ -700,7 +596,7 @@
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData
+                    mailGroups: mailGroups, documentsData: documentsData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -722,7 +618,6 @@
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.documentsData) documentsData = cache.documentsData;
-                if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -765,7 +660,6 @@
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.documents) documentsData = data.documents;
-                if (data.equipment) equipmentData = data.equipment;
                 if (data.users) {
                     userDatabase = data.users;
                     userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
@@ -1101,10 +995,6 @@
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
-            document.getElementById("menu-equipment").style.display = "flex";
-            let canEditEquipment = (currentUser.role === "Admin" || currentUser.role === "ReadWrite");
-            document.getElementById("equipment-form-box").style.display = canEditEquipment ? "block" : "none";
-
             // ==== Quyền riêng cho tab "Hồ sơ Nhân viên" ====
             // Admin luôn có toàn quyền. Các role khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
             let canViewDocs = (currentUser.role === "Admin") || !!currentUser.docsView;
@@ -1245,200 +1135,12 @@
             }
         }
 
-        /* ========== QUẢN LÝ THIẾT BỊ ========== */
-
-        function renderEquipmentSelects() {
-            let staffOptionsHtml = '<option value="">-- Chọn nhân viên --</option>' +
-                staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
-            let staffSel = document.getElementById("eq-staff-select");
-            if (staffSel) { let keep = staffSel.value; staffSel.innerHTML = staffOptionsHtml; if (keep) staffSel.value = keep; }
-
-            let deptOptionsHtml = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
-            let deptSel = document.getElementById("eq-dept-select");
-            if (deptSel) { let keep = deptSel.value; deptSel.innerHTML = deptOptionsHtml; if (keep) deptSel.value = keep; }
-
-            let catOptionsHtml = EQUIPMENT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-            let catSel = document.getElementById("eq-category");
-            if (catSel) { let keep = catSel.value; catSel.innerHTML = catOptionsHtml; if (keep) catSel.value = keep; }
-
-            let filterStaffSel = document.getElementById("eq-filter-staff");
-            if (filterStaffSel) {
-                let keep = filterStaffSel.value;
-                filterStaffSel.innerHTML = '<option value="Tất cả">-- Tất cả nhân viên --</option>' +
-                    staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
-                filterStaffSel.value = keep || "Tất cả";
-            }
-            let filterDeptSel = document.getElementById("eq-filter-dept");
-            if (filterDeptSel) {
-                let keep = filterDeptSel.value;
-                filterDeptSel.innerHTML = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
-                filterDeptSel.value = keep || "Tất cả";
-            }
-            let filterCatSel = document.getElementById("eq-filter-category");
-            if (filterCatSel) {
-                let keep = filterCatSel.value;
-                filterCatSel.innerHTML = '<option value="Tất cả">-- Tất cả loại thiết bị --</option>' + EQUIPMENT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
-                filterCatSel.value = keep || "Tất cả";
-            }
-        }
-
-        function onEquipmentStaffChange() {
-            let msnv = document.getElementById("eq-staff-select").value;
-            let staff = staffData.find(s => s.msnv === msnv);
-            if (staff && staff.dept) {
-                let firstDept = Array.isArray(staff.dept) ? staff.dept[0] : staff.dept;
-                if (firstDept) document.getElementById("eq-dept-select").value = firstDept;
-            }
-        }
-
-        function renderEquipmentTable() {
-            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
-            let htmlEquipment = equipmentData.map((e, idx) => {
-                let staff = staffData.find(s => s.msnv === e.msnv);
-                let staffLabel = staff ? `${staff.name} (${staff.msnv})` : (e.msnv || '-');
-                return `
-                    <tr>
-                        <td><b>${e.code || ''}</b></td>
-                        <td>${e.name || ''}</td>
-                        <td>${e.category || ''}</td>
-                        <td>${staffLabel}</td>
-                        <td>${e.dept || ''}</td>
-                        <td>${e.condition || ''}</td>
-                        <td>${e.unit || ''}</td>
-                        <td>${e.qty || 0}</td>
-                        <td>${formatDateDisplay(e.dateReceive)}</td>
-                        <td>${formatDateDisplay(e.dateReturn)}</td>
-                        <td>${e.location || ''}</td>
-                        <td>${e.note || ''}</td>
-                        <td style="display: ${canEdit ? '' : 'none'}">
-                            <button class="btn btn-sm btn-warning" onclick="startEditEquipment(${idx})"><i class="fa-solid fa-pen"></i></button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteEquipment(${idx})"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            document.querySelector("#tbl-equipment tbody").innerHTML = htmlEquipment ||
-                `<tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
-        }
-
-        function filterEquipmentTable() {
-            let search = document.getElementById("search-equipment").value.toLowerCase();
-            let staffFilter = document.getElementById("eq-filter-staff").value;
-            let deptFilter = document.getElementById("eq-filter-dept").value;
-            let catFilter = document.getElementById("eq-filter-category").value;
-            let rows = document.querySelectorAll("#tbl-equipment tbody tr");
-
-            equipmentData.forEach((e, idx) => {
-                let staff = staffData.find(s => s.msnv === e.msnv);
-                let staffName = staff ? staff.name.toLowerCase() : "";
-                let matchSearch = (e.code || '').toLowerCase().includes(search) ||
-                    (e.name || '').toLowerCase().includes(search) ||
-                    staffName.includes(search) || (e.msnv || '').toLowerCase().includes(search);
-                let matchStaff = (staffFilter === "Tất cả" || !staffFilter || e.msnv === staffFilter);
-                let matchDept = (deptFilter === "Tất cả" || !deptFilter || e.dept === deptFilter);
-                let matchCat = (catFilter === "Tất cả" || !catFilter || e.category === catFilter);
-                if (rows[idx]) rows[idx].style.display = (matchSearch && matchStaff && matchDept && matchCat) ? "" : "none";
-            });
-        }
-
-        async function saveEquipment() {
-            let msnv = document.getElementById("eq-staff-select").value;
-            if (!msnv) { alert("⚠️ Vui lòng chọn Họ tên nhân viên!"); return; }
-            let dept = document.getElementById("eq-dept-select").value;
-            if (!dept) { alert("⚠️ Vui lòng chọn Phòng làm việc!"); return; }
-            let name = document.getElementById("eq-name").value.trim();
-            if (!name) { alert("⚠️ Vui lòng nhập Tên thiết bị!"); return; }
-
-            let editId = document.getElementById("eq-edit-id").value;
-            let isEdit = !!editId;
-            let id = isEdit ? editId : ("TB" + Date.now());
-
-            let obj = {
-                id: id,
-                msnv: msnv,
-                dept: dept,
-                category: document.getElementById("eq-category").value,
-                code: document.getElementById("eq-code").value.trim(),
-                name: name,
-                condition: document.getElementById("eq-condition").value,
-                unit: document.getElementById("eq-unit").value.trim(),
-                qty: parseFloat(document.getElementById("eq-qty").value) || 0,
-                dateReceive: document.getElementById("eq-date-receive").value,
-                dateReturn: document.getElementById("eq-date-return").value,
-                location: document.getElementById("eq-location").value.trim(),
-                note: document.getElementById("eq-note").value.trim()
-            };
-
-            if (isEdit) {
-                let idx = equipmentData.findIndex(e => e.id === editId);
-                if (idx > -1) equipmentData[idx] = obj; else equipmentData.push(obj);
-            } else {
-                equipmentData.push(obj);
-            }
-            saveLocalCache();
-            await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
-
-            alert("✔️ Đã lưu thông tin thiết bị lên hệ thống.");
-            resetEquipmentForm();
-            updateSystemData();
-        }
-
-        function startEditEquipment(idx) {
-            let e = equipmentData[idx];
-            document.getElementById("eq-edit-id").value = e.id;
-            document.getElementById("eq-staff-select").value = e.msnv || "";
-            document.getElementById("eq-dept-select").value = e.dept || "";
-            document.getElementById("eq-category").value = e.category || "";
-            document.getElementById("eq-code").value = e.code || "";
-            document.getElementById("eq-name").value = e.name || "";
-            document.getElementById("eq-condition").value = e.condition || "";
-            document.getElementById("eq-unit").value = e.unit || "";
-            document.getElementById("eq-qty").value = e.qty || 0;
-            document.getElementById("eq-date-receive").value = e.dateReceive || "";
-            document.getElementById("eq-date-return").value = e.dateReturn || "";
-            document.getElementById("eq-location").value = e.location || "";
-            document.getElementById("eq-note").value = e.note || "";
-            document.getElementById("equipment-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị: ${e.name}`;
-            document.getElementById("btn-cancel-equipment-edit").style.display = "inline-block";
-            switchPage('equipment');
-            document.getElementById("equipment-form-box").scrollIntoView({ behavior: "smooth" });
-        }
-
-        function resetEquipmentForm() {
-            document.getElementById("eq-edit-id").value = "";
-            document.getElementById("eq-staff-select").value = "";
-            document.getElementById("eq-dept-select").value = "";
-            document.getElementById("eq-category").selectedIndex = 0;
-            document.getElementById("eq-code").value = "";
-            document.getElementById("eq-name").value = "";
-            document.getElementById("eq-condition").selectedIndex = 0;
-            document.getElementById("eq-unit").value = "";
-            document.getElementById("eq-qty").value = "1";
-            document.getElementById("eq-date-receive").value = "";
-            document.getElementById("eq-date-return").value = "";
-            document.getElementById("eq-location").value = "";
-            document.getElementById("eq-note").value = "";
-            document.getElementById("equipment-form-title").innerHTML = `<i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị`;
-            document.getElementById("btn-cancel-equipment-edit").style.display = "none";
-        }
-
-        async function deleteEquipment(idx) {
-            if (confirm("Xác nhận xóa thiết bị này?")) {
-                let id = equipmentData[idx].id;
-                equipmentData.splice(idx, 1);
-                saveLocalCache();
-                await pushToCloud({ action: "deleteEquipment", id: id });
-                updateSystemData();
-            }
-        }
-
         function updateSystemData() {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
             document.getElementById("dash-staff-count").innerText = staffData.length;
             document.getElementById("dash-crew-count").innerText = crewData.length;
             document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
-            document.getElementById("dash-equipment-count").innerText = equipmentData.length;
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
@@ -1471,8 +1173,6 @@
             renderDeptVesselLists();
             renderMailGroupsAdminList();
             renderProfileDocStaffSelect();
-            renderEquipmentSelects();
-            renderEquipmentTable();
         }
 
         function renderDeptVesselLists() {
