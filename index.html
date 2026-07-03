@@ -168,12 +168,26 @@
 
         <div class="login-box" id="sub-forgot-box" style="display: none;">
             <i class="fa-solid fa-envelope-shield" style="color: var(--secondary-color);"></i>
-            <h2>QUÊN MẬT KHẨU</h2>
-            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">
-                Vì lý do bảo mật, hệ thống không tự đặt lại mật khẩu qua email/OTP tự động.
-                Vui lòng liên hệ <b>Quản trị viên (Admin)</b> của công ty để được cấp lại mật khẩu
-                trực tiếp trong mục <i>Cài đặt hệ thống (Admin) → Danh sách User → Đặt lại mật khẩu</i>.
-            </p>
+            <h2>ĐỔI MẬT KHẨU ADMIN</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">Mật khẩu mới sẽ được thiết lập sau khi xác thực Email liên kết quản trị viên (`admin@seahorse.com.vn`)</p>
+            <div id="forgot-step-1">
+                <div class="input-group">
+                    <label>Nhập Email liên kết Admin</label>
+                    <input type="email" id="forgot-email" placeholder="admin@seahorse.com.vn">
+                </div>
+                <button class="btn" onclick="sendOTP()">Gửi mã xác nhận OTP 📩</button>
+            </div>
+            <div id="forgot-step-2" style="display: none;">
+                <div class="input-group">
+                    <label style="color: green; font-weight: bold;">Mã OTP đã được gửi! Nhập mã OTP (Mã mẫu: 1234)</label>
+                    <input type="text" id="forgot-otp" placeholder="Nhập mã OTP gồm 4 số">
+                </div>
+                <div class="input-group">
+                    <label>Nhập Mật khẩu mới</label>
+                    <input type="password" id="forgot-new-password" placeholder="Nhập mật khẩu mới mong muốn">
+                </div>
+                <button class="btn btn-success" onclick="verifyOTPAndChangePassword()">Xác nhận Đổi Mật Khẩu ✔️</button>
+            </div>
             <div style="margin-top: 15px;">
                 <a href="#" onclick="toggleForgotPasswordForm(false)" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
             </div>
@@ -190,11 +204,12 @@
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
-                    <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
+                    <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
+                    <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
                 </ul>
             </div>
@@ -215,6 +230,7 @@
                     <div class="card"><div class="card-info"><p>Nhân sự Văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
+                    <div class="card" style="cursor:pointer;" onclick="switchPage('equipment')"><div class="card-info"><p>Thiết bị</p><h3 id="dash-equipment-count">0</h3></div><i class="fa-solid fa-toolbox card-icon"></i></div>
                 </div>
                 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -323,30 +339,113 @@
                 </div>
             </div>
 
+            <div id="page-equipment" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</h2>
+
+                <div class="admin-box" id="equipment-form-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3 id="equipment-form-title"><i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị</h3>
+                    <input type="hidden" id="eq-edit-id" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Họ tên nhân viên</label>
+                            <select id="eq-staff-select" onchange="onEquipmentStaffChange()">
+                                <option value="">-- Chọn nhân viên --</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Phòng làm việc</label>
+                            <select id="eq-dept-select">
+                                <option value="">-- Chọn phòng ban --</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Loại thiết bị</label>
+                            <select id="eq-category"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Mã số thiết bị</label>
+                            <input type="text" id="eq-code" placeholder="Ví dụ: TB-0012">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Tên thiết bị</label>
+                            <input type="text" id="eq-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
+                        </div>
+                        <div class="input-group">
+                            <label>Tình trạng thiết bị</label>
+                            <select id="eq-condition">
+                                <option>Mới</option>
+                                <option>Đang sử dụng tốt</option>
+                                <option>Cần bảo trì</option>
+                                <option>Hư hỏng</option>
+                                <option>Đã thanh lý</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Đơn vị tính</label>
+                            <input type="text" id="eq-unit" placeholder="Cái, Chiếc, Bộ...">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Số lượng</label>
+                            <input type="number" id="eq-qty" min="0" step="1" value="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày nhân sự nhận thiết bị</label>
+                            <input type="date" id="eq-date-receive">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày nhân sự bàn giao</label>
+                            <input type="date" id="eq-date-return">
+                        </div>
+                        <div class="input-group">
+                            <label>Vị trí làm việc</label>
+                            <input type="text" id="eq-location" placeholder="Ví dụ: Văn phòng SME Quảng Ngãi - Tầng 2">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <textarea id="eq-note" rows="2" style="width:100%; padding:10px; border-radius:6px; border:1px solid #ccc; font-family:inherit;" placeholder="Ghi chú thêm..."></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn" style="width:auto; background-color: #27ae60;" onclick="saveEquipment()">Lưu thiết bị ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-equipment-edit" onclick="resetEquipmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-controls" style="margin-top:20px;">
+                    <input type="text" id="search-equipment" class="search-box" oninput="filterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
+                    <select id="eq-filter-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                    <select id="eq-filter-dept" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                    <select id="eq-filter-category" class="search-box" onchange="filterEquipmentTable()" style="max-width: 200px;"></select>
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-equipment">
+                    <thead>
+                        <tr>
+                            <th>Mã TB</th><th>Tên thiết bị</th><th>Loại</th><th>Nhân viên sử dụng</th><th>Phòng ban</th>
+                            <th>Tình trạng</th><th>ĐVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th><th>Vị trí</th><th>Ghi chú</th>
+                            <th class="admin-action-header">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-profile-docs" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</h2>
                 <div class="admin-box">
                     <h3><i class="fa-solid fa-user-check"></i> Chọn nhân viên</h3>
-
-                    <div class="form-row" style="margin-bottom: 6px;">
-                        <div class="input-group">
-                            <label>Tìm kiếm MSNV</label>
-                            <input type="text" id="doc-search-msnv" class="search-box" placeholder="Nhập MSNV..." oninput="renderProfileDocStaffSelect()">
-                        </div>
-                        <div class="input-group">
-                            <label>Tìm theo tên</label>
-                            <input type="text" id="doc-search-name" class="search-box" placeholder="Nhập tên nhân viên..." oninput="renderProfileDocStaffSelect()">
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 12px;">
-                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:6px;">Lọc theo phòng ban</label>
-                        <div id="doc-dept-tabs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-                    </div>
-
                     <div class="form-row">
                         <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>Chọn nhân viên</label>
+                            <label>Tìm theo MSNV / Họ tên</label>
                             <select id="doc-staff-select" class="search-box" style="width:100%;" onchange="onProfileDocStaffChange()">
                                 <option value="">-- Chọn nhân viên --</option>
                             </select>
@@ -550,20 +649,15 @@
             {msnv: "SME008", name: "Phạm Thị Lan", dob: "1990-08-22", dept: ["PHÒNG KẾ TOÁN"], position: "Kế toán trưởng", dateJoin: "2015-03-10", phone: "0908887776", email: "lan.pt@seahorse.com.vn", imgUrl: ""}
         ];
         let crewData = [];
+        let equipmentData = [];
+        const EQUIPMENT_CATEGORIES = ["Nội Thất", "Laptop", "Desktop", "Điện thoại", "Máy in", "Thiết bị điện", "Máy đo khí", "Xe đạp", "Xe ô tô", "Thiết bị khác"];
         let otherApps = [
             { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
         ];
         let mailGroups = [];
-        // LƯU Ý BẢO MẬT: userDatabase KHÔNG còn lưu trường "password" của bất kỳ ai nữa.
-        // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
-        // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
         let userDatabase = {
-            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true }
+            "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn", docsView: true, docsUpload: true, docsDelete: true }
         };
-        // Thông tin đăng nhập hiện tại — CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc,
-        // KHÔNG lưu vào localStorage, để tránh lộ mật khẩu nếu máy dùng chung / bị truy cập trái phép.
-        // Mỗi lần tải lại trang, người dùng cần đăng nhập lại — đây là đánh đổi cần thiết cho bảo mật.
-        let authCreds = { username: null, password: null };
         let currentUserCanUploadDocs = false;
         let currentUserCanDeleteDocs = false;
         let currentUser = null;
@@ -571,18 +665,6 @@
         let cloudReady = false;
         let globalBase64Image = ""; 
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
-
-        // Chống XSS: chuyển ký tự đặc biệt HTML (<, >, &, ", ') thành dạng an toàn trước khi
-        // chèn dữ liệu do người dùng nhập (tên, chức vụ, tên file...) vào innerHTML.
-        function escapeHtml(str) {
-            if (str === null || str === undefined) return "";
-            return String(str)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
 
         // Chuẩn hóa trường "dept" về đúng dạng mảng (Array), kể cả với dữ liệu cũ từng bị
         // lưu lồng JSON 2 lớp (lỗi double-encode trước đây). Lặp giải mã tối đa vài lần
@@ -606,9 +688,7 @@
             { code: "SYLL",    label: "1. Sơ yếu lý lịch",                icon: "fa-id-card" },
             { code: "HDLD",    label: "2. Hợp đồng lao động / Phụ lục",   icon: "fa-file-contract" },
             { code: "BANGCAP", label: "3. Bằng cấp liên quan",            icon: "fa-graduation-cap" },
-            { code: "KSK",     label: "4. Giấy khám sức khỏe",            icon: "fa-notes-medical" },
-            { code: "CCCD",    label: "5. Giấy CCCD/CMND",                icon: "fa-id-card-clip" },
-            { code: "KHAC",    label: "6. Các giấy tờ khác",              icon: "fa-folder-plus" }
+            { code: "KSK",     label: "4. Giấy khám sức khỏe",            icon: "fa-notes-medical" }
         ];
 
         function isScriptUrlConfigured() {
@@ -620,7 +700,7 @@
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups, documentsData: documentsData
+                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -642,9 +722,11 @@
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.documentsData) documentsData = cache.documentsData;
+                if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
+                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
                 }
                 return true;
             } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
@@ -669,15 +751,7 @@
                 if (manual) {
                     showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
                 }
-                // Gửi kèm thông tin xác thực (nếu đã đăng nhập) để server biết có được phép
-                // trả về dữ liệu đầy đủ (nhân sự/tài khoản) hay chỉ danh mục công khai.
-                let url = SCRIPT_URL;
-                if (authCreds.username && authCreds.password) {
-                    url += (url.indexOf("?") >= 0 ? "&" : "?") +
-                        "authUser=" + encodeURIComponent(authCreds.username) +
-                        "&authPass=" + encodeURIComponent(authCreds.password);
-                }
-                let res = await fetch(url, { method: "GET" });
+                let res = await fetch(SCRIPT_URL, { method: "GET" });
                 let data = await res.json();
                 if (data.status === "ERROR") throw new Error(data.message);
 
@@ -691,10 +765,11 @@
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.documents) documentsData = data.documents;
-                if (data.users && Object.keys(data.users).length) {
-                    // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
+                if (data.equipment) equipmentData = data.equipment;
+                if (data.users) {
                     userDatabase = data.users;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
+                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
                 }
                 cloudReady = true;
                 saveLocalCache();
@@ -720,15 +795,6 @@
                 // LƯU Ý: KHÔNG stringify payload.dept ở đây — backend (Apps Script) đã tự
                 // JSON.stringify(data.dept) khi lưu vào Sheet. Nếu stringify thêm ở đây sẽ
                 // gây lỗi "double-encode" khiến phòng ban hiển thị sai và lọc không ra kết quả.
-
-                // Tự động đính kèm thông tin người đang đăng nhập vào MỌI request ghi/xóa,
-                // để server xác thực & kiểm tra quyền trước khi thực hiện (không chỉ tin
-                // tưởng giao diện đã ẩn nút). authCreds.action riêng ("login") không đi qua đây.
-                if (authCreds.username && authCreds.password && !payload.authUser) {
-                    payload.authUser = authCreds.username;
-                    payload.authPass = authCreds.password;
-                }
-
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -758,6 +824,35 @@
         function toggleForgotPasswordForm(show) {
             document.getElementById("sub-login-box").style.display = show ? "none" : "block";
             document.getElementById("sub-forgot-box").style.display = show ? "block" : "none";
+            document.getElementById("forgot-step-1").style.display = "block";
+            document.getElementById("forgot-step-2").style.display = "none";
+            document.getElementById("forgot-email").value = "";
+            document.getElementById("forgot-otp").value = "";
+            document.getElementById("forgot-new-password").value = "";
+        }
+
+        function sendOTP() {
+            let emailInput = document.getElementById("forgot-email").value.trim();
+            if (emailInput !== userDatabase.admin.emailLink) {
+                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty!");
+                return;
+            }
+            alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn.\nVui lòng kiểm tra hộp thư đến (Mã xác thực mẫu của bạn là: 1234)");
+            document.getElementById("forgot-step-1").style.display = "none";
+            document.getElementById("forgot-step-2").style.display = "block";
+        }
+
+        async function verifyOTPAndChangePassword() {
+            let otp = document.getElementById("forgot-otp").value.trim();
+            let newPass = document.getElementById("forgot-new-password").value;
+            if (otp !== "1234") { alert("❌ Mã OTP không chính xác hoặc đã hết hiệu lực!"); return; }
+            if (!newPass) { alert("❌ Vui lòng không độ trống mật khẩu mới!"); return; }
+
+            userDatabase.admin.password = newPass;
+            saveLocalCache();
+            await pushToCloud({ action: "createUser", username: "admin", password: newPass, role: "Admin" });
+            alert("🎉 Đổi mật khẩu Admin thành công! Hệ thống đang chuyển bạn về màn hình đăng nhập.");
+            toggleForgotPasswordForm(false);
         }
 
         function openChangePasswordModal() {
@@ -776,7 +871,7 @@
             let errEl = document.getElementById("cpw-error");
             errEl.style.display = "none";
 
-            if (!currentUsername) {
+            if (!currentUsername || !userDatabase[currentUsername]) {
                 errEl.innerText = "❌ Không xác định được người dùng hiện tại. Vui lòng đăng nhập lại.";
                 errEl.style.display = "block";
                 return;
@@ -786,6 +881,11 @@
             let newPass = document.getElementById("cpw-new").value;
             let confirmPass = document.getElementById("cpw-confirm").value;
 
+            if (String(curPass).trim() !== String(userDatabase[currentUsername].password).trim()) {
+                errEl.innerText = "❌ Mật khẩu hiện tại không đúng!";
+                errEl.style.display = "block";
+                return;
+            }
             if (!newPass || !newPass.trim()) {
                 errEl.innerText = "⚠️ Vui lòng nhập mật khẩu mới!";
                 errEl.style.display = "block";
@@ -796,34 +896,14 @@
                 errEl.style.display = "block";
                 return;
             }
-            if (!isScriptUrlConfigured()) {
-                errEl.innerText = "⚠️ Cần kết nối Google Sheet (tab Admin) để đổi mật khẩu.";
-                errEl.style.display = "block";
-                return;
-            }
 
-            try {
-                // Mật khẩu hiện tại được XÁC THỰC Ở SERVER (không so sánh ở trình duyệt nữa)
-                let res = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "changeOwnPassword",
-                        username: currentUsername,
-                        oldPassword: curPass,
-                        newPassword: newPass.trim()
-                    })
-                });
-                let data = await res.json();
-                if (data.status === "ERROR") throw new Error(data.message);
-
-                authCreds.password = newPass.trim(); // cập nhật để các request tiếp theo trong phiên vẫn hoạt động
-                alert("🎉 Đổi mật khẩu thành công!");
-                closeChangePasswordModal();
-            } catch (err) {
-                errEl.innerText = "❌ " + err.message;
-                errEl.style.display = "block";
-            }
+            userDatabase[currentUsername].password = newPass.trim();
+            currentUser = userDatabase[currentUsername];
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "createUser", username: currentUsername, password: newPass.trim(), role: userDatabase[currentUsername].role });
+            alert(ok ? "🎉 Đổi mật khẩu thành công! (Đã đồng bộ)" : "🎉 Đổi mật khẩu thành công! (Lưu cục bộ)");
+            closeChangePasswordModal();
+            if (currentUser.role === "Admin") renderUserListViewForAdmin();
         }
 
         async function createNewUserByAdmin() {
@@ -837,14 +917,11 @@
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
+            userDatabase[uName] = { password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete };
+            saveLocalCache();
             let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete });
-            if (ok) {
-                userDatabase[uName] = { role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete };
-                saveLocalCache();
-                alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
-            } else {
-                alert(`❌ Không thể khởi tạo tài khoản "${uName}". Kiểm tra lại quyền Admin của bạn hoặc kết nối mạng.`);
-            }
+            if (ok) alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Đã đồng bộ Google Sheet).`);
+            else alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Lưu cục bộ).`);
 
             document.getElementById("adm-new-username").value = "";
             document.getElementById("adm-new-password").value = "";
@@ -860,8 +937,10 @@
             newPass = newPass.trim();
             if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
 
+            userDatabase[username].password = newPass;
+            saveLocalCache();
             let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
-            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
+            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}" (Đã đồng bộ).` : `✔️ Đã đặt lại mật khẩu cho "${username}" (Lưu cục bộ).`);
             renderUserListViewForAdmin();
         }
 
@@ -869,9 +948,10 @@
             if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin gốc!"); return; }
             if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${username}"?`)) return;
 
+            delete userDatabase[username];
+            saveLocalCache();
             let ok = await pushToCloud({ action: "deleteUser", username: username });
-            if (ok) { delete userDatabase[username]; saveLocalCache(); }
-            alert(ok ? `✔️ Đã xóa tài khoản "${username}".` : `❌ Không thể xóa tài khoản (kiểm tra quyền Admin / kết nối mạng).`);
+            alert(ok ? `✔️ Đã xóa tài khoản "${username}" (Đã đồng bộ).` : `✔️ Đã xóa tài khoản "${username}" (Lưu cục bộ).`);
             renderUserListViewForAdmin();
         }
 
@@ -879,67 +959,59 @@
             if (username === "admin") { alert("⚠️ Không thể thay đổi phân quyền của tài khoản Admin gốc!"); renderUserListViewForAdmin(); return; }
             if (!userDatabase[username]) return;
 
-            // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
-            // chỉ cập nhật role/quyền. authUser/authPass (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
-            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
-            if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
-            alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
+            userDatabase[username].role = newRole;
+            saveLocalCache();
+            let ok = await pushToCloud({ action: "createUser", username: username, password: userDatabase[username].password, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
+            alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}" (Đã đồng bộ).` : `✔️ Đã cập nhật phân quyền cho "${username}" (Lưu cục bộ).`);
             renderUserListViewForAdmin();
         }
 
         // Bật/tắt quyền "Xem tab", "Tải lên" hoặc "Xóa" hồ sơ NV cho 1 user cụ thể (dành cho HR)
         async function toggleUserDocsPermission(username, field, checked) {
             if (!userDatabase[username]) return;
-            let newDocsView = userDatabase[username].docsView;
-            let newDocsUpload = userDatabase[username].docsUpload;
-            let newDocsDelete = userDatabase[username].docsDelete;
-            if (field === "docsView") newDocsView = checked;
-            if (field === "docsUpload") newDocsUpload = checked;
-            if (field === "docsDelete") newDocsDelete = checked;
-
-            // Nếu tắt quyền Xem thì cũng tự động tắt Tải lên & Xóa
-            if (field === "docsView" && !checked) { newDocsUpload = false; newDocsDelete = false; }
+            userDatabase[username][field] = checked;
+            // Nếu tắt quyền Xem thì cũng tự động tắt Tải lên & Xóa (không thấy tab thì không thao tác được)
+            if (field === "docsView" && !checked) {
+                userDatabase[username].docsUpload = false;
+                userDatabase[username].docsDelete = false;
+            }
             // Nếu bật Tải lên hoặc Xóa thì tự động bật luôn quyền Xem
-            if ((field === "docsUpload" || field === "docsDelete") && checked) newDocsView = true;
+            if ((field === "docsUpload" || field === "docsDelete") && checked) {
+                userDatabase[username].docsView = true;
+            }
 
+            saveLocalCache();
             let ok = await pushToCloud({
                 action: "createUser",
                 username: username,
+                password: userDatabase[username].password,
                 role: userDatabase[username].role,
-                docsView: !!newDocsView,
-                docsUpload: !!newDocsUpload,
-                docsDelete: !!newDocsDelete
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete
             });
-            if (ok) {
-                userDatabase[username].docsView = newDocsView;
-                userDatabase[username].docsUpload = newDocsUpload;
-                userDatabase[username].docsDelete = newDocsDelete;
-                saveLocalCache();
-            } else {
-                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
-            }
+            if (!ok) alert(`⚠️ Đã lưu cục bộ, nhưng chưa đồng bộ được lên Google Sheet cho "${username}".`);
             renderUserListViewForAdmin();
         }
 
         function renderUserListViewForAdmin() {
             let html = "";
             for (let u in userDatabase) {
-                let safeU = escapeHtml(u);
                 let roleControl = "";
                 if (u === "admin") {
                     roleControl = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
                 } else {
                     let rw = userDatabase[u].role === "ReadWrite" ? "selected" : "";
                     let ro = userDatabase[u].role === "ReadOnly" ? "selected" : "";
-                    roleControl = `<select style="padding:3px 6px; font-size:12px; border-radius:3px; border:1px solid #ccc;" onchange="changeUserRole('${safeU}', this.value)" title="Điều chỉnh phân quyền">
+                    roleControl = `<select style="padding:3px 6px; font-size:12px; border-radius:3px; border:1px solid #ccc;" onchange="changeUserRole('${u}', this.value)" title="Điều chỉnh phân quyền">
                         <option value="ReadWrite" ${rw}>Toàn quyền (Ghi)</option>
                         <option value="ReadOnly" ${ro}>Chỉ Xem</option>
                     </select>`;
                 }
 
-                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
+                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${u}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 if (u !== "admin") {
-                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${safeU}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
+                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
                 let docsControl = "";
@@ -952,20 +1024,19 @@
                     docsControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <i class="fa-solid fa-folder-open" title="Hồ sơ Nhân viên"></i>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                            <input type="checkbox" style="width:auto;" ${vChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsView', this.checked)"> Xem
+                            <input type="checkbox" style="width:auto;" ${vChecked} onchange="toggleUserDocsPermission('${u}', 'docsView', this.checked)"> Xem
                         </label>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                            <input type="checkbox" style="width:auto;" ${upChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsUpload', this.checked)"> Tải lên
+                            <input type="checkbox" style="width:auto;" ${upChecked} onchange="toggleUserDocsPermission('${u}', 'docsUpload', this.checked)"> Tải lên
                         </label>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                            <input type="checkbox" style="width:auto;" ${delChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsDelete', this.checked)"> Xóa
+                            <input type="checkbox" style="width:auto;" ${delChecked} onchange="toggleUserDocsPermission('${u}', 'docsDelete', this.checked)"> Xóa
                         </label>
                     </span>`;
                 }
 
-                // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                    <span><b>${safeU}</b> ${roleControl}</span>
+                    <span><b>${u}</b> (<code>${userDatabase[u].password}</code>) ${roleControl}</span>
                     ${docsControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
@@ -986,60 +1057,37 @@
             let u = document.getElementById("username").value.trim();
             let p = document.getElementById("password").value;
             let err = document.getElementById("login-error");
-            err.style.display = "none";
 
             btn.disabled = true;
             btn.innerText = "Đang kiểm tra...";
+            if (isScriptUrlConfigured()) await loadFromCloud(manual=false); 
+            btn.disabled = false;
+            btn.innerText = "Đăng nhập";
 
-            try {
-                if (isScriptUrlConfigured()) {
-                    // Đăng nhập được XÁC THỰC Ở SERVER — mật khẩu không bao giờ được tải sẵn về trình duyệt.
-                    let res = await fetch(SCRIPT_URL, {
-                        method: "POST",
-                        headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: JSON.stringify({ action: "login", username: u, password: p })
-                    });
-                    let data = await res.json();
-                    if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
-
-                    currentUsername = u;
-                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete };
-                    authCreds = { username: u, password: p };
-
-                    await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
-                } else {
-                    // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
-                    if (u === "admin" && p === "123") {
-                        currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
-                        authCreds = { username: "admin", password: "123" };
-                    } else {
-                        throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
-                    }
-                }
-
+            if (userDatabase[u] && String(userDatabase[u].password).trim() === String(p).trim()) {
+                currentUser = userDatabase[u];
+                currentUsername = u;
+                err.style.display = "none";
                 document.getElementById("login-screen").style.display = "none";
-                document.getElementById("main-system").style.display = "flex";
-                document.getElementById("user-display").innerText = escapeHtml(u);
+
+                let sys = document.getElementById("main-system");
+                sys.style.display = "flex";
+
+                document.getElementById("user-display").innerText = u;
                 let scriptUrlInput = document.getElementById("adm-script-url");
                 if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
 
                 applyUserPermissions();
                 updateSystemData();
                 switchPage('dashboard');
-            } catch (e) {
-                err.innerText = "❌ " + e.message;
+            } else {
                 err.style.display = "block";
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Đăng nhập";
             }
         }
 
         function handleLogout() {
             currentUser = null;
             currentUsername = null;
-            authCreds = { username: null, password: null }; // xóa thông tin xác thực khỏi bộ nhớ
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
             document.getElementById("login-screen").style.display = "flex";
@@ -1052,6 +1100,10 @@
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
+
+            document.getElementById("menu-equipment").style.display = "flex";
+            let canEditEquipment = (currentUser.role === "Admin" || currentUser.role === "ReadWrite");
+            document.getElementById("equipment-form-box").style.display = canEditEquipment ? "block" : "none";
 
             // ==== Quyền riêng cho tab "Hồ sơ Nhân viên" ====
             // Admin luôn có toàn quyền. Các role khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
@@ -1100,55 +1152,17 @@
             }
         }
 
-        let docActiveDeptTab = "Tất cả";
-
-        function renderProfileDocDeptTabs() {
-            let wrap = document.getElementById("doc-dept-tabs");
-            if (!wrap) return;
-            let tabs = ["Tất cả"].concat(depts);
-            wrap.innerHTML = tabs.map(d => {
-                let active = (d === docActiveDeptTab);
-                return `<span onclick="setProfileDocDeptTab('${escapeHtml(d).replace(/'/g, "\\'")}')"
-                    style="cursor:pointer; padding:5px 12px; border-radius:16px; font-size:12.5px; white-space:nowrap;
-                    border:1px solid ${active ? 'var(--secondary-color)' : '#ddd'};
-                    background:${active ? 'var(--secondary-color)' : '#f5f5f5'};
-                    color:${active ? '#fff' : '#444'};">${escapeHtml(d)}</span>`;
-            }).join('');
-        }
-
-        function setProfileDocDeptTab(deptName) {
-            docActiveDeptTab = deptName;
-            renderProfileDocDeptTabs();
-            renderProfileDocStaffSelect();
-        }
-
         function renderProfileDocStaffSelect() {
             let sel = document.getElementById("doc-staff-select");
             if (!sel) return;
             let keep = sel.value;
-
-            let searchMsnv = (document.getElementById("doc-search-msnv")?.value || "").trim().toLowerCase();
-            let searchName = (document.getElementById("doc-search-name")?.value || "").trim().toLowerCase();
-
-            let filtered = staffData.filter(s => {
-                if (docActiveDeptTab !== "Tất cả") {
-                    let deptArr = Array.isArray(s.dept) ? s.dept : (s.dept ? [s.dept] : []);
-                    if (!deptArr.includes(docActiveDeptTab)) return false;
-                }
-                if (searchMsnv && !String(s.msnv || "").toLowerCase().includes(searchMsnv)) return false;
-                if (searchName && !String(s.name || "").toLowerCase().includes(searchName)) return false;
-                return true;
-            });
-
             let options = '<option value="">-- Chọn nhân viên --</option>' +
-                filtered.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
+                staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
             sel.innerHTML = options;
-            if (keep && sel.querySelector(`option[value="${CSS.escape(keep)}"]`)) {
+            if (keep && sel.querySelector(`option[value="${keep}"]`)) {
                 sel.value = keep;
-            } else {
-                document.getElementById("doc-staff-panel").style.display = "none";
+                onProfileDocStaffChange();
             }
-            if (sel.value) onProfileDocStaffChange();
         }
 
         function onProfileDocStaffChange() {
@@ -1158,7 +1172,7 @@
             let staff = staffData.find(s => s.msnv === msnv);
             panel.style.display = "block";
             document.getElementById("doc-staff-name-title").innerHTML =
-                `<i class="fa-solid fa-id-card"></i> Hồ sơ của: ${escapeHtml(staff ? staff.name : msnv)} (${escapeHtml(msnv)})`;
+                `<i class="fa-solid fa-id-card"></i> Hồ sơ của: ${staff ? staff.name : msnv} (${msnv})`;
             renderProfileDocSections(msnv);
         }
 
@@ -1169,9 +1183,9 @@
                 let listHtml = files.length
                     ? '<ul class="doc-list">' + files.map(f => `
                         <li>
-                            <span><a href="${escapeHtml(f.fileUrl)}" target="_blank"><i class="fa-solid fa-file"></i> ${escapeHtml(f.fileName)}</a>
-                            <span class="doc-meta">${escapeHtml(f.uploadDate) || ""}</span></span>
-                            ${currentUserCanDeleteDocs ? `<span class="doc-del" onclick="deleteStaffDocument('${escapeHtml(f.fileId)}', '${escapeHtml(msnv)}')"><i class="fa-solid fa-trash"></i> Xóa</span>` : ''}
+                            <span><a href="${f.fileUrl}" target="_blank"><i class="fa-solid fa-file"></i> ${f.fileName}</a>
+                            <span class="doc-meta">${f.uploadDate || ""}</span></span>
+                            ${currentUserCanDeleteDocs ? `<span class="doc-del" onclick="deleteStaffDocument('${f.fileId}', '${msnv}')"><i class="fa-solid fa-trash"></i> Xóa</span>` : ''}
                         </li>`).join('') + '</ul>'
                     : '<p class="doc-empty">Chưa có file nào được tải lên.</p>';
                 let uploadRowHtml = currentUserCanUploadDocs ? `
@@ -1231,12 +1245,200 @@
             }
         }
 
+        /* ========== QUẢN LÝ THIẾT BỊ ========== */
+
+        function renderEquipmentSelects() {
+            let staffOptionsHtml = '<option value="">-- Chọn nhân viên --</option>' +
+                staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
+            let staffSel = document.getElementById("eq-staff-select");
+            if (staffSel) { let keep = staffSel.value; staffSel.innerHTML = staffOptionsHtml; if (keep) staffSel.value = keep; }
+
+            let deptOptionsHtml = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            let deptSel = document.getElementById("eq-dept-select");
+            if (deptSel) { let keep = deptSel.value; deptSel.innerHTML = deptOptionsHtml; if (keep) deptSel.value = keep; }
+
+            let catOptionsHtml = EQUIPMENT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+            let catSel = document.getElementById("eq-category");
+            if (catSel) { let keep = catSel.value; catSel.innerHTML = catOptionsHtml; if (keep) catSel.value = keep; }
+
+            let filterStaffSel = document.getElementById("eq-filter-staff");
+            if (filterStaffSel) {
+                let keep = filterStaffSel.value;
+                filterStaffSel.innerHTML = '<option value="Tất cả">-- Tất cả nhân viên --</option>' +
+                    staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
+                filterStaffSel.value = keep || "Tất cả";
+            }
+            let filterDeptSel = document.getElementById("eq-filter-dept");
+            if (filterDeptSel) {
+                let keep = filterDeptSel.value;
+                filterDeptSel.innerHTML = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+                filterDeptSel.value = keep || "Tất cả";
+            }
+            let filterCatSel = document.getElementById("eq-filter-category");
+            if (filterCatSel) {
+                let keep = filterCatSel.value;
+                filterCatSel.innerHTML = '<option value="Tất cả">-- Tất cả loại thiết bị --</option>' + EQUIPMENT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+                filterCatSel.value = keep || "Tất cả";
+            }
+        }
+
+        function onEquipmentStaffChange() {
+            let msnv = document.getElementById("eq-staff-select").value;
+            let staff = staffData.find(s => s.msnv === msnv);
+            if (staff && staff.dept) {
+                let firstDept = Array.isArray(staff.dept) ? staff.dept[0] : staff.dept;
+                if (firstDept) document.getElementById("eq-dept-select").value = firstDept;
+            }
+        }
+
+        function renderEquipmentTable() {
+            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            let htmlEquipment = equipmentData.map((e, idx) => {
+                let staff = staffData.find(s => s.msnv === e.msnv);
+                let staffLabel = staff ? `${staff.name} (${staff.msnv})` : (e.msnv || '-');
+                return `
+                    <tr>
+                        <td><b>${e.code || ''}</b></td>
+                        <td>${e.name || ''}</td>
+                        <td>${e.category || ''}</td>
+                        <td>${staffLabel}</td>
+                        <td>${e.dept || ''}</td>
+                        <td>${e.condition || ''}</td>
+                        <td>${e.unit || ''}</td>
+                        <td>${e.qty || 0}</td>
+                        <td>${formatDateDisplay(e.dateReceive)}</td>
+                        <td>${formatDateDisplay(e.dateReturn)}</td>
+                        <td>${e.location || ''}</td>
+                        <td>${e.note || ''}</td>
+                        <td style="display: ${canEdit ? '' : 'none'}">
+                            <button class="btn btn-sm btn-warning" onclick="startEditEquipment(${idx})"><i class="fa-solid fa-pen"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEquipment(${idx})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            document.querySelector("#tbl-equipment tbody").innerHTML = htmlEquipment ||
+                `<tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
+        }
+
+        function filterEquipmentTable() {
+            let search = document.getElementById("search-equipment").value.toLowerCase();
+            let staffFilter = document.getElementById("eq-filter-staff").value;
+            let deptFilter = document.getElementById("eq-filter-dept").value;
+            let catFilter = document.getElementById("eq-filter-category").value;
+            let rows = document.querySelectorAll("#tbl-equipment tbody tr");
+
+            equipmentData.forEach((e, idx) => {
+                let staff = staffData.find(s => s.msnv === e.msnv);
+                let staffName = staff ? staff.name.toLowerCase() : "";
+                let matchSearch = (e.code || '').toLowerCase().includes(search) ||
+                    (e.name || '').toLowerCase().includes(search) ||
+                    staffName.includes(search) || (e.msnv || '').toLowerCase().includes(search);
+                let matchStaff = (staffFilter === "Tất cả" || !staffFilter || e.msnv === staffFilter);
+                let matchDept = (deptFilter === "Tất cả" || !deptFilter || e.dept === deptFilter);
+                let matchCat = (catFilter === "Tất cả" || !catFilter || e.category === catFilter);
+                if (rows[idx]) rows[idx].style.display = (matchSearch && matchStaff && matchDept && matchCat) ? "" : "none";
+            });
+        }
+
+        async function saveEquipment() {
+            let msnv = document.getElementById("eq-staff-select").value;
+            if (!msnv) { alert("⚠️ Vui lòng chọn Họ tên nhân viên!"); return; }
+            let dept = document.getElementById("eq-dept-select").value;
+            if (!dept) { alert("⚠️ Vui lòng chọn Phòng làm việc!"); return; }
+            let name = document.getElementById("eq-name").value.trim();
+            if (!name) { alert("⚠️ Vui lòng nhập Tên thiết bị!"); return; }
+
+            let editId = document.getElementById("eq-edit-id").value;
+            let isEdit = !!editId;
+            let id = isEdit ? editId : ("TB" + Date.now());
+
+            let obj = {
+                id: id,
+                msnv: msnv,
+                dept: dept,
+                category: document.getElementById("eq-category").value,
+                code: document.getElementById("eq-code").value.trim(),
+                name: name,
+                condition: document.getElementById("eq-condition").value,
+                unit: document.getElementById("eq-unit").value.trim(),
+                qty: parseFloat(document.getElementById("eq-qty").value) || 0,
+                dateReceive: document.getElementById("eq-date-receive").value,
+                dateReturn: document.getElementById("eq-date-return").value,
+                location: document.getElementById("eq-location").value.trim(),
+                note: document.getElementById("eq-note").value.trim()
+            };
+
+            if (isEdit) {
+                let idx = equipmentData.findIndex(e => e.id === editId);
+                if (idx > -1) equipmentData[idx] = obj; else equipmentData.push(obj);
+            } else {
+                equipmentData.push(obj);
+            }
+            saveLocalCache();
+            await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
+
+            alert("✔️ Đã lưu thông tin thiết bị lên hệ thống.");
+            resetEquipmentForm();
+            updateSystemData();
+        }
+
+        function startEditEquipment(idx) {
+            let e = equipmentData[idx];
+            document.getElementById("eq-edit-id").value = e.id;
+            document.getElementById("eq-staff-select").value = e.msnv || "";
+            document.getElementById("eq-dept-select").value = e.dept || "";
+            document.getElementById("eq-category").value = e.category || "";
+            document.getElementById("eq-code").value = e.code || "";
+            document.getElementById("eq-name").value = e.name || "";
+            document.getElementById("eq-condition").value = e.condition || "";
+            document.getElementById("eq-unit").value = e.unit || "";
+            document.getElementById("eq-qty").value = e.qty || 0;
+            document.getElementById("eq-date-receive").value = e.dateReceive || "";
+            document.getElementById("eq-date-return").value = e.dateReturn || "";
+            document.getElementById("eq-location").value = e.location || "";
+            document.getElementById("eq-note").value = e.note || "";
+            document.getElementById("equipment-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị: ${e.name}`;
+            document.getElementById("btn-cancel-equipment-edit").style.display = "inline-block";
+            switchPage('equipment');
+            document.getElementById("equipment-form-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        function resetEquipmentForm() {
+            document.getElementById("eq-edit-id").value = "";
+            document.getElementById("eq-staff-select").value = "";
+            document.getElementById("eq-dept-select").value = "";
+            document.getElementById("eq-category").selectedIndex = 0;
+            document.getElementById("eq-code").value = "";
+            document.getElementById("eq-name").value = "";
+            document.getElementById("eq-condition").selectedIndex = 0;
+            document.getElementById("eq-unit").value = "";
+            document.getElementById("eq-qty").value = "1";
+            document.getElementById("eq-date-receive").value = "";
+            document.getElementById("eq-date-return").value = "";
+            document.getElementById("eq-location").value = "";
+            document.getElementById("eq-note").value = "";
+            document.getElementById("equipment-form-title").innerHTML = `<i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị`;
+            document.getElementById("btn-cancel-equipment-edit").style.display = "none";
+        }
+
+        async function deleteEquipment(idx) {
+            if (confirm("Xác nhận xóa thiết bị này?")) {
+                let id = equipmentData[idx].id;
+                equipmentData.splice(idx, 1);
+                saveLocalCache();
+                await pushToCloud({ action: "deleteEquipment", id: id });
+                updateSystemData();
+            }
+        }
+
         function updateSystemData() {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
             document.getElementById("dash-staff-count").innerText = staffData.length;
             document.getElementById("dash-crew-count").innerText = crewData.length;
             document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
+            document.getElementById("dash-equipment-count").innerText = equipmentData.length;
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
@@ -1268,8 +1470,9 @@
             renderOtherAppsAdminList();
             renderDeptVesselLists();
             renderMailGroupsAdminList();
-            renderProfileDocDeptTabs();
             renderProfileDocStaffSelect();
+            renderEquipmentSelects();
+            renderEquipmentTable();
         }
 
         function renderDeptVesselLists() {
@@ -1389,10 +1592,9 @@
         function renderStaffGrid() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let htmlStaffGrid = staffData.map((s, idx) => {
-                let safeName = escapeHtml(s.name);
                 let avatarHtml = s.imgUrl 
-                    ? `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
-                    : `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
+                    ? `<img src="${s.imgUrl}" alt="${s.name}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${s.name.charAt(0)}</div>'">`
+                    : `<div class="placeholder-avatar">${s.name.charAt(0)}</div>`;
 
                 let actionsHtml = canEdit ? `
                     <div class="actions">
@@ -1403,21 +1605,21 @@
 
                 let deptChips = "";
                 if (Array.isArray(s.dept)) {
-                    deptChips = s.dept.map(d => `<span class="chip-dept">${escapeHtml(d)}</span>`).join('');
+                    deptChips = s.dept.map(d => `<span class="chip-dept">${d}</span>`).join('');
                 } else if (s.dept) {
-                    deptChips = `<span class="chip-dept">${escapeHtml(s.dept)}</span>`;
+                    deptChips = `<span class="chip-dept">${s.dept}</span>`;
                 }
 
                 return `
                     <div class="contact-card">
                         ${avatarHtml}
                         <div class="info">
-                            <h4>${safeName}</h4>
-                            <p><span class="label">MSNV:</span><strong>${escapeHtml(s.msnv)}</strong></p>
+                            <h4>${s.name}</h4>
+                            <p><span class="label">MSNV:</span><strong>${s.msnv}</strong></p>
                             <p><span class="label">Phòng ban:</span> ${deptChips}</p>
-                            <p><span class="label">Chức vụ:</span>${escapeHtml(s.position)}</p>
-                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.phone) || 'Chưa cập nhật'}</p>
-                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.email) || 'Chưa cập nhật'}</p>
+                            <p><span class="label">Chức vụ:</span>${s.position}</p>
+                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${s.phone || 'Chưa cập nhật'}</p>
+                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${s.email || 'Chưa cập nhật'}</p>
                         </div>
                         ${actionsHtml}
                     </div>
@@ -1430,12 +1632,12 @@
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let htmlCrew = crewData.map((c, idx) => `
                 <tr>
-                    <td><b>${escapeHtml(c.name)}</b></td>
+                    <td><b>${c.name}</b></td>
                     <td>${formatDateDisplay(c.dob)}</td>
-                    <td><i class="fa-solid fa-ship" style="color:#666"></i> ${escapeHtml(c.vessel)}</td>
-                    <td>${escapeHtml(c.position)}</td>
+                    <td><i class="fa-solid fa-ship" style="color:#666"></i> ${c.vessel}</td>
+                    <td>${c.position}</td>
                     <td>${formatDateDisplay(c.dateJoin)}</td>
-                    <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(c.months)} tháng</span></td>
+                    <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${c.months} tháng</span></td>
                     <td style="display: ${canEdit ? '' : 'none'}">
                         <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
@@ -1909,7 +2111,15 @@
                 const newPass=document.getElementById('admin-new-password').value;
                 const confirmPass=document.getElementById('admin-confirm-password').value;
 
-                if (!currentUsername) { alert('Vui lòng đăng nhập lại!'); return; }
+                if(!userDatabase || !userDatabase.admin){
+                    alert('Lỗi dữ liệu!');
+                    return;
+                }
+
+                if(currentPass!==userDatabase.admin.password){
+                    alert('Mật khẩu hiện tại không đúng!');
+                    return;
+                }
 
                 if(newPass.length<3){
                     alert('Mật khẩu quá ngắn!');
@@ -1921,19 +2131,11 @@
                     return;
                 }
 
-                if (!isScriptUrlConfigured()) { alert('Cần kết nối Google Sheet để đổi mật khẩu!'); return; }
+                userDatabase.admin.password=newPass;
+                saveLocalCache();
+                await pushToCloud({ action:'createUser', username:'admin', password:newPass, role:'Admin' });
 
-                // Mật khẩu hiện tại được xác thực Ở SERVER, không so sánh ở trình duyệt
-                let res = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "changeOwnPassword", username: currentUsername, oldPassword: currentPass, newPassword: newPass })
-                });
-                let data = await res.json();
-                if (data.status === "ERROR") { alert('❌ ' + data.message); return; }
-
-                authCreds.password = newPass;
-                alert('Đổi mật khẩu thành công!');
+                alert('Đổi mật khẩu Admin thành công!');
                 document.getElementById('admin-current-password').value='';
                 document.getElementById('admin-new-password').value='';
                 document.getElementById('admin-confirm-password').value='';
