@@ -168,26 +168,12 @@
 
         <div class="login-box" id="sub-forgot-box" style="display: none;">
             <i class="fa-solid fa-envelope-shield" style="color: var(--secondary-color);"></i>
-            <h2>ĐỔI MẬT KHẨU ADMIN</h2>
-            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">Mật khẩu mới sẽ được thiết lập sau khi xác thực Email liên kết quản trị viên (`admin@seahorse.com.vn`)</p>
-            <div id="forgot-step-1">
-                <div class="input-group">
-                    <label>Nhập Email liên kết Admin</label>
-                    <input type="email" id="forgot-email" placeholder="admin@seahorse.com.vn">
-                </div>
-                <button class="btn" onclick="sendOTP()">Gửi mã xác nhận OTP 📩</button>
-            </div>
-            <div id="forgot-step-2" style="display: none;">
-                <div class="input-group">
-                    <label style="color: green; font-weight: bold;">Mã OTP đã được gửi! Nhập mã OTP (Mã mẫu: 1234)</label>
-                    <input type="text" id="forgot-otp" placeholder="Nhập mã OTP gồm 4 số">
-                </div>
-                <div class="input-group">
-                    <label>Nhập Mật khẩu mới</label>
-                    <input type="password" id="forgot-new-password" placeholder="Nhập mật khẩu mới mong muốn">
-                </div>
-                <button class="btn btn-success" onclick="verifyOTPAndChangePassword()">Xác nhận Đổi Mật Khẩu ✔️</button>
-            </div>
+            <h2>QUÊN MẬT KHẨU</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">
+                Vì lý do bảo mật, hệ thống không tự đặt lại mật khẩu qua email/OTP tự động.
+                Vui lòng liên hệ <b>Quản trị viên (Admin)</b> của công ty để được cấp lại mật khẩu
+                trực tiếp trong mục <i>Cài đặt hệ thống (Admin) → Danh sách User → Đặt lại mật khẩu</i>.
+            </p>
             <div style="margin-top: 15px;">
                 <a href="#" onclick="toggleForgotPasswordForm(false)" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
             </div>
@@ -204,11 +190,11 @@
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
+                    <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
-                    <li class="menu-item" id="menu-profile-docs" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
+                    <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
-                    <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
                 </ul>
             </div>
@@ -341,9 +327,26 @@
                 <h2 class="page-title"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</h2>
                 <div class="admin-box">
                     <h3><i class="fa-solid fa-user-check"></i> Chọn nhân viên</h3>
+
+                    <div class="form-row" style="margin-bottom: 6px;">
+                        <div class="input-group">
+                            <label>Tìm kiếm MSNV</label>
+                            <input type="text" id="doc-search-msnv" class="search-box" placeholder="Nhập MSNV..." oninput="renderProfileDocStaffSelect()">
+                        </div>
+                        <div class="input-group">
+                            <label>Tìm theo tên</label>
+                            <input type="text" id="doc-search-name" class="search-box" placeholder="Nhập tên nhân viên..." oninput="renderProfileDocStaffSelect()">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:6px;">Lọc theo phòng ban</label>
+                        <div id="doc-dept-tabs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                    </div>
+
                     <div class="form-row">
                         <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>Tìm theo MSNV / Họ tên</label>
+                            <label>Chọn nhân viên</label>
                             <select id="doc-staff-select" class="search-box" style="width:100%;" onchange="onProfileDocStaffChange()">
                                 <option value="">-- Chọn nhân viên --</option>
                             </select>
@@ -441,6 +444,20 @@
                                 <option value="ReadOnly">Chỉ Xem (Không có nút Hành động & tab Thêm mới)</option>
                             </select>
                         </div>
+                        <div class="input-group">
+                            <label>Quyền riêng: Hồ sơ Nhân viên</label>
+                            <div style="display:flex; gap:14px; align-items:center; height:38px; flex-wrap:wrap;">
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-view" style="width:auto;"> Xem tab
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-upload" style="width:auto;"> Tải lên
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-docs-delete" style="width:auto;"> Xóa
+                                </label>
+                            </div>
+                        </div>
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
                             <button class="btn" style="width:auto" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
                         </div>
@@ -537,19 +554,61 @@
             { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
         ];
         let mailGroups = [];
+        // LƯU Ý BẢO MẬT: userDatabase KHÔNG còn lưu trường "password" của bất kỳ ai nữa.
+        // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
+        // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
         let userDatabase = {
-            "admin": { password: "123", role: "Admin", emailLink: "admin@seahorse.com.vn" }
+            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true }
         };
+        // Thông tin đăng nhập hiện tại — CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc,
+        // KHÔNG lưu vào localStorage, để tránh lộ mật khẩu nếu máy dùng chung / bị truy cập trái phép.
+        // Mỗi lần tải lại trang, người dùng cần đăng nhập lại — đây là đánh đổi cần thiết cho bảo mật.
+        let authCreds = { username: null, password: null };
+        let currentUserCanUploadDocs = false;
+        let currentUserCanDeleteDocs = false;
         let currentUser = null;
         let currentUsername = null;
         let cloudReady = false;
         let globalBase64Image = ""; 
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
+
+        // Chống XSS: chuyển ký tự đặc biệt HTML (<, >, &, ", ') thành dạng an toàn trước khi
+        // chèn dữ liệu do người dùng nhập (tên, chức vụ, tên file...) vào innerHTML.
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return "";
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Chuẩn hóa trường "dept" về đúng dạng mảng (Array), kể cả với dữ liệu cũ từng bị
+        // lưu lồng JSON 2 lớp (lỗi double-encode trước đây). Lặp giải mã tối đa vài lần
+        // cho tới khi ra mảng thật, tránh vòng lặp vô hạn nếu dữ liệu bất thường.
+        function normalizeDept(dept) {
+            let value = dept;
+            for (let i = 0; i < 3 && typeof value === "string"; i++) {
+                try {
+                    let parsed = JSON.parse(value);
+                    if (parsed === value) break;
+                    value = parsed;
+                } catch (e) {
+                    break;
+                }
+            }
+            if (Array.isArray(value)) return value;
+            if (value) return [value];
+            return [];
+        }
         const DOC_TYPES = [
             { code: "SYLL",    label: "1. Sơ yếu lý lịch",                icon: "fa-id-card" },
             { code: "HDLD",    label: "2. Hợp đồng lao động / Phụ lục",   icon: "fa-file-contract" },
             { code: "BANGCAP", label: "3. Bằng cấp liên quan",            icon: "fa-graduation-cap" },
-            { code: "KSK",     label: "4. Giấy khám sức khỏe",            icon: "fa-notes-medical" }
+            { code: "KSK",     label: "4. Giấy khám sức khỏe",            icon: "fa-notes-medical" },
+            { code: "CCCD",    label: "5. Giấy CCCD/CMND",                icon: "fa-id-card-clip" },
+            { code: "KHAC",    label: "6. Các giấy tờ khác",              icon: "fa-folder-plus" }
         ];
 
         function isScriptUrlConfigured() {
@@ -575,9 +634,7 @@
                 if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
                 if (cache.staffData) {
                     staffData = cache.staffData.map(item => {
-                        if (typeof item.dept === "string") {
-                            try { item.dept = JSON.parse(item.dept); } catch(e) { item.dept = [item.dept]; }
-                        }
+                        item.dept = normalizeDept(item.dept);
                         return item;
                     });
                 }
@@ -587,8 +644,7 @@
                 if (cache.documentsData) documentsData = cache.documentsData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
-                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
-                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
                 }
                 return true;
             } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
@@ -613,14 +669,20 @@
                 if (manual) {
                     showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
                 }
-                let res = await fetch(SCRIPT_URL, { method: "GET" });
+                // Gửi kèm thông tin xác thực (nếu đã đăng nhập) để server biết có được phép
+                // trả về dữ liệu đầy đủ (nhân sự/tài khoản) hay chỉ danh mục công khai.
+                let url = SCRIPT_URL;
+                if (authCreds.username && authCreds.password) {
+                    url += (url.indexOf("?") >= 0 ? "&" : "?") +
+                        "authUser=" + encodeURIComponent(authCreds.username) +
+                        "&authPass=" + encodeURIComponent(authCreds.password);
+                }
+                let res = await fetch(url, { method: "GET" });
                 let data = await res.json();
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 staffData = (data.staff || []).map(item => {
-                    if (typeof item.dept === "string") {
-                        try { item.dept = JSON.parse(item.dept); } catch(e) { item.dept = [item.dept]; }
-                    }
+                    item.dept = normalizeDept(item.dept);
                     return item;
                 });
                 crewData = data.crew || [];
@@ -629,10 +691,10 @@
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.documents) documentsData = data.documents;
-                if (data.users) {
+                if (data.users && Object.keys(data.users).length) {
+                    // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
-                    userDatabase.admin = userDatabase.admin || { password: "123", role: "Admin" };
-                    userDatabase.admin.emailLink = userDatabase.admin.emailLink || "admin@seahorse.com.vn";
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
                 }
                 cloudReady = true;
                 saveLocalCache();
@@ -655,9 +717,18 @@
             }
             try {
                 showSyncBanner("Đang lưu lên Google Sheet...");
-                if (payload.dept && Array.isArray(payload.dept)) {
-                    payload.dept = JSON.stringify(payload.dept);
+                // LƯU Ý: KHÔNG stringify payload.dept ở đây — backend (Apps Script) đã tự
+                // JSON.stringify(data.dept) khi lưu vào Sheet. Nếu stringify thêm ở đây sẽ
+                // gây lỗi "double-encode" khiến phòng ban hiển thị sai và lọc không ra kết quả.
+
+                // Tự động đính kèm thông tin người đang đăng nhập vào MỌI request ghi/xóa,
+                // để server xác thực & kiểm tra quyền trước khi thực hiện (không chỉ tin
+                // tưởng giao diện đã ẩn nút). authCreds.action riêng ("login") không đi qua đây.
+                if (authCreds.username && authCreds.password && !payload.authUser) {
+                    payload.authUser = authCreds.username;
+                    payload.authPass = authCreds.password;
                 }
+
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -687,35 +758,6 @@
         function toggleForgotPasswordForm(show) {
             document.getElementById("sub-login-box").style.display = show ? "none" : "block";
             document.getElementById("sub-forgot-box").style.display = show ? "block" : "none";
-            document.getElementById("forgot-step-1").style.display = "block";
-            document.getElementById("forgot-step-2").style.display = "none";
-            document.getElementById("forgot-email").value = "";
-            document.getElementById("forgot-otp").value = "";
-            document.getElementById("forgot-new-password").value = "";
-        }
-
-        function sendOTP() {
-            let emailInput = document.getElementById("forgot-email").value.trim();
-            if (emailInput !== userDatabase.admin.emailLink) {
-                alert("❌ Email không khớp với hòm thư liên kết của tài khoản Admin công ty!");
-                return;
-            }
-            alert("✔️ Hệ thống đã gửi mã bảo mật OTP về email của bạn.\nVui lòng kiểm tra hộp thư đến (Mã xác thực mẫu của bạn là: 1234)");
-            document.getElementById("forgot-step-1").style.display = "none";
-            document.getElementById("forgot-step-2").style.display = "block";
-        }
-
-        async function verifyOTPAndChangePassword() {
-            let otp = document.getElementById("forgot-otp").value.trim();
-            let newPass = document.getElementById("forgot-new-password").value;
-            if (otp !== "1234") { alert("❌ Mã OTP không chính xác hoặc đã hết hiệu lực!"); return; }
-            if (!newPass) { alert("❌ Vui lòng không độ trống mật khẩu mới!"); return; }
-
-            userDatabase.admin.password = newPass;
-            saveLocalCache();
-            await pushToCloud({ action: "createUser", username: "admin", password: newPass, role: "Admin" });
-            alert("🎉 Đổi mật khẩu Admin thành công! Hệ thống đang chuyển bạn về màn hình đăng nhập.");
-            toggleForgotPasswordForm(false);
         }
 
         function openChangePasswordModal() {
@@ -734,7 +776,7 @@
             let errEl = document.getElementById("cpw-error");
             errEl.style.display = "none";
 
-            if (!currentUsername || !userDatabase[currentUsername]) {
+            if (!currentUsername) {
                 errEl.innerText = "❌ Không xác định được người dùng hiện tại. Vui lòng đăng nhập lại.";
                 errEl.style.display = "block";
                 return;
@@ -744,11 +786,6 @@
             let newPass = document.getElementById("cpw-new").value;
             let confirmPass = document.getElementById("cpw-confirm").value;
 
-            if (String(curPass).trim() !== String(userDatabase[currentUsername].password).trim()) {
-                errEl.innerText = "❌ Mật khẩu hiện tại không đúng!";
-                errEl.style.display = "block";
-                return;
-            }
             if (!newPass || !newPass.trim()) {
                 errEl.innerText = "⚠️ Vui lòng nhập mật khẩu mới!";
                 errEl.style.display = "block";
@@ -759,32 +796,61 @@
                 errEl.style.display = "block";
                 return;
             }
+            if (!isScriptUrlConfigured()) {
+                errEl.innerText = "⚠️ Cần kết nối Google Sheet (tab Admin) để đổi mật khẩu.";
+                errEl.style.display = "block";
+                return;
+            }
 
-            userDatabase[currentUsername].password = newPass.trim();
-            currentUser = userDatabase[currentUsername];
-            saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: currentUsername, password: newPass.trim(), role: userDatabase[currentUsername].role });
-            alert(ok ? "🎉 Đổi mật khẩu thành công! (Đã đồng bộ)" : "🎉 Đổi mật khẩu thành công! (Lưu cục bộ)");
-            closeChangePasswordModal();
-            if (currentUser.role === "Admin") renderUserListViewForAdmin();
+            try {
+                // Mật khẩu hiện tại được XÁC THỰC Ở SERVER (không so sánh ở trình duyệt nữa)
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "changeOwnPassword",
+                        username: currentUsername,
+                        oldPassword: curPass,
+                        newPassword: newPass.trim()
+                    })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+
+                authCreds.password = newPass.trim(); // cập nhật để các request tiếp theo trong phiên vẫn hoạt động
+                alert("🎉 Đổi mật khẩu thành công!");
+                closeChangePasswordModal();
+            } catch (err) {
+                errEl.innerText = "❌ " + err.message;
+                errEl.style.display = "block";
+            }
         }
 
         async function createNewUserByAdmin() {
             let uName = document.getElementById("adm-new-username").value.trim();
             let uPass = document.getElementById("adm-new-password").value;
             let uRole = document.getElementById("adm-new-role").value;
+            let uDocsView = document.getElementById("adm-new-docs-view").checked;
+            let uDocsUpload = document.getElementById("adm-new-docs-upload").checked;
+            let uDocsDelete = document.getElementById("adm-new-docs-delete").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            userDatabase[uName] = { password: uPass, role: uRole };
-            saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole });
-            if (ok) alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Đã đồng bộ Google Sheet).`);
-            else alert(`✔️ Đã khởi tạo tài khoản "${uName}" (Lưu cục bộ).`);
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete });
+            if (ok) {
+                userDatabase[uName] = { role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete };
+                saveLocalCache();
+                alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
+            } else {
+                alert(`❌ Không thể khởi tạo tài khoản "${uName}". Kiểm tra lại quyền Admin của bạn hoặc kết nối mạng.`);
+            }
 
             document.getElementById("adm-new-username").value = "";
             document.getElementById("adm-new-password").value = "";
+            document.getElementById("adm-new-docs-view").checked = false;
+            document.getElementById("adm-new-docs-upload").checked = false;
+            document.getElementById("adm-new-docs-delete").checked = false;
             renderUserListViewForAdmin();
         }
 
@@ -794,10 +860,8 @@
             newPass = newPass.trim();
             if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
 
-            userDatabase[username].password = newPass;
-            saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role });
-            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}" (Đã đồng bộ).` : `✔️ Đã đặt lại mật khẩu cho "${username}" (Lưu cục bộ).`);
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
+            alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
 
@@ -805,10 +869,9 @@
             if (username === "admin") { alert("⚠️ Không thể xóa tài khoản Admin gốc!"); return; }
             if (!confirm(`Xác nhận XÓA VĨNH VIỄN tài khoản "${username}"?`)) return;
 
-            delete userDatabase[username];
-            saveLocalCache();
             let ok = await pushToCloud({ action: "deleteUser", username: username });
-            alert(ok ? `✔️ Đã xóa tài khoản "${username}" (Đã đồng bộ).` : `✔️ Đã xóa tài khoản "${username}" (Lưu cục bộ).`);
+            if (ok) { delete userDatabase[username]; saveLocalCache(); }
+            alert(ok ? `✔️ Đã xóa tài khoản "${username}".` : `❌ Không thể xóa tài khoản (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
 
@@ -816,35 +879,94 @@
             if (username === "admin") { alert("⚠️ Không thể thay đổi phân quyền của tài khoản Admin gốc!"); renderUserListViewForAdmin(); return; }
             if (!userDatabase[username]) return;
 
-            userDatabase[username].role = newRole;
-            saveLocalCache();
-            let ok = await pushToCloud({ action: "createUser", username: username, password: userDatabase[username].password, role: newRole });
-            alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}" (Đã đồng bộ).` : `✔️ Đã cập nhật phân quyền cho "${username}" (Lưu cục bộ).`);
+            // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
+            // chỉ cập nhật role/quyền. authUser/authPass (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
+            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
+            if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
+            alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
+            renderUserListViewForAdmin();
+        }
+
+        // Bật/tắt quyền "Xem tab", "Tải lên" hoặc "Xóa" hồ sơ NV cho 1 user cụ thể (dành cho HR)
+        async function toggleUserDocsPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newDocsView = userDatabase[username].docsView;
+            let newDocsUpload = userDatabase[username].docsUpload;
+            let newDocsDelete = userDatabase[username].docsDelete;
+            if (field === "docsView") newDocsView = checked;
+            if (field === "docsUpload") newDocsUpload = checked;
+            if (field === "docsDelete") newDocsDelete = checked;
+
+            // Nếu tắt quyền Xem thì cũng tự động tắt Tải lên & Xóa
+            if (field === "docsView" && !checked) { newDocsUpload = false; newDocsDelete = false; }
+            // Nếu bật Tải lên hoặc Xóa thì tự động bật luôn quyền Xem
+            if ((field === "docsUpload" || field === "docsDelete") && checked) newDocsView = true;
+
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                role: userDatabase[username].role,
+                docsView: !!newDocsView,
+                docsUpload: !!newDocsUpload,
+                docsDelete: !!newDocsDelete
+            });
+            if (ok) {
+                userDatabase[username].docsView = newDocsView;
+                userDatabase[username].docsUpload = newDocsUpload;
+                userDatabase[username].docsDelete = newDocsDelete;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
             renderUserListViewForAdmin();
         }
 
         function renderUserListViewForAdmin() {
             let html = "";
             for (let u in userDatabase) {
+                let safeU = escapeHtml(u);
                 let roleControl = "";
                 if (u === "admin") {
                     roleControl = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
                 } else {
                     let rw = userDatabase[u].role === "ReadWrite" ? "selected" : "";
                     let ro = userDatabase[u].role === "ReadOnly" ? "selected" : "";
-                    roleControl = `<select style="padding:3px 6px; font-size:12px; border-radius:3px; border:1px solid #ccc;" onchange="changeUserRole('${u}', this.value)" title="Điều chỉnh phân quyền">
+                    roleControl = `<select style="padding:3px 6px; font-size:12px; border-radius:3px; border:1px solid #ccc;" onchange="changeUserRole('${safeU}', this.value)" title="Điều chỉnh phân quyền">
                         <option value="ReadWrite" ${rw}>Toàn quyền (Ghi)</option>
                         <option value="ReadOnly" ${ro}>Chỉ Xem</option>
                     </select>`;
                 }
 
-                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${u}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
+                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 if (u !== "admin") {
-                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${u}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
+                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${safeU}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
 
+                let docsControl = "";
+                if (u === "admin") {
+                    docsControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-folder-open"></i> Toàn quyền hồ sơ NV</span>';
+                } else {
+                    let vChecked = userDatabase[u].docsView ? "checked" : "";
+                    let upChecked = userDatabase[u].docsUpload ? "checked" : "";
+                    let delChecked = userDatabase[u].docsDelete ? "checked" : "";
+                    docsControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-folder-open" title="Hồ sơ Nhân viên"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${vChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsView', this.checked)"> Xem
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${upChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsUpload', this.checked)"> Tải lên
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${delChecked} onchange="toggleUserDocsPermission('${safeU}', 'docsDelete', this.checked)"> Xóa
+                        </label>
+                    </span>`;
+                }
+
+                // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                    <span><b>${u}</b> (<code>${userDatabase[u].password}</code>) ${roleControl}</span>
+                    <span><b>${safeU}</b> ${roleControl}</span>
+                    ${docsControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -864,37 +986,60 @@
             let u = document.getElementById("username").value.trim();
             let p = document.getElementById("password").value;
             let err = document.getElementById("login-error");
+            err.style.display = "none";
 
             btn.disabled = true;
             btn.innerText = "Đang kiểm tra...";
-            if (isScriptUrlConfigured()) await loadFromCloud(manual=false); 
-            btn.disabled = false;
-            btn.innerText = "Đăng nhập";
 
-            if (userDatabase[u] && String(userDatabase[u].password).trim() === String(p).trim()) {
-                currentUser = userDatabase[u];
-                currentUsername = u;
-                err.style.display = "none";
+            try {
+                if (isScriptUrlConfigured()) {
+                    // Đăng nhập được XÁC THỰC Ở SERVER — mật khẩu không bao giờ được tải sẵn về trình duyệt.
+                    let res = await fetch(SCRIPT_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
+                        body: JSON.stringify({ action: "login", username: u, password: p })
+                    });
+                    let data = await res.json();
+                    if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
+
+                    currentUsername = u;
+                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete };
+                    authCreds = { username: u, password: p };
+
+                    await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
+                } else {
+                    // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
+                    if (u === "admin" && p === "123") {
+                        currentUsername = "admin";
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                        authCreds = { username: "admin", password: "123" };
+                    } else {
+                        throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
+                    }
+                }
+
                 document.getElementById("login-screen").style.display = "none";
-
-                let sys = document.getElementById("main-system");
-                sys.style.display = "flex";
-
-                document.getElementById("user-display").innerText = u;
+                document.getElementById("main-system").style.display = "flex";
+                document.getElementById("user-display").innerText = escapeHtml(u);
                 let scriptUrlInput = document.getElementById("adm-script-url");
                 if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
 
                 applyUserPermissions();
                 updateSystemData();
                 switchPage('dashboard');
-            } else {
+            } catch (e) {
+                err.innerText = "❌ " + e.message;
                 err.style.display = "block";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Đăng nhập";
             }
         }
 
         function handleLogout() {
             currentUser = null;
             currentUsername = null;
+            authCreds = { username: null, password: null }; // xóa thông tin xác thực khỏi bộ nhớ
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
             document.getElementById("login-screen").style.display = "flex";
@@ -907,6 +1052,15 @@
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
+
+            // ==== Quyền riêng cho tab "Hồ sơ Nhân viên" ====
+            // Admin luôn có toàn quyền. Các role khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
+            let canViewDocs = (currentUser.role === "Admin") || !!currentUser.docsView;
+            let canUploadDocs = (currentUser.role === "Admin") || !!currentUser.docsUpload;
+            let canDeleteDocs = (currentUser.role === "Admin") || !!currentUser.docsDelete;
+            currentUserCanUploadDocs = canUploadDocs;
+            currentUserCanDeleteDocs = canDeleteDocs;
+            document.getElementById("menu-profile-docs").style.display = canViewDocs ? "flex" : "none";
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
@@ -932,6 +1086,10 @@
         }
 
         function switchPage(pageId) {
+            if (pageId === "profile-docs") {
+                let canViewDocs = currentUser && ((currentUser.role === "Admin") || !!currentUser.docsView);
+                if (!canViewDocs) { alert("⚠️ Bạn không có quyền xem Hồ sơ Nhân viên. Liên hệ Admin để được cấp quyền."); return; }
+            }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
             document.getElementById("page-" + pageId).classList.add("active");
@@ -942,17 +1100,55 @@
             }
         }
 
+        let docActiveDeptTab = "Tất cả";
+
+        function renderProfileDocDeptTabs() {
+            let wrap = document.getElementById("doc-dept-tabs");
+            if (!wrap) return;
+            let tabs = ["Tất cả"].concat(depts);
+            wrap.innerHTML = tabs.map(d => {
+                let active = (d === docActiveDeptTab);
+                return `<span onclick="setProfileDocDeptTab('${escapeHtml(d).replace(/'/g, "\\'")}')"
+                    style="cursor:pointer; padding:5px 12px; border-radius:16px; font-size:12.5px; white-space:nowrap;
+                    border:1px solid ${active ? 'var(--secondary-color)' : '#ddd'};
+                    background:${active ? 'var(--secondary-color)' : '#f5f5f5'};
+                    color:${active ? '#fff' : '#444'};">${escapeHtml(d)}</span>`;
+            }).join('');
+        }
+
+        function setProfileDocDeptTab(deptName) {
+            docActiveDeptTab = deptName;
+            renderProfileDocDeptTabs();
+            renderProfileDocStaffSelect();
+        }
+
         function renderProfileDocStaffSelect() {
             let sel = document.getElementById("doc-staff-select");
             if (!sel) return;
             let keep = sel.value;
+
+            let searchMsnv = (document.getElementById("doc-search-msnv")?.value || "").trim().toLowerCase();
+            let searchName = (document.getElementById("doc-search-name")?.value || "").trim().toLowerCase();
+
+            let filtered = staffData.filter(s => {
+                if (docActiveDeptTab !== "Tất cả") {
+                    let deptArr = Array.isArray(s.dept) ? s.dept : (s.dept ? [s.dept] : []);
+                    if (!deptArr.includes(docActiveDeptTab)) return false;
+                }
+                if (searchMsnv && !String(s.msnv || "").toLowerCase().includes(searchMsnv)) return false;
+                if (searchName && !String(s.name || "").toLowerCase().includes(searchName)) return false;
+                return true;
+            });
+
             let options = '<option value="">-- Chọn nhân viên --</option>' +
-                staffData.map(s => `<option value="${s.msnv}">${s.msnv} - ${s.name}</option>`).join('');
+                filtered.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
             sel.innerHTML = options;
-            if (keep && sel.querySelector(`option[value="${keep}"]`)) {
+            if (keep && sel.querySelector(`option[value="${CSS.escape(keep)}"]`)) {
                 sel.value = keep;
-                onProfileDocStaffChange();
+            } else {
+                document.getElementById("doc-staff-panel").style.display = "none";
             }
+            if (sel.value) onProfileDocStaffChange();
         }
 
         function onProfileDocStaffChange() {
@@ -962,7 +1158,7 @@
             let staff = staffData.find(s => s.msnv === msnv);
             panel.style.display = "block";
             document.getElementById("doc-staff-name-title").innerHTML =
-                `<i class="fa-solid fa-id-card"></i> Hồ sơ của: ${staff ? staff.name : msnv} (${msnv})`;
+                `<i class="fa-solid fa-id-card"></i> Hồ sơ của: ${escapeHtml(staff ? staff.name : msnv)} (${escapeHtml(msnv)})`;
             renderProfileDocSections(msnv);
         }
 
@@ -973,23 +1169,28 @@
                 let listHtml = files.length
                     ? '<ul class="doc-list">' + files.map(f => `
                         <li>
-                            <span><a href="${f.fileUrl}" target="_blank"><i class="fa-solid fa-file"></i> ${f.fileName}</a>
-                            <span class="doc-meta">${f.uploadDate || ""}</span></span>
-                            <span class="doc-del" onclick="deleteStaffDocument('${f.fileId}', '${msnv}')"><i class="fa-solid fa-trash"></i> Xóa</span>
+                            <span><a href="${escapeHtml(f.fileUrl)}" target="_blank"><i class="fa-solid fa-file"></i> ${escapeHtml(f.fileName)}</a>
+                            <span class="doc-meta">${escapeHtml(f.uploadDate) || ""}</span></span>
+                            ${currentUserCanDeleteDocs ? `<span class="doc-del" onclick="deleteStaffDocument('${escapeHtml(f.fileId)}', '${escapeHtml(msnv)}')"><i class="fa-solid fa-trash"></i> Xóa</span>` : ''}
                         </li>`).join('') + '</ul>'
                     : '<p class="doc-empty">Chưa có file nào được tải lên.</p>';
-                return `
-                    <div class="doc-type-box">
-                        <h4><i class="fa-solid ${dt.icon}"></i> ${dt.label}</h4>
-                        ${listHtml}
+                let uploadRowHtml = currentUserCanUploadDocs ? `
                         <div class="doc-upload-row">
                             <input type="file" id="doc-file-${dt.code}" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                             <button class="btn" style="width:auto; padding:8px 16px;" onclick="uploadStaffDocument('${dt.code}', '${msnv}')">
                                 <i class="fa-solid fa-upload"></i> Tải lên
                             </button>
-                        </div>
+                        </div>` : '';
+                return `
+                    <div class="doc-type-box">
+                        <h4><i class="fa-solid ${dt.icon}"></i> ${dt.label}</h4>
+                        ${listHtml}
+                        ${uploadRowHtml}
                     </div>`;
             }).join('');
+            if (!currentUserCanUploadDocs && !currentUserCanDeleteDocs) {
+                container.innerHTML = '<p class="doc-empty" style="margin-bottom:10px;"><i class="fa-solid fa-lock"></i> Bạn chỉ có quyền xem hồ sơ. Liên hệ Admin nếu cần quyền tải lên/xóa.</p>' + container.innerHTML;
+            }
         }
 
         function uploadStaffDocument(docType, msnv) {
@@ -1067,6 +1268,7 @@
             renderOtherAppsAdminList();
             renderDeptVesselLists();
             renderMailGroupsAdminList();
+            renderProfileDocDeptTabs();
             renderProfileDocStaffSelect();
         }
 
@@ -1187,9 +1389,10 @@
         function renderStaffGrid() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let htmlStaffGrid = staffData.map((s, idx) => {
+                let safeName = escapeHtml(s.name);
                 let avatarHtml = s.imgUrl 
-                    ? `<img src="${s.imgUrl}" alt="${s.name}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${s.name.charAt(0)}</div>'">`
-                    : `<div class="placeholder-avatar">${s.name.charAt(0)}</div>`;
+                    ? `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
+                    : `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
 
                 let actionsHtml = canEdit ? `
                     <div class="actions">
@@ -1200,21 +1403,21 @@
 
                 let deptChips = "";
                 if (Array.isArray(s.dept)) {
-                    deptChips = s.dept.map(d => `<span class="chip-dept">${d}</span>`).join('');
+                    deptChips = s.dept.map(d => `<span class="chip-dept">${escapeHtml(d)}</span>`).join('');
                 } else if (s.dept) {
-                    deptChips = `<span class="chip-dept">${s.dept}</span>`;
+                    deptChips = `<span class="chip-dept">${escapeHtml(s.dept)}</span>`;
                 }
 
                 return `
                     <div class="contact-card">
                         ${avatarHtml}
                         <div class="info">
-                            <h4>${s.name}</h4>
-                            <p><span class="label">MSNV:</span><strong>${s.msnv}</strong></p>
+                            <h4>${safeName}</h4>
+                            <p><span class="label">MSNV:</span><strong>${escapeHtml(s.msnv)}</strong></p>
                             <p><span class="label">Phòng ban:</span> ${deptChips}</p>
-                            <p><span class="label">Chức vụ:</span>${s.position}</p>
-                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${s.phone || 'Chưa cập nhật'}</p>
-                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${s.email || 'Chưa cập nhật'}</p>
+                            <p><span class="label">Chức vụ:</span>${escapeHtml(s.position)}</p>
+                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.phone) || 'Chưa cập nhật'}</p>
+                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.email) || 'Chưa cập nhật'}</p>
                         </div>
                         ${actionsHtml}
                     </div>
@@ -1227,12 +1430,12 @@
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let htmlCrew = crewData.map((c, idx) => `
                 <tr>
-                    <td><b>${c.name}</b></td>
+                    <td><b>${escapeHtml(c.name)}</b></td>
                     <td>${formatDateDisplay(c.dob)}</td>
-                    <td><i class="fa-solid fa-ship" style="color:#666"></i> ${c.vessel}</td>
-                    <td>${c.position}</td>
+                    <td><i class="fa-solid fa-ship" style="color:#666"></i> ${escapeHtml(c.vessel)}</td>
+                    <td>${escapeHtml(c.position)}</td>
                     <td>${formatDateDisplay(c.dateJoin)}</td>
-                    <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${c.months} tháng</span></td>
+                    <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(c.months)} tháng</span></td>
                     <td style="display: ${canEdit ? '' : 'none'}">
                         <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
@@ -1706,15 +1909,7 @@
                 const newPass=document.getElementById('admin-new-password').value;
                 const confirmPass=document.getElementById('admin-confirm-password').value;
 
-                if(!userDatabase || !userDatabase.admin){
-                    alert('Lỗi dữ liệu!');
-                    return;
-                }
-
-                if(currentPass!==userDatabase.admin.password){
-                    alert('Mật khẩu hiện tại không đúng!');
-                    return;
-                }
+                if (!currentUsername) { alert('Vui lòng đăng nhập lại!'); return; }
 
                 if(newPass.length<3){
                     alert('Mật khẩu quá ngắn!');
@@ -1726,11 +1921,19 @@
                     return;
                 }
 
-                userDatabase.admin.password=newPass;
-                saveLocalCache();
-                await pushToCloud({ action:'createUser', username:'admin', password:newPass, role:'Admin' });
+                if (!isScriptUrlConfigured()) { alert('Cần kết nối Google Sheet để đổi mật khẩu!'); return; }
 
-                alert('Đổi mật khẩu Admin thành công!');
+                // Mật khẩu hiện tại được xác thực Ở SERVER, không so sánh ở trình duyệt
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "changeOwnPassword", username: currentUsername, oldPassword: currentPass, newPassword: newPass })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert('❌ ' + data.message); return; }
+
+                authCreds.password = newPass;
+                alert('Đổi mật khẩu thành công!');
                 document.getElementById('admin-current-password').value='';
                 document.getElementById('admin-new-password').value='';
                 document.getElementById('admin-confirm-password').value='';
