@@ -338,47 +338,19 @@
                     <input type="hidden" id="edit-index-eq" value="">
                     <div class="form-row">
                         <div class="input-group">
-                            <label>Họ tên nhân viên</label>
-                            <select id="inp-eq-staff"></select>
-                        </div>
-                        <div class="input-group">
                             <label>Phòng làm việc</label>
-                            <select id="inp-eq-dept"></select>
+                            <select id="inp-eq-dept" onchange="onEqDeptChange()"></select>
                         </div>
                         <div class="input-group">
-                            <label>Loại thiết bị</label>
-                            <select id="inp-eq-type"></select>
-                        </div>
-                        <div class="input-group">
-                            <label>Mã số thiết bị</label>
-                            <input type="text" id="inp-eq-code" placeholder="Ví dụ: TB-0012">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>Tên thiết bị</label>
-                            <input type="text" id="inp-eq-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
-                        </div>
-                        <div class="input-group">
-                            <label>Tình trạng thiết bị</label>
-                            <select id="inp-eq-status"></select>
-                        </div>
-                        <div class="input-group">
-                            <label>Đơn vị tính</label>
-                            <input type="text" id="inp-eq-unit" placeholder="Cái, Chiếc, Bộ...">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>Số lượng</label>
-                            <input type="number" id="inp-eq-qty" min="1" step="1" value="1">
+                            <label>Họ tên nhân viên</label>
+                            <select id="inp-eq-staff" onchange="onEqStaffChange()"></select>
                         </div>
                         <div class="input-group">
                             <label>Ngày nhân sự nhận thiết bị</label>
                             <input type="date" id="inp-eq-date-received">
                         </div>
                         <div class="input-group">
-                            <label>Ngày nhân sự bàn giao</label>
+                            <label>Ngày nhân sự bàn giao (nếu có)</label>
                             <input type="date" id="inp-eq-date-return">
                         </div>
                         <div class="input-group">
@@ -386,10 +358,22 @@
                             <input type="text" id="inp-eq-location" placeholder="Ví dụ: Văn phòng SME Quảng Ngãi - Tầng 2">
                         </div>
                     </div>
+
+                    <label style="display:block; margin: 6px 0 8px 0; font-weight:bold; color:#444;">
+                        <i class="fa-solid fa-boxes-packing"></i> Danh sách thiết bị cấp phát
+                        <span id="eq-items-hint" style="font-weight:normal; color:#888; font-size:12px;">(có thể thêm nhiều thiết bị cùng lúc cho nhân viên trên, chỉ cần lưu 1 lần)</span>
+                    </label>
+                    <div id="eq-items-wrap"></div>
+                    <div class="form-row" style="margin-top:-5px; margin-bottom:20px;">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <button type="button" class="btn btn-sm" id="btn-add-eq-item" style="background:var(--secondary-color); width:auto;" onclick="addEquipmentItemRow()"><i class="fa-solid fa-plus"></i> Thêm thiết bị khác cho nhân viên này</button>
+                        </div>
+                    </div>
+
                     <div class="form-row">
                         <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>Ghi chú</label>
-                            <textarea id="inp-eq-note" rows="2" placeholder="Ghi chú thêm..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                            <label>Ghi chú chung</label>
+                            <textarea id="inp-eq-note" rows="2" placeholder="Ghi chú thêm... (áp dụng cho các thiết bị vừa khai báo ở trên)" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:10px">
@@ -402,8 +386,8 @@
 
                 <div class="table-controls">
                     <input type="text" id="search-equipment" class="search-box" oninput="filterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
+                    <select id="filter-eq-dept" class="search-box" onchange="onFilterEqDeptChange()" style="max-width: 220px;"></select>
                     <select id="filter-eq-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
-                    <select id="filter-eq-dept" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
                     <select id="filter-eq-type" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
                 </div>
                 <div style="overflow-x:auto;">
@@ -652,7 +636,21 @@
         // Danh sách thiết bị: mỗi phần tử { assetCode, name, type, msnv, dept, status, unit, qty, dateReceived, dateReturn, location, note }.
         // Thiết bị có msnv rỗng ("") được xem là "Thiết bị lưu kho" (chưa cấp phát cho ai).
         let equipmentData = [];
-        const EQUIPMENT_TYPES = ["Nội thất", "Máy tính - IT", "Thiết bị văn phòng", "Máy móc - Kỹ thuật", "Thiết bị bảo hộ lao động", "Khác"];
+        // Danh mục thiết bị dạng 2 cấp: Nhóm thiết bị -> các Loại chi tiết trong nhóm đó.
+        // Nhóm không có loại chi tiết (mảng rỗng) sẽ ẩn ô "Loại chi tiết" khi chọn.
+        const EQUIPMENT_CATEGORIES = {
+            "Nội thất": ["Bàn làm việc", "Ghế", "Tủ đựng tài liệu", "Khác"],
+            "Laptop": ["Laptop Dell", "Laptop HP", "Laptop Lenovo", "iPad", "Macbook", "Khác"],
+            "Desktop": ["Máy tính bộ Dell", "CPU", "Màn hình"],
+            "Điện thoại": ["Điện thoại bàn", "Máy fax", "EX Phone"],
+            "Máy in": ["Canon", "HP", "Xerox", "Toshiba", "Ricoh", "Máy photocopy", "Máy scan"],
+            "Thiết bị điện": ["Máy hủy giấy", "Quạt điện", "Cây nước nóng lạnh", "Tivi", "Điều hòa", "Tủ lạnh", "Quạt điều hòa", "Bình thủy điện", "Lò vi sóng", "Khác"],
+            "Máy đo khí": ["Đơn khí", "Đa khí"],
+            "Xe đạp": [],
+            "Xe ô tô": [],
+            "Thiết bị khác": []
+        };
+        const EQUIPMENT_TYPES = Object.keys(EQUIPMENT_CATEGORIES);
         const EQUIPMENT_STATUS = ["Mới", "Đang sử dụng", "Cũ", "Hỏng - Chờ sửa", "Lưu kho", "Đã thanh lý"];
         // LƯU Ý BẢO MẬT: userDatabase KHÔNG còn lưu trường "password" của bất kỳ ai nữa.
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
@@ -1076,11 +1074,32 @@
             if (viewEl) viewEl.innerHTML = html;
         }
 
+        // Lấy đúng phần "yyyy-MM-dd" từ 1 giá trị ngày, dù giá trị đó là:
+        // - chuỗi "yyyy-MM-dd" chuẩn
+        // - chuỗi ISO có giờ dạng "yyyy-MM-ddTHH:mm:ss.sssZ" (dữ liệu cũ / lỗi múi giờ trước đây)
+        // - hoặc rỗng
+        // Trả về "" nếu không nhận diện được, để tránh hiển thị rác ra giao diện.
+        function normalizeDateStr(dateStr) {
+            if (!dateStr) return "";
+            let s = dateStr.toString().trim();
+            if (!s) return "";
+            let isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})T/);
+            if (isoMatch) return isoMatch[1];
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            return s;
+        }
+
         function formatDateDisplay(dateStr) {
-            if (!dateStr) return "-";
-            let parts = dateStr.toString().split('-');
-            if (parts.length !== 3) return dateStr;
+            let s = normalizeDateStr(dateStr);
+            if (!s) return "-";
+            let parts = s.split('-');
+            if (parts.length !== 3) return s;
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Chuyển 1 giá trị ngày bất kỳ về đúng định dạng "yyyy-MM-dd" mà thẻ <input type="date"> chấp nhận.
+        function toDateInputValue(dateStr) {
+            return normalizeDateStr(dateStr);
         }
 
         async function handleLogin() {
@@ -1557,42 +1576,46 @@
             return s ? s.name : msnv;
         }
 
+        // Lấy danh sách phòng ban của 1 nhân viên (luôn trả về mảng, kể cả dữ liệu cũ lưu dạng chuỗi đơn).
+        function getStaffDeptList(msnv) {
+            let s = staffData.find(x => x.msnv === msnv);
+            if (!s) return [];
+            return Array.isArray(s.dept) ? s.dept : (s.dept ? [s.dept] : []);
+        }
+
+        // Sinh HTML <option> danh sách nhân viên, có thể lọc theo 1 phòng ban (deptFilter rỗng = tất cả).
+        function buildStaffOptionsHtml(deptFilter, placeholderLabel) {
+            let list = deptFilter
+                ? staffData.filter(s => getStaffDeptList(s.msnv).includes(deptFilter))
+                : staffData;
+            return `<option value="">${escapeHtml(placeholderLabel)}</option>` +
+                list.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
+        }
+
         // Đổ dữ liệu vào các dropdown của form khai báo & của bộ lọc bảng thiết bị.
         // Gọi lại mỗi khi staffData/depts thay đổi để danh sách luôn cập nhật.
         function populateEquipmentFormOptions() {
-            let staffSel = document.getElementById("inp-eq-staff");
-            if (staffSel) {
-                let keep = staffSel.value;
-                staffSel.innerHTML = '<option value="">-- Chọn nhân viên (để trống = Lưu kho) --</option>' +
-                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
-                if (keep && staffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) staffSel.value = keep;
-            }
-
             let deptSel = document.getElementById("inp-eq-dept");
             if (deptSel) {
                 let keep = deptSel.value;
-                deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+                deptSel.innerHTML = '<option value="">-- Tất cả phòng ban --</option>' +
                     depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
                 if (keep && deptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) deptSel.value = keep;
             }
 
-            let typeSel = document.getElementById("inp-eq-type");
-            if (typeSel && !typeSel.options.length) {
-                typeSel.innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+            let staffSel = document.getElementById("inp-eq-staff");
+            if (staffSel) {
+                let keep = staffSel.value;
+                let deptF = deptSel ? deptSel.value : "";
+                staffSel.innerHTML = buildStaffOptionsHtml(deptF, "-- Chọn nhân viên (để trống = Lưu kho) --");
+                if (keep && staffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) staffSel.value = keep;
             }
 
-            let statusSel = document.getElementById("inp-eq-status");
-            if (statusSel && !statusSel.options.length) {
-                statusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${s}">${s}</option>`).join('');
-            }
-
-            let filterStaffSel = document.getElementById("filter-eq-staff");
-            if (filterStaffSel) {
-                let keep = filterStaffSel.value;
-                filterStaffSel.innerHTML = '<option value="Tất cả">-- Tất cả nhân viên --</option>' +
-                    '<option value="__WAREHOUSE__">📦 Thiết bị lưu kho</option>' +
-                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)}</option>`).join('');
-                if (keep && filterStaffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) filterStaffSel.value = keep;
+            // Đảm bảo luôn có ít nhất 1 dòng thiết bị trên form, và đổ danh mục cho các dòng đã có.
+            if (!document.querySelector("#eq-items-wrap .eq-item-row")) {
+                addEquipmentItemRow();
+            } else {
+                document.querySelectorAll("#eq-items-wrap .eq-item-row").forEach(row => fillEquipmentItemDropdowns(row));
             }
 
             let filterDeptSel = document.getElementById("filter-eq-dept");
@@ -1603,12 +1626,167 @@
                 if (keep && filterDeptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) filterDeptSel.value = keep;
             }
 
+            let filterStaffSel = document.getElementById("filter-eq-staff");
+            if (filterStaffSel) {
+                let keep = filterStaffSel.value;
+                // Theo yêu cầu: chọn 1 phòng ban -> chỉ hiện nhân viên phòng ban đó;
+                // chọn "-- Tất cả phòng ban --" -> hiện lại tất cả nhân viên.
+                let deptF = (filterDeptSel && filterDeptSel.value !== "Tất cả") ? filterDeptSel.value : "";
+                let staffList = deptF ? staffData.filter(s => getStaffDeptList(s.msnv).includes(deptF)) : staffData;
+                filterStaffSel.innerHTML = '<option value="Tất cả">-- Tất cả nhân viên --</option>' +
+                    '<option value="__WAREHOUSE__">📦 Thiết bị lưu kho</option>' +
+                    staffList.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)}</option>`).join('');
+                if (keep && filterStaffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) filterStaffSel.value = keep;
+            }
+
             let filterTypeSel = document.getElementById("filter-eq-type");
             if (filterTypeSel && !filterTypeSel.dataset.filled) {
-                filterTypeSel.innerHTML = '<option value="Tất cả">-- Tất cả loại thiết bị --</option>' +
-                    EQUIPMENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+                filterTypeSel.innerHTML = '<option value="Tất cả">-- Tất cả nhóm thiết bị --</option>' +
+                    EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
                 filterTypeSel.dataset.filled = "1";
             }
+        }
+
+        // Chọn Phòng làm việc ở form khai báo -> lọc lại danh sách nhân viên chỉ còn người của phòng đó
+        // (chọn "-- Tất cả phòng ban --" thì hiện lại toàn bộ nhân viên).
+        function onEqDeptChange() {
+            let deptSel = document.getElementById("inp-eq-dept");
+            let staffSel = document.getElementById("inp-eq-staff");
+            if (!deptSel || !staffSel) return;
+            let curStaff = staffSel.value;
+            staffSel.innerHTML = buildStaffOptionsHtml(deptSel.value, "-- Chọn nhân viên (để trống = Lưu kho) --");
+            if (curStaff && staffSel.querySelector(`option[value="${CSS.escape(curStaff)}"]`)) staffSel.value = curStaff;
+        }
+
+        // Chọn nhân viên ở form khai báo -> tự đồng bộ Phòng làm việc theo phòng ban của nhân viên đó.
+        function onEqStaffChange() {
+            let staffSel = document.getElementById("inp-eq-staff");
+            let deptSel = document.getElementById("inp-eq-dept");
+            if (!staffSel || !deptSel || !staffSel.value) return;
+            let deptList = getStaffDeptList(staffSel.value);
+            if (deptList.length && deptSel.querySelector(`option[value="${CSS.escape(deptList[0])}"]`)) {
+                deptSel.value = deptList[0];
+            }
+        }
+
+        // Chọn phòng ban ở bộ lọc bảng thiết bị -> đồng bộ lại danh sách nhân viên trong bộ lọc.
+        function onFilterEqDeptChange() {
+            populateEquipmentFormOptions();
+            filterEquipmentTable();
+        }
+
+        /* ===== Các dòng thiết bị (cho phép khai báo NHIỀU thiết bị cùng lúc cho 1 nhân viên) ===== */
+        let eqItemRowSeq = 0;
+
+        function renderEquipmentItemRowHtml(rid) {
+            return `
+            <div class="eq-item-row" data-row-id="${rid}" style="background:#f7f9fb; border:1px solid #e2e8f0; border-radius:6px; margin-bottom:10px; padding:14px;">
+                <div class="form-row" style="margin-bottom:0;">
+                    <div class="input-group">
+                        <label>Nhóm thiết bị</label>
+                        <select class="eq-item-cat" onchange="onEqItemCategoryChange(this)"></select>
+                    </div>
+                    <div class="input-group eq-item-subtype-wrap">
+                        <label>Loại chi tiết</label>
+                        <select class="eq-item-subtype" onchange="onEqItemSubtypeChange(this)"></select>
+                    </div>
+                    <div class="input-group">
+                        <label>Tên thiết bị</label>
+                        <input type="text" class="eq-item-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
+                    </div>
+                    <div class="input-group">
+                        <label>Mã số thiết bị</label>
+                        <input type="text" class="eq-item-code" placeholder="Ví dụ: TB-0012">
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:0; margin-top:10px;">
+                    <div class="input-group">
+                        <label>Tình trạng thiết bị</label>
+                        <select class="eq-item-status"></select>
+                    </div>
+                    <div class="input-group">
+                        <label>Đơn vị tính</label>
+                        <input type="text" class="eq-item-unit" placeholder="Cái, Chiếc, Bộ..." value="Cái">
+                    </div>
+                    <div class="input-group">
+                        <label>Số lượng</label>
+                        <input type="number" class="eq-item-qty" min="1" step="1" value="1">
+                    </div>
+                    <div class="input-group" style="display:flex; align-items:flex-end; justify-content:flex-end;">
+                        <button type="button" class="btn btn-sm btn-danger eq-item-remove-btn" style="width:auto;" onclick="removeEquipmentItemRow(this)"><i class="fa-solid fa-trash"></i> Xóa thiết bị này</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // Đổ danh mục Nhóm thiết bị & Tình trạng cho 1 dòng thiết bị mới tạo (chỉ đổ nếu còn trống).
+        function fillEquipmentItemDropdowns(row) {
+            let catSel = row.querySelector(".eq-item-cat");
+            if (catSel && !catSel.options.length) {
+                catSel.innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                onEqItemCategoryChange(catSel, true);
+            }
+            let statusSel = row.querySelector(".eq-item-status");
+            if (statusSel && !statusSel.options.length) {
+                statusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+                statusSel.value = "Mới";
+            }
+        }
+
+        // Đổi Nhóm thiết bị của 1 dòng -> đổ lại danh sách Loại chi tiết tương ứng với nhóm đó.
+        function onEqItemCategoryChange(catSel, isInit) {
+            let row = catSel.closest(".eq-item-row");
+            if (!row) return;
+            let subSel = row.querySelector(".eq-item-subtype");
+            let subWrap = row.querySelector(".eq-item-subtype-wrap");
+            let subtypes = EQUIPMENT_CATEGORIES[catSel.value] || [];
+            if (!subtypes.length) {
+                subSel.innerHTML = '<option value="">(không có)</option>';
+                if (subWrap) subWrap.style.display = "none";
+            } else {
+                if (subWrap) subWrap.style.display = "";
+                subSel.innerHTML = '<option value="">-- Chọn loại chi tiết --</option>' +
+                    subtypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+            }
+            if (!isInit) {
+                let nameInput = row.querySelector(".eq-item-name");
+                if (nameInput && !nameInput.value.trim()) nameInput.value = catSel.value;
+            }
+        }
+
+        // Chọn Loại chi tiết -> gợi ý luôn tên thiết bị (người dùng vẫn có thể sửa lại tự do).
+        function onEqItemSubtypeChange(subSel) {
+            let row = subSel.closest(".eq-item-row");
+            if (!row) return;
+            let nameInput = row.querySelector(".eq-item-name");
+            if (nameInput && subSel.value) nameInput.value = subSel.value;
+        }
+
+        // Thêm 1 dòng thiết bị mới vào form (cho phép khai báo nhiều thiết bị trong 1 lần lưu).
+        function addEquipmentItemRow() {
+            eqItemRowSeq++;
+            let wrap = document.getElementById("eq-items-wrap");
+            if (!wrap) return;
+            wrap.insertAdjacentHTML("beforeend", renderEquipmentItemRowHtml(eqItemRowSeq));
+            let row = wrap.querySelector(`.eq-item-row[data-row-id="${eqItemRowSeq}"]`);
+            if (row) fillEquipmentItemDropdowns(row);
+            updateEquipmentItemRemoveButtons();
+        }
+
+        function removeEquipmentItemRow(btn) {
+            let row = btn.closest(".eq-item-row");
+            if (row) row.remove();
+            if (!document.querySelector("#eq-items-wrap .eq-item-row")) addEquipmentItemRow();
+            updateEquipmentItemRemoveButtons();
+        }
+
+        // Chỉ hiện nút "Xóa thiết bị này" khi có từ 2 dòng thiết bị trở lên (luôn phải còn ít nhất 1 dòng).
+        function updateEquipmentItemRemoveButtons() {
+            let rows = document.querySelectorAll("#eq-items-wrap .eq-item-row");
+            rows.forEach(r => {
+                let btn = r.querySelector(".eq-item-remove-btn");
+                if (btn) btn.style.display = rows.length > 1 ? "" : "none";
+            });
         }
 
         function renderEquipmentTable() {
@@ -1635,11 +1813,12 @@
                     <button class="btn btn-sm btn-warning" onclick="startEditEquipment(${idx})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-sm btn-danger" onclick="deleteEquipmentRow(${idx})"><i class="fa-solid fa-trash"></i></button>
                 ` : "";
+                let typeLabel = e.type ? (e.type + (e.chiTiet ? ` - ${e.chiTiet}` : "")) : (e.chiTiet || "");
                 return `
                     <tr>
                         <td><b>${escapeHtml(e.assetCode)}</b></td>
                         <td>${escapeHtml(e.name)}</td>
-                        <td>${escapeHtml(e.type)}</td>
+                        <td>${escapeHtml(typeLabel)}</td>
                         <td>${staffLabel}</td>
                         <td>${escapeHtml(e.dept)}</td>
                         <td><span style="color:${statusColor}; font-weight:bold;">${escapeHtml(e.status)}</span></td>
@@ -1677,6 +1856,7 @@
                 let matchSearch = !search ||
                     (e.assetCode || "").toLowerCase().includes(search) ||
                     (e.name || "").toLowerCase().includes(search) ||
+                    (e.chiTiet || "").toLowerCase().includes(search) ||
                     (getStaffNameByMsnv(e.msnv) || "").toLowerCase().includes(search);
                 let matchStaff = (staffF === "Tất cả") || (e.msnv === staffF) || (staffF === "__WAREHOUSE__" && !e.msnv);
                 let matchDept = (deptF === "Tất cả" || e.dept === deptF);
@@ -1698,37 +1878,74 @@
             filterEquipmentTable();
         }
 
+        // Lưu thiết bị. Khi thêm mới, cho phép khai báo NHIỀU dòng thiết bị cùng lúc cho 1 nhân viên
+        // (mỗi dòng vẫn là 1 tài sản/mã số riêng, chỉ khác là không cần lặp lại thao tác chọn nhân viên/
+        // phòng ban/ngày nhận cho từng thiết bị). Khi sửa, chỉ có đúng 1 dòng thiết bị đang sửa.
         async function saveEquipment() {
             let idxRaw = document.getElementById("edit-index-eq").value;
             let isEdit = (idxRaw !== "");
             let checkIndex = isEdit ? parseInt(idxRaw) : -1;
 
-            let code = document.getElementById("inp-eq-code").value.trim();
-            let name = document.getElementById("inp-eq-name").value.trim();
-            if (!code || !name) { alert("⚠️ Vui lòng điền Mã số thiết bị và Tên thiết bị!"); return; }
+            let sharedMsnv = document.getElementById("inp-eq-staff").value;
+            let sharedDept = document.getElementById("inp-eq-dept").value;
+            let sharedDateReceived = document.getElementById("inp-eq-date-received").value;
+            let sharedDateReturn = document.getElementById("inp-eq-date-return").value;
+            let sharedLocation = document.getElementById("inp-eq-location").value.trim();
+            let sharedNote = document.getElementById("inp-eq-note").value.trim();
 
-            let duplicateCode = equipmentData.find((item, idx) => item.assetCode.trim().toLowerCase() === code.toLowerCase() && idx !== checkIndex);
-            if (duplicateCode) { alert("❌ Lỗi: Mã số thiết bị này đã tồn tại!"); return; }
+            let rows = Array.from(document.querySelectorAll("#eq-items-wrap .eq-item-row"));
+            if (!rows.length) { alert("⚠️ Vui lòng thêm ít nhất 1 thiết bị!"); return; }
 
-            let obj = {
-                assetCode: code,
-                name: name,
-                type: document.getElementById("inp-eq-type").value,
-                msnv: document.getElementById("inp-eq-staff").value,
-                dept: document.getElementById("inp-eq-dept").value,
-                status: document.getElementById("inp-eq-status").value,
-                unit: document.getElementById("inp-eq-unit").value.trim(),
-                qty: parseFloat(document.getElementById("inp-eq-qty").value) || 1,
-                dateReceived: document.getElementById("inp-eq-date-received").value,
-                dateReturn: document.getElementById("inp-eq-date-return").value,
-                location: document.getElementById("inp-eq-location").value.trim(),
-                note: document.getElementById("inp-eq-note").value.trim()
-            };
+            let items = [];
+            for (let row of rows) {
+                let code = row.querySelector(".eq-item-code").value.trim();
+                let name = row.querySelector(".eq-item-name").value.trim();
+                if (!code || !name) { alert("⚠️ Vui lòng điền đầy đủ Mã số thiết bị và Tên thiết bị cho từng dòng thiết bị!"); return; }
+                items.push({
+                    assetCode: code,
+                    name: name,
+                    type: row.querySelector(".eq-item-cat").value,
+                    chiTiet: row.querySelector(".eq-item-subtype").value,
+                    status: row.querySelector(".eq-item-status").value,
+                    unit: row.querySelector(".eq-item-unit").value.trim(),
+                    qty: parseFloat(row.querySelector(".eq-item-qty").value) || 1
+                });
+            }
 
-            if (isEdit) equipmentData[checkIndex] = obj; else equipmentData.push(obj);
+            // Chặn trùng Mã số thiết bị, cả trong chính lô đang nhập lẫn với dữ liệu đã có trong hệ thống.
+            let seenCodes = {};
+            for (let it of items) {
+                let lc = it.assetCode.toLowerCase();
+                if (seenCodes[lc]) { alert(`❌ Lỗi: Mã số thiết bị "${it.assetCode}" bị lặp lại trong danh sách vừa nhập!`); return; }
+                seenCodes[lc] = true;
+                let duplicateCode = equipmentData.find((item, idx) => item.assetCode.trim().toLowerCase() === lc && idx !== checkIndex);
+                if (duplicateCode) { alert(`❌ Lỗi: Mã số thiết bị "${it.assetCode}" đã tồn tại trong hệ thống!`); return; }
+            }
+
+            let savedCount = 0, failedCount = 0;
+            for (let it of items) {
+                let obj = Object.assign({
+                    msnv: sharedMsnv,
+                    dept: sharedDept,
+                    dateReceived: sharedDateReceived,
+                    dateReturn: sharedDateReturn,
+                    location: sharedLocation,
+                    note: sharedNote
+                }, it);
+
+                if (isEdit) { equipmentData[checkIndex] = obj; } else { equipmentData.push(obj); }
+                let ok = await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
+                if (ok) savedCount++; else failedCount++;
+            }
+
             saveLocalCache();
-            let ok = await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
-            alert(ok ? "✔️ Đã lưu thiết bị lên hệ thống." : "✔️ Đã lưu thiết bị (lưu cục bộ, chưa đồng bộ được lên Google Sheet).");
+            if (isEdit) {
+                alert(failedCount === 0 ? "✔️ Đã cập nhật thiết bị lên hệ thống." : "✔️ Đã cập nhật thiết bị (lưu cục bộ, chưa đồng bộ được lên Google Sheet).");
+            } else if (failedCount === 0) {
+                alert(`✔️ Đã lưu ${savedCount} thiết bị lên hệ thống.`);
+            } else {
+                alert(`✔️ Đã lưu ${savedCount} thiết bị lên hệ thống. ${failedCount} thiết bị chỉ lưu cục bộ (chưa đồng bộ được lên Google Sheet).`);
+            }
             resetEquipmentForm();
             updateSystemData();
         }
@@ -1738,18 +1955,33 @@
             if (!d) return;
             document.getElementById("edit-index-eq").value = idx;
             document.getElementById("eq-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị: ${escapeHtml(d.name)}`;
-            document.getElementById("inp-eq-staff").value = d.msnv || "";
             document.getElementById("inp-eq-dept").value = d.dept || "";
-            document.getElementById("inp-eq-type").value = d.type || EQUIPMENT_TYPES[0];
-            document.getElementById("inp-eq-code").value = d.assetCode || "";
-            document.getElementById("inp-eq-name").value = d.name || "";
-            document.getElementById("inp-eq-status").value = d.status || "Mới";
-            document.getElementById("inp-eq-unit").value = d.unit || "";
-            document.getElementById("inp-eq-qty").value = d.qty || 1;
-            document.getElementById("inp-eq-date-received").value = d.dateReceived || "";
-            document.getElementById("inp-eq-date-return").value = d.dateReturn || "";
+            onEqDeptChange();
+            document.getElementById("inp-eq-staff").value = d.msnv || "";
+            document.getElementById("inp-eq-date-received").value = toDateInputValue(d.dateReceived);
+            document.getElementById("inp-eq-date-return").value = toDateInputValue(d.dateReturn);
             document.getElementById("inp-eq-location").value = d.location || "";
             document.getElementById("inp-eq-note").value = d.note || "";
+
+            // Chế độ sửa: chỉ cho phép 1 dòng thiết bị (đúng thiết bị đang sửa), không cho thêm/bớt dòng.
+            document.getElementById("eq-items-wrap").innerHTML = "";
+            eqItemRowSeq++;
+            document.getElementById("eq-items-wrap").insertAdjacentHTML("beforeend", renderEquipmentItemRowHtml(eqItemRowSeq));
+            let row = document.querySelector(`#eq-items-wrap .eq-item-row[data-row-id="${eqItemRowSeq}"]`);
+            row.querySelector(".eq-item-cat").innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+            row.querySelector(".eq-item-cat").value = d.type || EQUIPMENT_TYPES[0];
+            onEqItemCategoryChange(row.querySelector(".eq-item-cat"), true);
+            if (d.chiTiet) row.querySelector(".eq-item-subtype").value = d.chiTiet;
+            row.querySelector(".eq-item-status").innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            row.querySelector(".eq-item-status").value = d.status || "Mới";
+            row.querySelector(".eq-item-name").value = d.name || "";
+            row.querySelector(".eq-item-code").value = d.assetCode || "";
+            row.querySelector(".eq-item-unit").value = d.unit || "";
+            row.querySelector(".eq-item-qty").value = d.qty || 1;
+            row.querySelector(".eq-item-remove-btn").style.display = "none";
+
+            document.getElementById("btn-add-eq-item").style.display = "none";
+            document.getElementById("eq-items-hint").style.display = "none";
             document.getElementById("btn-cancel-edit-eq").style.display = "inline-block";
             document.getElementById("equipment-form-box").scrollIntoView({ behavior: "smooth" });
         }
@@ -1757,12 +1989,14 @@
         function resetEquipmentForm() {
             document.getElementById("edit-index-eq").value = "";
             document.getElementById("eq-form-title").innerHTML = `<i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị`;
-            ["inp-eq-staff", "inp-eq-dept", "inp-eq-code", "inp-eq-name", "inp-eq-unit", "inp-eq-location", "inp-eq-note", "inp-eq-date-received", "inp-eq-date-return"]
+            ["inp-eq-staff", "inp-eq-dept", "inp-eq-location", "inp-eq-note", "inp-eq-date-received", "inp-eq-date-return"]
                 .forEach(id => { let el = document.getElementById(id); if (el) el.value = ""; });
-            if (EQUIPMENT_TYPES.length) document.getElementById("inp-eq-type").value = EQUIPMENT_TYPES[0];
-            document.getElementById("inp-eq-status").value = "Mới";
-            document.getElementById("inp-eq-qty").value = 1;
+            document.getElementById("eq-items-wrap").innerHTML = "";
+            addEquipmentItemRow();
+            document.getElementById("btn-add-eq-item").style.display = "";
+            document.getElementById("eq-items-hint").style.display = "";
             document.getElementById("btn-cancel-edit-eq").style.display = "none";
+            populateEquipmentFormOptions();
         }
 
         async function deleteEquipmentRow(idx) {
