@@ -739,6 +739,12 @@
         let currentUserCanManageEquipment = false;
         let currentUser = null;
         let currentUsername = null;
+
+        // Bật lên = true nếu phát hiện Apps Script (backend) đang chạy CODE CŨ, chưa hỗ trợ
+        // action "getData" (bản vá bảo mật mới nhất). Khi đó hệ thống tự động dùng phương án
+        // dự phòng (tương thích ngược) để KHÔNG bị mất dữ liệu hiển thị, đồng thời nhắc Admin
+        // cập nhật + triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật.
+        let legacyBackendDetected = false;
         let cloudReady = false;
         let globalBase64Image = ""; 
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
@@ -834,6 +840,41 @@
             document.getElementById("sync-banner").style.display = "none";
         }
 
+        // Gọi backend để lấy toàn bộ dữ liệu hệ thống. Ưu tiên cách MỚI (an toàn hơn): gửi
+        // thông tin xác thực qua BODY của POST, action "getData". Nếu backend (Apps Script)
+        // vẫn đang chạy CODE CŨ (chưa được cập nhật/triển khai lại nên không hiểu action này),
+        // hàm sẽ TỰ ĐỘNG dùng lại cách cũ (GET kèm query string) để dữ liệu vẫn hiển thị được
+        // ngay, đồng thời đánh dấu legacyBackendDetected = true để cảnh báo Admin cập nhật
+        // Apps Script nhằm có đầy đủ bảo mật (mật khẩu không đi qua URL nữa).
+        async function fetchSystemData(payload) {
+            let res = await fetch(SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+            let data = await res.json();
+
+            // Backend mới (đã có action "getData") luôn trả về "depts" dạng mảng, kể cả khi
+            // lỗi xác thực hoặc lỗi khác (status "ERROR"). Backend cũ không hiểu action này
+            // sẽ rơi vào nhánh mặc định và trả về {status:"SUCCESS"} trống, không có "depts".
+            let isNewBackend = data && (data.status === "ERROR" || Array.isArray(data.depts));
+            if (isNewBackend) {
+                legacyBackendDetected = false;
+                return data;
+            }
+
+            legacyBackendDetected = true;
+            console.warn("⚠️ Apps Script (backend) có vẻ đang chạy CODE CŨ, chưa hỗ trợ action \"getData\". Đang dùng phương án dự phòng qua GET. Vui lòng cập nhật + Triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật.");
+            let url = SCRIPT_URL;
+            if (payload.authUser && payload.authPass) {
+                url += (url.indexOf("?") >= 0 ? "&" : "?") +
+                    "authUser=" + encodeURIComponent(payload.authUser) +
+                    "&authPass=" + encodeURIComponent(payload.authPass);
+            }
+            let res2 = await fetch(url, { method: "GET" });
+            return await res2.json();
+        }
+
         async function loadFromCloud(manual) {
             let statusEl = document.getElementById("cloud-status-text");
             if (!isScriptUrlConfigured()) {
@@ -845,16 +886,18 @@
                 if (manual) {
                     showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
                 }
-                // Gửi kèm thông tin xác thực (nếu đã đăng nhập) để server biết có được phép
-                // trả về dữ liệu đầy đủ (nhân sự/tài khoản) hay chỉ danh mục công khai.
-                let url = SCRIPT_URL;
+                // BẢO MẬT: thông tin xác thực được gửi trong PHẦN THÂN (body) của request
+                // POST (action "getData"), KHÔNG còn gắn vào URL (?authUser=...&authPass=...)
+                // như trước — tránh mật khẩu bị lộ qua log máy chủ, lịch sử trình duyệt, hay
+                // header Referer gửi kèm tới các tài nguyên bên thứ 3 (VD: CDN font-awesome).
+                // (Có phương án dự phòng tự động nếu Apps Script chưa được cập nhật — xem
+                // hàm fetchSystemData ở trên.)
+                let payload = { action: "getData" };
                 if (authCreds.username && authCreds.password) {
-                    url += (url.indexOf("?") >= 0 ? "&" : "?") +
-                        "authUser=" + encodeURIComponent(authCreds.username) +
-                        "&authPass=" + encodeURIComponent(authCreds.password);
+                    payload.authUser = authCreds.username;
+                    payload.authPass = authCreds.password;
                 }
-                let res = await fetch(url, { method: "GET" });
-                let data = await res.json();
+                let data = await fetchSystemData(payload);
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 staffData = (data.staff || []).map(item => {
@@ -876,7 +919,12 @@
                 }
                 cloudReady = true;
                 saveLocalCache();
-                if (statusEl) statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
+                if (statusEl) {
+                    statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
+                    if (legacyBackendDetected) {
+                        statusEl.innerHTML += '<br><span style="color:#a94442;">⚠️ Google Apps Script (backend) đang chạy CODE CŨ (chưa hỗ trợ bản vá bảo mật mới nhất). Hệ thống vẫn hoạt động bình thường nhờ phương án dự phòng, nhưng vui lòng dán lại toàn bộ nội dung file <b>code.gs</b> mới vào Apps Script Editor rồi bấm <b>Triển khai → Quản lý phiên bản triển khai → sửa (✏️) → Phiên bản: Mới → Triển khai</b> để có đầy đủ bảo mật (mật khẩu không đi qua URL nữa).</span>';
+                    }
+                }
                 if (manual) { updateSystemData(); }
                 return true;
             } catch (err) {
@@ -969,6 +1017,11 @@
                 errEl.style.display = "block";
                 return;
             }
+            if (newPass.trim().length < 8) {
+                errEl.innerText = "⚠️ Mật khẩu mới phải có ít nhất 8 ký tự!";
+                errEl.style.display = "block";
+                return;
+            }
             if (newPass.trim() !== confirmPass.trim()) {
                 errEl.innerText = "❌ Xác nhận mật khẩu mới không khớp!";
                 errEl.style.display = "block";
@@ -1015,6 +1068,7 @@
             let uEqManage = document.getElementById("adm-new-eq-manage").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
+            if (uPass.length < 8) { alert("⚠️ Mật khẩu phải có ít nhất 8 ký tự!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
             let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
@@ -1041,6 +1095,7 @@
             if (newPass === null) return;
             newPass = newPass.trim();
             if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
+            if (newPass.length < 8) { alert("⚠️ Mật khẩu phải có ít nhất 8 ký tự!"); return; }
 
             let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
@@ -2697,7 +2752,7 @@
                 return;
             }
 
-            let deptOptionsHtml = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            let deptOptionsHtml = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
 
             listEl.innerHTML = mailGroups.map((group, idx) => {
                 let memberStaff = group.members
@@ -2706,13 +2761,13 @@
 
                 let staffOptionsHtml = '<option value="">-- Chọn nhân sự --</option>' + staffData
                     .filter(s => !group.members.includes(s.msnv))
-                    .map(s => `<option value="${s.msnv}">${s.name}${s.email ? '' : ' (chưa có email)'}</option>`).join('');
+                    .map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)}${s.email ? '' : ' (chưa có email)'}</option>`).join('');
 
                 let membersHtml = memberStaff.length
                     ? memberStaff.map(s => `
-                        <span class="member-chip" title="${s.email || 'Chưa có email'}">
-                            ${s.name}
-                            ${canManage ? `<span class="chip-remove-btn" onclick="removeMemberFromGroup(${idx}, '${s.msnv}')" title="Xóa khỏi nhóm"><i class="fa-solid fa-xmark"></i></span>` : ''}
+                        <span class="member-chip" title="${escapeHtml(s.email) || 'Chưa có email'}">
+                            ${escapeHtml(s.name)}
+                            ${canManage ? `<span class="chip-remove-btn" onclick="removeMemberFromGroup(${idx}, '${escapeHtml(s.msnv).replace(/'/g, "\\'")}')" title="Xóa khỏi nhóm"><i class="fa-solid fa-xmark"></i></span>` : ''}
                         </span>
                     `).join('')
                     : `<span class="chip-empty-text">Chưa có thành viên nào trong nhóm này.</span>`;
@@ -2732,8 +2787,8 @@
                     <div class="mailgroup-card">
                         <div class="mailgroup-header">
                             <div class="mailgroup-title">
-                                <b><i class="fa-solid fa-users-rectangle"></i> ${group.name}</b>
-                                <span class="mg-email">${group.email}</span>
+                                <b><i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(group.name)}</b>
+                                <span class="mg-email">${escapeHtml(group.email)}</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span class="mailgroup-count-badge"><i class="fa-solid fa-user-group"></i> ${memberStaff.length} thành viên</span>
@@ -2774,8 +2829,8 @@
 
                 if (!currentUsername) { alert('Vui lòng đăng nhập lại!'); return; }
 
-                if(newPass.length<3){
-                    alert('Mật khẩu quá ngắn!');
+                if(newPass.length<8){
+                    alert('Mật khẩu phải có ít nhất 8 ký tự!');
                     return;
                 }
 
