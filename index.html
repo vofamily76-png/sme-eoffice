@@ -246,7 +246,7 @@
                     <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="max-width: 250px;"></select>
                 </div>
                 <table id="tbl-crew">
-                    <thead><tr><th>Họ & tên</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <thead><tr><th>Họ & tên</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th class="admin-action-header">Thao tác</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -537,6 +537,17 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="input-group">
+                            <label>Quyền riêng: Quản lý Thiết bị</label>
+                            <div style="display:flex; gap:14px; align-items:center; height:38px; flex-wrap:wrap;">
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-eq-view" style="width:auto;"> Xem tab
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-eq-manage" style="width:auto;"> Khai báo/Sửa/Xóa
+                                </label>
+                            </div>
+                        </div>
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
                             <button class="btn" style="width:auto" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
                         </div>
@@ -656,7 +667,7 @@
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
         // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
         let userDatabase = {
-            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true }
+            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true }
         };
         // Thông tin đăng nhập hiện tại — CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc,
         // KHÔNG lưu vào localStorage, để tránh lộ mật khẩu nếu máy dùng chung / bị truy cập trái phép.
@@ -664,6 +675,7 @@
         let authCreds = { username: null, password: null };
         let currentUserCanUploadDocs = false;
         let currentUserCanDeleteDocs = false;
+        let currentUserCanManageEquipment = false;
         let currentUser = null;
         let currentUsername = null;
         let cloudReady = false;
@@ -743,7 +755,7 @@
                 if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
                 }
                 return true;
             } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
@@ -794,7 +806,7 @@
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
                 }
                 cloudReady = true;
                 saveLocalCache();
@@ -933,13 +945,15 @@
             let uDocsView = document.getElementById("adm-new-docs-view").checked;
             let uDocsUpload = document.getElementById("adm-new-docs-upload").checked;
             let uDocsDelete = document.getElementById("adm-new-docs-delete").checked;
+            let uEqView = document.getElementById("adm-new-eq-view").checked;
+            let uEqManage = document.getElementById("adm-new-eq-manage").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete });
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
             if (ok) {
-                userDatabase[uName] = { role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete };
+                userDatabase[uName] = { role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage };
                 saveLocalCache();
                 alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
             } else {
@@ -951,6 +965,8 @@
             document.getElementById("adm-new-docs-view").checked = false;
             document.getElementById("adm-new-docs-upload").checked = false;
             document.getElementById("adm-new-docs-delete").checked = false;
+            document.getElementById("adm-new-eq-view").checked = false;
+            document.getElementById("adm-new-eq-manage").checked = false;
             renderUserListViewForAdmin();
         }
 
@@ -960,7 +976,7 @@
             newPass = newPass.trim();
             if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
@@ -981,7 +997,7 @@
 
             // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
             // chỉ cập nhật role/quyền. authUser/authPass (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
-            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete });
+            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
@@ -1008,12 +1024,47 @@
                 role: userDatabase[username].role,
                 docsView: !!newDocsView,
                 docsUpload: !!newDocsUpload,
-                docsDelete: !!newDocsDelete
+                docsDelete: !!newDocsDelete,
+                eqView: !!userDatabase[username].eqView,
+                eqManage: !!userDatabase[username].eqManage
             });
             if (ok) {
                 userDatabase[username].docsView = newDocsView;
                 userDatabase[username].docsUpload = newDocsUpload;
                 userDatabase[username].docsDelete = newDocsDelete;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        // Bật/tắt quyền "Xem tab" hoặc "Khai báo/Sửa/Xóa" thiết bị cho 1 user cụ thể
+        async function toggleUserEquipmentPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newEqView = userDatabase[username].eqView;
+            let newEqManage = userDatabase[username].eqManage;
+            if (field === "eqView") newEqView = checked;
+            if (field === "eqManage") newEqManage = checked;
+
+            // Nếu tắt quyền Xem thì cũng tự động tắt luôn quyền Khai báo/Sửa/Xóa
+            if (field === "eqView" && !checked) newEqManage = false;
+            // Nếu bật quyền Khai báo/Sửa/Xóa thì tự động bật luôn quyền Xem
+            if (field === "eqManage" && checked) newEqView = true;
+
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                role: userDatabase[username].role,
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete,
+                eqView: !!newEqView,
+                eqManage: !!newEqManage
+            });
+            if (ok) {
+                userDatabase[username].eqView = newEqView;
+                userDatabase[username].eqManage = newEqManage;
                 saveLocalCache();
             } else {
                 alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
@@ -1063,10 +1114,28 @@
                     </span>`;
                 }
 
+                let eqControl = "";
+                if (u === "admin") {
+                    eqControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-toolbox"></i> Toàn quyền thiết bị</span>';
+                } else {
+                    let eqVChecked = userDatabase[u].eqView ? "checked" : "";
+                    let eqMChecked = userDatabase[u].eqManage ? "checked" : "";
+                    eqControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-toolbox" title="Quản lý Thiết bị"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${eqVChecked} onchange="toggleUserEquipmentPermission('${safeU}', 'eqView', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${eqMChecked} onchange="toggleUserEquipmentPermission('${safeU}', 'eqManage', this.checked)"> Khai báo/Sửa/Xóa
+                        </label>
+                    </span>`;
+                }
+
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${safeU}</b> ${roleControl}</span>
                     ${docsControl}
+                    ${eqControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -1124,7 +1193,7 @@
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
                     currentUsername = u;
-                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete };
+                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage };
                     authCreds = { username: u, password: p };
 
                     await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
@@ -1132,7 +1201,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
                         authCreds = { username: "admin", password: "123" };
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -1170,10 +1239,16 @@
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
-            document.getElementById("menu-equipment").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
+
+            // ==== Quyền riêng cho tab "Quản lý Thiết bị" ====
+            // Admin luôn thấy & toàn quyền. Các tài khoản khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
+            let canViewEquipment = (currentUser.role === "Admin") || !!currentUser.eqView;
+            let canManageEquipmentUI = (currentUser.role === "Admin") || !!currentUser.eqManage;
+            currentUserCanManageEquipment = canManageEquipmentUI;
+            document.getElementById("menu-equipment").style.display = canViewEquipment ? "flex" : "none";
 
             // ==== Quyền riêng cho tab "Hồ sơ Nhân viên" ====
             // Admin luôn có toàn quyền. Các role khác do Admin cấp riêng qua checkbox (không phụ thuộc Role chung).
@@ -1211,6 +1286,10 @@
             if (pageId === "profile-docs") {
                 let canViewDocs = currentUser && ((currentUser.role === "Admin") || !!currentUser.docsView);
                 if (!canViewDocs) { alert("⚠️ Bạn không có quyền xem Hồ sơ Nhân viên. Liên hệ Admin để được cấp quyền."); return; }
+            }
+            if (pageId === "equipment") {
+                let canViewEquipment = currentUser && ((currentUser.role === "Admin") || !!currentUser.eqView);
+                if (!canViewEquipment) { alert("⚠️ Bạn không có quyền xem Quản lý Thiết bị. Liên hệ Admin để được cấp quyền."); return; }
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -1434,8 +1513,8 @@
 
         function handleFormFieldsSwitch(selectedValue) {
             if (selectedValue === "CREW_SHIP") {
-                document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
-                document.querySelectorAll(".select-vessel-group, .months-group").forEach(el => el.style.display = "block");
+                document.querySelectorAll(".id-group, .select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
+                document.querySelectorAll(".email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
@@ -1560,6 +1639,7 @@
                     <td>${escapeHtml(c.position)}</td>
                     <td>${formatDateDisplay(c.dateJoin)}</td>
                     <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(c.months)} tháng</span></td>
+                    <td>${escapeHtml(c.email || "-")}</td>
                     <td style="display: ${canEdit ? '' : 'none'}">
                         <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
@@ -1790,7 +1870,7 @@
         }
 
         function renderEquipmentTable() {
-            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            let canEdit = (currentUser && (currentUser.role === "Admin" || !!currentUser.eqManage));
             let formBox = document.getElementById("equipment-form-box");
             if (formBox) formBox.style.display = canEdit ? "block" : "none";
 
@@ -2061,6 +2141,7 @@
                     position: document.getElementById("inp-position").value.trim(),
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
+                    email: document.getElementById("inp-email").value.trim(),
                     months: parseFloat(document.getElementById("inp-months").value) || 0
                 };
 
@@ -2117,6 +2198,7 @@
                 document.getElementById("inp-position").value = d.position || "";
                 document.getElementById("inp-date-join").value = d.dateJoin || "";
                 document.getElementById("inp-phone").value = d.phone || "";
+                document.getElementById("inp-email").value = d.email || "";
                 document.getElementById("inp-months").value = d.months || "0";
             }
             document.getElementById("btn-cancel-edit").style.display = "inline-block";
