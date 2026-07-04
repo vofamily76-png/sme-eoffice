@@ -161,7 +161,7 @@
             </div>
             <button class="btn" id="btn-login" onclick="handleLogin()">Đăng nhập</button>
             <div style="margin-top: 15px;">
-                <a href="#" onclick="toggleForgotPasswordForm(true)" style="font-size: 13px; color: var(--secondary-color); text-decoration:none;">Quên mật khẩu Admin? Đổi qua Email liên kết 🔑</a>
+                <a href="#" onclick="toggleForgotPasswordForm(true)" style="font-size: 13px; color: var(--secondary-color); text-decoration:none;">Quên mật khẩu</a>
             </div>
             <p id="login-error" style="color: red; margin-top: 10px; display: none;">Sai thông tin đăng nhập!</p>
         </div>
@@ -191,6 +191,7 @@
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
+                    <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
@@ -441,6 +442,66 @@
                 </div>
             </div>
 
+            <div id="page-internal-docs" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</h2>
+
+                <div class="admin-box" id="internal-doc-form-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3 id="internal-doc-form-title"><i class="fa-solid fa-file-circle-plus"></i> Thêm / Cập nhật tài liệu</h3>
+                    <input type="hidden" id="edit-code-internal-doc" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Mã tài liệu *</label>
+                            <input type="text" id="inp-doc-code" placeholder="Ví dụ: QT-HCNS-01">
+                        </div>
+                        <div class="input-group">
+                            <label>Tên tài liệu *</label>
+                            <input type="text" id="inp-doc-name" placeholder="Ví dụ: Quy trình tuyển dụng nhân sự">
+                        </div>
+                        <div class="input-group">
+                            <label>Phiên bản</label>
+                            <input type="text" id="inp-doc-version" placeholder="Ví dụ: 1.0">
+                        </div>
+                        <div class="input-group">
+                            <label>Đơn vị chủ biên</label>
+                            <input type="text" id="inp-doc-owner" placeholder="Ví dụ: Phòng Hành chính Nhân sự">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày ban hành</label>
+                            <input type="date" id="inp-doc-issue-date">
+                        </div>
+                        <div class="input-group">
+                            <label>Người phê duyệt</label>
+                            <input type="text" id="inp-doc-approver" placeholder="Ví dụ: Lê Minh Tuấn">
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>File tài liệu (tải lên Google Drive)</label>
+                            <input type="file" id="inp-doc-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png">
+                            <span id="doc-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="saveInternalDocument()">Lưu tài liệu ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-internal-doc" onclick="resetInternalDocForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-controls">
+                    <input type="text" id="search-internal-docs" class="search-box" oninput="filterInternalDocsTable()" placeholder="Tìm theo mã, tên tài liệu, đơn vị chủ biên, người phê duyệt...">
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-internal-docs">
+                    <thead><tr>
+                        <th>Mã tài liệu</th><th>Tên tài liệu</th><th>Phiên bản</th><th>Đơn vị chủ biên</th>
+                        <th>Ngày ban hành</th><th>Người phê duyệt</th><th>File</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-other-apps" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</h2>
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các phần mềm/hệ thống liên kết được Admin cấu hình. Bấm vào thẻ để mở phần mềm ngay trong hệ thống.</p>
@@ -681,6 +742,8 @@
         let cloudReady = false;
         let globalBase64Image = ""; 
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
+        // Tài liệu văn bản nội bộ: {maTaiLieu, tenTaiLieu, phienBan, donViChuBien, ngayBanHanh, nguoiPheDuyet, fileName, fileId, fileUrl, uploadDate}
+        let internalDocsData = [];
 
         // Chống XSS: chuyển ký tự đặc biệt HTML (<, >, &, ", ') thành dạng an toàn trước khi
         // chèn dữ liệu do người dùng nhập (tên, chức vụ, tên file...) vào innerHTML.
@@ -730,7 +793,8 @@
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData
+                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData,
+                    internalDocsData: internalDocsData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -753,6 +817,7 @@
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.documentsData) documentsData = cache.documentsData;
                 if (cache.equipmentData) equipmentData = cache.equipmentData;
+                if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
@@ -803,6 +868,7 @@
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
+                if (data.internalDocs) internalDocsData = data.internalDocs;
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
@@ -1241,6 +1307,7 @@
             document.getElementById("menu-crew").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
+            document.getElementById("menu-internal-docs").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
             // ==== Quyền riêng cho tab "Quản lý Thiết bị" ====
@@ -1432,6 +1499,155 @@
             }
         }
 
+        /* ========== TÀI LIỆU VĂN BẢN NỘI BỘ ========== */
+
+        function internalDocsCanEdit() {
+            return !!(currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+        }
+        function internalDocsCanDelete() {
+            return !!(currentUser && currentUser.role === "Admin");
+        }
+
+        function renderInternalDocsTable() {
+            let formBox = document.getElementById("internal-doc-form-box");
+            if (formBox) formBox.style.display = internalDocsCanEdit() ? "block" : "none";
+
+            let canDelete = internalDocsCanDelete();
+            let canEdit = internalDocsCanEdit();
+
+            let rowsHtml = internalDocsData.map((d, idx) => {
+                let fileHtml = d.fileUrl
+                    ? `<a href="${escapeHtml(d.fileUrl)}" target="_blank"><i class="fa-solid fa-file-arrow-down"></i> ${escapeHtml(d.fileName || "Xem file")}</a>`
+                    : `<span style="color:#999;">Chưa có file</span>`;
+                let actionsHtml = `
+                    ${canEdit ? `<button class="btn btn-sm btn-warning" onclick="startEditInternalDocument(${idx})"><i class="fa-solid fa-pen"></i></button>` : ''}
+                    ${canDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteInternalDocumentRow(${idx})"><i class="fa-solid fa-trash"></i></button>` : ''}
+                `;
+                return `
+                    <tr>
+                        <td><b>${escapeHtml(d.maTaiLieu)}</b></td>
+                        <td>${escapeHtml(d.tenTaiLieu)}</td>
+                        <td>${escapeHtml(d.phienBan)}</td>
+                        <td>${escapeHtml(d.donViChuBien)}</td>
+                        <td>${formatDateDisplay(d.ngayBanHanh)}</td>
+                        <td>${escapeHtml(d.nguoiPheDuyet)}</td>
+                        <td>${fileHtml}</td>
+                        <td style="display:${(canEdit || canDelete) ? '' : 'none'}">${actionsHtml}</td>
+                    </tr>`;
+            }).join('');
+
+            document.querySelector("#tbl-internal-docs tbody").innerHTML = rowsHtml ||
+                `<tr><td colspan="8" style="text-align:center; padding:20px; color:#666;">Chưa có tài liệu nào được thêm.</td></tr>`;
+
+            filterInternalDocsTable();
+        }
+
+        function filterInternalDocsTable() {
+            let searchEl = document.getElementById("search-internal-docs");
+            if (!searchEl) return;
+            let search = (searchEl.value || "").toLowerCase();
+            let rows = document.querySelectorAll("#tbl-internal-docs tbody tr");
+
+            internalDocsData.forEach((d, idx) => {
+                if (!rows[idx]) return;
+                let match = !search ||
+                    (d.maTaiLieu || "").toLowerCase().includes(search) ||
+                    (d.tenTaiLieu || "").toLowerCase().includes(search) ||
+                    (d.donViChuBien || "").toLowerCase().includes(search) ||
+                    (d.nguoiPheDuyet || "").toLowerCase().includes(search);
+                rows[idx].style.display = match ? "" : "none";
+            });
+        }
+
+        function startEditInternalDocument(idx) {
+            let d = internalDocsData[idx];
+            if (!d) return;
+            document.getElementById("edit-code-internal-doc").value = d.maTaiLieu;
+            document.getElementById("internal-doc-form-title").innerHTML =
+                `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa tài liệu: ${escapeHtml(d.tenTaiLieu)}`;
+            document.getElementById("inp-doc-code").value = d.maTaiLieu || "";
+            document.getElementById("inp-doc-code").disabled = true;
+            document.getElementById("inp-doc-name").value = d.tenTaiLieu || "";
+            document.getElementById("inp-doc-version").value = d.phienBan || "";
+            document.getElementById("inp-doc-owner").value = d.donViChuBien || "";
+            document.getElementById("inp-doc-issue-date").value = toDateInputValue(d.ngayBanHanh);
+            document.getElementById("inp-doc-approver").value = d.nguoiPheDuyet || "";
+            document.getElementById("inp-doc-file").value = "";
+            document.getElementById("doc-current-file-hint").innerText = d.fileName
+                ? `File hiện tại: ${d.fileName} (chỉ chọn file mới nếu muốn thay thế)`
+                : "Chưa có file nào được tải lên.";
+            document.getElementById("btn-cancel-edit-internal-doc").style.display = "inline-block";
+            document.getElementById("internal-doc-form-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        function resetInternalDocForm() {
+            document.getElementById("edit-code-internal-doc").value = "";
+            document.getElementById("internal-doc-form-title").innerHTML = `<i class="fa-solid fa-file-circle-plus"></i> Thêm / Cập nhật tài liệu`;
+            ["inp-doc-code", "inp-doc-name", "inp-doc-version", "inp-doc-owner", "inp-doc-issue-date", "inp-doc-approver", "inp-doc-file"]
+                .forEach(id => { let el = document.getElementById(id); if (el) el.value = ""; });
+            document.getElementById("inp-doc-code").disabled = false;
+            document.getElementById("doc-current-file-hint").innerText = "";
+            document.getElementById("btn-cancel-edit-internal-doc").style.display = "none";
+        }
+
+        async function saveInternalDocument() {
+            let editCode = document.getElementById("edit-code-internal-doc").value;
+            let maTaiLieu = editCode || document.getElementById("inp-doc-code").value.trim();
+            let tenTaiLieu = document.getElementById("inp-doc-name").value.trim();
+            if (!maTaiLieu || !tenTaiLieu) { alert("Vui lòng điền Mã tài liệu và Tên tài liệu!"); return; }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+
+            if (!editCode && internalDocsData.some(d => d.maTaiLieu === maTaiLieu)) {
+                alert("Mã tài liệu này đã tồn tại. Vui lòng chọn mã khác hoặc sửa tài liệu hiện có.");
+                return;
+            }
+
+            let payload = {
+                action: "saveInternalDocument",
+                maTaiLieu: maTaiLieu,
+                tenTaiLieu: tenTaiLieu,
+                phienBan: document.getElementById("inp-doc-version").value.trim(),
+                donViChuBien: document.getElementById("inp-doc-owner").value.trim(),
+                ngayBanHanh: document.getElementById("inp-doc-issue-date").value,
+                nguoiPheDuyet: document.getElementById("inp-doc-approver").value.trim()
+            };
+
+            let fileInput = document.getElementById("inp-doc-file");
+            let file = fileInput.files[0];
+            if (file) {
+                if (file.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(true);
+                resetInternalDocForm();
+                updateSystemData();
+                alert("✔️ Đã lưu tài liệu thành công.");
+            }
+        }
+
+        async function deleteInternalDocumentRow(idx) {
+            let d = internalDocsData[idx];
+            if (!d) return;
+            if (!confirm(`Xác nhận xóa tài liệu "${d.tenTaiLieu}" (${d.maTaiLieu})?`)) return;
+            let ok = await pushToCloud({ action: "deleteInternalDocument", maTaiLieu: d.maTaiLieu });
+            if (ok) {
+                await loadFromCloud(true);
+                updateSystemData();
+            }
+        }
+
         function updateSystemData() {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
@@ -1473,6 +1689,7 @@
             renderMailGroupsAdminList();
             renderProfileDocDeptTabs();
             renderProfileDocStaffSelect();
+            renderInternalDocsTable();
         }
 
         function renderDeptVesselLists() {
