@@ -193,6 +193,7 @@
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
+                    <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
@@ -320,6 +321,100 @@
                             <button class="btn btn-danger" id="btn-cancel-edit" onclick="resetForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div id="page-equipment" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</h2>
+
+                <div class="dashboard-grid" style="margin-bottom: 20px;">
+                    <div class="card" style="cursor:pointer;" onclick="filterEquipmentShowAll()"><div class="card-info"><p>Tổng số thiết bị</p><h3 id="eq-total-count">0</h3></div><i class="fa-solid fa-boxes-stacked card-icon"></i></div>
+                    <div class="card"><div class="card-info"><p>Đang cấp phát</p><h3 id="eq-assigned-count">0</h3></div><i class="fa-solid fa-user-check card-icon"></i></div>
+                    <div class="card" style="cursor:pointer;" onclick="filterEquipmentByWarehouse()"><div class="card-info"><p>Thiết bị lưu kho</p><h3 id="eq-warehouse-count">0</h3></div><i class="fa-solid fa-warehouse card-icon"></i></div>
+                </div>
+
+                <div class="admin-box" id="equipment-form-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3 id="eq-form-title"><i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị</h3>
+                    <input type="hidden" id="edit-index-eq" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Họ tên nhân viên</label>
+                            <select id="inp-eq-staff"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Phòng làm việc</label>
+                            <select id="inp-eq-dept"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Loại thiết bị</label>
+                            <select id="inp-eq-type"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Mã số thiết bị</label>
+                            <input type="text" id="inp-eq-code" placeholder="Ví dụ: TB-0012">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Tên thiết bị</label>
+                            <input type="text" id="inp-eq-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
+                        </div>
+                        <div class="input-group">
+                            <label>Tình trạng thiết bị</label>
+                            <select id="inp-eq-status"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Đơn vị tính</label>
+                            <input type="text" id="inp-eq-unit" placeholder="Cái, Chiếc, Bộ...">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Số lượng</label>
+                            <input type="number" id="inp-eq-qty" min="1" step="1" value="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày nhân sự nhận thiết bị</label>
+                            <input type="date" id="inp-eq-date-received">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày nhân sự bàn giao</label>
+                            <input type="date" id="inp-eq-date-return">
+                        </div>
+                        <div class="input-group">
+                            <label>Vị trí làm việc</label>
+                            <input type="text" id="inp-eq-location" placeholder="Ví dụ: Văn phòng SME Quảng Ngãi - Tầng 2">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <textarea id="inp-eq-note" rows="2" placeholder="Ghi chú thêm..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="saveEquipment()">Lưu thiết bị ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-eq" onclick="resetEquipmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-controls">
+                    <input type="text" id="search-equipment" class="search-box" oninput="filterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
+                    <select id="filter-eq-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                    <select id="filter-eq-dept" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                    <select id="filter-eq-type" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-equipment">
+                    <thead><tr>
+                        <th>Mã TB</th><th>Tên thiết bị</th><th>Loại</th><th>Nhân viên sử dụng</th><th>Phòng ban</th>
+                        <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th><th>Vị trí</th><th>Ghi chú</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
                 </div>
             </div>
 
@@ -554,6 +649,11 @@
             { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
         ];
         let mailGroups = [];
+        // Danh sách thiết bị: mỗi phần tử { assetCode, name, type, msnv, dept, status, unit, qty, dateReceived, dateReturn, location, note }.
+        // Thiết bị có msnv rỗng ("") được xem là "Thiết bị lưu kho" (chưa cấp phát cho ai).
+        let equipmentData = [];
+        const EQUIPMENT_TYPES = ["Nội thất", "Máy tính - IT", "Thiết bị văn phòng", "Máy móc - Kỹ thuật", "Thiết bị bảo hộ lao động", "Khác"];
+        const EQUIPMENT_STATUS = ["Mới", "Đang sử dụng", "Cũ", "Hỏng - Chờ sửa", "Lưu kho", "Đã thanh lý"];
         // LƯU Ý BẢO MẬT: userDatabase KHÔNG còn lưu trường "password" của bất kỳ ai nữa.
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
         // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
@@ -620,7 +720,7 @@
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups, documentsData: documentsData
+                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -642,6 +742,7 @@
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.documentsData) documentsData = cache.documentsData;
+                if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true };
@@ -691,6 +792,7 @@
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 if (data.documents) documentsData = data.documents;
+                if (data.equipment) equipmentData = data.equipment;
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
@@ -1049,6 +1151,7 @@
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
+            document.getElementById("menu-equipment").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
@@ -1264,6 +1367,8 @@
 
             renderStaffGrid();
             renderCrewTable();
+            populateEquipmentFormOptions();
+            renderEquipmentTable();
             renderOtherAppsGrid();
             renderOtherAppsAdminList();
             renderDeptVesselLists();
@@ -1443,6 +1548,231 @@
                 </tr>
             `).join('');
             document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
+        }
+
+        /* ===== QUẢN LÝ THIẾT BỊ ===== */
+
+        function getStaffNameByMsnv(msnv) {
+            let s = staffData.find(x => x.msnv === msnv);
+            return s ? s.name : msnv;
+        }
+
+        // Đổ dữ liệu vào các dropdown của form khai báo & của bộ lọc bảng thiết bị.
+        // Gọi lại mỗi khi staffData/depts thay đổi để danh sách luôn cập nhật.
+        function populateEquipmentFormOptions() {
+            let staffSel = document.getElementById("inp-eq-staff");
+            if (staffSel) {
+                let keep = staffSel.value;
+                staffSel.innerHTML = '<option value="">-- Chọn nhân viên (để trống = Lưu kho) --</option>' +
+                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
+                if (keep && staffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) staffSel.value = keep;
+            }
+
+            let deptSel = document.getElementById("inp-eq-dept");
+            if (deptSel) {
+                let keep = deptSel.value;
+                deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                if (keep && deptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) deptSel.value = keep;
+            }
+
+            let typeSel = document.getElementById("inp-eq-type");
+            if (typeSel && !typeSel.options.length) {
+                typeSel.innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+            }
+
+            let statusSel = document.getElementById("inp-eq-status");
+            if (statusSel && !statusSel.options.length) {
+                statusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+
+            let filterStaffSel = document.getElementById("filter-eq-staff");
+            if (filterStaffSel) {
+                let keep = filterStaffSel.value;
+                filterStaffSel.innerHTML = '<option value="Tất cả">-- Tất cả nhân viên --</option>' +
+                    '<option value="__WAREHOUSE__">📦 Thiết bị lưu kho</option>' +
+                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)}</option>`).join('');
+                if (keep && filterStaffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) filterStaffSel.value = keep;
+            }
+
+            let filterDeptSel = document.getElementById("filter-eq-dept");
+            if (filterDeptSel) {
+                let keep = filterDeptSel.value;
+                filterDeptSel.innerHTML = '<option value="Tất cả">-- Tất cả phòng ban --</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                if (keep && filterDeptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) filterDeptSel.value = keep;
+            }
+
+            let filterTypeSel = document.getElementById("filter-eq-type");
+            if (filterTypeSel && !filterTypeSel.dataset.filled) {
+                filterTypeSel.innerHTML = '<option value="Tất cả">-- Tất cả loại thiết bị --</option>' +
+                    EQUIPMENT_TYPES.map(t => `<option value="${t}">${t}</option>`).join('');
+                filterTypeSel.dataset.filled = "1";
+            }
+        }
+
+        function renderEquipmentTable() {
+            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            let formBox = document.getElementById("equipment-form-box");
+            if (formBox) formBox.style.display = canEdit ? "block" : "none";
+
+            let totalCount = equipmentData.length;
+            let warehouseCount = equipmentData.filter(e => !e.msnv || e.status === "Lưu kho").length;
+            let assignedCount = totalCount - warehouseCount;
+            document.getElementById("eq-total-count").innerText = totalCount;
+            document.getElementById("eq-assigned-count").innerText = assignedCount;
+            document.getElementById("eq-warehouse-count").innerText = warehouseCount;
+
+            let rowsHtml = equipmentData.map((e, idx) => {
+                let staffLabel = e.msnv
+                    ? escapeHtml(getStaffNameByMsnv(e.msnv))
+                    : `<span style="color:#888;"><i class="fa-solid fa-box"></i> Lưu kho</span>`;
+                let statusColor = (e.status === "Lưu kho") ? "#888"
+                    : (e.status === "Hỏng - Chờ sửa") ? "#d9534f"
+                    : (e.status === "Đang sử dụng") ? "#27ae60"
+                    : "#328cc1";
+                let actionsHtml = canEdit ? `
+                    <button class="btn btn-sm btn-warning" onclick="startEditEquipment(${idx})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteEquipmentRow(${idx})"><i class="fa-solid fa-trash"></i></button>
+                ` : "";
+                return `
+                    <tr>
+                        <td><b>${escapeHtml(e.assetCode)}</b></td>
+                        <td>${escapeHtml(e.name)}</td>
+                        <td>${escapeHtml(e.type)}</td>
+                        <td>${staffLabel}</td>
+                        <td>${escapeHtml(e.dept)}</td>
+                        <td><span style="color:${statusColor}; font-weight:bold;">${escapeHtml(e.status)}</span></td>
+                        <td>${escapeHtml(e.unit)}</td>
+                        <td>${escapeHtml(e.qty)}</td>
+                        <td>${formatDateDisplay(e.dateReceived)}</td>
+                        <td>${formatDateDisplay(e.dateReturn)}</td>
+                        <td>${escapeHtml(e.location)}</td>
+                        <td>${escapeHtml(e.note)}</td>
+                        <td style="display:${canEdit ? '' : 'none'}">${actionsHtml}</td>
+                    </tr>`;
+            }).join('');
+
+            document.querySelector("#tbl-equipment tbody").innerHTML = rowsHtml ||
+                `<tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
+
+            filterEquipmentTable();
+        }
+
+        function filterEquipmentTable() {
+            let searchEl = document.getElementById("search-equipment");
+            let staffFEl = document.getElementById("filter-eq-staff");
+            let deptFEl = document.getElementById("filter-eq-dept");
+            let typeFEl = document.getElementById("filter-eq-type");
+            if (!searchEl || !staffFEl || !deptFEl || !typeFEl) return;
+
+            let search = (searchEl.value || "").toLowerCase();
+            let staffF = staffFEl.value;
+            let deptF = deptFEl.value;
+            let typeF = typeFEl.value;
+            let rows = document.querySelectorAll("#tbl-equipment tbody tr");
+
+            equipmentData.forEach((e, idx) => {
+                if (!rows[idx]) return;
+                let matchSearch = !search ||
+                    (e.assetCode || "").toLowerCase().includes(search) ||
+                    (e.name || "").toLowerCase().includes(search) ||
+                    (getStaffNameByMsnv(e.msnv) || "").toLowerCase().includes(search);
+                let matchStaff = (staffF === "Tất cả") || (e.msnv === staffF) || (staffF === "__WAREHOUSE__" && !e.msnv);
+                let matchDept = (deptF === "Tất cả" || e.dept === deptF);
+                let matchType = (typeF === "Tất cả" || e.type === typeF);
+                rows[idx].style.display = (matchSearch && matchStaff && matchDept && matchType) ? "" : "none";
+            });
+        }
+
+        function filterEquipmentByWarehouse() {
+            document.getElementById("filter-eq-staff").value = "__WAREHOUSE__";
+            filterEquipmentTable();
+        }
+
+        function filterEquipmentShowAll() {
+            document.getElementById("filter-eq-staff").value = "Tất cả";
+            document.getElementById("filter-eq-dept").value = "Tất cả";
+            document.getElementById("filter-eq-type").value = "Tất cả";
+            document.getElementById("search-equipment").value = "";
+            filterEquipmentTable();
+        }
+
+        async function saveEquipment() {
+            let idxRaw = document.getElementById("edit-index-eq").value;
+            let isEdit = (idxRaw !== "");
+            let checkIndex = isEdit ? parseInt(idxRaw) : -1;
+
+            let code = document.getElementById("inp-eq-code").value.trim();
+            let name = document.getElementById("inp-eq-name").value.trim();
+            if (!code || !name) { alert("⚠️ Vui lòng điền Mã số thiết bị và Tên thiết bị!"); return; }
+
+            let duplicateCode = equipmentData.find((item, idx) => item.assetCode.trim().toLowerCase() === code.toLowerCase() && idx !== checkIndex);
+            if (duplicateCode) { alert("❌ Lỗi: Mã số thiết bị này đã tồn tại!"); return; }
+
+            let obj = {
+                assetCode: code,
+                name: name,
+                type: document.getElementById("inp-eq-type").value,
+                msnv: document.getElementById("inp-eq-staff").value,
+                dept: document.getElementById("inp-eq-dept").value,
+                status: document.getElementById("inp-eq-status").value,
+                unit: document.getElementById("inp-eq-unit").value.trim(),
+                qty: parseFloat(document.getElementById("inp-eq-qty").value) || 1,
+                dateReceived: document.getElementById("inp-eq-date-received").value,
+                dateReturn: document.getElementById("inp-eq-date-return").value,
+                location: document.getElementById("inp-eq-location").value.trim(),
+                note: document.getElementById("inp-eq-note").value.trim()
+            };
+
+            if (isEdit) equipmentData[checkIndex] = obj; else equipmentData.push(obj);
+            saveLocalCache();
+            let ok = await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
+            alert(ok ? "✔️ Đã lưu thiết bị lên hệ thống." : "✔️ Đã lưu thiết bị (lưu cục bộ, chưa đồng bộ được lên Google Sheet).");
+            resetEquipmentForm();
+            updateSystemData();
+        }
+
+        function startEditEquipment(idx) {
+            let d = equipmentData[idx];
+            if (!d) return;
+            document.getElementById("edit-index-eq").value = idx;
+            document.getElementById("eq-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị: ${escapeHtml(d.name)}`;
+            document.getElementById("inp-eq-staff").value = d.msnv || "";
+            document.getElementById("inp-eq-dept").value = d.dept || "";
+            document.getElementById("inp-eq-type").value = d.type || EQUIPMENT_TYPES[0];
+            document.getElementById("inp-eq-code").value = d.assetCode || "";
+            document.getElementById("inp-eq-name").value = d.name || "";
+            document.getElementById("inp-eq-status").value = d.status || "Mới";
+            document.getElementById("inp-eq-unit").value = d.unit || "";
+            document.getElementById("inp-eq-qty").value = d.qty || 1;
+            document.getElementById("inp-eq-date-received").value = d.dateReceived || "";
+            document.getElementById("inp-eq-date-return").value = d.dateReturn || "";
+            document.getElementById("inp-eq-location").value = d.location || "";
+            document.getElementById("inp-eq-note").value = d.note || "";
+            document.getElementById("btn-cancel-edit-eq").style.display = "inline-block";
+            document.getElementById("equipment-form-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        function resetEquipmentForm() {
+            document.getElementById("edit-index-eq").value = "";
+            document.getElementById("eq-form-title").innerHTML = `<i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị`;
+            ["inp-eq-staff", "inp-eq-dept", "inp-eq-code", "inp-eq-name", "inp-eq-unit", "inp-eq-location", "inp-eq-note", "inp-eq-date-received", "inp-eq-date-return"]
+                .forEach(id => { let el = document.getElementById(id); if (el) el.value = ""; });
+            if (EQUIPMENT_TYPES.length) document.getElementById("inp-eq-type").value = EQUIPMENT_TYPES[0];
+            document.getElementById("inp-eq-status").value = "Mới";
+            document.getElementById("inp-eq-qty").value = 1;
+            document.getElementById("btn-cancel-edit-eq").style.display = "none";
+        }
+
+        async function deleteEquipmentRow(idx) {
+            if (!equipmentData[idx]) return;
+            if (!confirm(`Xác nhận xóa thiết bị "${equipmentData[idx].name}"?`)) return;
+            let code = equipmentData[idx].assetCode;
+            equipmentData.splice(idx, 1);
+            saveLocalCache();
+            await pushToCloud({ action: "deleteEquipment", assetCode: code });
+            updateSystemData();
         }
 
         async function saveData() {
