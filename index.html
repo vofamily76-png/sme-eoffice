@@ -580,6 +580,11 @@
                             <small style="color:#888;">Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
                         </div>
                         <div class="input-group">
+                            <label>Email liên kết (khuyến nghị)</label>
+                            <input type="email" id="adm-new-email" placeholder="Ví dụ: nhanvien@congty.com">
+                            <small style="color:#888;">Dùng để gửi mã xác nhận (OTP) khi người dùng tự đổi mật khẩu. Có thể để trống.</small>
+                        </div>
+                        <div class="input-group">
                             <label>Cấp độ / Phân quyền chức năng</label>
                             <select id="adm-new-role">
                                 <option value="ReadWrite">Toàn quyền (Được thêm/sửa nhân sự)</option>
@@ -689,6 +694,14 @@
             <div class="input-group">
                 <label>Xác nhận mật khẩu mới</label>
                 <input type="password" id="cpw-confirm" placeholder="Nhập lại mật khẩu mới">
+            </div>
+            <div class="input-group">
+                <button type="button" class="btn" style="width:auto; padding:6px 12px; font-size:12px;" onclick="requestChangePasswordOtp()">📧 Gửi mã xác nhận qua Email</button>
+                <small id="cpw-otp-info" style="color:#888; display:block; margin-top:4px;">Nếu tài khoản của bạn đã được Admin liên kết email, bạn cần bấm nút này để nhận mã xác nhận trước khi đổi mật khẩu.</small>
+            </div>
+            <div class="input-group" id="cpw-otp-group" style="display:none;">
+                <label>Mã xác nhận (OTP) từ email</label>
+                <input type="text" id="cpw-otp" placeholder="Nhập mã 6 số nhận được qua email" maxlength="6">
             </div>
             <div id="cpw-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
             <div style="display:flex; gap:10px;">
@@ -1017,12 +1030,48 @@
             document.getElementById("cpw-current").value = "";
             document.getElementById("cpw-new").value = "";
             document.getElementById("cpw-confirm").value = "";
+            document.getElementById("cpw-otp").value = "";
+            document.getElementById("cpw-otp-group").style.display = "none";
+            document.getElementById("cpw-otp-info").textContent = "Nếu tài khoản của bạn đã được Admin liên kết email, bạn cần bấm nút này để nhận mã xác nhận trước khi đổi mật khẩu.";
             document.getElementById("cpw-error").style.display = "none";
             document.getElementById("change-password-modal").style.display = "flex";
         }
 
         function closeChangePasswordModal() {
             document.getElementById("change-password-modal").style.display = "none";
+        }
+
+        // Yêu cầu server gửi mã OTP tới email đã liên kết (nếu có) để xác nhận trước khi đổi
+        // mật khẩu. Tài khoản chưa liên kết email sẽ nhận thông báo rõ ràng và vẫn đổi được
+        // mật khẩu bình thường (chỉ cần mật khẩu cũ), không bị chặn.
+        async function requestChangePasswordOtp() {
+            let infoEl = document.getElementById("cpw-otp-info");
+            let errEl = document.getElementById("cpw-error");
+            errEl.style.display = "none";
+            if (!isScriptUrlConfigured()) { alert("⚠️ Cần kết nối Google Sheet (tab Admin) trước."); return; }
+            infoEl.textContent = "⏳ Đang gửi mã xác nhận...";
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "requestPasswordChangeOtp", authToken: authToken, username: currentUsername })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") {
+                    if (/chưa được liên kết email/i.test(data.message || "")) {
+                        infoEl.textContent = "ℹ️ Tài khoản chưa liên kết email — không cần mã xác nhận, có thể đổi mật khẩu trực tiếp.";
+                        document.getElementById("cpw-otp-group").style.display = "none";
+                        return;
+                    }
+                    throw new Error(data.message);
+                }
+                document.getElementById("cpw-otp-group").style.display = "block";
+                infoEl.textContent = "✅ Đã gửi mã xác nhận tới " + (data.maskedEmail || "email đã liên kết") + ". Mã có hiệu lực trong 10 phút.";
+            } catch (err) {
+                infoEl.textContent = "";
+                errEl.innerText = "❌ " + err.message;
+                errEl.style.display = "block";
+            }
         }
 
         async function submitChangePassword() {
@@ -1073,7 +1122,8 @@
                         authToken: authToken,
                         username: currentUsername,
                         oldPassword: curPass,
-                        newPassword: newPass.trim()
+                        newPassword: newPass.trim(),
+                        otp: document.getElementById("cpw-otp").value.trim()
                     })
                 });
                 let data = await res.json();
@@ -1092,6 +1142,7 @@
         async function createNewUserByAdmin() {
             let uName = document.getElementById("adm-new-username").value.trim();
             let uPass = document.getElementById("adm-new-password").value;
+            let uEmail = document.getElementById("adm-new-email").value.trim();
             let uRole = document.getElementById("adm-new-role").value;
             let uDocsView = document.getElementById("adm-new-docs-view").checked;
             let uDocsUpload = document.getElementById("adm-new-docs-upload").checked;
@@ -1102,11 +1153,12 @@
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             let uPassErr = checkPasswordStrengthClient(uPass);
             if (uPassErr) { alert("⚠️ " + uPassErr); return; }
+            if (uEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(uEmail)) { alert("⚠️ Email liên kết không đúng định dạng!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, email: uEmail, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
             if (ok) {
-                userDatabase[uName] = { role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage };
+                userDatabase[uName] = { role: uRole, email: uEmail, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage };
                 saveLocalCache();
                 alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
             } else {
@@ -1115,11 +1167,33 @@
 
             document.getElementById("adm-new-username").value = "";
             document.getElementById("adm-new-password").value = "";
+            document.getElementById("adm-new-email").value = "";
             document.getElementById("adm-new-docs-view").checked = false;
             document.getElementById("adm-new-docs-upload").checked = false;
             document.getElementById("adm-new-docs-delete").checked = false;
             document.getElementById("adm-new-eq-view").checked = false;
             document.getElementById("adm-new-eq-manage").checked = false;
+            renderUserListViewForAdmin();
+        }
+
+        // Cho phép Admin gán/sửa/gỡ email liên kết của 1 tài khoản đã tồn tại (dùng để gửi OTP
+        // xác nhận khi người dùng đó tự đổi mật khẩu). Để trống = gỡ liên kết email.
+        async function updateUserLinkedEmail(username) {
+            if (!userDatabase[username]) return;
+            let current = userDatabase[username].email || "";
+            let newEmail = prompt(`Email liên kết cho tài khoản "${username}" (để trống nếu muốn gỡ liên kết):`, current);
+            if (newEmail === null) return;
+            newEmail = newEmail.trim();
+            if (newEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { alert("⚠️ Email không đúng định dạng!"); return; }
+
+            let ok = await pushToCloud({
+                action: "createUser", username: username, email: newEmail,
+                role: userDatabase[username].role,
+                docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete,
+                eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage
+            });
+            if (ok) { userDatabase[username].email = newEmail; saveLocalCache(); }
+            alert(ok ? `✔️ Đã cập nhật email liên kết cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng / định dạng email).`);
             renderUserListViewForAdmin();
         }
 
@@ -1131,7 +1205,7 @@
             let rpErr = checkPasswordStrengthClient(newPass);
             if (rpErr) { alert("⚠️ " + rpErr); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, email: userDatabase[username].email || "", role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
@@ -1152,7 +1226,7 @@
 
             // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
             // chỉ cập nhật role/quyền. authToken (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
-            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
+            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, email: userDatabase[username].email || "", docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
@@ -1177,6 +1251,7 @@
                 action: "createUser",
                 username: username,
                 role: userDatabase[username].role,
+                email: userDatabase[username].email || "",
                 docsView: !!newDocsView,
                 docsUpload: !!newDocsUpload,
                 docsDelete: !!newDocsDelete,
@@ -1211,6 +1286,7 @@
                 action: "createUser",
                 username: username,
                 role: userDatabase[username].role,
+                email: userDatabase[username].email || "",
                 docsView: !!userDatabase[username].docsView,
                 docsUpload: !!userDatabase[username].docsUpload,
                 docsDelete: !!userDatabase[username].docsDelete,
@@ -1244,9 +1320,14 @@
                 }
 
                 let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
+                actionsHtml += `<button class="btn btn-sm" onclick="updateUserLinkedEmail('${safeU}')" title="Gán/sửa email liên kết"><i class="fa-solid fa-envelope"></i></button>`;
                 if (u !== "admin") {
                     actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${safeU}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
+
+                let emailBadge = userDatabase[u].email
+                    ? `<span style="font-size:11px; color:#2a7; white-space:nowrap;" title="Email liên kết (dùng gửi OTP đổi mật khẩu)"><i class="fa-solid fa-envelope-circle-check"></i> ${escapeHtml(userDatabase[u].email)}</span>`
+                    : `<span style="font-size:11px; color:#aaa; white-space:nowrap;" title="Chưa liên kết email"><i class="fa-regular fa-envelope"></i> Chưa liên kết email</span>`;
 
                 let docsControl = "";
                 if (u === "admin") {
@@ -1289,6 +1370,7 @@
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${safeU}</b> ${roleControl}</span>
+                    ${emailBadge}
                     ${docsControl}
                     ${eqControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
