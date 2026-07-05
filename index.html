@@ -544,6 +544,7 @@
                         <div class="input-group">
                             <label>Mật khẩu mới</label>
                             <input type="password" id="admin-new-password">
+                            <small style="color:#888;">Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
                         </div>
                         <div class="input-group">
                             <label>Xác nhận mật khẩu mới</label>
@@ -576,6 +577,7 @@
                         <div class="input-group">
                             <label>Mật khẩu khởi tạo</label>
                             <input type="password" id="adm-new-password" placeholder="Mật khẩu tài khoản">
+                            <small style="color:#888;">Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
                         </div>
                         <div class="input-group">
                             <label>Cấp độ / Phân quyền chức năng</label>
@@ -616,6 +618,22 @@
                     <div style="margin-top: 10px;">
                         <label style="font-weight: bold; font-size:13px; color: #555;">Danh sách User hệ thống hiện hành:</label>
                         <div id="adm-user-list-view" style="margin-top: 5px;"></div>
+                    </div>
+                </div>
+
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-clipboard-list"></i> Nhật ký hoạt động (Audit log)</h3>
+                    <p style="font-size:13px; color:#666; margin-bottom:10px;">Ghi lại ai đã đăng nhập, đăng xuất, thêm/sửa/xóa dữ liệu gì và vào lúc nào — chỉ Admin xem được, dùng để truy vết khi cần.</p>
+                    <div class="table-controls">
+                        <button class="btn" style="width:auto; padding:8px 16px;" onclick="loadAuditLog()"><i class="fa-solid fa-rotate"></i> Tải nhật ký gần nhất</button>
+                    </div>
+                    <div style="max-height:360px; overflow:auto; margin-top:10px;">
+                        <table class="data-table" id="tbl-audit-log">
+                            <thead>
+                                <tr><th>Thời gian</th><th>Tài khoản</th><th>Hành động</th><th>Đối tượng</th><th>Chi tiết</th></tr>
+                            </thead>
+                            <tbody><tr><td colspan="5" style="text-align:center; padding:16px; color:#666;">Bấm "Tải nhật ký gần nhất" để xem.</td></tr></tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -666,6 +684,7 @@
             <div class="input-group">
                 <label>Mật khẩu mới</label>
                 <input type="password" id="cpw-new" placeholder="Nhập mật khẩu mới">
+                <small style="color:#888;">Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.</small>
             </div>
             <div class="input-group">
                 <label>Xác nhận mật khẩu mới</label>
@@ -730,10 +749,14 @@
         let userDatabase = {
             "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true }
         };
-        // Thông tin đăng nhập hiện tại — CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc,
-        // KHÔNG lưu vào localStorage, để tránh lộ mật khẩu nếu máy dùng chung / bị truy cập trái phép.
+        // [NÂNG CẤP BẢO MẬT - MẢNG 1] Thay vì gửi lại username+password ở MỌI request, giờ
+        // chỉ đăng nhập 1 lần để lấy về 1 "authToken" tạm thời do server cấp (tự hết hạn sau
+        // vài giờ không hoạt động). Mọi request sau đó chỉ gửi token này — mật khẩu KHÔNG còn
+        // được giữ lại trong bộ nhớ trình duyệt sau khi đăng nhập xong.
+        // Token CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc, KHÔNG lưu vào localStorage,
+        // để tránh bị chiếm phiên nếu máy dùng chung / bị truy cập trái phép.
         // Mỗi lần tải lại trang, người dùng cần đăng nhập lại — đây là đánh đổi cần thiết cho bảo mật.
-        let authCreds = { username: null, password: null };
+        let authToken = null;
         let currentUserCanUploadDocs = false;
         let currentUserCanDeleteDocs = false;
         let currentUserCanManageEquipment = false;
@@ -792,6 +815,19 @@
 
         function isScriptUrlConfigured() {
             return SCRIPT_URL && SCRIPT_URL.indexOf("script.google.com") !== -1;
+        }
+
+        // [MẢNG 4] Kiểm tra độ mạnh mật khẩu ở TRÌNH DUYỆT để phản hồi ngay cho người dùng
+        // (khớp với quy tắc bắt buộc ở server — server vẫn kiểm tra lại lần cuối, không thể
+        // bị bỏ qua dù gọi thẳng API). Trả về chuỗi lỗi, hoặc "" nếu mật khẩu đủ mạnh.
+        function checkPasswordStrengthClient(pw) {
+            pw = pw || "";
+            if (pw.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự.";
+            if (!/[a-z]/.test(pw)) return "Mật khẩu phải có ít nhất 1 chữ thường (a-z).";
+            if (!/[A-Z]/.test(pw)) return "Mật khẩu phải có ít nhất 1 chữ hoa (A-Z).";
+            if (!/[0-9]/.test(pw)) return "Mật khẩu phải có ít nhất 1 chữ số (0-9).";
+            if (!/[^a-zA-Z0-9]/.test(pw)) return "Mật khẩu phải có ít nhất 1 ký tự đặc biệt (VD: ! @ # $ % ...).";
+            return "";
         }
 
         function saveLocalCache() {
@@ -864,14 +900,10 @@
             }
 
             legacyBackendDetected = true;
-            console.warn("⚠️ Apps Script (backend) có vẻ đang chạy CODE CŨ, chưa hỗ trợ action \"getData\". Đang dùng phương án dự phòng qua GET. Vui lòng cập nhật + Triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật.");
-            let url = SCRIPT_URL;
-            if (payload.authUser && payload.authPass) {
-                url += (url.indexOf("?") >= 0 ? "&" : "?") +
-                    "authUser=" + encodeURIComponent(payload.authUser) +
-                    "&authPass=" + encodeURIComponent(payload.authPass);
-            }
-            let res2 = await fetch(url, { method: "GET" });
+            console.warn("⚠️ Apps Script (backend) có vẻ đang chạy CODE CŨ, chưa hỗ trợ action \"getData\". Đang dùng phương án dự phòng qua GET (chỉ lấy được danh mục công khai — KHÔNG gửi thông tin đăng nhập qua URL vì lý do bảo mật). Vui lòng cập nhật + Triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật và đăng nhập được đầy đủ.");
+            // BẢO MẬT: KHÔNG BAO GIỜ gắn token/mật khẩu vào URL (?...), dù ở nhánh dự phòng
+            // này — tránh bị lộ qua log máy chủ, lịch sử trình duyệt, hay header Referer.
+            let res2 = await fetch(SCRIPT_URL, { method: "GET" });
             return await res2.json();
         }
 
@@ -886,16 +918,12 @@
                 if (manual) {
                     showSyncBanner("Đang tải dữ liệu từ Google Sheet...");
                 }
-                // BẢO MẬT: thông tin xác thực được gửi trong PHẦN THÂN (body) của request
-                // POST (action "getData"), KHÔNG còn gắn vào URL (?authUser=...&authPass=...)
-                // như trước — tránh mật khẩu bị lộ qua log máy chủ, lịch sử trình duyệt, hay
-                // header Referer gửi kèm tới các tài nguyên bên thứ 3 (VD: CDN font-awesome).
-                // (Có phương án dự phòng tự động nếu Apps Script chưa được cập nhật — xem
-                // hàm fetchSystemData ở trên.)
+                // [MẢNG 1] Chỉ gửi authToken (không còn gửi username/password) trong PHẦN THÂN
+                // (body) của request POST (action "getData") — server tự tra token, không cần
+                // biết lại mật khẩu ở mỗi lần đồng bộ.
                 let payload = { action: "getData" };
-                if (authCreds.username && authCreds.password) {
-                    payload.authUser = authCreds.username;
-                    payload.authPass = authCreds.password;
+                if (authToken) {
+                    payload.authToken = authToken;
                 }
                 let data = await fetchSystemData(payload);
                 if (data.status === "ERROR") throw new Error(data.message);
@@ -947,12 +975,11 @@
                 // JSON.stringify(data.dept) khi lưu vào Sheet. Nếu stringify thêm ở đây sẽ
                 // gây lỗi "double-encode" khiến phòng ban hiển thị sai và lọc không ra kết quả.
 
-                // Tự động đính kèm thông tin người đang đăng nhập vào MỌI request ghi/xóa,
-                // để server xác thực & kiểm tra quyền trước khi thực hiện (không chỉ tin
-                // tưởng giao diện đã ẩn nút). authCreds.action riêng ("login") không đi qua đây.
-                if (authCreds.username && authCreds.password && !payload.authUser) {
-                    payload.authUser = authCreds.username;
-                    payload.authPass = authCreds.password;
+                // [MẢNG 1] Tự động đính kèm authToken vào MỌI request ghi/xóa, để server tự
+                // tra token -> xác thực & kiểm tra quyền trước khi thực hiện (không chỉ tin
+                // tưởng giao diện đã ẩn nút) — KHÔNG cần gửi lại mật khẩu.
+                if (authToken && !payload.authToken) {
+                    payload.authToken = authToken;
                 }
 
                 let res = await fetch(SCRIPT_URL, {
@@ -1017,8 +1044,10 @@
                 errEl.style.display = "block";
                 return;
             }
-            if (newPass.trim().length < 8) {
-                errEl.innerText = "⚠️ Mật khẩu mới phải có ít nhất 8 ký tự!";
+            // [MẢNG 4] Mật khẩu mới phải đủ mạnh (độ dài + hoa/thường/số/ký tự đặc biệt).
+            let strengthErr = checkPasswordStrengthClient(newPass.trim());
+            if (strengthErr) {
+                errEl.innerText = "⚠️ " + strengthErr;
                 errEl.style.display = "block";
                 return;
             }
@@ -1034,12 +1063,14 @@
             }
 
             try {
-                // Mật khẩu hiện tại được XÁC THỰC Ở SERVER (không so sánh ở trình duyệt nữa)
+                // Mật khẩu hiện tại được XÁC THỰC Ở SERVER (không so sánh ở trình duyệt nữa).
+                // [MẢNG 1] Gửi kèm authToken để server xác định đúng người đang đổi mật khẩu.
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({
                         action: "changeOwnPassword",
+                        authToken: authToken,
                         username: currentUsername,
                         oldPassword: curPass,
                         newPassword: newPass.trim()
@@ -1048,7 +1079,8 @@
                 let data = await res.json();
                 if (data.status === "ERROR") throw new Error(data.message);
 
-                authCreds.password = newPass.trim(); // cập nhật để các request tiếp theo trong phiên vẫn hoạt động
+                // Token phiên đăng nhập hiện tại vẫn còn hiệu lực sau khi đổi mật khẩu
+                // (không phụ thuộc vào mật khẩu), không cần cập nhật gì thêm ở đây.
                 alert("🎉 Đổi mật khẩu thành công!");
                 closeChangePasswordModal();
             } catch (err) {
@@ -1068,7 +1100,8 @@
             let uEqManage = document.getElementById("adm-new-eq-manage").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
-            if (uPass.length < 8) { alert("⚠️ Mật khẩu phải có ít nhất 8 ký tự!"); return; }
+            let uPassErr = checkPasswordStrengthClient(uPass);
+            if (uPassErr) { alert("⚠️ " + uPassErr); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
             let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
@@ -1095,7 +1128,8 @@
             if (newPass === null) return;
             newPass = newPass.trim();
             if (!newPass) { alert("⚠️ Mật khẩu không được để trống!"); return; }
-            if (newPass.length < 8) { alert("⚠️ Mật khẩu phải có ít nhất 8 ký tự!"); return; }
+            let rpErr = checkPasswordStrengthClient(newPass);
+            if (rpErr) { alert("⚠️ " + rpErr); return; }
 
             let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
@@ -1117,7 +1151,7 @@
             if (!userDatabase[username]) return;
 
             // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
-            // chỉ cập nhật role/quyền. authUser/authPass (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
+            // chỉ cập nhật role/quyền. authToken (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
             let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
             if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
@@ -1264,6 +1298,39 @@
             if (viewEl) viewEl.innerHTML = html;
         }
 
+        // [MẢNG 3] Tải và hiển thị Nhật ký hoạt động gần nhất — CHỈ Admin gọi được (server sẽ
+        // tự chặn nếu tài khoản đang đăng nhập không phải Admin).
+        async function loadAuditLog() {
+            let tbody = document.querySelector("#tbl-audit-log tbody");
+            if (!tbody) return;
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script."); return; }
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#666;">Đang tải...</td></tr>';
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getAuditLog", authToken: authToken, limit: 300 })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                let logs = data.logs || [];
+                if (!logs.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#666;">Chưa có nhật ký nào.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = logs.map(l => `
+                    <tr>
+                        <td style="white-space:nowrap;">${escapeHtml(l.time)}</td>
+                        <td><b>${escapeHtml(l.username)}</b></td>
+                        <td>${escapeHtml(l.action)}</td>
+                        <td>${escapeHtml(l.target)}</td>
+                        <td>${escapeHtml(l.detail)}</td>
+                    </tr>`).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:#a94442;">❌ ${escapeHtml(err.message)}</td></tr>`;
+            }
+        }
+
         // Lấy đúng phần "yyyy-MM-dd" từ 1 giá trị ngày, dù giá trị đó là:
         // - chuỗi "yyyy-MM-dd" chuẩn
         // - chuỗi ISO có giờ dạng "yyyy-MM-ddTHH:mm:ss.sssZ" (dữ liệu cũ / lỗi múi giờ trước đây)
@@ -1315,7 +1382,9 @@
 
                     currentUsername = u;
                     currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage };
-                    authCreds = { username: u, password: p };
+                    // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được
+                    // lưu lại trong bộ nhớ trình duyệt sau bước đăng nhập này.
+                    authToken = data.token || null;
 
                     await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
                 } else {
@@ -1323,7 +1392,7 @@
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
                         currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
-                        authCreds = { username: "admin", password: "123" };
+                        authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
                     }
@@ -1348,9 +1417,19 @@
         }
 
         function handleLogout() {
+            // [MẢNG 1] Báo server hủy token ngay lập tức (không chờ tự hết hạn), để nếu
+            // token này chẳng may bị lộ trước đó thì cũng không còn dùng được nữa.
+            if (authToken && isScriptUrlConfigured()) {
+                let tokenToRevoke = authToken;
+                fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "logout", authToken: tokenToRevoke })
+                }).catch(function () { /* đăng xuất phía trình duyệt vẫn tiếp tục dù lỗi mạng */ });
+            }
             currentUser = null;
             currentUsername = null;
-            authCreds = { username: null, password: null }; // xóa thông tin xác thực khỏi bộ nhớ
+            authToken = null; // xóa token khỏi bộ nhớ trình duyệt
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
             document.getElementById("login-screen").style.display = "flex";
@@ -1492,7 +1571,7 @@
                 let listHtml = files.length
                     ? '<ul class="doc-list">' + files.map(f => `
                         <li>
-                            <span><a href="${escapeHtml(f.fileUrl)}" target="_blank"><i class="fa-solid fa-file"></i> ${escapeHtml(f.fileName)}</a>
+                            <span><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(f.fileId)}', '${escapeHtml(f.fileName)}', 'staffDoc')"><i class="fa-solid fa-file"></i> ${escapeHtml(f.fileName)}</a>
                             <span class="doc-meta">${escapeHtml(f.uploadDate) || ""}</span></span>
                             ${currentUserCanDeleteDocs ? `<span class="doc-del" onclick="deleteStaffDocument('${escapeHtml(f.fileId)}', '${escapeHtml(msnv)}')"><i class="fa-solid fa-trash"></i> Xóa</span>` : ''}
                         </li>`).join('') + '</ul>'
@@ -1513,6 +1592,40 @@
             }).join('');
             if (!currentUserCanUploadDocs && !currentUserCanDeleteDocs) {
                 container.innerHTML = '<p class="doc-empty" style="margin-bottom:10px;"><i class="fa-solid fa-lock"></i> Bạn chỉ có quyền xem hồ sơ. Liên hệ Admin nếu cần quyền tải lên/xóa.</p>' + container.innerHTML;
+            }
+        }
+
+        // [MẢNG 2] Mở/tải 1 file hồ sơ hoặc tài liệu nội bộ qua PROXY có kiểm tra quyền.
+        // File trên Drive KHÔNG còn được chia sẻ công khai ("Bất kỳ ai có link") — server sẽ
+        // tự kiểm tra người gọi đã đăng nhập & đủ quyền hay chưa trước khi trả nội dung file.
+        // context: "staffDoc" (hồ sơ nhân viên, cần quyền XemHoSoNV) hoặc "internalDoc"
+        // (tài liệu nội bộ, chỉ cần đăng nhập hợp lệ).
+        async function viewSecureFile(fileId, fileName, context) {
+            if (!fileId) { alert("⚠️ File này chưa có dữ liệu (có thể chưa được tải lên hoặc backend chưa cập nhật)."); return; }
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script."); return; }
+            try {
+                showSyncBanner("Đang mở file...");
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: context || "staffDoc", authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+
+                let byteChars = atob(data.fileData);
+                let byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                let byteArray = new Uint8Array(byteNumbers);
+                let blob = new Blob([byteArray], { type: data.mimeType || "application/octet-stream" });
+                let blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) {
+                alert("❌ Không thể mở file \"" + (fileName || "") + "\": " + err.message);
+                console.error(err);
+            } finally {
+                hideSyncBanner();
             }
         }
 
@@ -1571,8 +1684,8 @@
             let canEdit = internalDocsCanEdit();
 
             let rowsHtml = internalDocsData.map((d, idx) => {
-                let fileHtml = d.fileUrl
-                    ? `<a href="${escapeHtml(d.fileUrl)}" target="_blank"><i class="fa-solid fa-file-arrow-down"></i> ${escapeHtml(d.fileName || "Xem file")}</a>`
+                let fileHtml = d.fileId
+                    ? `<a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(d.fileId)}', '${escapeHtml(d.fileName || 'file')}', 'internalDoc')"><i class="fa-solid fa-file-arrow-down"></i> ${escapeHtml(d.fileName || "Xem file")}</a>`
                     : `<span style="color:#999;">Chưa có file</span>`;
                 let actionsHtml = `
                     ${canEdit ? `<button class="btn btn-sm btn-warning" onclick="startEditInternalDocument(${idx})"><i class="fa-solid fa-pen"></i></button>` : ''}
@@ -2829,10 +2942,9 @@
 
                 if (!currentUsername) { alert('Vui lòng đăng nhập lại!'); return; }
 
-                if(newPass.length<8){
-                    alert('Mật khẩu phải có ít nhất 8 ký tự!');
-                    return;
-                }
+                // [MẢNG 4] Mật khẩu mới phải đủ mạnh (độ dài + hoa/thường/số/ký tự đặc biệt).
+                let strengthErr = checkPasswordStrengthClient(newPass);
+                if (strengthErr) { alert('⚠️ ' + strengthErr); return; }
 
                 if(newPass!==confirmPass){
                     alert('Xác nhận mật khẩu không khớp!');
@@ -2841,16 +2953,16 @@
 
                 if (!isScriptUrlConfigured()) { alert('Cần kết nối Google Sheet để đổi mật khẩu!'); return; }
 
-                // Mật khẩu hiện tại được xác thực Ở SERVER, không so sánh ở trình duyệt
+                // Mật khẩu hiện tại được xác thực Ở SERVER, không so sánh ở trình duyệt.
+                // [MẢNG 1] Gửi kèm authToken để server xác định đúng người đang đổi mật khẩu.
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "changeOwnPassword", username: currentUsername, oldPassword: currentPass, newPassword: newPass })
+                    body: JSON.stringify({ action: "changeOwnPassword", authToken: authToken, username: currentUsername, oldPassword: currentPass, newPassword: newPass })
                 });
                 let data = await res.json();
                 if (data.status === "ERROR") { alert('❌ ' + data.message); return; }
 
-                authCreds.password = newPass;
                 alert('Đổi mật khẩu thành công!');
                 document.getElementById('admin-current-password').value='';
                 document.getElementById('admin-new-password').value='';
