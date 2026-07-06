@@ -731,16 +731,34 @@
     <script>
         let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
-        let depts = ["BAN GIÁM ĐỐC - BOD", "BỘ PHẬN HÀNH CHÍNH NHÂN SỰ", "PHÒNG KẾ TOÁN", "SME QUẢNG NGÃI"];
-        let vessels = ["M/V Geo Mariner", "M/V Geo Supporter", "M/V Seahorse Sinergy", "M/V Seahorse Keystone"];
-        let staffData = [
-            {msnv: "SME001", name: "Lê Minh Tuấn", dob: "1985-05-15", dept: ["BAN GIÁM ĐỐC - BOD", "SME QUẢNG NGÃI"], position: "Giám đốc điều hành", dateJoin: "2010-01-01", phone: "0901234567", email: "tuan.lm@seahorse.com.vn", imgUrl: ""},
-            {msnv: "SME008", name: "Phạm Thị Lan", dob: "1990-08-22", dept: ["PHÒNG KẾ TOÁN"], position: "Kế toán trưởng", dateJoin: "2015-03-10", phone: "0908887776", email: "lan.pt@seahorse.com.vn", imgUrl: ""}
-        ];
+        // --- BẮT ĐẦU ĐOẠN CODE BẢO VỆ GIAO DIỆN ---
+        // 1. Chặn click chuột phải
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        // 2. Chặn các phím tắt mở công cụ lập trình viên
+        document.onkeydown = function(e) {
+            // Chặn phím F12
+            if (e.keyCode === 123) {
+                return false;
+            }
+            // Chặn Ctrl+Shift+I (Mở tab Elements) hoặc Ctrl+Shift+J (Mở tab Console) hoặc Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+                return false;
+            }
+            // Chặn Ctrl+U (Xem nguồn trang - View Source)
+            if (e.ctrlKey && e.keyCode === 85) {
+                return false;
+            }
+        };
+        // --- KẾT THÚC ĐOẠN CODE BẢO VỆ GIAO DIỆN ---
+
+        let depts = [];
+        let vessels = [];
+        let staffData = [];
         let crewData = [];
-        let otherApps = [
-            { name: "Chữ ký số SignFlow", url: "http://sme.signflow.vn/" }
-        ];
+        let otherApps = [];
         let mailGroups = [];
         // Danh sách thiết bị: mỗi phần tử { assetCode, name, type, msnv, dept, status, unit, qty, dateReceived, dateReturn, location, note }.
         // Thiết bị có msnv rỗng ("") được xem là "Thiết bị lưu kho" (chưa cấp phát cho ai).
