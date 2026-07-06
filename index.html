@@ -321,6 +321,19 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-row work-status-group">
+                        <div class="input-group">
+                            <label>Tình trạng làm việc</label>
+                            <select id="inp-work-status" onchange="onWorkStatusChange()">
+                                <option value="ON">Đang làm việc (ON)</option>
+                                <option value="OFF">Đã nghỉ việc (OFF)</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="resign-date-group" style="display:none;">
+                            <label>Ngày nghỉ việc</label>
+                            <input type="date" id="inp-resign-date">
+                        </div>
+                    </div>
                     <div class="form-row" style="margin-top:20px">
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
                             <button class="btn" style="width:auto; background-color: #27ae60;" onclick="saveData()">Lưu vào hệ thống dữ liệu ✔️</button>
@@ -809,7 +822,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-06.avatar-drive-v3";
+        const FRONTEND_BUILD_VERSION = "2026-07-06.work-status-v4";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2120,6 +2133,14 @@
             }
         }
 
+        // [BỔ SUNG] Hiện/ẩn ô "Ngày nghỉ việc" tùy theo Tình trạng làm việc đang chọn (chỉ cần
+        // nhập ngày nghỉ việc khi chọn OFF - đã nghỉ việc).
+        function onWorkStatusChange() {
+            let statusVal = document.getElementById("inp-work-status").value;
+            let resignGroup = document.getElementById("resign-date-group");
+            if (resignGroup) resignGroup.style.display = (statusVal === "OFF") ? "block" : "none";
+        }
+
         function processAndValidateImage(inputElement) {
             const file = inputElement.files[0];
             const previewImg = document.getElementById("img-file-preview");
@@ -2219,6 +2240,13 @@
                     deptChips = `<span class="chip-dept">${escapeHtml(s.dept)}</span>`;
                 }
 
+                // [BỔ SUNG] Hiển thị Ngày sinh, Ngày vào làm và Tình trạng làm việc (ON/OFF) trong
+                // thẻ Danh bạ CBCNV. Nhân viên nào chưa có dữ liệu (bản ghi cũ) sẽ hiển thị
+                // "Chưa cập nhật" / mặc định coi như đang làm việc — không làm mất dữ liệu cũ.
+                let workStatusHtml = (s.workStatus === "OFF")
+                    ? `<span class="chip-dept" style="background:#fde8e8; color:#b91c1c; border-color:#f5c2c2;">Đã nghỉ việc${s.resignDate ? ' - ' + formatDateDisplay(s.resignDate) : ''}</span>`
+                    : `<span class="chip-dept" style="background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;">Đang làm việc</span>`;
+
                 return `
                     <div class="contact-card">
                         ${avatarHtml}
@@ -2227,8 +2255,11 @@
                             <p><span class="label">MSNV:</span><strong>${escapeHtml(s.msnv)}</strong></p>
                             <p><span class="label">Phòng ban:</span> ${deptChips}</p>
                             <p><span class="label">Chức vụ:</span>${escapeHtml(s.position)}</p>
+                            <p><i class="fa-solid fa-cake-candles" style="margin-right:6px;color:#328cc1"></i>${s.dob ? formatDateDisplay(s.dob) : 'Chưa cập nhật'}</p>
+                            <p><i class="fa-solid fa-calendar-check" style="margin-right:6px;color:#328cc1"></i>${s.dateJoin ? formatDateDisplay(s.dateJoin) : 'Chưa cập nhật'}</p>
                             <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.phone) || 'Chưa cập nhật'}</p>
                             <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.email) || 'Chưa cập nhật'}</p>
+                            <p>${workStatusHtml}</p>
                         </div>
                         ${actionsHtml}
                     </div>
@@ -2739,7 +2770,9 @@
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
                     email: document.getElementById("inp-email").value.trim(),
-                    imgUrl: globalAvatarIsNewUpload ? (isEdit && staffData[index] ? staffData[index].imgUrl : "") : globalBase64Image
+                    imgUrl: globalAvatarIsNewUpload ? (isEdit && staffData[index] ? staffData[index].imgUrl : "") : globalBase64Image,
+                    workStatus: document.getElementById("inp-work-status").value || "ON",
+                    resignDate: document.getElementById("inp-resign-date").value
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -2789,7 +2822,9 @@
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
                     email: document.getElementById("inp-email").value.trim(),
-                    months: parseFloat(document.getElementById("inp-months").value) || 0
+                    months: parseFloat(document.getElementById("inp-months").value) || 0,
+                    workStatus: document.getElementById("inp-work-status").value || "ON",
+                    resignDate: document.getElementById("inp-resign-date").value
                 };
 
                 if (isEdit) crewData[index] = obj; else crewData.push(obj);
@@ -2817,6 +2852,9 @@
                 document.getElementById("inp-date-join").value = d.dateJoin || "";
                 document.getElementById("inp-phone").value = d.phone || "";
                 document.getElementById("inp-email").value = d.email || "";
+                document.getElementById("inp-work-status").value = d.workStatus || "ON";
+                document.getElementById("inp-resign-date").value = d.resignDate || "";
+                onWorkStatusChange();
                 
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
@@ -2863,6 +2901,9 @@
                 document.getElementById("inp-phone").value = d.phone || "";
                 document.getElementById("inp-email").value = d.email || "";
                 document.getElementById("inp-months").value = d.months || "0";
+                document.getElementById("inp-work-status").value = d.workStatus || "ON";
+                document.getElementById("inp-resign-date").value = d.resignDate || "";
+                onWorkStatusChange();
             }
             document.getElementById("btn-cancel-edit").style.display = "inline-block";
         }
@@ -2873,6 +2914,11 @@
                 if(el.type === 'checkbox') el.checked = false;
                 else if(el.type !== 'date') el.value = "";
             });
+            // [BỔ SUNG] Ô <select> "Tình trạng làm việc" không được vòng lặp trên xử lý (chỉ nhắm
+            // input) nên cần đưa về mặc định ON riêng, đồng thời ẩn lại ô Ngày nghỉ việc.
+            document.getElementById("inp-work-status").value = "ON";
+            document.getElementById("inp-resign-date").value = "";
+            onWorkStatusChange();
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
         }
