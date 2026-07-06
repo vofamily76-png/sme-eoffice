@@ -782,10 +782,33 @@
         // cập nhật + triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật.
         let legacyBackendDetected = false;
         let cloudReady = false;
-        let globalBase64Image = ""; 
+        // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
+        // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
+        // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
+        let serverSupportsAvatarDrive = null;
+        let globalBase64Image = "";
+        // [NÂNG CẤP] Ảnh đại diện nhân viên nay được tải lên Google Drive (thư mục
+        // AVATAR_FOLDER_ID ở code.gs) thay vì nhét thẳng chuỗi Base64 vào ô Google Sheet
+        // (tránh làm quá tải / vượt giới hạn ~50.000 ký tự mỗi ô khi có nhiều nhân viên).
+        // globalAvatarIsNewUpload = true CHỈ khi người dùng vừa chọn 1 ảnh mới trong phiên
+        // sửa/thêm hiện tại — nếu false, nghĩa là avatar giữ nguyên (không gửi lại file lên
+        // Drive để tránh tải trùng lặp không cần thiết mỗi lần lưu).
+        let globalAvatarIsNewUpload = false;
+        let globalAvatarMimeType = "";
+        // Cache ảnh đại diện đã tải về từ Drive trong phiên làm việc hiện tại, key = fileId,
+        // value = data URI (base64) — tránh phải gọi lại API mỗi lần vẽ lại danh bạ.
+        let avatarCache = {};
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
         // Tài liệu văn bản nội bộ: {maTaiLieu, tenTaiLieu, phienBan, donViChuBien, ngayBanHanh, nguoiPheDuyet, fileName, fileId, fileUrl, uploadDate}
         let internalDocsData = [];
+
+        // Nhận diện 1 giá trị imgUrl có phải là fileId Google Drive (avatar đã chuyển sang
+        // lưu trên Drive) hay không — phân biệt với: rỗng (chưa có ảnh), hoặc chuỗi Base64
+        // "data:image/..." (ảnh cũ lưu trực tiếp trong Sheet trước khi nâng cấp, vẫn giữ
+        // nguyên để KHÔNG làm mất dữ liệu cũ), hoặc 1 URL http(s) (định dạng cũ khác nếu có).
+        function isDriveAvatarId(v) {
+            return !!v && typeof v === "string" && v.indexOf("data:") !== 0 && v.indexOf("http") === -1;
+        }
 
         // Chống XSS: chuyển ký tự đặc biệt HTML (<, >, &, ", ') thành dạng an toàn trước khi
         // chèn dữ liệu do người dùng nhập (tên, chức vụ, tên file...) vào innerHTML.
@@ -959,11 +982,16 @@
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
                 }
                 cloudReady = true;
+                // [CHẨN ĐOÁN] Ghi nhận việc backend đang chạy có hỗ trợ tính năng ảnh đại diện
+                // Drive hay không (dựa vào cờ serverFeatures.avatarDrive server trả về).
+                serverSupportsAvatarDrive = !!(data.serverFeatures && data.serverFeatures.avatarDrive);
                 saveLocalCache();
                 if (statusEl) {
                     statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
                     if (legacyBackendDetected) {
                         statusEl.innerHTML += '<br><span style="color:#a94442;">⚠️ Google Apps Script (backend) đang chạy CODE CŨ (chưa hỗ trợ bản vá bảo mật mới nhất). Hệ thống vẫn hoạt động bình thường nhờ phương án dự phòng, nhưng vui lòng dán lại toàn bộ nội dung file <b>code.gs</b> mới vào Apps Script Editor rồi bấm <b>Triển khai → Quản lý phiên bản triển khai → sửa (✏️) → Phiên bản: Mới → Triển khai</b> để có đầy đủ bảo mật (mật khẩu không đi qua URL nữa).</span>';
+                    } else if (serverSupportsAvatarDrive === false) {
+                        statusEl.innerHTML += '<br><span style="color:#a94442;">⚠️ Google Apps Script (backend) ĐANG CHẠY chưa hỗ trợ tính năng lưu ảnh đại diện lên Google Drive (thiếu bản code.gs mới nhất). Ảnh nhân viên tải lên hiện KHÔNG được lưu. Vui lòng dán lại toàn bộ nội dung file <b>code.gs</b> mới vào Apps Script Editor rồi bấm <b>Triển khai → Quản lý phiên bản triển khai → sửa (✏️) → Phiên bản: Mới → Triển khai</b> (chỉ Lưu code trong Editor KHÔNG cập nhật URL Web App đang chạy).</span>';
                     }
                 }
                 if (manual) { updateSystemData(); }
@@ -1711,6 +1739,59 @@
             }
         }
 
+        // [NÂNG CẤP] Tải nội dung TẤT CẢ ảnh đại diện đã chuyển sang Google Drive đang cần
+        // hiển thị trên danh bạ (mà chưa có trong avatarCache) — gộp thành 1 lượt gọi API duy
+        // nhất (action "getStaffAvatars") thay vì gọi riêng lẻ cho từng nhân viên, để tránh
+        // chạm giới hạn tốc độ (rate limit) khi danh bạ có nhiều nhân viên. Ảnh vẫn ở chế độ
+        // RIÊNG TƯ trên Drive — chỉ trả về cho người dùng đã đăng nhập hợp lệ (authToken).
+        async function loadStaffAvatars() {
+            if (!isScriptUrlConfigured() || !authToken) return;
+            let idsNeeded = [...new Set(
+                staffData.map(s => s.imgUrl).filter(v => isDriveAvatarId(v) && !avatarCache[v])
+            )];
+            if (idsNeeded.length === 0) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getStaffAvatars", fileIds: idsNeeded, authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { console.error(data.message); return; }
+                Object.keys(data.avatars || {}).forEach(id => {
+                    let a = data.avatars[id];
+                    avatarCache[id] = `data:${a.mimeType};base64,${a.fileData}`;
+                });
+                // Cập nhật lại các thẻ <img> đang hiển thị placeholder (chờ tải ảnh Drive).
+                document.querySelectorAll('img.avatar[data-avatar-fileid]').forEach(img => {
+                    let fid = img.getAttribute('data-avatar-fileid');
+                    if (avatarCache[fid]) img.src = avatarCache[fid];
+                });
+            } catch (err) {
+                console.error("Không thể tải ảnh đại diện từ Drive:", err);
+            }
+        }
+
+        // Tải riêng 1 ảnh đại diện (dùng khi mở form Sửa nhân viên, để hiển thị ảnh hiện có
+        // trong ô xem trước dù ảnh đó đã được chuyển sang lưu trên Google Drive).
+        async function fetchSingleStaffAvatarPreview(fileId) {
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: "avatar", authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { console.error(data.message); return; }
+                let dataUri = `data:${data.mimeType};base64,${data.fileData}`;
+                avatarCache[fileId] = dataUri;
+                let prev = document.getElementById("img-file-preview");
+                if (prev) { prev.src = dataUri; prev.style.display = "block"; }
+            } catch (err) {
+                console.error("Không thể tải ảnh đại diện:", err);
+            }
+        }
+
         function uploadStaffDocument(docType, msnv) {
             let input = document.getElementById(`doc-file-${docType}`);
             let file = input.files[0];
@@ -2004,8 +2085,11 @@
                 return;
             }
 
-            if (file.size > 5 * 1024 * 1024) {
-                alert("❌ Thất bại: Dung lượng ảnh vượt giới hạn cho phép (Vui lòng chọn file nhỏ hơn 5MB)!");
+            // [NÂNG CẤP] Ảnh đại diện nay được tải lên Google Drive (thư mục avatar riêng, xem
+            // AVATAR_FOLDER_ID ở code.gs) thay vì nhét thẳng vào ô Google Sheet, nên áp dụng
+            // cùng giới hạn dung lượng 15MB như các loại file khác trong hệ thống.
+            if (file.size > 15 * 1024 * 1024) {
+                alert("❌ Thất bại: Dung lượng ảnh vượt giới hạn cho phép (Vui lòng chọn file nhỏ hơn 15MB)!");
                 inputElement.value = "";
                 clearImageInput();
                 return;
@@ -2015,8 +2099,10 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    // Google Sheet giới hạn ~50.000 ký tự/ô => tự động resize + nén ảnh về khổ đại diện (~320px)
-                    const MAX_DIM = 320;
+                    // Vẫn resize + nén nhẹ về khổ đại diện hợp lý (~480px) để ảnh gọn nhẹ, tải
+                    // nhanh — không còn bị ép nén xuống dưới 45.000 ký tự như trước (giới hạn đó
+                    // chỉ cần thiết khi ảnh được lưu trực tiếp trong ô Google Sheet).
+                    const MAX_DIM = 480;
                     let w = img.width, h = img.height;
                     if (w >= h && w > MAX_DIM) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
                     else if (h > w && h > MAX_DIM) { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
@@ -2025,24 +2111,19 @@
                     canvas.width = w; canvas.height = h;
                     canvas.getContext("2d").drawImage(img, 0, 0, w, h);
 
-                    let quality = 0.75;
+                    let quality = 0.85;
                     let compressed = canvas.toDataURL("image/jpeg", quality);
-                    while (compressed.length > 45000 && quality > 0.3) {
+                    while (compressed.length > 2 * 1024 * 1024 && quality > 0.3) {
                         quality -= 0.1;
                         compressed = canvas.toDataURL("image/jpeg", quality);
                     }
 
-                    if (compressed.length > 45000) {
-                        alert("❌ Ảnh vẫn quá lớn sau khi nén tự động. Vui lòng chọn ảnh khác đơn giản/nhỏ hơn.");
-                        inputElement.value = "";
-                        clearImageInput();
-                        return;
-                    }
-
                     globalBase64Image = compressed;
+                    globalAvatarMimeType = "image/jpeg";
+                    globalAvatarIsNewUpload = true;
                     previewImg.src = globalBase64Image;
                     previewImg.style.display = "block";
-                    infoText.innerText = ` Đã tự động nén ảnh còn ~${Math.round(compressed.length/1024)}KB (${w}x${h}px), sẵn sàng đồng bộ lên Google Sheet.`;
+                    infoText.innerText = ` Đã xử lý ảnh còn ~${Math.round(compressed.length/1024)}KB (${w}x${h}px) — sẽ được tải lên Google Drive khi lưu.`;
                 };
                 img.src = e.target.result;
             };
@@ -2051,6 +2132,8 @@
 
         function clearImageInput() {
             globalBase64Image = "";
+            globalAvatarMimeType = "";
+            globalAvatarIsNewUpload = false;
             document.getElementById("img-file-preview").src = "";
             document.getElementById("img-file-preview").style.display = "none";
             document.getElementById("img-file-info").innerText = "";
@@ -2060,9 +2143,22 @@
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let htmlStaffGrid = staffData.map((s, idx) => {
                 let safeName = escapeHtml(s.name);
-                let avatarHtml = s.imgUrl 
-                    ? `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
-                    : `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
+                let avatarHtml;
+                if (isDriveAvatarId(s.imgUrl)) {
+                    // Ảnh đã chuyển sang lưu trên Google Drive (thư mục avatar riêng tư) — nếu
+                    // đã có sẵn trong cache (đã tải trước đó trong phiên) thì hiển thị ngay,
+                    // ngược lại hiển thị khung chờ rồi loadStaffAvatars() sẽ tự điền ảnh vào sau.
+                    let cached = avatarCache[s.imgUrl];
+                    avatarHtml = cached
+                        ? `<img src="${cached}" alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
+                        : `<img alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" style="background:#eef1f5;">`;
+                } else if (s.imgUrl) {
+                    // Dữ liệu cũ (Base64 lưu trực tiếp trong Sheet trước khi nâng cấp) — vẫn hiển
+                    // thị bình thường, KHÔNG bị mất hay bị ép chuyển đổi.
+                    avatarHtml = `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`;
+                } else {
+                    avatarHtml = `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
+                }
 
                 let actionsHtml = canEdit ? `
                     <div class="actions">
@@ -2094,6 +2190,8 @@
                 `;
             }).join('');
             document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự văn phòng.</p>";
+            // Tải nội dung các ảnh đại diện đang lưu trên Google Drive (không chặn giao diện).
+            loadStaffAvatars();
         }
 
         function renderCrewTable() {
@@ -2583,6 +2681,11 @@
                     return;
                 }
 
+                // [NÂNG CẤP] Nếu người dùng vừa chọn ảnh MỚI (globalAvatarIsNewUpload = true),
+                // giữ tạm giá trị avatar CŨ trong staffData ở local (để không mất ảnh hiển thị
+                // trong lúc chờ server xử lý); giá trị mới (fileId Drive) sẽ được đồng bộ về sau
+                // khi loadFromCloud(true) chạy lại bên dưới. Nếu không đổi ảnh, giữ nguyên
+                // globalBase64Image (đang chứa giá trị avatar hiện có: fileId Drive hoặc Base64 cũ).
                 let obj = {
                     msnv: msnv, name: name,
                     dob: document.getElementById("inp-dob").value,
@@ -2591,12 +2694,44 @@
                     dateJoin: document.getElementById("inp-date-join").value,
                     phone: document.getElementById("inp-phone").value.trim(),
                     email: document.getElementById("inp-email").value.trim(),
-                    imgUrl: globalBase64Image 
+                    imgUrl: globalAvatarIsNewUpload ? (isEdit && staffData[index] ? staffData[index].imgUrl : "") : globalBase64Image
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
                 saveLocalCache();
-                await pushToCloud(Object.assign({ action: "saveStaff", type: "staff" }, obj));
+
+                let payload = Object.assign({ action: "saveStaff", type: "staff" }, obj);
+                if (globalAvatarIsNewUpload && globalBase64Image) {
+                    // [CHẨN ĐOÁN] Nếu đã biết chắc backend đang chạy KHÔNG hỗ trợ lưu ảnh lên
+                    // Drive (do lần đồng bộ gần nhất không thấy cờ serverFeatures.avatarDrive),
+                    // báo ngay cho người dùng biết TRƯỚC khi lưu, tránh việc ảnh "biến mất" một
+                    // cách khó hiểu.
+                    if (serverSupportsAvatarDrive === false) {
+                        alert("⚠️ Google Apps Script (backend) đang chạy CODE CŨ, CHƯA hỗ trợ tính năng lưu ảnh đại diện lên Google Drive.\n\nẢnh bạn vừa chọn sẽ KHÔNG được lưu cho đến khi Admin cập nhật lại code.gs mới nhất và TRIỂN KHAI LẠI trên Google Apps Script:\nDeploy (Triển khai) → Manage deployments (Quản lý phiên bản triển khai) → bấm sửa (✏️) bản đang chạy → Version: New version (Phiên bản: Mới) → Deploy (Triển khai).\n\nCác thông tin khác của nhân viên vẫn được lưu bình thường.");
+                    }
+                    // Gửi kèm dữ liệu ảnh để backend tự tải lên thư mục Drive AVATAR_FOLDER_ID
+                    // (không còn gửi thẳng chuỗi Base64 để lưu vào ô Sheet nữa).
+                    payload.avatarFileData = globalBase64Image.split(",")[1];
+                    payload.avatarMimeType = globalAvatarMimeType || "image/jpeg";
+                    let ext = (globalAvatarMimeType === "image/png") ? "png" : "jpg";
+                    payload.avatarFileName = msnv + "_" + Date.now() + "." + ext;
+                    delete payload.imgUrl; // để server tự quyết định giá trị avatar mới sau khi tải lên Drive
+                }
+
+                let staffSaveOk = await pushToCloud(payload);
+                if (staffSaveOk && globalAvatarIsNewUpload) {
+                    // Lấy lại fileId ảnh mới từ Google Sheet/Drive để hiển thị đúng ngay lập tức.
+                    await loadFromCloud(true);
+
+                    // [CHẨN ĐOÁN] Kiểm tra lại: đã upload ảnh nhưng nếu ô HinhAnh vẫn trống sau
+                    // khi tải lại dữ liệu, rất có thể do Apps Script (backend) ĐANG CHẠY chưa
+                    // được triển khai lại (Deploy) với bản code.gs mới nhất hỗ trợ tính năng này
+                    // — dán code mới vào Editor KHÔNG tự cập nhật URL Web App đang hoạt động.
+                    let savedStaffCheck = staffData.find(s => s.msnv === msnv);
+                    if (savedStaffCheck && !savedStaffCheck.imgUrl) {
+                        alert("⚠️ Đã lưu thông tin nhân viên, NHƯNG ảnh đại diện KHÔNG được lưu vào hệ thống.\n\nNguyên nhân thường gặp nhất: Google Apps Script (backend) chưa được TRIỂN KHAI LẠI (Deploy) với code.gs mới nhất (chỉ dán code mới vào Editor rồi Lưu là CHƯA đủ).\n\nCách khắc phục: Mở Google Apps Script Editor của bạn → xác nhận code.gs đã là bản mới nhất → vào Deploy (Triển khai) → Manage deployments (Quản lý phiên bản triển khai) → bấm sửa (✏️) bản đang chạy → Version: New version (Phiên bản: Mới) → Deploy (Triển khai). Sau đó vào tab Admin bấm \"Đồng bộ lại từ Google Sheet\" rồi thử tải ảnh lại cho nhân viên này.");
+                    }
+                }
             } else {
                 let name = document.getElementById("inp-name").value.trim();
                 if (!name) { alert("Vui lòng điền Họ tên thuyền viên!"); return; }
@@ -2648,9 +2783,25 @@
                 }
 
                 if (d.imgUrl) {
+                    // Giữ nguyên giá trị avatar hiện có (fileId Drive hoặc chuỗi Base64 cũ) để
+                    // gửi lại khi lưu NẾU người dùng không đổi ảnh mới.
                     globalBase64Image = d.imgUrl;
-                    document.getElementById("img-file-preview").src = d.imgUrl;
-                    document.getElementById("img-file-preview").style.display = "block";
+                    globalAvatarIsNewUpload = false;
+                    if (isDriveAvatarId(d.imgUrl)) {
+                        // Ảnh đã chuyển sang lưu trên Google Drive — nếu đã có trong cache thì
+                        // hiển thị ngay, ngược lại tải riêng ảnh này để xem trước khi sửa.
+                        if (avatarCache[d.imgUrl]) {
+                            document.getElementById("img-file-preview").src = avatarCache[d.imgUrl];
+                            document.getElementById("img-file-preview").style.display = "block";
+                        } else {
+                            document.getElementById("img-file-preview").style.display = "none";
+                            fetchSingleStaffAvatarPreview(d.imgUrl);
+                        }
+                    } else {
+                        // Dữ liệu cũ (Base64) — hiển thị trực tiếp như trước đây.
+                        document.getElementById("img-file-preview").src = d.imgUrl;
+                        document.getElementById("img-file-preview").style.display = "block";
+                    }
                 } else {
                     clearImageInput();
                 }
