@@ -232,7 +232,7 @@
                     <div class="card"><div class="card-info"><p>Nhân sự Văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
-                    <div class="card" style="cursor:pointer;" onclick="switchPage('hr')"><div class="card-info"><p>HĐ Lao động sắp hết hạn (30 ngày)</p><h3 id="dash-hr-expiring-count">0</h3></div><i class="fa-solid fa-file-circle-exclamation card-icon" style="color:#e67e22;"></i></div>
+                    <div class="card" id="dash-hr-card" style="cursor:pointer;" onclick="switchPage('hr')"><div class="card-info"><p>HĐ Lao động sắp hết hạn (30 ngày)</p><h3 id="dash-hr-expiring-count">0</h3></div><i class="fa-solid fa-file-circle-exclamation card-icon" style="color:#e67e22;"></i></div>
                 </div>
                 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -692,6 +692,28 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="input-group">
+                            <label>Quyền riêng: Quản Lý Nhân Sự</label>
+                            <div style="display:flex; gap:14px; align-items:center; height:38px; flex-wrap:wrap;">
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-hr-view" style="width:auto;"> Xem tab
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-hr-edit" style="width:auto;"> Sửa
+                                </label>
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-hr-delete" style="width:auto;"> Xóa
+                                </label>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Quyền riêng: Cảnh báo HĐ sắp hết hạn (Tổng quan)</label>
+                            <div style="display:flex; gap:14px; align-items:center; height:38px; flex-wrap:wrap;">
+                                <label style="font-weight:normal; font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                    <input type="checkbox" id="adm-new-contract-alert" style="width:auto;"> Hiện thông báo
+                                </label>
+                            </div>
+                        </div>
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end;">
                             <button class="btn" style="width:auto" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
                         </div>
@@ -854,7 +876,7 @@
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
         // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
         let userDatabase = {
-            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true }
+            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true }
         };
         // [NÂNG CẤP BẢO MẬT - MẢNG 1] Thay vì gửi lại username+password ở MỌI request, giờ
         // chỉ đăng nhập 1 lần để lấy về 1 "authToken" tạm thời do server cấp (tự hết hạn sau
@@ -867,6 +889,11 @@
         let currentUserCanUploadDocs = false;
         let currentUserCanDeleteDocs = false;
         let currentUserCanManageEquipment = false;
+        // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG]
+        let currentUserCanViewHR = false;
+        let currentUserCanEditHR = false;
+        let currentUserCanDeleteHR = false;
+        let currentUserCanSeeContractAlert = false;
         let currentUser = null;
         let currentUsername = null;
 
@@ -880,7 +907,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-contract-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-permission-v2";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -997,7 +1024,7 @@
                 if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
                 }
                 return true;
             } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
@@ -1078,7 +1105,7 @@
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
-                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
+                    userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
                 }
                 cloudReady = true;
                 // [CHẨN ĐOÁN] Ghi nhận việc backend đang chạy có hỗ trợ tính năng ảnh đại diện
@@ -1281,6 +1308,11 @@
             let uDocsDelete = document.getElementById("adm-new-docs-delete").checked;
             let uEqView = document.getElementById("adm-new-eq-view").checked;
             let uEqManage = document.getElementById("adm-new-eq-manage").checked;
+            // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG]
+            let uHrView = document.getElementById("adm-new-hr-view").checked;
+            let uHrEdit = document.getElementById("adm-new-hr-edit").checked;
+            let uHrDelete = document.getElementById("adm-new-hr-delete").checked;
+            let uContractAlert = document.getElementById("adm-new-contract-alert").checked;
 
             if (!uName || !uPass) { alert("⚠️ Vui lòng điền đầy đủ Tên đăng nhập và Mật khẩu!"); return; }
             let uPassErr = checkPasswordStrengthClient(uPass);
@@ -1288,9 +1320,9 @@
             if (uEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(uEmail)) { alert("⚠️ Email liên kết không đúng định dạng!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, email: uEmail, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage });
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, email: uEmail, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert });
             if (ok) {
-                userDatabase[uName] = { role: uRole, email: uEmail, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage };
+                userDatabase[uName] = { role: uRole, email: uEmail, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert };
                 saveLocalCache();
                 alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
             } else {
@@ -1305,6 +1337,10 @@
             document.getElementById("adm-new-docs-delete").checked = false;
             document.getElementById("adm-new-eq-view").checked = false;
             document.getElementById("adm-new-eq-manage").checked = false;
+            document.getElementById("adm-new-hr-view").checked = false;
+            document.getElementById("adm-new-hr-edit").checked = false;
+            document.getElementById("adm-new-hr-delete").checked = false;
+            document.getElementById("adm-new-contract-alert").checked = false;
             renderUserListViewForAdmin();
         }
 
@@ -1322,7 +1358,9 @@
                 action: "createUser", username: username, email: newEmail,
                 role: userDatabase[username].role,
                 docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete,
-                eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage
+                eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage,
+                hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete,
+                contractAlert: !!userDatabase[username].contractAlert
             });
             if (ok) { userDatabase[username].email = newEmail; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật email liên kết cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng / định dạng email).`);
@@ -1337,7 +1375,7 @@
             let rpErr = checkPasswordStrengthClient(newPass);
             if (rpErr) { alert("⚠️ " + rpErr); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, email: userDatabase[username].email || "", role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, email: userDatabase[username].email || "", role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
@@ -1358,7 +1396,7 @@
 
             // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
             // chỉ cập nhật role/quyền. authToken (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
-            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, email: userDatabase[username].email || "", docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage });
+            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, email: userDatabase[username].email || "", docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert });
             if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
@@ -1388,7 +1426,11 @@
                 docsUpload: !!newDocsUpload,
                 docsDelete: !!newDocsDelete,
                 eqView: !!userDatabase[username].eqView,
-                eqManage: !!userDatabase[username].eqManage
+                eqManage: !!userDatabase[username].eqManage,
+                hrView: !!userDatabase[username].hrView,
+                hrEdit: !!userDatabase[username].hrEdit,
+                hrDelete: !!userDatabase[username].hrDelete,
+                contractAlert: !!userDatabase[username].contractAlert
             });
             if (ok) {
                 userDatabase[username].docsView = newDocsView;
@@ -1423,11 +1465,86 @@
                 docsUpload: !!userDatabase[username].docsUpload,
                 docsDelete: !!userDatabase[username].docsDelete,
                 eqView: !!newEqView,
-                eqManage: !!newEqManage
+                eqManage: !!newEqManage,
+                hrView: !!userDatabase[username].hrView,
+                hrEdit: !!userDatabase[username].hrEdit,
+                hrDelete: !!userDatabase[username].hrDelete,
+                contractAlert: !!userDatabase[username].contractAlert
             });
             if (ok) {
                 userDatabase[username].eqView = newEqView;
                 userDatabase[username].eqManage = newEqManage;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Xem tab", "Sửa" hoặc "Xóa"
+        // thông tin Nhân sự cho 1 user cụ thể (độc lập với Role chung ReadWrite/ReadOnly).
+        async function toggleUserHRPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newHrView = userDatabase[username].hrView;
+            let newHrEdit = userDatabase[username].hrEdit;
+            let newHrDelete = userDatabase[username].hrDelete;
+            if (field === "hrView") newHrView = checked;
+            if (field === "hrEdit") newHrEdit = checked;
+            if (field === "hrDelete") newHrDelete = checked;
+
+            // Nếu tắt quyền Xem thì cũng tự động tắt luôn Sửa & Xóa
+            if (field === "hrView" && !checked) { newHrEdit = false; newHrDelete = false; }
+            // Nếu bật Sửa hoặc Xóa thì tự động bật luôn quyền Xem
+            if ((field === "hrEdit" || field === "hrDelete") && checked) newHrView = true;
+
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                role: userDatabase[username].role,
+                email: userDatabase[username].email || "",
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete,
+                eqView: !!userDatabase[username].eqView,
+                eqManage: !!userDatabase[username].eqManage,
+                hrView: !!newHrView,
+                hrEdit: !!newHrEdit,
+                hrDelete: !!newHrDelete,
+                contractAlert: !!userDatabase[username].contractAlert
+            });
+            if (ok) {
+                userDatabase[username].hrView = newHrView;
+                userDatabase[username].hrEdit = newHrEdit;
+                userDatabase[username].hrDelete = newHrDelete;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        // [TAB "TỔNG QUAN"] Bật/tắt quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
+        // cho 1 user cụ thể — cờ hiển thị độc lập, không cascade với các quyền khác.
+        async function toggleUserContractAlertPermission(username, checked) {
+            if (!userDatabase[username]) return;
+
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                role: userDatabase[username].role,
+                email: userDatabase[username].email || "",
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete,
+                eqView: !!userDatabase[username].eqView,
+                eqManage: !!userDatabase[username].eqManage,
+                hrView: !!userDatabase[username].hrView,
+                hrEdit: !!userDatabase[username].hrEdit,
+                hrDelete: !!userDatabase[username].hrDelete,
+                contractAlert: !!checked
+            });
+            if (ok) {
+                userDatabase[username].contractAlert = checked;
                 saveLocalCache();
             } else {
                 alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
@@ -1499,12 +1616,50 @@
                     </span>`;
                 }
 
+                // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG]
+                let hrControl = "";
+                if (u === "admin") {
+                    hrControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-file-contract"></i> Toàn quyền Nhân sự</span>';
+                } else {
+                    let hrVChecked = userDatabase[u].hrView ? "checked" : "";
+                    let hrEChecked = userDatabase[u].hrEdit ? "checked" : "";
+                    let hrDChecked = userDatabase[u].hrDelete ? "checked" : "";
+                    hrControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-file-contract" title="Quản Lý Nhân Sự"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${hrVChecked} onchange="toggleUserHRPermission('${safeU}', 'hrView', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${hrEChecked} onchange="toggleUserHRPermission('${safeU}', 'hrEdit', this.checked)"> Sửa
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${hrDChecked} onchange="toggleUserHRPermission('${safeU}', 'hrDelete', this.checked)"> Xóa
+                        </label>
+                    </span>`;
+                }
+
+                // [TAB "TỔNG QUAN"] Quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
+                let contractAlertControl = "";
+                if (u === "admin") {
+                    contractAlertControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-bell"></i> Luôn thấy cảnh báo HĐ</span>';
+                } else {
+                    let caChecked = userDatabase[u].contractAlert ? "checked" : "";
+                    contractAlertControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-bell" title="Cảnh báo HĐ sắp hết hạn (Tổng quan)"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${caChecked} onchange="toggleUserContractAlertPermission('${safeU}', this.checked)"> Cảnh báo HĐ (Tổng quan)
+                        </label>
+                    </span>`;
+                }
+
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${safeU}</b> ${roleControl}</span>
                     ${emailBadge}
                     ${docsControl}
                     ${eqControl}
+                    ${hrControl}
+                    ${contractAlertControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -1595,7 +1750,7 @@
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
                     currentUsername = u;
-                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage };
+                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert };
                     // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được
                     // lưu lại trong bộ nhớ trình duyệt sau bước đăng nhập này.
                     authToken = data.token || null;
@@ -1605,7 +1760,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -1664,7 +1819,6 @@
 
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
-            document.getElementById("menu-hr").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
@@ -1686,6 +1840,25 @@
             currentUserCanUploadDocs = canUploadDocs;
             currentUserCanDeleteDocs = canDeleteDocs;
             document.getElementById("menu-profile-docs").style.display = canViewDocs ? "flex" : "none";
+
+            // ==== [TAB "QUẢN LÝ NHÂN SỰ"] Quyền riêng, cấp theo TỪNG tài khoản ====
+            // Admin luôn thấy & toàn quyền. Các tài khoản khác do Admin cấp riêng qua checkbox
+            // (độc lập với Role chung ReadWrite/ReadOnly) — xem thẻ "Cấp tài khoản mới" và
+            // danh sách User trong Cài đặt hệ thống (Admin).
+            let canViewHR = (currentUser.role === "Admin") || !!currentUser.hrView;
+            let canEditHRUI = (currentUser.role === "Admin") || !!currentUser.hrEdit;
+            let canDeleteHRUI = (currentUser.role === "Admin") || !!currentUser.hrDelete;
+            let canSeeContractAlert = (currentUser.role === "Admin") || !!currentUser.contractAlert;
+            currentUserCanViewHR = canViewHR;
+            currentUserCanEditHR = canEditHRUI;
+            currentUserCanDeleteHR = canDeleteHRUI;
+            currentUserCanSeeContractAlert = canSeeContractAlert;
+            document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
+            // Thẻ "HĐ Lao động sắp hết hạn" ở Tab Tổng quan: chỉ hiện với tài khoản được cấp
+            // quyền "CanhBaoHopDong" (hoặc Admin). Ẩn hẳn thẻ (không chỉ số đếm) để tránh gợi ý
+            // tồn tại thông tin nhạy cảm mà tài khoản đó không được xem.
+            let dashHrCardEl = document.getElementById("dash-hr-card");
+            if (dashHrCardEl) dashHrCardEl.style.display = canSeeContractAlert ? "" : "none";
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
@@ -1718,6 +1891,10 @@
             if (pageId === "equipment") {
                 let canViewEquipment = currentUser && ((currentUser.role === "Admin") || !!currentUser.eqView);
                 if (!canViewEquipment) { alert("⚠️ Bạn không có quyền xem Quản lý Thiết bị. Liên hệ Admin để được cấp quyền."); return; }
+            }
+            if (pageId === "hr") {
+                let canViewHR = currentUser && ((currentUser.role === "Admin") || !!currentUser.hrView);
+                if (!canViewHR) { alert("⚠️ Bạn không có quyền xem Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền."); return; }
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -2281,7 +2458,11 @@
         }
 
         function renderStaffGrid() {
-            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Nút Sửa/Xóa nhân sự ở Danh bạ CBCNV
+            // dùng CHUNG 1 hành động dữ liệu (saveStaff/deletePerson) với Tab "Quản Lý Nhân Sự",
+            // nên áp dụng cùng quyền riêng hrEdit/hrDelete do Admin cấp cho từng tài khoản.
+            let canEditStaff = currentUserCanEditHR;
+            let canDeleteStaff = currentUserCanDeleteHR;
             let htmlStaffGrid = staffData.map((s, idx) => {
                 let safeName = escapeHtml(s.name);
                 let avatarHtml;
@@ -2301,10 +2482,10 @@
                     avatarHtml = `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
                 }
 
-                let actionsHtml = canEdit ? `
+                let actionsHtml = (canEditStaff || canDeleteStaff) ? `
                     <div class="actions">
-                        <button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteData('staff', ${idx})"><i class="fa-solid fa-trash"></i></button>
+                        ${canEditStaff ? `<button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>` : ''}
+                        ${canDeleteStaff ? `<button class="btn btn-sm btn-danger" onclick="deleteData('staff', ${idx})"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 ` : "";
 
@@ -2383,7 +2564,12 @@
         // không còn cần theo dõi hợp đồng). Vẫn giữ nguyên chỉ mục idx của staffData gốc để
         // nút "Sửa" mở đúng đúng bản ghi trong form Thêm/Sửa Nhân sự.
         function renderHRTable() {
-            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Nút "Sửa"/"Xóa" nay dựa theo quyền
+            // riêng hrEdit/hrDelete do Admin cấp cho từng tài khoản (không còn chỉ dựa vào Role
+            // chung Admin/ReadWrite như trước).
+            let canEdit = currentUserCanEditHR;
+            let canDelete = currentUserCanDeleteHR;
+            let showActionsCol = canEdit || canDelete;
             let rowsHtml = staffData.map((s, idx) => ({ s, idx }))
                 .filter(x => x.s.workStatus !== "OFF")
                 .map(x => {
@@ -2400,8 +2586,9 @@
                             <td>${s.contractSignDate ? formatDateDisplay(s.contractSignDate) : '-'}</td>
                             <td>${s.contractExpiryDate ? formatDateDisplay(s.contractExpiryDate) : '-'}</td>
                             <td><span class="hr-badge ${info.cls}">${info.label}</span></td>
-                            <td style="display:${canEdit ? '' : 'none'}">
-                                <button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>
+                            <td style="display:${showActionsCol ? '' : 'none'}">
+                                ${canEdit ? `<button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>` : ''}
+                                ${canDelete ? `<button class="btn btn-sm btn-danger" onclick="deleteData('staff', ${idx})"><i class="fa-solid fa-trash"></i></button>` : ''}
                             </td>
                         </tr>
                     `;
@@ -2417,10 +2604,19 @@
         // liệt kê các hợp đồng CÓ THỜI HẠN sẽ hết hạn trong vòng 30 ngày tới (hoặc đã hết hạn),
         // theo đúng yêu cầu nghiệp vụ (chỉ áp dụng cho hợp đồng có thời hạn, không áp dụng cho
         // hợp đồng không xác định thời hạn).
+        // [PHÂN QUYỀN RIÊNG] Chỉ hiển thị với tài khoản được Admin cấp quyền "CanhBaoHopDong"
+        // (hoặc Admin) — các tài khoản khác không thấy hộp cảnh báo này dù vẫn xem được Tab.
         function renderHRExpiringAlert() {
             let box = document.getElementById("hr-expiring-alert-box");
             let countEl = document.getElementById("dash-hr-expiring-count");
             if (!box) return;
+
+            if (!currentUserCanSeeContractAlert) {
+                box.style.display = "none";
+                box.innerHTML = "";
+                if (countEl) countEl.innerText = "0";
+                return;
+            }
 
             let list = staffData.filter(s => s.workStatus !== "OFF")
                 .map(s => Object.assign({}, s, { _info: getContractStatusInfo(s) }))
@@ -2939,6 +3135,13 @@
             let isEdit = (index !== "");
 
             if (type !== "CREW_SHIP") {
+                // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Kiểm tra trước ở trình duyệt để
+                // báo lỗi rõ ràng ngay lập tức; server (canEditHR) vẫn kiểm tra lại đầy đủ dù
+                // bước này có bị bỏ qua.
+                if (!currentUserCanEditHR) {
+                    alert("⚠️ Bạn không có quyền thêm/sửa thông tin Nhân sự. Liên hệ Admin để được cấp quyền.");
+                    return;
+                }
                 let msnv = document.getElementById("inp-msnv").value.trim();
                 let name = document.getElementById("inp-name").value.trim();
                 if (!msnv || !name) { alert("Vui lòng điền MSNV và Họ tên!"); return; }
@@ -3148,6 +3351,12 @@
         }
 
         async function deleteData(type, idx) {
+            // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Kiểm tra trước ở trình duyệt; server
+            // (canDeleteHR) vẫn kiểm tra lại đầy đủ dù bước này có bị bỏ qua.
+            if (type === "staff" && !currentUserCanDeleteHR) {
+                alert("⚠️ Bạn không có quyền xóa thông tin Nhân sự. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
             if (confirm("Xác nhận xóa dữ liệu này?")) {
                 let keyId = (type === 'staff') ? staffData[idx].msnv : crewData[idx].name;
                 if (type === 'staff') staffData.splice(idx, 1); else crewData.splice(idx, 1);
