@@ -205,6 +205,11 @@
                 <a href="#" onclick="openChangePasswordModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
                 <br>
                 <a href="#" onclick="handleLogout()" style="color: #ff8888; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Đăng xuất 🚪</a>
+                <!-- [CHẨN ĐOÁN] Mã phiên bản FRONTEND đang chạy — dùng để xác nhận file index.html
+                     đang mở THỰC SỰ là bản mới nhất (đã có tính năng lưu ảnh lên Google Drive),
+                     tránh nhầm lẫn với 1 bản index.html cũ hơn còn sót lại trên máy chủ web/trình
+                     duyệt. So sánh chuỗi này với FRONTEND_BUILD_VERSION trong file index.html. -->
+                <p style="margin-top:14px; font-size:10px; color:#5b7ba3; opacity:0.7;">Build: <span id="frontend-build-version"></span></p>
             </div>
         </div>
 
@@ -782,6 +787,11 @@
         // cập nhật + triển khai lại (Deploy) code.gs mới để có đầy đủ bảo mật.
         let legacyBackendDetected = false;
         let cloudReady = false;
+        // [CHẨN ĐOÁN] Mã phiên bản của CHÍNH FILE index.html đang chạy trong trình duyệt.
+        // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
+        // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
+        // trên máy chủ web hoặc trong cache trình duyệt.
+        const FRONTEND_BUILD_VERSION = "2026-07-06.avatar-drive-v3";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -985,9 +995,14 @@
                 // [CHẨN ĐOÁN] Ghi nhận việc backend đang chạy có hỗ trợ tính năng ảnh đại diện
                 // Drive hay không (dựa vào cờ serverFeatures.avatarDrive server trả về).
                 serverSupportsAvatarDrive = !!(data.serverFeatures && data.serverFeatures.avatarDrive);
+                let backendBuildVersion = (data.serverFeatures && data.serverFeatures.buildVersion) || "";
                 saveLocalCache();
                 if (statusEl) {
                     statusEl.innerHTML = "✅ Đã đồng bộ thành công với Google Sheet. (" + new Date().toLocaleTimeString() + ")";
+                    // [CHẨN ĐOÁN] Hiển thị mã phiên bản frontend/backend đang chạy để Admin đối
+                    // chiếu, phát hiện ngay nếu 1 trong 2 phía chưa được triển khai (deploy) bản
+                    // mới nhất — nguyên nhân phổ biến nhất khiến tính năng "mới sửa" chưa có tác dụng.
+                    statusEl.innerHTML += '<br><span style="font-size:11px; color:#888;">Frontend: ' + escapeHtml(FRONTEND_BUILD_VERSION) + ' • Backend: ' + escapeHtml(backendBuildVersion || "(không rõ - backend quá cũ)") + '</span>';
                     if (legacyBackendDetected) {
                         statusEl.innerHTML += '<br><span style="color:#a94442;">⚠️ Google Apps Script (backend) đang chạy CODE CŨ (chưa hỗ trợ bản vá bảo mật mới nhất). Hệ thống vẫn hoạt động bình thường nhờ phương án dự phòng, nhưng vui lòng dán lại toàn bộ nội dung file <b>code.gs</b> mới vào Apps Script Editor rồi bấm <b>Triển khai → Quản lý phiên bản triển khai → sửa (✏️) → Phiên bản: Mới → Triển khai</b> để có đầy đủ bảo mật (mật khẩu không đi qua URL nữa).</span>';
                     } else if (serverSupportsAvatarDrive === false) {
@@ -3207,6 +3222,8 @@
         }
 
         window.addEventListener("load", () => {
+            let buildEl = document.getElementById("frontend-build-version");
+            if (buildEl) buildEl.innerText = FRONTEND_BUILD_VERSION;
             loadLocalCache();
             updateSystemData();
             if (isScriptUrlConfigured()) loadFromCloud(false).then(() => updateSystemData());
