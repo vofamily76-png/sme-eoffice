@@ -142,6 +142,15 @@
         .doc-list li .doc-meta { color:#888; font-size:12px; margin-left:8px; }
         .doc-list li .doc-del { color:#c0392b; cursor:pointer; font-size:13px; }
         .doc-empty { color:#999; font-size:13px; font-style: italic; }
+
+        /* [TAB "QUẢN LÝ NHÂN SỰ"] Nhãn trạng thái hợp đồng lao động */
+        .hr-badge { font-size: 12px; padding: 4px 9px; border-radius: 4px; font-weight: bold; display: inline-block; white-space: nowrap; }
+        .hr-badge-indefinite { background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; }
+        .hr-badge-ok { background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb; }
+        .hr-badge-expiring { background:#fff3cd; color:#8a6d3b; border:1px solid #ffe8a1; }
+        .hr-badge-expired { background:#fde8e8; color:#b91c1c; border:1px solid #f5c2c2; }
+        #hr-expiring-alert-box ul { list-style: none; }
+        #hr-expiring-alert-box li { padding: 8px 10px; background:#fff; border-radius:4px; margin-bottom:6px; border-left:3px solid #e67e22; }
     </style>
 </head>
 <body>
@@ -190,6 +199,7 @@
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
+                    <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
@@ -222,6 +232,7 @@
                     <div class="card"><div class="card-info"><p>Nhân sự Văn phòng</p><h3 id="dash-staff-count">0</h3></div><i class="fa-solid fa-user-tie card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
+                    <div class="card" style="cursor:pointer;" onclick="switchPage('hr')"><div class="card-info"><p>HĐ Lao động sắp hết hạn (30 ngày)</p><h3 id="dash-hr-expiring-count">0</h3></div><i class="fa-solid fa-file-circle-exclamation card-icon" style="color:#e67e22;"></i></div>
                 </div>
                 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -243,6 +254,35 @@
                     <select id="filter-dept" class="search-box" onchange="filterStaffGrid()" style="max-width: 250px;"></select>
                 </div>
                 <div class="contact-grid" id="contact-grid"></div>
+            </div>
+
+            <div id="page-hr" class="page-content">
+                <h2 class="page-title">Quản Lý Nhân Sự - Hợp đồng Lao động</h2>
+                <div id="hr-expiring-alert-box" class="admin-box" style="display:none; border-left: 5px solid #e67e22; background:#fff8e1;"></div>
+                <div class="table-controls">
+                    <input type="text" id="search-hr" class="search-box" oninput="filterHRTable()" placeholder="Tìm nhân viên theo tên hoặc mã số (MSNV)...">
+                    <select id="filter-hr-dept" class="search-box" onchange="filterHRTable()" style="max-width: 220px;"></select>
+                    <select id="filter-hr-contract" class="search-box" onchange="filterHRTable()" style="max-width: 220px;">
+                        <option value="Tất cả">-- Tất cả loại hợp đồng --</option>
+                        <option value="Có thời hạn">Có thời hạn</option>
+                        <option value="Không thời hạn">Không thời hạn</option>
+                    </select>
+                    <select id="filter-hr-status" class="search-box" onchange="filterHRTable()" style="max-width: 220px;">
+                        <option value="Tất cả">-- Tất cả trạng thái HĐ --</option>
+                        <option value="SapHetHan">Sắp hết hạn (≤30 ngày)</option>
+                        <option value="HetHan">Đã hết hạn</option>
+                        <option value="ConHan">Còn hiệu lực</option>
+                        <option value="KhongThoiHan">Không thời hạn</option>
+                    </select>
+                </div>
+                <table id="tbl-hr">
+                    <thead><tr>
+                        <th>MSNV</th><th>Họ & tên</th><th>Phòng ban</th><th>Chức vụ</th>
+                        <th>Loại hợp đồng</th><th>Ngày ký HĐ</th><th>Ngày hết hạn HĐ</th><th>Trạng thái hợp đồng</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
             </div>
 
             <div id="page-crew" class="page-content">
@@ -332,6 +372,24 @@
                         <div class="input-group" id="resign-date-group" style="display:none;">
                             <label>Ngày nghỉ việc</label>
                             <input type="date" id="inp-resign-date">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group">
+                            <label>Loại hợp đồng lao động</label>
+                            <select id="inp-contract-type" onchange="onContractTypeChange()">
+                                <option value="Không thời hạn">Không thời hạn</option>
+                                <option value="Có thời hạn">Có thời hạn</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày ký hợp đồng</label>
+                            <input type="date" id="inp-contract-sign-date">
+                        </div>
+                        <div class="input-group" id="contract-expiry-group" style="display:none;">
+                            <label>Ngày hết hạn hợp đồng</label>
+                            <input type="date" id="inp-contract-expiry-date">
+                            <span class="file-help-text">Hệ thống sẽ tự động cảnh báo khi hợp đồng còn 30 ngày trước hạn.</span>
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:20px">
@@ -822,7 +880,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-06.work-status-v4";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-contract-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -1606,6 +1664,7 @@
 
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
+            document.getElementById("menu-hr").style.display = "flex";
             document.getElementById("menu-crew").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
@@ -2055,6 +2114,8 @@
 
             let deptOptions = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
             document.getElementById("filter-dept").innerHTML = deptOptions;
+            let hrDeptSel = document.getElementById("filter-hr-dept");
+            if (hrDeptSel) hrDeptSel.innerHTML = deptOptions;
 
             let checkboxesHtml = depts.map((d, i) => `
                 <label class="checkbox-item">
@@ -2069,6 +2130,7 @@
             document.getElementById("inp-vessel").innerHTML = vessels.map(v => `<option value="${v}">${v}</option>`).join('');
 
             renderStaffGrid();
+            renderHRTable();
             renderCrewTable();
             populateEquipmentFormOptions();
             renderEquipmentTable();
@@ -2122,11 +2184,15 @@
                 document.querySelectorAll(".id-group, .select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
                 document.querySelectorAll(".email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động gắn với Phòng ban -> chỉ áp dụng
+                // cho Nhân sự Văn phòng, không áp dụng cho Thuyền viên Đội tàu (gắn với Tàu).
+                document.querySelector(".contract-group").style.display = "none";
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
                 document.querySelectorAll(".select-vessel-group, .months-group").forEach(el => el.style.display = "none");
                 document.getElementById("lbl-date-join").innerText = "Ngày vào làm";
-                
+                document.querySelector(".contract-group").style.display = "grid";
+
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     if (cb.value === selectedValue) cb.checked = true;
                 });
@@ -2139,6 +2205,15 @@
             let statusVal = document.getElementById("inp-work-status").value;
             let resignGroup = document.getElementById("resign-date-group");
             if (resignGroup) resignGroup.style.display = (statusVal === "OFF") ? "block" : "none";
+        }
+
+        // [TAB "QUẢN LÝ NHÂN SỰ"] Chỉ hiện ô "Ngày hết hạn hợp đồng" khi Loại hợp đồng
+        // là "Có thời hạn" (hợp đồng "Không thời hạn" không có ngày hết hạn).
+        function onContractTypeChange() {
+            let typeVal = document.getElementById("inp-contract-type").value;
+            let expiryGroup = document.getElementById("contract-expiry-group");
+            if (expiryGroup) expiryGroup.style.display = (typeVal === "Có thời hạn") ? "block" : "none";
+            if (typeVal !== "Có thời hạn") document.getElementById("inp-contract-expiry-date").value = "";
         }
 
         function processAndValidateImage(inputElement) {
@@ -2268,6 +2343,134 @@
             document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự văn phòng.</p>";
             // Tải nội dung các ảnh đại diện đang lưu trên Google Drive (không chặn giao diện).
             loadStaffAvatars();
+        }
+
+        /* ===== [TAB "QUẢN LÝ NHÂN SỰ"] HỢP ĐỒNG LAO ĐỘNG ===== */
+
+        // Lấy thông tin trạng thái hợp đồng để hiển thị (nhãn + màu). Ưu tiên dùng
+        // "contractStatus" do SERVER đã tính sẵn (data.staff[].contractStatus, xem code.gs
+        // hàm computeContractStatus) để không phụ thuộc đồng hồ máy người dùng; chỉ tự tính
+        // lại ở trình duyệt khi đang dùng dữ liệu cache cũ (offline) chưa có trường này.
+        function getContractStatusInfo(s) {
+            let contractType = s.contractType || "Không thời hạn";
+            if (contractType !== "Có thời hạn") {
+                return { key: "KhongThoiHan", label: "Không thời hạn", cls: "hr-badge-indefinite", daysLeft: null };
+            }
+            if (!s.contractExpiryDate) {
+                return { key: "KhongThoiHan", label: "Chưa cập nhật ngày hết hạn", cls: "hr-badge-indefinite", daysLeft: null };
+            }
+
+            let daysLeft, isExpired, isExpiringSoon;
+            if (s.contractStatus && typeof s.contractStatus.daysLeft === "number") {
+                daysLeft = s.contractStatus.daysLeft;
+                isExpired = !!s.contractStatus.isExpired;
+                isExpiringSoon = !!s.contractStatus.isExpiringSoon;
+            } else {
+                // Dự phòng: tự tính lại ở trình duyệt (chỉ khi dữ liệu chưa có sẵn từ server).
+                let today = new Date(); today.setHours(0, 0, 0, 0);
+                let expiry = new Date(s.contractExpiryDate + "T00:00:00");
+                daysLeft = Math.round((expiry - today) / (1000 * 60 * 60 * 24));
+                isExpired = daysLeft < 0;
+                isExpiringSoon = daysLeft >= 0 && daysLeft <= 30;
+            }
+
+            if (isExpired) return { key: "HetHan", label: `Đã hết hạn ${Math.abs(daysLeft)} ngày`, cls: "hr-badge-expired", daysLeft };
+            if (isExpiringSoon) return { key: "SapHetHan", label: `Sắp hết hạn - còn ${daysLeft} ngày`, cls: "hr-badge-expiring", daysLeft };
+            return { key: "ConHan", label: `Còn hiệu lực (${daysLeft} ngày)`, cls: "hr-badge-ok", daysLeft };
+        }
+
+        // Bảng "Quản Lý Nhân Sự": chỉ liệt kê nhân sự ĐANG LÀM VIỆC (nhân viên đã nghỉ việc
+        // không còn cần theo dõi hợp đồng). Vẫn giữ nguyên chỉ mục idx của staffData gốc để
+        // nút "Sửa" mở đúng đúng bản ghi trong form Thêm/Sửa Nhân sự.
+        function renderHRTable() {
+            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            let rowsHtml = staffData.map((s, idx) => ({ s, idx }))
+                .filter(x => x.s.workStatus !== "OFF")
+                .map(x => {
+                    let s = x.s, idx = x.idx;
+                    let info = getContractStatusInfo(s);
+                    let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
+                    return `
+                        <tr data-contract-key="${info.key}">
+                            <td><b>${escapeHtml(s.msnv)}</b></td>
+                            <td>${escapeHtml(s.name)}</td>
+                            <td>${escapeHtml(deptText)}</td>
+                            <td>${escapeHtml(s.position)}</td>
+                            <td>${escapeHtml(s.contractType || "Không thời hạn")}</td>
+                            <td>${s.contractSignDate ? formatDateDisplay(s.contractSignDate) : '-'}</td>
+                            <td>${s.contractExpiryDate ? formatDateDisplay(s.contractExpiryDate) : '-'}</td>
+                            <td><span class="hr-badge ${info.cls}">${info.label}</span></td>
+                            <td style="display:${canEdit ? '' : 'none'}">
+                                <button class="btn btn-sm btn-warning" onclick="startEditData('staff', ${idx})"><i class="fa-solid fa-pen"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            document.querySelector("#tbl-hr tbody").innerHTML = rowsHtml ||
+                `<tr><td colspan="9" style="text-align:center; color:#666; padding:20px;">Chưa có dữ liệu nhân sự đang làm việc.</td></tr>`;
+
+            renderHRExpiringAlert();
+            filterHRTable();
+        }
+
+        // Hộp cảnh báo ở đầu Tab "Quản Lý Nhân Sự" + số đếm ở Bảng điều khiển tổng quan:
+        // liệt kê các hợp đồng CÓ THỜI HẠN sẽ hết hạn trong vòng 30 ngày tới (hoặc đã hết hạn),
+        // theo đúng yêu cầu nghiệp vụ (chỉ áp dụng cho hợp đồng có thời hạn, không áp dụng cho
+        // hợp đồng không xác định thời hạn).
+        function renderHRExpiringAlert() {
+            let box = document.getElementById("hr-expiring-alert-box");
+            let countEl = document.getElementById("dash-hr-expiring-count");
+            if (!box) return;
+
+            let list = staffData.filter(s => s.workStatus !== "OFF")
+                .map(s => Object.assign({}, s, { _info: getContractStatusInfo(s) }))
+                .filter(s => s._info.key === "SapHetHan" || s._info.key === "HetHan")
+                .sort((a, b) => a._info.daysLeft - b._info.daysLeft);
+
+            if (countEl) countEl.innerText = list.filter(s => s._info.key === "SapHetHan").length;
+
+            if (list.length === 0) {
+                box.style.display = "none";
+                box.innerHTML = "";
+                return;
+            }
+
+            box.style.display = "block";
+            box.innerHTML = `<h4>⚠️ Thông báo: ${list.length} hợp đồng lao động sắp/đã hết hạn</h4>` +
+                `<ul style="margin-top:10px;">` +
+                list.map(s => `
+                    <li>
+                        <b>${escapeHtml(s.name)}</b> (MSNV: ${escapeHtml(s.msnv)}) —
+                        Hết hạn ngày <b>${formatDateDisplay(s.contractExpiryDate)}</b>
+                        <span class="hr-badge ${s._info.cls}" style="margin-left:8px;">${s._info.label}</span>
+                    </li>
+                `).join('') +
+                `</ul>`;
+        }
+
+        function filterHRTable() {
+            let searchEl = document.getElementById("search-hr");
+            let deptEl = document.getElementById("filter-hr-dept");
+            let contractEl = document.getElementById("filter-hr-contract");
+            let statusEl = document.getElementById("filter-hr-status");
+            if (!searchEl || !deptEl || !contractEl || !statusEl) return;
+
+            let search = searchEl.value.toLowerCase();
+            let dept = deptEl.value;
+            let contractType = contractEl.value;
+            let statusFilter = statusEl.value;
+
+            let activeStaff = staffData.filter(s => s.workStatus !== "OFF");
+            let rows = document.querySelectorAll("#tbl-hr tbody tr");
+            activeStaff.forEach((s, i) => {
+                if (!rows[i]) return;
+                let matchSearch = s.name.toLowerCase().includes(search) || s.msnv.toLowerCase().includes(search);
+                let matchDept = (dept === "Tất cả" || !dept || (Array.isArray(s.dept) && s.dept.includes(dept)) || s.dept === dept);
+                let matchContract = (contractType === "Tất cả" || (s.contractType || "Không thời hạn") === contractType);
+                let info = getContractStatusInfo(s);
+                let matchStatus = (statusFilter === "Tất cả" || info.key === statusFilter);
+                rows[i].style.display = (matchSearch && matchDept && matchContract && matchStatus) ? "" : "none";
+            });
         }
 
         function renderCrewTable() {
@@ -2757,6 +2960,14 @@
                     return;
                 }
 
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng "Có thời hạn" bắt buộc phải có Ngày hết hạn.
+                let contractType = document.getElementById("inp-contract-type").value || "Không thời hạn";
+                let contractExpiryDate = document.getElementById("inp-contract-expiry-date").value;
+                if (contractType === "Có thời hạn" && !contractExpiryDate) {
+                    alert("⚠️ Vui lòng nhập Ngày hết hạn hợp đồng cho hợp đồng Có thời hạn!");
+                    return;
+                }
+
                 // [NÂNG CẤP] Nếu người dùng vừa chọn ảnh MỚI (globalAvatarIsNewUpload = true),
                 // giữ tạm giá trị avatar CŨ trong staffData ở local (để không mất ảnh hiển thị
                 // trong lúc chờ server xử lý); giá trị mới (fileId Drive) sẽ được đồng bộ về sau
@@ -2772,7 +2983,10 @@
                     email: document.getElementById("inp-email").value.trim(),
                     imgUrl: globalAvatarIsNewUpload ? (isEdit && staffData[index] ? staffData[index].imgUrl : "") : globalBase64Image,
                     workStatus: document.getElementById("inp-work-status").value || "ON",
-                    resignDate: document.getElementById("inp-resign-date").value
+                    resignDate: document.getElementById("inp-resign-date").value,
+                    contractType: contractType,
+                    contractSignDate: document.getElementById("inp-contract-sign-date").value,
+                    contractExpiryDate: (contractType === "Có thời hạn") ? contractExpiryDate : ""
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -2855,7 +3069,13 @@
                 document.getElementById("inp-work-status").value = d.workStatus || "ON";
                 document.getElementById("inp-resign-date").value = d.resignDate || "";
                 onWorkStatusChange();
-                
+
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Đổ lại dữ liệu hợp đồng lao động vào form khi sửa.
+                document.getElementById("inp-contract-type").value = d.contractType || "Không thời hạn";
+                document.getElementById("inp-contract-sign-date").value = d.contractSignDate || "";
+                document.getElementById("inp-contract-expiry-date").value = d.contractExpiryDate || "";
+                onContractTypeChange();
+
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
                 });
@@ -2919,6 +3139,10 @@
             document.getElementById("inp-work-status").value = "ON";
             document.getElementById("inp-resign-date").value = "";
             onWorkStatusChange();
+            // [TAB "QUẢN LÝ NHÂN SỰ"] Ô <select> "Loại hợp đồng" cũng không nằm trong vòng lặp
+            // input phía trên (chỉ nhắm input) nên cần đưa về mặc định riêng.
+            document.getElementById("inp-contract-type").value = "Không thời hạn";
+            onContractTypeChange();
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
         }
