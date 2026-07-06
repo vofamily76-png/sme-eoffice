@@ -1573,6 +1573,18 @@
             currentUser = null;
             currentUsername = null;
             authToken = null; // xóa token khỏi bộ nhớ trình duyệt
+            
+            // --- THÊM MỚI: Xóa sạch dữ liệu trong bộ nhớ (RAM) ---
+            staffData = [];
+            crewData = [];
+            equipmentData = [];
+            internalDocsData = [];
+            documentsData = [];
+            mailGroups = [];
+            
+            // --- THÊM MỚI: Xóa sạch bộ nhớ đệm của trình duyệt (Local Storage) ---
+            localStorage.removeItem("sme_local_cache");
+
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
             document.getElementById("login-screen").style.display = "flex";
@@ -3238,6 +3250,37 @@
                 alert('Có lỗi xảy ra!');
             }
         }
+
+        // --- BẮT ĐẦU CƠ CHẾ TỰ ĐỘNG ĐĂNG XUẤT KHI KHÔNG HOẠT ĐỘNG ---
+        let autoLogoutTimer = function () {
+            let time;
+            // Đặt thời gian tự động đăng xuất: 15 phút = 15 * 60 * 1000 = 900000 mili-giây
+            const MAX_IDLE_TIME = 900000; 
+
+            function resetTimer() {
+                clearTimeout(time);
+                // Chỉ đếm giờ nếu người dùng đã đăng nhập (vào màn hình chính)
+                if (currentUser !== null) {
+                    time = setTimeout(forceLogout, MAX_IDLE_TIME);
+                }
+            }
+
+            function forceLogout() {
+                alert("⏳ Phiên làm việc đã hết hạn do bạn không có thao tác nào trong thời gian dài. Vui lòng đăng nhập lại để bảo vệ dữ liệu.");
+                handleLogout();
+            }
+
+            // Lắng nghe mọi cử động của chuột/bàn phím để làm mới bộ đếm
+            window.onload = resetTimer;
+            document.onmousemove = resetTimer;
+            document.onkeypress = resetTimer;
+            document.onscroll = resetTimer;
+            document.onclick = resetTimer;
+        };
+        
+        // Kích hoạt tính năng đếm giờ
+        autoLogoutTimer();
+        // --- KẾT THÚC CƠ CHẾ TỰ ĐỘNG ĐĂNG XUẤT ---
 
         window.addEventListener("load", () => {
             let buildEl = document.getElementById("frontend-build-version");
