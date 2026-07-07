@@ -1779,10 +1779,50 @@
             renderUserListViewForAdmin();
         }
 
+        // Dò tìm phòng ban của 1 tài khoản dựa trên Email liên kết, bằng cách đối chiếu với
+        // Email trong hồ sơ Nhân sự (staffData). Không đổi/không lộ thêm dữ liệu gì — chỉ dùng
+        // để nhóm & sắp xếp danh sách User cho Admin dễ quản lý hơn.
+        function getDeptLabelByLinkedEmail(email) {
+            if (!email) return "— Chưa liên kết email —";
+            let normalized = email.trim().toLowerCase();
+            let match = staffData.find(s => (s.email || "").trim().toLowerCase() === normalized);
+            if (!match) return "— Không khớp hồ sơ nhân sự —";
+            let deptList = Array.isArray(match.dept) ? match.dept : (match.dept ? [match.dept] : []);
+            return deptList.length ? deptList.join(", ") : "— Chưa xác định phòng ban —";
+        }
+
         function renderUserListViewForAdmin() {
             let html = "";
-            for (let u in userDatabase) {
+
+            // Sắp xếp danh sách User theo Phòng ban (suy ra từ Email liên kết) để Admin dễ quản
+            // lý theo từng bộ phận. Tài khoản "admin" gốc luôn được ghim lên đầu danh sách.
+            // Việc sắp xếp chỉ thay đổi THỨ TỰ HIỂN THỊ — không thêm/xóa/sửa bất kỳ dữ liệu nào
+            // và không ảnh hưởng đến logic phân quyền/bảo mật hiện có.
+            let sortedUsernames = Object.keys(userDatabase).sort((a, b) => {
+                if (a === "admin") return -1;
+                if (b === "admin") return 1;
+                let deptA = getDeptLabelByLinkedEmail(userDatabase[a].email);
+                let deptB = getDeptLabelByLinkedEmail(userDatabase[b].email);
+                let deptCompare = deptA.localeCompare(deptB, "vi");
+                if (deptCompare !== 0) return deptCompare;
+                return a.localeCompare(b, "vi");
+            });
+
+            let lastDeptGroup = null;
+            for (let u of sortedUsernames) {
                 let safeU = escapeHtml(u);
+
+                // Chèn tiêu đề nhóm mỗi khi chuyển sang Phòng ban khác (bỏ qua tài khoản admin gốc,
+                // vốn luôn hiển thị riêng ở đầu danh sách).
+                if (u !== "admin") {
+                    let deptGroup = getDeptLabelByLinkedEmail(userDatabase[u].email);
+                    if (deptGroup !== lastDeptGroup) {
+                        lastDeptGroup = deptGroup;
+                        html += `<div style="margin-top:10px; margin-bottom:2px; font-size:12px; font-weight:bold; color:#328cc1; text-transform:uppercase; border-bottom:1px solid #e0e0e0; padding-bottom:3px;">
+                            <i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}
+                        </div>`;
+                    }
+                }
                 let roleControl = "";
                 if (u === "admin") {
                     roleControl = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
