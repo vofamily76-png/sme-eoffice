@@ -73,6 +73,22 @@
         .card { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
         .card-info h3 { font-size: 28px; color: var(--primary-color); }
         .card-icon { font-size: 40px; color: #ddd; }
+
+        /* [TỔNG QUAN] Khối "Chúc mừng sinh nhật" — thẻ nhân viên sinh nhật hôm nay/tuần này.
+           Dữ liệu lấy hoàn toàn từ staffData/crewData ĐÃ TẢI SẴN theo đúng phiên đăng nhập
+           hiện có (KHÔNG gọi thêm action nào tới server, KHÔNG đổi cơ chế phân quyền/bảo mật). */
+        .birthday-section { margin-bottom: 25px; }
+        .birthday-section-header { background: linear-gradient(90deg, #4facfe 0%, #00c2fe 100%); color: #fff; font-weight: bold; padding: 10px 18px; border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+        .birthday-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+        .birthday-card { background: linear-gradient(135deg, #fdf0f4 0%, #fce4ec 100%); border: 1px solid #f8d7e3; border-radius: 10px; padding: 16px; display: flex; gap: 14px; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+        .birthday-card .bday-icon { font-size: 26px; color: #ff7aa8; flex-shrink: 0; }
+        .birthday-card .bday-info { flex-grow: 1; min-width: 0; }
+        .birthday-card .bday-name { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-size: 20px; color: #1a56db; font-weight: bold; margin-bottom: 6px; line-height: 1.2; }
+        .birthday-card .bday-badges { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+        .birthday-card .badge-when { background: #ff6b6b; color: #fff; font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+        .birthday-card .badge-date { background: #eef2ff; color: #3b5bdb; font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; border: 1px solid #c7d5fb; white-space: nowrap; }
+        .birthday-card .bday-role { font-size: 13px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .birthday-empty-text { color: #888; font-size: 14px; padding: 6px 2px; }
         
         .table-controls { margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;}
         .search-box { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; width: 300px; flex-grow: 1;}
@@ -247,7 +263,18 @@
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
                     <div class="card" id="dash-hr-card" style="cursor:pointer;" onclick="switchPage('hr')"><div class="card-info"><p>HĐ Lao động sắp hết hạn (30 ngày)</p><h3 id="dash-hr-expiring-count">0</h3></div><i class="fa-solid fa-file-circle-exclamation card-icon" style="color:#e67e22;"></i></div>
                 </div>
-                
+
+                <!-- [MỚI] Khối "Chúc mừng sinh nhật" ở Tab Tổng quan: liệt kê nhân viên (Văn phòng
+                     + Đội tàu) đang làm việc có sinh nhật HÔM NAY hoặc trong TUẦN NÀY (7 ngày tới).
+                     Toàn bộ được tính TOÀN BỘ Ở TRÌNH DUYỆT dựa trên staffData/crewData đã tải sẵn
+                     theo đúng phiên đăng nhập/quyền hiện có — KHÔNG gọi thêm action nào tới server,
+                     KHÔNG đọc/ghi gì thêm trên Google Sheet, nên không ảnh hưởng dữ liệu gốc và
+                     không thay đổi cơ chế phân quyền/bảo mật đã có. -->
+                <div class="birthday-section">
+                    <div class="birthday-section-header"><i class="fa-solid fa-gifts"></i> Chúc mừng sinh nhật</div>
+                    <div id="birthday-grid" class="birthday-grid"></div>
+                </div>
+
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
                     <h4>📌 Nhật ký hệ thống & Phân quyền:</h4>
                     <p style="margin-top: 5px; font-size: 14px; color: #555;" id="permission-status-text">Đang tải...</p>
@@ -962,7 +989,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.probation-contract-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.birthday-dashboard-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2451,12 +2478,91 @@
             }
         }
 
+        // [MỚI - TỔNG QUAN] Khối "Chúc mừng sinh nhật": tính nhân viên (Văn phòng + Đội tàu)
+        // ĐANG LÀM VIỆC có sinh nhật HÔM NAY hoặc trong vòng 7 ngày tới ("Tuần này"), dựa trên
+        // staffData/crewData ĐÃ CÓ SẴN trong trình duyệt (không gọi thêm gì tới server).
+        // Nhân viên đã nghỉ việc (workStatus === "OFF") KHÔNG được đưa vào danh sách này.
+        function computeUpcomingBirthdays() {
+            let today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let results = [];
+
+            function addPerson(p, roleText) {
+                let dobStr = normalizeDateStr(p.dob);
+                if (!dobStr) return;
+                let parts = dobStr.split('-');
+                if (parts.length !== 3) return;
+                let bMonth = parseInt(parts[1], 10);
+                let bDay = parseInt(parts[2], 10);
+                if (!bMonth || !bDay) return;
+
+                // Ngày sinh nhật SẮP TỚI gần nhất (năm nay, hoặc năm sau nếu đã qua trong năm nay)
+                let occDate = new Date(today.getFullYear(), bMonth - 1, bDay);
+                occDate.setHours(0, 0, 0, 0);
+                if (occDate.getTime() < today.getTime()) {
+                    occDate = new Date(today.getFullYear() + 1, bMonth - 1, bDay);
+                    occDate.setHours(0, 0, 0, 0);
+                }
+
+                let diffDays = Math.round((occDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+                if (diffDays < 0 || diffDays > 6) return; // Chỉ lấy trong vòng 7 ngày tới (Tuần này)
+
+                results.push({ name: p.name || "", roleText: roleText || "", occDate: occDate, diffDays: diffDays });
+            }
+
+            staffData.filter(function (s) { return s.workStatus !== "OFF"; }).forEach(function (s) {
+                let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
+                let roleText = [s.position, deptText].filter(function (x) { return x; }).join(" - ");
+                addPerson(s, roleText);
+            });
+
+            crewData.filter(function (c) { return c.workStatus !== "OFF"; }).forEach(function (c) {
+                let roleText = [c.position, c.vessel].filter(function (x) { return x; }).join(" - ");
+                addPerson(c, roleText);
+            });
+
+            results.sort(function (a, b) { return a.diffDays - b.diffDays; });
+            return results;
+        }
+
+        function renderBirthdaySection() {
+            let grid = document.getElementById("birthday-grid");
+            if (!grid) return;
+            let list = computeUpcomingBirthdays();
+
+            if (list.length === 0) {
+                grid.innerHTML = '<div class="birthday-empty-text">Không có nhân viên nào sinh nhật hôm nay hoặc trong tuần này.</div>';
+                return;
+            }
+
+            grid.innerHTML = list.map(function (item) {
+                let whenLabel = item.diffDays === 0 ? "Hôm nay" : "Tuần này";
+                let dd = String(item.occDate.getDate()).padStart(2, '0');
+                let mm = String(item.occDate.getMonth() + 1).padStart(2, '0');
+                let yyyy = item.occDate.getFullYear();
+                let dateText = dd + "/" + mm + "/" + yyyy;
+                return '' +
+                    '<div class="birthday-card">' +
+                        '<div class="bday-icon"><i class="fa-solid fa-cake-candles"></i></div>' +
+                        '<div class="bday-info">' +
+                            '<div class="bday-name">' + escapeHtml(item.name) + '</div>' +
+                            '<div class="bday-badges">' +
+                                '<span class="badge-when">' + whenLabel + '</span>' +
+                                '<span class="badge-date">' + dateText + '</span>' +
+                            '</div>' +
+                            '<div class="bday-role" title="' + escapeHtml(item.roleText) + '">' + (escapeHtml(item.roleText) || '-') + '</div>' +
+                        '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
         function updateSystemData() {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
             document.getElementById("dash-staff-count").innerText = staffData.length;
             document.getElementById("dash-crew-count").innerText = crewData.length;
             document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
+            renderBirthdaySection();
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
