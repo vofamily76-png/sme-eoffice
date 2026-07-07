@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SEAHORSE MARINE & ENERGY JSC - Crew & Contact Management System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- [XUẤT EXCEL - TAB "QUẢN LÝ NHÂN SỰ"] Thư viện SheetJS (xlsx) dùng để xuất dữ liệu
+         nhân sự ra file Excel (.xlsx) NGAY TẠI TRÌNH DUYỆT (client-side). Toàn bộ dữ liệu
+         xuất ra lấy từ staffData đã tải sẵn (đúng phạm vi/quyền người dùng đang có), KHÔNG
+         gọi thêm API nào tới server -> không ảnh hưởng dữ liệu gốc, không đổi cơ chế bảo mật. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary-color: #0b3c5d;
@@ -259,6 +264,27 @@
             <div id="page-hr" class="page-content">
                 <h2 class="page-title">Quản Lý Nhân Sự - Hợp đồng Lao động</h2>
                 <div id="hr-expiring-alert-box" class="admin-box" style="display:none; border-left: 5px solid #e67e22; background:#fff8e1;"></div>
+
+                <!-- [XUẤT EXCEL] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ dùng LẠI dữ liệu
+                     staffData đã tải theo đúng quyền của tài khoản đang đăng nhập (không gọi
+                     thêm API nào, không đổi/xóa dữ liệu gốc trên Sheet). -->
+                <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-bottom:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-file-excel" style="color:#1e7e34;"></i> Xuất dữ liệu ra Excel</h4>
+                    <div class="table-controls" style="margin:0;">
+                        <select id="hr-export-scope" class="search-box" style="max-width: 260px;" onchange="onHRExportScopeChange()">
+                            <option value="all">Tất cả nhân sự</option>
+                            <option value="dept">Theo phòng ban cụ thể...</option>
+                            <option value="working">Nhân sự đang làm việc</option>
+                            <option value="resigned">Nhân sự đã nghỉ việc</option>
+                            <option value="expiring">Nhân sự sắp đến hạn gia hạn hợp đồng (≤30 ngày)</option>
+                        </select>
+                        <select id="hr-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <button type="button" class="btn btn-success" onclick="exportHRToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-hr" class="search-box" oninput="filterHRTable()" placeholder="Tìm nhân viên theo tên hoặc mã số (MSNV)...">
                     <select id="filter-hr-dept" class="search-box" onchange="filterHRTable()" style="max-width: 220px;"></select>
@@ -907,7 +933,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-permission-v2";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-excel-export-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2293,6 +2319,11 @@
             document.getElementById("filter-dept").innerHTML = deptOptions;
             let hrDeptSel = document.getElementById("filter-hr-dept");
             if (hrDeptSel) hrDeptSel.innerHTML = deptOptions;
+            // [XUẤT EXCEL] Select chọn phòng ban cụ thể khi xuất (chỉ hiện khi phạm vi = "dept").
+            let hrExportDeptSel = document.getElementById("hr-export-dept");
+            if (hrExportDeptSel) {
+                hrExportDeptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            }
 
             let checkboxesHtml = depts.map((d, i) => `
                 <label class="checkbox-item">
@@ -2667,6 +2698,108 @@
                 let matchStatus = (statusFilter === "Tất cả" || info.key === statusFilter);
                 rows[i].style.display = (matchSearch && matchDept && matchContract && matchStatus) ? "" : "none";
             });
+        }
+
+        /* ===== [TAB "QUẢN LÝ NHÂN SỰ"] XUẤT DỮ LIỆU RA EXCEL (.xlsx) =====
+           Xuất file NGAY TẠI TRÌNH DUYỆT bằng thư viện SheetJS, dựa hoàn toàn trên dữ liệu
+           staffData ĐÃ ĐƯỢC TẢI SẴN theo đúng phiên đăng nhập/quyền hiện tại (không gọi thêm
+           API tới server, không đọc/ghi gì khác trên Sheet) -> không ảnh hưởng dữ liệu gốc,
+           không làm thay đổi cơ chế phân quyền/bảo mật hiện có. */
+
+        // Hiện/ẩn ô chọn phòng ban cụ thể tùy theo phạm vi xuất đang chọn.
+        function onHRExportScopeChange() {
+            let scopeEl = document.getElementById("hr-export-scope");
+            let deptEl = document.getElementById("hr-export-dept");
+            if (!scopeEl || !deptEl) return;
+            deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
+        }
+
+        // Xây danh sách nhân sự (đối tượng JS) đúng phạm vi đã chọn, dùng chung cho việc xuất.
+        function buildHRExportRows(scope, deptValue) {
+            let rows = staffData.slice();
+            if (scope === "dept") {
+                rows = rows.filter(s => Array.isArray(s.dept) ? s.dept.includes(deptValue) : s.dept === deptValue);
+            } else if (scope === "working") {
+                rows = rows.filter(s => s.workStatus !== "OFF");
+            } else if (scope === "resigned") {
+                rows = rows.filter(s => s.workStatus === "OFF");
+            } else if (scope === "expiring") {
+                rows = rows.filter(s => s.workStatus !== "OFF" && getContractStatusInfo(s).key === "SapHetHan");
+            }
+            // scope === "all" -> giữ nguyên toàn bộ staffData
+            return rows;
+        }
+
+        function exportHRToExcel() {
+            // [BẢO MẬT] Chỉ cho phép xuất khi tài khoản có quyền xem Tab "Quản Lý Nhân Sự"
+            // (giống hệt điều kiện đang dùng để hiện/ẩn cả Tab này).
+            if (!currentUserCanViewHR) {
+                alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let scopeEl = document.getElementById("hr-export-scope");
+            let deptEl = document.getElementById("hr-export-dept");
+            let scope = scopeEl ? scopeEl.value : "all";
+            let deptValue = deptEl ? deptEl.value : "";
+
+            if (scope === "dept" && !deptValue) {
+                alert("⚠️ Vui lòng chọn phòng ban cần xuất.");
+                return;
+            }
+
+            let rows = buildHRExportRows(scope, deptValue);
+            if (rows.length === 0) {
+                alert("Không có dữ liệu nhân sự phù hợp với phạm vi đã chọn để xuất.");
+                return;
+            }
+
+            let exportRows = rows.map(s => {
+                let info = getContractStatusInfo(s);
+                let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
+                return {
+                    "MSNV": s.msnv || "",
+                    "Họ và tên": s.name || "",
+                    "Ngày sinh": s.dob ? formatDateDisplay(s.dob) : "",
+                    "Phòng ban": deptText,
+                    "Chức vụ": s.position || "",
+                    "Ngày vào làm": s.dateJoin ? formatDateDisplay(s.dateJoin) : "",
+                    "Số điện thoại": s.phone || "",
+                    "Email": s.email || "",
+                    "Trạng thái làm việc": (s.workStatus === "OFF") ? "Đã nghỉ việc" : "Đang làm việc",
+                    "Ngày nghỉ việc": s.resignDate ? formatDateDisplay(s.resignDate) : "",
+                    "Loại hợp đồng": s.contractType || "Không thời hạn",
+                    "Ngày ký hợp đồng": s.contractSignDate ? formatDateDisplay(s.contractSignDate) : "",
+                    "Ngày hết hạn hợp đồng": s.contractExpiryDate ? formatDateDisplay(s.contractExpiryDate) : "",
+                    "Trạng thái hợp đồng": info.label
+                };
+            });
+
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            ws['!cols'] = [
+                { wch: 12 }, { wch: 26 }, { wch: 12 }, { wch: 30 }, { wch: 22 }, { wch: 12 },
+                { wch: 14 }, { wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
+                { wch: 18 }, { wch: 24 }
+            ];
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
+
+            let scopeLabelMap = {
+                all: "TatCaNhanSu",
+                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                working: "DangLamViec",
+                resigned: "DaNghiViec",
+                expiring: "SapHetHanHopDong"
+            };
+            let now = new Date();
+            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+            let fileName = "QuanLyNhanSu_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
+
+            XLSX.writeFile(wb, fileName);
         }
 
         function renderCrewTable() {
