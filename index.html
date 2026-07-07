@@ -51,11 +51,19 @@
         .btn-success { background-color: #27ae60; color: white; }
         
         #main-system { display: none; width: 100%; height: 100%; }
-        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 20px 0; }
-        .sidebar-menu { list-style: none; margin-top: 15px; flex-grow: 1; }
+        /* [SỬA LỖI GIAO DIỆN] Trước đây .sidebar không có overflow, nên khi danh sách menu
+           dài hơn chiều cao màn hình (nhiều mục menu / cửa sổ trình duyệt thấp), phần
+           "sidebar-footer" (tên tài khoản, Đổi mật khẩu, Đăng xuất) bị đẩy ra ngoài vùng
+           nhìn thấy mà KHÔNG có thanh cuộn nào để xem — trông như bị "mất" nút Đăng xuất.
+           Nay: .sidebar giới hạn overflow, khối brand+menu tự cuộn RIÊNG (overflow-y:auto),
+           còn sidebar-footer luôn cố định hiển thị đầy đủ ở cuối (flex-shrink:0). */
+        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 20px 0; overflow: hidden; }
+        .sidebar > div:first-child { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        .sidebar-brand { flex-shrink: 0; }
+        .sidebar-menu { list-style: none; margin-top: 15px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
         .sidebar-menu li { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .sidebar-menu li:hover, .sidebar-menu li.active { background-color: var(--secondary-color); }
-        .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; }
+        .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; flex-shrink: 0; }
         .content-area { flex-grow: 1; padding: 30px; overflow-y: auto; }
         .page-content { display: none; }
         .page-content.active { display: block; }
@@ -908,10 +916,19 @@
         // chỉ đăng nhập 1 lần để lấy về 1 "authToken" tạm thời do server cấp (tự hết hạn sau
         // vài giờ không hoạt động). Mọi request sau đó chỉ gửi token này — mật khẩu KHÔNG còn
         // được giữ lại trong bộ nhớ trình duyệt sau khi đăng nhập xong.
-        // Token CHỈ giữ trong bộ nhớ (RAM) của phiên làm việc, KHÔNG lưu vào localStorage,
-        // để tránh bị chiếm phiên nếu máy dùng chung / bị truy cập trái phép.
-        // Mỗi lần tải lại trang, người dùng cần đăng nhập lại — đây là đánh đổi cần thiết cho bảo mật.
+        // [CẬP NHẬT] Token được lưu tạm vào sessionStorage (KHÔNG phải localStorage) để giữ
+        // nguyên đăng nhập khi người dùng F5/tải lại trang. sessionStorage khác localStorage
+        // ở chỗ: tự động bị xóa sạch ngay khi ĐÓNG TAB/TRÌNH DUYỆT (không tồn tại "mãi mãi"
+        // trên máy như localStorage), và không bị chia sẻ giữa các tab khác nhau. Bản thân
+        // token vẫn chỉ có giá trị trong thời gian server cho phép (mặc định 6 giờ, tự gia
+        // hạn khi còn hoạt động — xem SESSION_TOKEN_TTL_SECONDS ở code.gs) và có thể bị Admin/
+        // người dùng thu hồi bất cứ lúc nào qua "Đăng xuất". Vì vậy đây là điểm cân bằng hợp
+        // lý giữa trải nghiệm (không phải đăng nhập lại mỗi lần F5) và bảo mật (không lưu
+        // trữ lâu dài như localStorage, mật khẩu không bao giờ được lưu lại dưới bất kỳ hình
+        // thức nào). Khi tải lại trang, hệ thống sẽ tự gọi action "resumeSession" để server
+        // xác nhận token còn hợp lệ hay không trước khi khôi phục phiên đăng nhập.
         let authToken = null;
+        const SME_SESSION_STORAGE_KEY = "sme_session_v1";
         let currentUserCanUploadDocs = false;
         let currentUserCanDeleteDocs = false;
         let currentUserCanManageEquipment = false;
@@ -1016,6 +1033,68 @@
             if (!/[0-9]/.test(pw)) return "Mật khẩu phải có ít nhất 1 chữ số (0-9).";
             if (!/[^a-zA-Z0-9]/.test(pw)) return "Mật khẩu phải có ít nhất 1 ký tự đặc biệt (VD: ! @ # $ % ...).";
             return "";
+        }
+
+        // [F5 KHÔNG BỊ ĐĂNG XUẤT] Lưu/xóa/khôi phục phiên đăng nhập bằng sessionStorage.
+        // Chỉ lưu khi có authToken THẬT do server cấp (KHÔNG áp dụng cho lối vào "admin/123"
+        // tạm thời lúc chưa cấu hình Google Sheet) — không bao giờ lưu mật khẩu.
+        function saveSessionToStorage() {
+            if (!authToken || !currentUsername || !currentUser) return;
+            try {
+                sessionStorage.setItem(SME_SESSION_STORAGE_KEY, JSON.stringify({
+                    token: authToken,
+                    username: currentUsername
+                }));
+            } catch (e) { console.warn("Không thể lưu phiên đăng nhập tạm thời:", e); }
+        }
+
+        function clearSessionStorageSession() {
+            try { sessionStorage.removeItem(SME_SESSION_STORAGE_KEY); } catch (e) { /* bỏ qua */ }
+        }
+
+        // Gọi khi tải lại trang (F5): nếu có phiên đã lưu trong sessionStorage, nhờ SERVER
+        // xác nhận lại token còn hợp lệ hay không (KHÔNG tự tin dùng lại nếu không được server
+        // xác nhận) rồi mới khôi phục màn hình chính. Nếu token đã hết hạn/bị thu hồi, server
+        // sẽ báo lỗi và người dùng quay lại màn hình đăng nhập bình thường — không mất dữ liệu.
+        async function tryResumeSessionFromStorage() {
+            if (!isScriptUrlConfigured()) return false;
+            let raw;
+            try { raw = sessionStorage.getItem(SME_SESSION_STORAGE_KEY); } catch (e) { return false; }
+            if (!raw) return false;
+
+            let saved;
+            try { saved = JSON.parse(raw); } catch (e) { clearSessionStorageSession(); return false; }
+            if (!saved || !saved.token || !saved.username) { clearSessionStorageSession(); return false; }
+
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "resumeSession", authToken: saved.token })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
+
+                currentUsername = saved.username;
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert };
+                authToken = saved.token;
+
+                await loadFromCloud(false);
+
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("main-system").style.display = "flex";
+                document.getElementById("user-display").innerText = escapeHtml(saved.username);
+                let scriptUrlInput = document.getElementById("adm-script-url");
+                if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
+
+                applyUserPermissions();
+                updateSystemData();
+                switchPage('dashboard');
+                return true;
+            } catch (e) {
+                console.warn("Không thể khôi phục phiên đăng nhập (có thể do mất mạng):", e);
+                return false; // Giữ nguyên phiên đã lưu, có thể do lỗi mạng tạm thời — không xóa vội.
+            }
         }
 
         function saveLocalCache() {
@@ -1782,6 +1861,7 @@
                     authToken = data.token || null;
 
                     await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
+                    saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
                 } else {
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
@@ -1836,6 +1916,7 @@
             
             // --- THÊM MỚI: Xóa sạch bộ nhớ đệm của trình duyệt (Local Storage) ---
             localStorage.removeItem("sme_local_cache");
+            clearSessionStorageSession(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] xóa luôn phiên đã lưu khi đăng xuất chủ động
 
             document.getElementById("username").value = "";
             document.getElementById("password").value = "";
@@ -3899,7 +3980,15 @@
             if (buildEl) buildEl.innerText = FRONTEND_BUILD_VERSION;
             loadLocalCache();
             updateSystemData();
-            if (isScriptUrlConfigured()) loadFromCloud(false).then(() => updateSystemData());
+            // [F5 KHÔNG BỊ ĐĂNG XUẤT] Thử khôi phục phiên đăng nhập đã lưu (nếu có) trước;
+            // server sẽ xác nhận token còn hợp lệ hay không. Nếu không khôi phục được (chưa
+            // từng đăng nhập, token hết hạn, hoặc đã đăng xuất) thì giữ nguyên hành vi cũ:
+            // hiển thị màn hình đăng nhập + tải danh mục công khai (phòng ban/đội tàu).
+            tryResumeSessionFromStorage().then((resumed) => {
+                if (!resumed && isScriptUrlConfigured()) {
+                    loadFromCloud(false).then(() => updateSystemData());
+                }
+            });
         });
     </script>
 </body>
