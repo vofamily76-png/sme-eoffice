@@ -298,6 +298,7 @@
                     <select id="filter-hr-dept" class="search-box" onchange="filterHRTable()" style="max-width: 220px;"></select>
                     <select id="filter-hr-contract" class="search-box" onchange="filterHRTable()" style="max-width: 220px;">
                         <option value="Tất cả">-- Tất cả loại hợp đồng --</option>
+                        <option value="Hợp đồng thử việc">Hợp đồng thử việc</option>
                         <option value="Có thời hạn">Có thời hạn</option>
                         <option value="Không thời hạn">Không thời hạn</option>
                     </select>
@@ -414,6 +415,7 @@
                             <select id="inp-contract-type" onchange="onContractTypeChange()">
                                 <option value="Không thời hạn">Không thời hạn</option>
                                 <option value="Có thời hạn">Có thời hạn</option>
+                                <option value="Hợp đồng thử việc">Hợp đồng thử việc</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -950,7 +952,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.hr-excel-export-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.probation-contract-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2496,13 +2498,21 @@
             if (resignGroup) resignGroup.style.display = (statusVal === "OFF") ? "block" : "none";
         }
 
-        // [TAB "QUẢN LÝ NHÂN SỰ"] Chỉ hiện ô "Ngày hết hạn hợp đồng" khi Loại hợp đồng
-        // là "Có thời hạn" (hợp đồng "Không thời hạn" không có ngày hết hạn).
+        // [TAB "QUẢN LÝ NHÂN SỰ"] Các loại hợp đồng có "Ngày hết hạn" (cần theo dõi/cảnh báo
+        // sắp hết hạn): "Có thời hạn" và "Hợp đồng thử việc" (thử việc luôn có ngày kết thúc
+        // xác định). Hợp đồng "Không thời hạn" thì không áp dụng khái niệm hết hạn.
+        function contractTypeHasExpiry(type) {
+            return type === "Có thời hạn" || type === "Hợp đồng thử việc";
+        }
+
+        // Chỉ hiện ô "Ngày hết hạn hợp đồng" khi Loại hợp đồng là "Có thời hạn" hoặc
+        // "Hợp đồng thử việc" (hợp đồng "Không thời hạn" không có ngày hết hạn).
         function onContractTypeChange() {
             let typeVal = document.getElementById("inp-contract-type").value;
             let expiryGroup = document.getElementById("contract-expiry-group");
-            if (expiryGroup) expiryGroup.style.display = (typeVal === "Có thời hạn") ? "block" : "none";
-            if (typeVal !== "Có thời hạn") document.getElementById("inp-contract-expiry-date").value = "";
+            let needsExpiry = contractTypeHasExpiry(typeVal);
+            if (expiryGroup) expiryGroup.style.display = needsExpiry ? "block" : "none";
+            if (!needsExpiry) document.getElementById("inp-contract-expiry-date").value = "";
         }
 
         function processAndValidateImage(inputElement) {
@@ -2646,7 +2656,7 @@
         // lại ở trình duyệt khi đang dùng dữ liệu cache cũ (offline) chưa có trường này.
         function getContractStatusInfo(s) {
             let contractType = s.contractType || "Không thời hạn";
-            if (contractType !== "Có thời hạn") {
+            if (!contractTypeHasExpiry(contractType)) {
                 return { key: "KhongThoiHan", label: "Không thời hạn", cls: "hr-badge-indefinite", daysLeft: null };
             }
             if (!s.contractExpiryDate) {
@@ -3377,11 +3387,12 @@
                     return;
                 }
 
-                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng "Có thời hạn" bắt buộc phải có Ngày hết hạn.
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng "Có thời hạn" và "Hợp đồng thử việc" bắt
+                // buộc phải có Ngày hết hạn (thử việc luôn có ngày kết thúc xác định).
                 let contractType = document.getElementById("inp-contract-type").value || "Không thời hạn";
                 let contractExpiryDate = document.getElementById("inp-contract-expiry-date").value;
-                if (contractType === "Có thời hạn" && !contractExpiryDate) {
-                    alert("⚠️ Vui lòng nhập Ngày hết hạn hợp đồng cho hợp đồng Có thời hạn!");
+                if (contractTypeHasExpiry(contractType) && !contractExpiryDate) {
+                    alert("⚠️ Vui lòng nhập Ngày hết hạn hợp đồng cho loại hợp đồng \"" + contractType + "\"!");
                     return;
                 }
 
@@ -3403,7 +3414,7 @@
                     resignDate: document.getElementById("inp-resign-date").value,
                     contractType: contractType,
                     contractSignDate: document.getElementById("inp-contract-sign-date").value,
-                    contractExpiryDate: (contractType === "Có thời hạn") ? contractExpiryDate : ""
+                    contractExpiryDate: contractTypeHasExpiry(contractType) ? contractExpiryDate : ""
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
