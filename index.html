@@ -467,6 +467,10 @@
                             </select>
                         </div>
                         <div class="input-group">
+                            <label>Số hợp đồng</label>
+                            <input type="text" id="inp-contract-number" placeholder="Ví dụ: 015/2026/HĐLĐ-SME">
+                        </div>
+                        <div class="input-group">
                             <label>Ngày ký hợp đồng</label>
                             <input type="date" id="inp-contract-sign-date">
                         </div>
@@ -474,6 +478,33 @@
                             <label>Ngày hết hạn hợp đồng</label>
                             <input type="date" id="inp-contract-expiry-date">
                             <span class="file-help-text">Hệ thống sẽ tự động cảnh báo khi hợp đồng còn 30 ngày trước hạn.</span>
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group">
+                            <label>Số tài khoản ngân hàng</label>
+                            <input type="text" id="inp-bank-account" placeholder="Ví dụ: 0123456789">
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Tên ngân hàng - Chi nhánh</label>
+                            <input type="text" id="inp-bank-name" placeholder="Ví dụ: Vietcombank - CN Quảng Ngãi">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-phone-volume"></i> Thông tin liên hệ khẩn cấp</label>
+                        </div>
+                        <div class="input-group">
+                            <label>Họ tên người liên hệ</label>
+                            <input type="text" id="inp-emergency-name" placeholder="Họ tên người thân/liên hệ khẩn cấp">
+                        </div>
+                        <div class="input-group">
+                            <label>Mối quan hệ</label>
+                            <input type="text" id="inp-emergency-relation" placeholder="Ví dụ: Vợ / Chồng / Bố / Mẹ...">
+                        </div>
+                        <div class="input-group">
+                            <label>Số điện thoại liên hệ</label>
+                            <input type="text" id="inp-emergency-phone" placeholder="09xxxxxxxx">
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:20px">
@@ -1033,7 +1064,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.narrow-window-layout-fix-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-08.contract-bank-emergency-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2744,14 +2775,16 @@
                 document.querySelectorAll(".id-group, .select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
                 document.querySelectorAll(".email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
-                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động gắn với Phòng ban -> chỉ áp dụng
-                // cho Nhân sự Văn phòng, không áp dụng cho Thuyền viên Đội tàu (gắn với Tàu).
-                document.querySelector(".contract-group").style.display = "none";
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động, thông tin ngân hàng, liên hệ khẩn
+                // cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
+                // Thuyền viên Đội tàu (gắn với Tàu). Dùng querySelectorAll vì có NHIỀU khối
+                // ".contract-group" (hợp đồng / ngân hàng / liên hệ khẩn cấp).
+                document.querySelectorAll(".contract-group").forEach(el => el.style.display = "none");
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
                 document.querySelectorAll(".select-vessel-group, .months-group").forEach(el => el.style.display = "none");
                 document.getElementById("lbl-date-join").innerText = "Ngày vào làm";
-                document.querySelector(".contract-group").style.display = "grid";
+                document.querySelectorAll(".contract-group").forEach(el => el.style.display = "grid");
 
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     if (cb.value === selectedValue) cb.checked = true;
@@ -3842,7 +3875,14 @@
                     resignDate: document.getElementById("inp-resign-date").value,
                     contractType: contractType,
                     contractSignDate: document.getElementById("inp-contract-sign-date").value,
-                    contractExpiryDate: contractTypeHasExpiry(contractType) ? contractExpiryDate : ""
+                    contractExpiryDate: contractTypeHasExpiry(contractType) ? contractExpiryDate : "",
+                    // [BỔ SUNG MỚI] Số hợp đồng, thông tin ngân hàng, thông tin liên hệ khẩn cấp.
+                    contractNumber: document.getElementById("inp-contract-number").value.trim(),
+                    bankAccountNumber: document.getElementById("inp-bank-account").value.trim(),
+                    bankNameBranch: document.getElementById("inp-bank-name").value.trim(),
+                    emergencyContactName: document.getElementById("inp-emergency-name").value.trim(),
+                    emergencyContactRelation: document.getElementById("inp-emergency-relation").value.trim(),
+                    emergencyContactPhone: document.getElementById("inp-emergency-phone").value.trim()
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -3931,6 +3971,15 @@
                 document.getElementById("inp-contract-sign-date").value = d.contractSignDate || "";
                 document.getElementById("inp-contract-expiry-date").value = d.contractExpiryDate || "";
                 onContractTypeChange();
+
+                // [BỔ SUNG MỚI] Đổ lại Số hợp đồng, thông tin ngân hàng, thông tin liên hệ khẩn
+                // cấp vào form khi sửa.
+                document.getElementById("inp-contract-number").value = d.contractNumber || "";
+                document.getElementById("inp-bank-account").value = d.bankAccountNumber || "";
+                document.getElementById("inp-bank-name").value = d.bankNameBranch || "";
+                document.getElementById("inp-emergency-name").value = d.emergencyContactName || "";
+                document.getElementById("inp-emergency-relation").value = d.emergencyContactRelation || "";
+                document.getElementById("inp-emergency-phone").value = d.emergencyContactPhone || "";
 
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
