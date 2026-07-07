@@ -2399,7 +2399,11 @@
             }
 
             let deptOptions = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
-            document.getElementById("filter-dept").innerHTML = deptOptions;
+            // [DANH BẠ CBCNV] Thêm mục riêng "Nhân viên nghỉ việc" vào ô lọc phòng ban của tab
+            // Danh bạ CBCNV — chỉ áp dụng cho ô lọc này (filter-dept), KHÔNG áp dụng cho ô lọc
+            // phòng ban của Tab "Quản Lý Nhân Sự" (filter-hr-dept) vì tab đó đã có sẵn ô lọc
+            // "Tình trạng làm việc" (filter-hr-status) riêng.
+            document.getElementById("filter-dept").innerHTML = deptOptions + '<option value="__RESIGNED__">-- Nhân viên nghỉ việc --</option>';
             let hrDeptSel = document.getElementById("filter-hr-dept");
             if (hrDeptSel) hrDeptSel.innerHTML = deptOptions;
             // [XUẤT EXCEL] Select chọn phòng ban cụ thể khi xuất (chỉ hiện khi phạm vi = "dept").
@@ -2646,6 +2650,9 @@
             document.getElementById("contact-grid").innerHTML = htmlStaffGrid || "<p style='grid-column: 1/-1; text-align:center; padding:20px; color:#666;'>Chưa có dữ liệu nhân sự văn phòng.</p>";
             // Tải nội dung các ảnh đại diện đang lưu trên Google Drive (không chặn giao diện).
             loadStaffAvatars();
+            // [DANH BẠ CBCNV] Áp dụng ngay bộ lọc hiện tại (mặc định ẩn người đã nghỉ việc ở mục
+            // "Tất cả phòng ban") sau khi vừa render lại toàn bộ thẻ nhân viên.
+            filterStaffGrid();
         }
 
         /* ===== [TAB "QUẢN LÝ NHÂN SỰ"] HỢP ĐỒNG LAO ĐỘNG ===== */
@@ -3596,9 +3603,23 @@
             let dept = document.getElementById("filter-dept").value;
             let cards = document.querySelectorAll("#contact-grid .contact-card");
 
+            // [DANH BẠ CBCNV] Quy tắc lọc theo Tình trạng làm việc:
+            // - "-- Tất cả phòng ban --": chỉ hiện nhân viên ĐANG LÀM VIỆC (ẩn người đã nghỉ việc).
+            // - "-- Nhân viên nghỉ việc --" (__RESIGNED__): chỉ hiện những người ĐÃ NGHỈ VIỆC.
+            // - Chọn 1 phòng ban cụ thể: hiện nhân viên đang làm việc thuộc phòng ban đó (người đã
+            //   nghỉ việc luôn được xem tập trung ở mục "Nhân viên nghỉ việc" riêng, không lẫn vào
+            //   từng phòng ban, đồng nhất với cách Tab "Quản Lý Nhân Sự" đang xử lý).
             staffData.forEach((s, idx) => {
                 let matchSearch = s.name.toLowerCase().includes(search) || s.msnv.toLowerCase().includes(search) || s.position.toLowerCase().includes(search);
-                let matchDept = (dept === "Tất cả" || (Array.isArray(s.dept) && s.dept.includes(dept)) || s.dept === dept);
+                let isResigned = (s.workStatus === "OFF");
+                let matchDept;
+                if (dept === "__RESIGNED__") {
+                    matchDept = isResigned;
+                } else if (dept === "Tất cả") {
+                    matchDept = !isResigned;
+                } else {
+                    matchDept = !isResigned && ((Array.isArray(s.dept) && s.dept.includes(dept)) || s.dept === dept);
+                }
                 if(cards[idx]) cards[idx].style.display = (matchSearch && matchDept) ? "flex" : "none";
             });
         }
