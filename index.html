@@ -494,6 +494,27 @@
                     <div class="card" style="cursor:pointer;" onclick="filterEquipmentByWarehouse()"><div class="card-info"><p>Thiết bị lưu kho</p><h3 id="eq-warehouse-count">0</h3></div><i class="fa-solid fa-warehouse card-icon"></i></div>
                 </div>
 
+                <!-- [XUẤT EXCEL] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ dùng LẠI dữ liệu
+                     equipmentData đã tải theo đúng quyền của tài khoản đang đăng nhập (không gọi
+                     thêm API nào, không đổi/xóa dữ liệu gốc trên Sheet). -->
+                <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-bottom:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-file-excel" style="color:#1e7e34;"></i> Xuất dữ liệu ra Excel</h4>
+                    <div class="table-controls" style="margin:0;">
+                        <select id="eq-export-scope" class="search-box" style="max-width: 260px;" onchange="onEqExportScopeChange()">
+                            <option value="all">Tất cả thiết bị (mọi phòng ban)</option>
+                            <option value="dept">Theo phòng ban cụ thể...</option>
+                            <option value="staff">Xuất theo từng cá nhân...</option>
+                            <option value="warehouse">Thiết bị lưu kho</option>
+                            <option value="liquidated">Thiết bị đã thanh lý</option>
+                        </select>
+                        <select id="eq-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <select id="eq-export-staff" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <button type="button" class="btn btn-success" onclick="exportEquipmentToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
                 <div class="admin-box" id="equipment-form-box" style="border-top: 4px solid var(--secondary-color);">
                     <h3 id="eq-form-title"><i class="fa-solid fa-toolbox"></i> Khai báo / Cấp phát thiết bị</h3>
                     <input type="hidden" id="edit-index-eq" value="">
@@ -555,7 +576,9 @@
                 <table id="tbl-equipment">
                     <thead><tr>
                         <th>Mã TB</th><th>Tên thiết bị</th><th>Loại</th><th>Nhân viên sử dụng</th><th>Phòng ban</th>
-                        <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th><th>Vị trí</th><th>Ghi chú</th>
+                        <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th>
+                        <th>Ngày nhập kho</th><th>Ngày xuất kho</th><th>Ngày thanh lý</th>
+                        <th>Vị trí</th><th>Ghi chú</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -3198,6 +3221,23 @@
                     EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
                 filterTypeSel.dataset.filled = "1";
             }
+
+            // [XUẤT EXCEL] Select chọn phòng ban / cá nhân cụ thể khi xuất (chỉ hiện đúng ô tương
+            // ứng với phạm vi đang chọn — xem onEqExportScopeChange()).
+            let eqExportDeptSel = document.getElementById("eq-export-dept");
+            if (eqExportDeptSel) {
+                let keep = eqExportDeptSel.value;
+                eqExportDeptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                if (keep && eqExportDeptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) eqExportDeptSel.value = keep;
+            }
+            let eqExportStaffSel = document.getElementById("eq-export-staff");
+            if (eqExportStaffSel) {
+                let keep = eqExportStaffSel.value;
+                eqExportStaffSel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' +
+                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)}</option>`).join('');
+                if (keep && eqExportStaffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) eqExportStaffSel.value = keep;
+            }
         }
 
         // Chọn Phòng làm việc ở form khai báo -> lọc lại danh sách nhân viên chỉ còn người của phòng đó
@@ -3267,6 +3307,20 @@
                     </div>
                     <div class="input-group" style="display:flex; align-items:flex-end; justify-content:flex-end;">
                         <button type="button" class="btn btn-sm btn-danger eq-item-remove-btn" style="width:auto;" onclick="removeEquipmentItemRow(this)"><i class="fa-solid fa-trash"></i> Xóa thiết bị này</button>
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:0; margin-top:10px;">
+                    <div class="input-group">
+                        <label>Ngày nhập kho</label>
+                        <input type="date" class="eq-item-date-in">
+                    </div>
+                    <div class="input-group">
+                        <label>Ngày xuất kho</label>
+                        <input type="date" class="eq-item-date-out">
+                    </div>
+                    <div class="input-group">
+                        <label>Ngày thanh lý</label>
+                        <input type="date" class="eq-item-date-liq">
                     </div>
                 </div>
             </div>`;
@@ -3379,6 +3433,9 @@
                         <td>${escapeHtml(e.qty)}</td>
                         <td>${formatDateDisplay(e.dateReceived)}</td>
                         <td>${formatDateDisplay(e.dateReturn)}</td>
+                        <td>${formatDateDisplay(e.dateWarehouseIn)}</td>
+                        <td>${formatDateDisplay(e.dateWarehouseOut)}</td>
+                        <td>${formatDateDisplay(e.dateLiquidation)}</td>
                         <td>${escapeHtml(e.location)}</td>
                         <td>${escapeHtml(e.note)}</td>
                         <td style="display:${canEdit ? '' : 'none'}">${actionsHtml}</td>
@@ -3386,7 +3443,7 @@
             }).join('');
 
             document.querySelector("#tbl-equipment tbody").innerHTML = rowsHtml ||
-                `<tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
+                `<tr><td colspan="16" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
 
             filterEquipmentTable();
         }
@@ -3461,7 +3518,13 @@
                     chiTiet: row.querySelector(".eq-item-subtype").value,
                     status: row.querySelector(".eq-item-status").value,
                     unit: row.querySelector(".eq-item-unit").value.trim(),
-                    qty: parseFloat(row.querySelector(".eq-item-qty").value) || 1
+                    qty: parseFloat(row.querySelector(".eq-item-qty").value) || 1,
+                    // [TAB "QUẢN LÝ THIẾT BỊ" - BỔ SUNG] Ngày nhập kho/xuất kho/thanh lý - khai báo
+                    // riêng theo từng thiết bị (khác thiết bị có thể khác ngày), không dùng chung
+                    // như "Ngày nhận"/"Ngày bàn giao" (vốn là ngày cấp phát cho cả lô nhân viên này).
+                    dateWarehouseIn: row.querySelector(".eq-item-date-in").value,
+                    dateWarehouseOut: row.querySelector(".eq-item-date-out").value,
+                    dateLiquidation: row.querySelector(".eq-item-date-liq").value
                 });
             }
 
@@ -3531,6 +3594,9 @@
             row.querySelector(".eq-item-code").value = d.assetCode || "";
             row.querySelector(".eq-item-unit").value = d.unit || "";
             row.querySelector(".eq-item-qty").value = d.qty || 1;
+            row.querySelector(".eq-item-date-in").value = toDateInputValue(d.dateWarehouseIn);
+            row.querySelector(".eq-item-date-out").value = toDateInputValue(d.dateWarehouseOut);
+            row.querySelector(".eq-item-date-liq").value = toDateInputValue(d.dateLiquidation);
             row.querySelector(".eq-item-remove-btn").style.display = "none";
 
             document.getElementById("btn-add-eq-item").style.display = "none";
@@ -3560,6 +3626,119 @@
             saveLocalCache();
             await pushToCloud({ action: "deleteEquipment", assetCode: code });
             updateSystemData();
+        }
+
+        /* ===== [TAB "QUẢN LÝ THIẾT BỊ"] XUẤT DỮ LIỆU RA EXCEL (.xlsx) =====
+           Xuất file NGAY TẠI TRÌNH DUYỆT bằng thư viện SheetJS, dựa hoàn toàn trên dữ liệu
+           equipmentData ĐÃ ĐƯỢC TẢI SẴN theo đúng phiên đăng nhập/quyền hiện tại (không gọi
+           thêm API tới server, không đọc/ghi gì khác trên Sheet) -> không ảnh hưởng dữ liệu gốc,
+           không làm thay đổi cơ chế phân quyền/bảo mật hiện có. */
+
+        // Hiện/ẩn ô chọn phòng ban / cá nhân cụ thể tùy theo phạm vi xuất đang chọn.
+        function onEqExportScopeChange() {
+            let scopeEl = document.getElementById("eq-export-scope");
+            let deptEl = document.getElementById("eq-export-dept");
+            let staffEl = document.getElementById("eq-export-staff");
+            if (!scopeEl || !deptEl || !staffEl) return;
+            deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
+            staffEl.style.display = (scopeEl.value === "staff") ? "" : "none";
+        }
+
+        // Xây danh sách thiết bị (đối tượng JS) đúng phạm vi đã chọn, dùng chung cho việc xuất.
+        function buildEquipmentExportRows(scope, deptValue, staffValue) {
+            let rows = equipmentData.slice();
+            if (scope === "dept") {
+                rows = rows.filter(e => e.dept === deptValue);
+            } else if (scope === "staff") {
+                rows = rows.filter(e => e.msnv === staffValue);
+            } else if (scope === "warehouse") {
+                // Đồng nhất với định nghĩa "Thiết bị lưu kho" đang dùng ở thẻ tổng quan phía trên
+                // (chưa gán MSNV cho ai, hoặc đang được đánh dấu Tình trạng = "Lưu kho").
+                rows = rows.filter(e => !e.msnv || e.status === "Lưu kho");
+            } else if (scope === "liquidated") {
+                rows = rows.filter(e => e.status === "Đã thanh lý");
+            }
+            // scope === "all" -> giữ nguyên toàn bộ equipmentData (mọi phòng ban)
+            return rows;
+        }
+
+        function exportEquipmentToExcel() {
+            // [BẢO MẬT] Chỉ cho phép xuất khi tài khoản có quyền xem Tab "Quản Lý Thiết Bị"
+            // (giống hệt điều kiện đang dùng để hiện/ẩn cả Tab này).
+            let canView = currentUser && ((currentUser.role === "Admin") || !!currentUser.eqView);
+            if (!canView) {
+                alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Quản Lý Thiết Bị. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let scopeEl = document.getElementById("eq-export-scope");
+            let deptEl = document.getElementById("eq-export-dept");
+            let staffEl = document.getElementById("eq-export-staff");
+            let scope = scopeEl ? scopeEl.value : "all";
+            let deptValue = deptEl ? deptEl.value : "";
+            let staffValue = staffEl ? staffEl.value : "";
+
+            if (scope === "dept" && !deptValue) {
+                alert("⚠️ Vui lòng chọn phòng ban cần xuất.");
+                return;
+            }
+            if (scope === "staff" && !staffValue) {
+                alert("⚠️ Vui lòng chọn nhân viên cần xuất.");
+                return;
+            }
+
+            let rows = buildEquipmentExportRows(scope, deptValue, staffValue);
+            if (rows.length === 0) {
+                alert("Không có dữ liệu thiết bị phù hợp với phạm vi đã chọn để xuất.");
+                return;
+            }
+
+            let exportRows = rows.map(e => {
+                let typeLabel = e.type ? (e.type + (e.chiTiet ? ` - ${e.chiTiet}` : "")) : (e.chiTiet || "");
+                return {
+                    "Mã TB": e.assetCode || "",
+                    "Tên thiết bị": e.name || "",
+                    "Loại": typeLabel,
+                    "Nhân viên sử dụng": e.msnv ? getStaffNameByMsnv(e.msnv) : "Lưu kho",
+                    "Phòng ban": e.dept || "",
+                    "Tình trạng": e.status || "",
+                    "ĐVT": e.unit || "",
+                    "Số lượng": e.qty || "",
+                    "Ngày nhận": e.dateReceived ? formatDateDisplay(e.dateReceived) : "",
+                    "Ngày bàn giao": e.dateReturn ? formatDateDisplay(e.dateReturn) : "",
+                    "Ngày nhập kho": e.dateWarehouseIn ? formatDateDisplay(e.dateWarehouseIn) : "",
+                    "Ngày xuất kho": e.dateWarehouseOut ? formatDateDisplay(e.dateWarehouseOut) : "",
+                    "Ngày thanh lý": e.dateLiquidation ? formatDateDisplay(e.dateLiquidation) : "",
+                    "Vị trí": e.location || "",
+                    "Ghi chú": e.note || ""
+                };
+            });
+
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            ws['!cols'] = [
+                { wch: 12 }, { wch: 26 }, { wch: 20 }, { wch: 22 }, { wch: 28 },
+                { wch: 16 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 },
+                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 26 }
+            ];
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ThietBi");
+
+            let scopeLabelMap = {
+                all: "TatCaPhongBan",
+                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_"),
+                warehouse: "LuuKho",
+                liquidated: "DaThanhLy"
+            };
+            let now = new Date();
+            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+            let fileName = "QuanLyThietBi_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
+
+            XLSX.writeFile(wb, fileName);
         }
 
         async function saveData() {
