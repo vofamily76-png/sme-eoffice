@@ -21,7 +21,18 @@
             --card-shadow: 0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { display: flex; background-color: var(--bg-color); color: var(--text-color); height: 100vh; overflow: hidden; }
+        /* [SỬA LỖI] Trước đây chỉ dùng "height: 100vh". Trên điện thoại, đơn vị "vh" được tính
+           không nhất quán khi thanh địa chỉ trình duyệt tự ẩn/hiện lúc người dùng chạm vào các
+           Tab menu bên trái — khiến chiều cao toàn bộ khung (sidebar + vùng nội dung) bị thay
+           đổi đột ngột giữa các lần bấm, làm danh sách Tab ở sidebar lúc thì hiện đủ, lúc thì
+           xuất hiện thanh cuộn / bị đẩy lệch vị trí (đúng như phản ánh trong ảnh chụp màn hình).
+           Nay dùng "100dvh" (dynamic viewport height — tự khớp với đúng vùng nhìn thấy thực tế
+           của trình duyệt di động tại mọi thời điểm) làm ưu tiên, và thêm biến CSS --app-vh
+           (tính bằng JS từ window.innerHeight, xem cuối trang) làm phương án dự phòng cho các
+           trình duyệt/WebView cũ chưa hỗ trợ "dvh". "100vh" gốc vẫn được giữ lại đầu tiên làm
+           phương án dự phòng cuối cùng cho trình duyệt rất cũ — KHÔNG có trình duyệt nào bị mất
+           giao diện, chỉ thêm lớp dự phòng để ổn định hơn. */
+        body { display: flex; background-color: var(--bg-color); color: var(--text-color); height: 100vh; height: 100dvh; height: var(--app-vh, 100dvh); overflow: hidden; }
         
         /* Màn hình Đăng nhập */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0b3c5d 0%, #1d2731 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -57,14 +68,24 @@
            nhìn thấy mà KHÔNG có thanh cuộn nào để xem — trông như bị "mất" nút Đăng xuất.
            Nay: .sidebar giới hạn overflow, khối brand+menu tự cuộn RIÊNG (overflow-y:auto),
            còn sidebar-footer luôn cố định hiển thị đầy đủ ở cuối (flex-shrink:0). */
-        .sidebar { width: var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 20px 0; overflow: hidden; }
+        /* [SỬA LỖI - CỬA SỔ TRÌNH DUYỆT HẸP] Trước đây .sidebar chỉ đặt "width" mà không khóa
+           "flex-shrink", nên khi cửa sổ trình duyệt/màn hình hẹp hơn tổng chiều rộng cần thiết,
+           flexbox tự động CO NHỎ sidebar lại (mặc định flex-shrink:1), làm chữ trong menu bị vỡ
+           từng chữ một cột dọc (như ảnh chụp màn hình phản ánh), đồng thời phần nội dung bên
+           phải bị cắt mất phần chữ tràn ra ngoài (do "body { overflow:hidden }") mà không có
+           thanh cuộn ngang nào để xem tiếp. Nay: sidebar được khóa CỨNG đúng "--sidebar-width"
+           (flex-shrink:0, flex-grow:0), không bao giờ bị bóp méo dù cửa sổ hẹp đến đâu; phần nội
+           dung bên phải (.content-area) được phép tự thu nhỏ (min-width:0) và tự cuộn ngang
+           RIÊNG (overflow-x:auto) khi nội dung của nó rộng hơn khoảng trống còn lại — thay vì bị
+           cắt mất không xem được. */
+        .sidebar { width: var(--sidebar-width); flex: 0 0 var(--sidebar-width); background-color: var(--primary-color); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 0 0 20px 0; overflow: hidden; }
         .sidebar > div:first-child { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
         .sidebar-brand { flex-shrink: 0; }
         .sidebar-menu { list-style: none; margin-top: 15px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-        .sidebar-menu li { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+        .sidebar-menu li { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; white-space: nowrap; }
         .sidebar-menu li:hover, .sidebar-menu li.active { background-color: var(--secondary-color); }
         .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; flex-shrink: 0; }
-        .content-area { flex-grow: 1; padding: 30px; overflow-y: auto; }
+        .content-area { flex: 1 1 auto; min-width: 0; padding: 30px; overflow-y: auto; overflow-x: auto; }
         .page-content { display: none; }
         .page-content.active { display: block; }
         h2.page-title { margin-bottom: 20px; color: var(--primary-color); border-bottom: 2px solid #ddd; padding-bottom: 10px; }
@@ -989,7 +1010,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-07.birthday-dashboard-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-07.narrow-window-layout-fix-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -4168,6 +4189,20 @@
                 alert('Có lỗi xảy ra!');
             }
         }
+
+        // [SỬA LỖI - ỔN ĐỊNH CHIỀU CAO TRÊN DI ĐỘNG] Phương án dự phòng cho các trình duyệt/WebView
+        // cũ CHƯA hỗ trợ đơn vị CSS "dvh" (điện thoại đời cũ, app WebView nội bộ...). Tính sẵn
+        // biến CSS "--app-vh" bằng đúng window.innerHeight (px) và cập nhật lại mỗi khi kích
+        // thước khung nhìn thay đổi thực sự (xoay màn hình, đổi cỡ cửa sổ) — KHÔNG chạy theo mỗi
+        // lần chạm/click, nên không gây giật/lệch khi chuyển Tab. Nơi nào trình duyệt đã hỗ trợ
+        // "dvh" thì lớp CSS "height: 100dvh" (ưu tiên cao hơn) sẽ được dùng, biến này chỉ là dự
+        // phòng, không ảnh hưởng gì tới dữ liệu hay cơ chế đăng nhập/phân quyền.
+        function setAppViewportHeightVar() {
+            document.documentElement.style.setProperty('--app-vh', window.innerHeight + 'px');
+        }
+        setAppViewportHeightVar();
+        window.addEventListener('resize', setAppViewportHeightVar);
+        window.addEventListener('orientationchange', setAppViewportHeightVar);
 
         // --- BẮT ĐẦU CƠ CHẾ TỰ ĐỘNG ĐĂNG XUẤT KHI KHÔNG HOẠT ĐỘNG ---
         let autoLogoutTimer = function () {
