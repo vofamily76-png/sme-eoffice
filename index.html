@@ -491,6 +491,20 @@
                         </div>
                     </div>
                     <div class="form-row contract-group">
+                        <div class="input-group">
+                            <label>Số CCCD/Passport</label>
+                            <input type="text" id="inp-id-number" placeholder="Ví dụ: 048xxxxxxxxx">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày cấp CCCD/Passport</label>
+                            <input type="date" id="inp-id-issue-date">
+                        </div>
+                        <div class="input-group">
+                            <label>Quốc tịch</label>
+                            <input type="text" id="inp-nationality" placeholder="Ví dụ: Việt Nam">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-phone-volume"></i> Thông tin liên hệ khẩn cấp</label>
                         </div>
@@ -1064,7 +1078,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-08.contract-bank-emergency-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-08.id-passport-field-order-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -3882,7 +3896,11 @@
                     bankNameBranch: document.getElementById("inp-bank-name").value.trim(),
                     emergencyContactName: document.getElementById("inp-emergency-name").value.trim(),
                     emergencyContactRelation: document.getElementById("inp-emergency-relation").value.trim(),
-                    emergencyContactPhone: document.getElementById("inp-emergency-phone").value.trim()
+                    emergencyContactPhone: document.getElementById("inp-emergency-phone").value.trim(),
+                    // [BỔ SUNG MỚI] Số CCCD/Passport, Ngày cấp, Quốc tịch.
+                    idNumber: document.getElementById("inp-id-number").value.trim(),
+                    idIssueDate: document.getElementById("inp-id-issue-date").value,
+                    nationality: document.getElementById("inp-nationality").value.trim()
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -3981,6 +3999,11 @@
                 document.getElementById("inp-emergency-relation").value = d.emergencyContactRelation || "";
                 document.getElementById("inp-emergency-phone").value = d.emergencyContactPhone || "";
 
+                // [BỔ SUNG MỚI] Đổ lại Số CCCD/Passport, Ngày cấp, Quốc tịch vào form khi sửa.
+                document.getElementById("inp-id-number").value = d.idNumber || "";
+                document.getElementById("inp-id-issue-date").value = d.idIssueDate || "";
+                document.getElementById("inp-nationality").value = d.nationality || "";
+
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
                 });
@@ -4048,6 +4071,9 @@
             // input phía trên (chỉ nhắm input) nên cần đưa về mặc định riêng.
             document.getElementById("inp-contract-type").value = "Không thời hạn";
             onContractTypeChange();
+            // [BỔ SUNG MỚI] Ô "Ngày cấp CCCD/Passport" (type="date") không nằm trong vòng lặp
+            // input phía trên (chỉ reset input KHÔNG phải type="date") nên cần xóa riêng.
+            document.getElementById("inp-id-issue-date").value = "";
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
         }
