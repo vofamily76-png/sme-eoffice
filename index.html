@@ -237,26 +237,6 @@
                 <a href="#" onclick="toggleForgotPasswordForm(false)" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
             </div>
         </div>
-
-        <!-- [MẢNG 13] XÁC THỰC 2 LỚP (2FA): màn hình nhập mã OTP gửi qua Email liên kết —
-             chỉ hiển thị khi tài khoản đang đăng nhập ĐÃ liên kết email (server trả về
-             status "OTP_REQUIRED" ở action "login"). Tài khoản chưa liên kết email không
-             bao giờ thấy màn hình này (đăng nhập xong ngay như trước). -->
-        <div class="login-box" id="sub-otp-box" style="display: none;">
-            <i class="fa-solid fa-shield-halved" style="color: var(--secondary-color); font-size: 32px;"></i>
-            <h2>XÁC THỰC 2 LỚP (OTP)</h2>
-            <p id="otp-info-text" style="font-size: 13px; color:#666; margin-bottom: 15px;"></p>
-            <div class="input-group">
-                <label>Mã xác thực (OTP) từ email</label>
-                <input type="text" id="login-otp" placeholder="Nhập mã 6 số nhận được qua email" maxlength="6" inputmode="numeric">
-            </div>
-            <button class="btn" id="btn-verify-login-otp" onclick="verifyLoginOtp()">Xác nhận & Đăng nhập</button>
-            <p id="login-otp-error" style="color: red; margin-top: 10px; display: none;"></p>
-            <div style="margin-top: 15px; display:flex; justify-content: space-between;">
-                <a href="#" onclick="resendLoginOtp()" style="font-size: 13px; color: var(--secondary-color); text-decoration:none;"><i class="fa-solid fa-rotate"></i> Gửi lại mã</a>
-                <a href="#" onclick="cancelLoginOtp()" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
-            </div>
-        </div>
     </div>
 
     <div id="main-system">
@@ -1098,7 +1078,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-08.login-2fa-email-otp-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-08.id-passport-field-order-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2075,89 +2055,15 @@
             return normalizeDateStr(dateStr);
         }
 
-        // [MẢNG 13 - 2FA] Giữ TẠM THỜI username/password vừa nhập đúng trong bộ nhớ (RAM) của
-        // trang, CHỈ dùng để: (a) hiển thị lại màn hình đăng nhập nếu người dùng bấm "Quay lại",
-        // (b) cho phép nút "Gửi lại mã" gọi lại action "login" mà không bắt gõ lại mật khẩu.
-        // KHÔNG được lưu vào sessionStorage/localStorage, và được xóa sạch ngay khi đăng nhập
-        // xong (thành công) hoặc khi người dùng quay lại màn hình đăng nhập.
-        let pendingLoginUsername = null;
-        let pendingLoginPassword = null;
-
-        // Hoàn tất đăng nhập (đã có authToken thật, hoặc lối vào admin/123 khi chưa kết nối
-        // Google Sheet) — dùng chung cho: (a) đăng nhập thẳng (tài khoản chưa liên kết email),
-        // và (b) sau khi xác nhận đúng OTP (tài khoản đã liên kết email, action "verifyLoginOtp").
-        async function completeLoginUI(u, data) {
-            currentUsername = u;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts };
-            // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được
-            // lưu lại trong bộ nhớ trình duyệt sau bước đăng nhập này.
-            authToken = data.token || null;
-
-            if (isScriptUrlConfigured()) {
-                await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
-                saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
-            }
-
-            // [MẢNG 13 - 2FA] Đăng nhập xong hẳn -> xóa sạch mật khẩu tạm khỏi bộ nhớ trang.
-            pendingLoginUsername = null;
-            pendingLoginPassword = null;
-
-            document.getElementById("login-screen").style.display = "none";
-            document.getElementById("main-system").style.display = "flex";
-            document.getElementById("user-display").innerText = escapeHtml(u);
-            let scriptUrlInput = document.getElementById("adm-script-url");
-            if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
-
-            applyUserPermissions();
-            updateSystemData();
-            switchPage('dashboard');
-        }
-
-        // Hiển thị màn hình nhập OTP (LỚP 2 của 2FA), thay cho màn hình đăng nhập thường.
-        function showLoginOtpScreen(maskedEmail) {
-            document.getElementById("sub-login-box").style.display = "none";
-            document.getElementById("sub-forgot-box").style.display = "none";
-            document.getElementById("sub-otp-box").style.display = "block";
-            document.getElementById("login-otp").value = "";
-            let errEl = document.getElementById("login-otp-error");
-            errEl.style.display = "none";
-            document.getElementById("otp-info-text").innerText =
-                "✅ Mật khẩu đúng. Đã gửi mã xác thực tới " + (maskedEmail || "email đã liên kết") +
-                ". Mã có hiệu lực trong 10 phút.";
-            document.getElementById("login-otp").focus();
-        }
-
-        // Quay lại màn hình đăng nhập thường, hủy bỏ bước xác thực OTP đang dang dở (KHÔNG
-        // đăng nhập được nữa cho tới khi nhập lại đúng mật khẩu từ đầu).
-        function cancelLoginOtp() {
-            pendingLoginUsername = null;
-            pendingLoginPassword = null;
-            document.getElementById("sub-otp-box").style.display = "none";
-            document.getElementById("sub-login-box").style.display = "block";
-            document.getElementById("password").value = "";
-        }
-
-        // Gửi lại mã OTP (gọi lại chính action "login" bằng username/password đã nhập đúng
-        // trước đó, đang giữ tạm trong bộ nhớ trang — KHÔNG cần người dùng gõ lại mật khẩu).
-        async function resendLoginOtp() {
-            if (!pendingLoginUsername || pendingLoginPassword === null) {
-                cancelLoginOtp();
-                return;
-            }
-            await handleLogin(true);
-        }
-
-        // [MẢNG 13] Bước 1 của 2FA: xác thực username/password như cũ. Nếu server trả về
-        // status "OTP_REQUIRED" (tài khoản đã liên kết email) thì dừng lại, hiển thị màn hình
-        // nhập OTP thay vì vào thẳng hệ thống — chờ xác nhận qua verifyLoginOtp() bên dưới.
-        async function handleLogin(isResend) {
-            let btn = isResend ? null : document.getElementById("btn-login");
-            let u = isResend ? pendingLoginUsername : document.getElementById("username").value.trim();
-            let p = isResend ? pendingLoginPassword : document.getElementById("password").value;
+        async function handleLogin() {
+            let btn = document.getElementById("btn-login");
+            let u = document.getElementById("username").value.trim();
+            let p = document.getElementById("password").value;
             let err = document.getElementById("login-error");
             err.style.display = "none";
 
-            if (btn) { btn.disabled = true; btn.innerText = "Đang kiểm tra..."; }
+            btn.disabled = true;
+            btn.innerText = "Đang kiểm tra...";
 
             try {
                 if (isScriptUrlConfigured()) {
@@ -2170,62 +2076,40 @@
                     let data = await res.json();
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
-                    // [MẢNG 13 - 2FA] Tài khoản đã liên kết email -> CHƯA có authToken, phải xác
-                    // thực thêm mã OTP gửi qua email trước khi thực sự vào hệ thống.
-                    if (data.status === "OTP_REQUIRED") {
-                        pendingLoginUsername = u;
-                        pendingLoginPassword = p; // chỉ giữ TẠM trong RAM, xem completeLoginUI()/cancelLoginOtp()
-                        showLoginOtpScreen(data.maskedEmail);
-                        return;
-                    }
+                    currentUsername = u;
+                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts };
+                    // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được
+                    // lưu lại trong bộ nhớ trình duyệt sau bước đăng nhập này.
+                    authToken = data.token || null;
 
-                    await completeLoginUI(u, data);
-                    return;
+                    await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
+                    saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
                 } else {
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
-                        await completeLoginUI(u, { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, token: null });
+                        currentUsername = "admin";
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true };
+                        authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
                     }
                 }
+
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("main-system").style.display = "flex";
+                document.getElementById("user-display").innerText = escapeHtml(u);
+                let scriptUrlInput = document.getElementById("adm-script-url");
+                if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
+
+                applyUserPermissions();
+                updateSystemData();
+                switchPage('dashboard');
             } catch (e) {
                 err.innerText = "❌ " + e.message;
                 err.style.display = "block";
             } finally {
-                if (btn) { btn.disabled = false; btn.innerText = "Đăng nhập"; }
-            }
-        }
-
-        // [MẢNG 13] Bước 2 của 2FA: xác nhận mã OTP vừa nhận qua email (KHÔNG cần gửi lại
-        // mật khẩu — mật khẩu đã được xác thực đúng ở bước handleLogin() phía trên).
-        async function verifyLoginOtp() {
-            let btn = document.getElementById("btn-verify-login-otp");
-            let otp = document.getElementById("login-otp").value.trim();
-            let errEl = document.getElementById("login-otp-error");
-            errEl.style.display = "none";
-
-            if (!pendingLoginUsername) { cancelLoginOtp(); return; }
-            if (!otp) { errEl.innerText = "⚠️ Vui lòng nhập mã OTP."; errEl.style.display = "block"; return; }
-
-            btn.disabled = true;
-            btn.innerText = "Đang xác nhận...";
-            try {
-                let res = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ action: "verifyLoginOtp", username: pendingLoginUsername, otp: otp })
-                });
-                let data = await res.json();
-                if (data.status === "ERROR") throw new Error(data.message || "Mã xác thực không đúng hoặc đã hết hạn.");
-
-                await completeLoginUI(pendingLoginUsername, data);
-            } catch (e) {
-                errEl.innerText = "❌ " + e.message;
-                errEl.style.display = "block";
-            } finally {
                 btn.disabled = false;
-                btn.innerText = "Xác nhận & Đăng nhập";
+                btn.innerText = "Đăng nhập";
             }
         }
 
