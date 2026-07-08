@@ -10,6 +10,10 @@
          xuất ra lấy từ staffData đã tải sẵn (đúng phạm vi/quyền người dùng đang có), KHÔNG
          gọi thêm API nào tới server -> không ảnh hưởng dữ liệu gốc, không đổi cơ chế bảo mật. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- [BẢO MẬT - 2FA] Thư viện tạo mã QR NGAY TẠI TRÌNH DUYỆT (không gửi secret ra ngoài
+         server nào khác ngoài Apps Script) — dùng để hiển thị mã QR cho app Google
+         Authenticator quét khi người dùng bật xác thực 2 lớp. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
             --primary-color: #0b3c5d;
@@ -225,6 +229,28 @@
             <p id="login-error" style="color: red; margin-top: 10px; display: none;">Sai thông tin đăng nhập!</p>
         </div>
 
+        <!-- [BẢO MẬT - 2FA] Màn hình BƯỚC 2 của đăng nhập: nhập mã 6 số từ app Google
+             Authenticator. Chỉ hiện ra SAU KHI mật khẩu (bước 1) đã đúng, cho tài khoản đã
+             bật 2FA. Chưa có quyền/token thật nào được cấp trước khi qua được bước này. -->
+        <div class="login-box" id="sub-2fa-box" style="display: none;">
+            <i class="fa-solid fa-shield-halved" style="color: var(--secondary-color);"></i>
+            <h2>XÁC THỰC 2 LỚP</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">
+                Mật khẩu chính xác. Vui lòng mở app <b>Google Authenticator</b> (hoặc Microsoft
+                Authenticator/Authy) trên điện thoại và nhập mã 6 số hiện đang hiển thị cho
+                tài khoản <b id="tfa-login-username">-</b>.
+            </p>
+            <div class="input-group">
+                <label>Mã xác thực (6 số)</label>
+                <input type="text" id="tfa-login-code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" style="text-align:center; letter-spacing:4px; font-size:20px;">
+            </div>
+            <button class="btn" id="btn-login-2fa" onclick="handleLogin2FAVerify()">Xác nhận ✔️</button>
+            <p id="tfa-login-error" style="color: red; margin-top: 10px; display: none;"></p>
+            <div style="margin-top: 15px;">
+                <a href="#" onclick="cancelLogin2FA()" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
+            </div>
+        </div>
+
         <div class="login-box" id="sub-forgot-box" style="display: none;">
             <i class="fa-solid fa-envelope-shield" style="color: var(--secondary-color);"></i>
             <h2>QUÊN MẬT KHẨU</h2>
@@ -250,6 +276,7 @@
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
+                    <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
@@ -263,6 +290,8 @@
             <div class="sidebar-footer">
                 <p><i class="fa-solid fa-user"></i> <span id="user-display">User</span></p>
                 <a href="#" onclick="openChangePasswordModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
+                <br>
+                <a href="#" onclick="open2FAModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</a>
                 <br>
                 <a href="#" onclick="handleLogout()" style="color: #ff8888; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Đăng xuất 🚪</a>
                 <!-- [CHẨN ĐOÁN] Mã phiên bản FRONTEND đang chạy — dùng để xác nhận file index.html
@@ -730,6 +759,50 @@
                 </div>
             </div>
 
+            <div id="page-chukyso" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-signature"></i> Chữ Ký Số</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Trình file ký, theo dõi và xử lý các hồ sơ chữ ký số. Dữ liệu và file đính kèm của tính năng này được lưu ở 1 Google Sheet + Google Drive RIÊNG, tách biệt hoàn toàn với dữ liệu Danh bạ/Nhân sự/Thiết bị.</p>
+
+                <div class="admin-box" id="chukyso-form-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3 id="chukyso-form-title"><i class="fa-solid fa-file-signature"></i> Trình file ký mới</h3>
+                    <input type="hidden" id="edit-mahoso-chukyso" value="">
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>File cần trình ký *</label>
+                            <input type="file" id="inp-cky-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png">
+                            <span id="cky-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                        <div class="input-group">
+                            <label>Người ký / người xử lý *</label>
+                            <select id="inp-cky-nguoiky"></select>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <input type="text" id="inp-cky-ghichu" placeholder="Ghi chú thêm cho người ký (nếu có)...">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="submitSignatureFile()">Trình ký ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-chukyso" onclick="resetSignatureForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chukyso-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin: 16px 0;"></div>
+
+                <div style="overflow-x:auto;">
+                <table id="tbl-chukyso">
+                    <thead><tr>
+                        <th>Tên file</th><th>Người trình</th><th>Người ký</th><th>Người ký thay</th>
+                        <th>Trạng thái</th><th>Ngày trình</th><th>Ngày xử lý</th><th>Ngày ký</th><th>Ghi chú</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-other-apps" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</h2>
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">Danh sách các phần mềm/hệ thống liên kết được Admin cấu hình. Bấm vào thẻ để mở phần mềm ngay trong hệ thống.</p>
@@ -937,6 +1010,69 @@
         </div>
     </div>
 
+    <!-- [BẢO MẬT - 2FA] Modal tự phục vụ để BẬT/TẮT xác thực 2 lớp bằng Google Authenticator
+         cho chính tài khoản đang đăng nhập. Áp dụng cho MỌI tài khoản (kể cả Admin). -->
+    <div id="twofa-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 420px;">
+            <h2><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</h2>
+
+            <div id="tfa-loading" style="padding: 10px 0; color:#888;">Đang tải trạng thái...</div>
+
+            <!-- Trạng thái: ĐANG TẮT -->
+            <div id="tfa-state-off" style="display:none;">
+                <p style="font-size:13px; color:#666; text-align:left;">
+                    Xác thực 2 lớp <b>đang TẮT</b>. Bật lên để mỗi lần đăng nhập, ngoài mật khẩu,
+                    hệ thống sẽ yêu cầu thêm 1 mã 6 số từ app <b>Google Authenticator</b> trên
+                    điện thoại — giúp tài khoản an toàn hơn nhiều dù lỡ lộ mật khẩu.
+                </p>
+                <button class="btn" onclick="start2FASetup()">🔒 Bật xác thực 2 lớp</button>
+            </div>
+
+            <!-- Bước thiết lập: hiện mã QR + ô nhập mã xác nhận -->
+            <div id="tfa-state-setup" style="display:none;">
+                <p style="font-size:13px; color:#666; text-align:left;">
+                    1) Mở app <b>Google Authenticator</b> → bấm dấu "+" → <b>Quét mã QR</b> bên dưới.<br>
+                    2) Không quét được thì chọn <b>Nhập mã bằng tay</b> và gõ khóa bí mật này:
+                </p>
+                <div id="tfa-qrcode" style="display:flex; justify-content:center; margin: 12px 0;"></div>
+                <div class="input-group">
+                    <label>Khóa bí mật (nếu không quét được QR)</label>
+                    <input type="text" id="tfa-secret-text" readonly style="text-align:center; font-family:monospace; letter-spacing:1px;">
+                </div>
+                <div class="input-group">
+                    <label>Nhập mã 6 số hiện đang hiển thị trên app để xác nhận</label>
+                    <input type="text" id="tfa-confirm-code" maxlength="6" inputmode="numeric" placeholder="000000" style="text-align:center; letter-spacing:4px; font-size:20px;">
+                </div>
+                <div id="tfa-setup-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="width:auto; flex-grow:1;" onclick="confirm2FASetup()">Xác nhận & Bật ✔️</button>
+                    <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="cancel2FASetup()">Hủy</button>
+                </div>
+            </div>
+
+            <!-- Trạng thái: ĐANG BẬT -->
+            <div id="tfa-state-on" style="display:none;">
+                <p style="font-size:13px; color:#2e7d32; text-align:left;">
+                    <i class="fa-solid fa-circle-check"></i> Xác thực 2 lớp <b>đang BẬT</b> cho tài
+                    khoản này. Mỗi lần đăng nhập, bạn sẽ cần nhập thêm mã 6 số từ app Authenticator.
+                </p>
+                <div class="input-group">
+                    <label>Nhập mật khẩu hiện tại để TẮT 2FA</label>
+                    <input type="password" id="tfa-disable-password" placeholder="Mật khẩu hiện tại">
+                </div>
+                <div id="tfa-disable-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+                <button class="btn btn-danger" onclick="disable2FA()">🔓 Tắt xác thực 2 lớp</button>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <button class="btn" style="width:auto; background:#777;" onclick="close2FAModal()">Đóng</button>
+            </div>
+            <!-- [CHẨN ĐOÁN] Nếu backend hiện "(không rõ)" hoặc lệch với frontend, tức là Apps
+                 Script chưa được Triển khai lại (redeploy) sau khi cập nhật code.gs mới nhất. -->
+            <p id="tfa-version-info" style="margin-top:10px; font-size:10px; color:#aaa;"></p>
+        </div>
+    </div>
+
     <div id="change-password-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
         <div class="login-box" style="max-width: 380px;">
             <h2><i class="fa-solid fa-key"></i> Đổi mật khẩu</h2>
@@ -1036,7 +1172,7 @@
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
         // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
         let userDatabase = {
-            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true }
+            "admin": { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true }
         };
         // [NÂNG CẤP BẢO MẬT - MẢNG 1] Thay vì gửi lại username+password ở MỌI request, giờ
         // chỉ đăng nhập 1 lần để lấy về 1 "authToken" tạm thời do server cấp (tự hết hạn sau
@@ -1078,7 +1214,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-08.id-passport-field-order-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-09.2fa-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -1098,6 +1234,14 @@
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
         // Tài liệu văn bản nội bộ: {maTaiLieu, tenTaiLieu, phienBan, donViChuBien, ngayBanHanh, nguoiPheDuyet, fileName, fileId, fileUrl, uploadDate}
         let internalDocsData = [];
+        // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
+        // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
+        // chung, phải gọi riêng action "getSignatureData" (xem loadSignatureData()).
+        let signatureData = []; // mỗi phần tử đã có sẵn field "tabs" (server tính sẵn hồ sơ này thuộc Tab con nào)
+        let signatureUsernames = []; // danh sách tài khoản để chọn "người ký"
+        let currentUserCanViewChuKySo = false;
+        const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
+        let ckyActiveTab = "Chờ tôi xử lý";
 
         // Nhận diện 1 giá trị imgUrl có phải là fileId Google Drive (avatar đã chuyển sang
         // lưu trên Drive) hay không — phân biệt với: rỗng (chưa có ảnh), hoặc chuỗi Base64
@@ -1204,7 +1348,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -1433,6 +1577,147 @@
             document.getElementById("change-password-modal").style.display = "none";
         }
 
+        /* ========== [BẢO MẬT - 2FA] Modal Bật/Tắt xác thực 2 lớp (Google Authenticator) ========== */
+
+        // Gọi API chung cho các action liên quan tới 2FA (đều cần authToken của phiên đang
+        // đăng nhập) — trả về object JSON kết quả, hoặc ném lỗi nếu server báo ERROR.
+        async function call2FAApi(payload) {
+            if (!isScriptUrlConfigured()) throw new Error("Chưa kết nối Google Sheet.");
+            payload.authToken = authToken;
+            let res = await fetch(SCRIPT_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                body: JSON.stringify(payload)
+            });
+            let data = await res.json();
+            if (data.status === "ERROR") throw new Error(data.message || "Có lỗi xảy ra.");
+            return data;
+        }
+
+        // [CHẨN ĐOÁN] Lỗi PHỔ BIẾN NHẤT khiến tính năng "vừa thêm" không hoạt động: đã dán
+        // code.gs mới vào Apps Script Editor nhưng CHƯA "Triển khai lại" (redeploy) — khi đó
+        // URL Web App đang chạy vẫn là bản CODE CŨ, không hiểu các action "setup2FA",
+        // "get2FAStatus"... Backend cũ sẽ rơi vào nhánh mặc định và trả về {status:"SUCCESS"}
+        // KHÔNG kèm dữ liệu gì — khiến các trường như "secret"/"otpauthUri" bị undefined.
+        // Hàm này phát hiện đúng tình huống đó và báo lỗi RÕ RÀNG thay vì hiển thị "undefined".
+        function assert2FAResponseShape(data, requiredFields, actionLabel) {
+            let missing = requiredFields.filter(function (f) { return typeof data[f] === "undefined"; });
+            if (missing.length > 0) {
+                throw new Error(
+                    'Backend (Google Apps Script) đang chạy CHƯA có tính năng 2FA (thiếu trường "' + missing.join(", ") + '" khi gọi "' + actionLabel + '"). ' +
+                    "Nguyên nhân gần như chắc chắn: bạn đã dán code.gs mới vào Apps Script Editor nhưng CHƯA Triển khai lại. " +
+                    "Vào Apps Script → Triển khai (Deploy) → Quản lý phiên bản triển khai → bấm biểu tượng sửa (✏️) ở bản đang publish → Phiên bản: chọn \"Mới\" → Triển khai. " +
+                    "Sau đó bấm Đồng bộ lại (hoặc tải lại trang) rồi thử lại."
+                );
+            }
+        }
+
+        function show2FAState(stateId) {
+            ["tfa-loading", "tfa-state-off", "tfa-state-setup", "tfa-state-on"].forEach(function (id) {
+                document.getElementById(id).style.display = (id === stateId) ? "block" : "none";
+            });
+        }
+
+        async function open2FAModal() {
+            document.getElementById("twofa-modal").style.display = "flex";
+            show2FAState("tfa-loading");
+            let versionInfoEl = document.getElementById("tfa-version-info");
+            versionInfoEl.innerText = "";
+            try {
+                let data = await call2FAApi({ action: "get2FAStatus" });
+                versionInfoEl.innerText = "Frontend: " + FRONTEND_BUILD_VERSION + " • Backend: " + (data.buildVersion || "(không rõ - backend chưa được triển khai lại)");
+                assert2FAResponseShape(data, ["enabled"], "get2FAStatus");
+                show2FAState(data.enabled ? "tfa-state-on" : "tfa-state-off");
+                document.getElementById("tfa-disable-password").value = "";
+                document.getElementById("tfa-disable-error").style.display = "none";
+            } catch (e) {
+                alert("❌ Không thể tải trạng thái 2FA:\n\n" + e.message);
+                close2FAModal();
+            }
+        }
+
+        function close2FAModal() {
+            document.getElementById("twofa-modal").style.display = "none";
+        }
+
+        // Bắt đầu thiết lập: yêu cầu server sinh 1 khóa bí mật MỚI HOÀN TOÀN NGẪU NHIÊN (server
+        // không bao giờ tái sử dụng lại 1 khóa cũ — mỗi lần bấm "Bật xác thực 2 lớp", dù cùng
+        // 1 tài khoản hay khác tài khoản, đều nhận 1 khóa/1 mã QR khác nhau), hiển thị mã QR để
+        // quét bằng app Authenticator.
+        async function start2FASetup() {
+            try {
+                let data = await call2FAApi({ action: "setup2FA" });
+                assert2FAResponseShape(data, ["secret", "otpauthUri"], "setup2FA");
+
+                document.getElementById("tfa-secret-text").value = data.secret;
+                document.getElementById("tfa-confirm-code").value = "";
+                document.getElementById("tfa-setup-error").style.display = "none";
+
+                let qrBox = document.getElementById("tfa-qrcode");
+                qrBox.innerHTML = "";
+                // Thư viện vẽ QR được tải từ CDN (cdnjs) — nếu mạng công ty/tường lửa chặn CDN
+                // này thì QRCode sẽ không tồn tại. Trường hợp đó vẫn cho phép người dùng nhập
+                // TAY khóa bí mật (đã hiển thị ở ô phía trên) thay vì để trắng không rõ lý do.
+                if (typeof QRCode === "undefined") {
+                    qrBox.innerHTML = '<span style="font-size:12px; color:#a94442;">⚠️ Không tải được thư viện tạo mã QR (có thể do mạng chặn CDN). Vui lòng dùng cách "Nhập mã bằng tay" với khóa bí mật bên dưới.</span>';
+                } else {
+                    try {
+                        new QRCode(qrBox, { text: data.otpauthUri, width: 200, height: 200 });
+                    } catch (qrErr) {
+                        qrBox.innerHTML = '<span style="font-size:12px; color:#a94442;">⚠️ Không thể vẽ mã QR (' + escapeHtml(qrErr.message || "") + '). Vui lòng dùng cách "Nhập mã bằng tay" với khóa bí mật bên dưới.</span>';
+                    }
+                }
+                show2FAState("tfa-state-setup");
+            } catch (e) {
+                alert("❌ Không thể bắt đầu thiết lập 2FA:\n\n" + e.message);
+            }
+        }
+
+        function cancel2FASetup() {
+            open2FAModal(); // tải lại trạng thái thật hiện tại (vẫn TẮT vì chưa xác nhận)
+        }
+
+        // Xác nhận mã 6 số từ app Authenticator để CHÍNH THỨC bật 2FA cho tài khoản.
+        async function confirm2FASetup() {
+            let code = document.getElementById("tfa-confirm-code").value.trim();
+            let err = document.getElementById("tfa-setup-error");
+            err.style.display = "none";
+            if (!/^[0-9]{6}$/.test(code)) {
+                err.innerText = "❌ Vui lòng nhập đủ 6 chữ số.";
+                err.style.display = "block";
+                return;
+            }
+            try {
+                await call2FAApi({ action: "confirm2FA", code: code });
+                alert("🎉 Đã bật xác thực 2 lớp thành công! Từ lần đăng nhập tiếp theo, bạn sẽ cần nhập thêm mã từ app Authenticator.");
+                show2FAState("tfa-state-on");
+            } catch (e) {
+                err.innerText = "❌ " + e.message;
+                err.style.display = "block";
+            }
+        }
+
+        // Tắt 2FA (yêu cầu nhập lại mật khẩu hiện tại để xác nhận đúng là chủ tài khoản).
+        async function disable2FA() {
+            let pw = document.getElementById("tfa-disable-password").value;
+            let err = document.getElementById("tfa-disable-error");
+            err.style.display = "none";
+            if (!pw) {
+                err.innerText = "❌ Vui lòng nhập mật khẩu hiện tại.";
+                err.style.display = "block";
+                return;
+            }
+            if (!confirm("Bạn có chắc muốn TẮT xác thực 2 lớp? Tài khoản sẽ kém an toàn hơn.")) return;
+            try {
+                await call2FAApi({ action: "disable2FA", password: pw });
+                alert("✔️ Đã tắt xác thực 2 lớp.");
+                show2FAState("tfa-state-off");
+            } catch (e) {
+                err.innerText = "❌ " + e.message;
+                err.style.display = "block";
+            }
+        }
+
         // Yêu cầu server gửi mã OTP tới email đã liên kết (nếu có) để xác nhận trước khi đổi
         // mật khẩu. Tài khoản chưa liên kết email sẽ nhận thông báo rõ ràng và vẫn đổi được
         // mật khẩu bình thường (chỉ cần mật khẩu cũ), không bị chặn.
@@ -1555,9 +1840,9 @@
             if (uEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(uEmail)) { alert("⚠️ Email liên kết không đúng định dạng!"); return; }
             if (userDatabase[uName]) { alert("❌ Tên tài khoản này đã tồn tại trên hệ thống!"); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, email: uEmail, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert, viewResignedContacts: uViewResignedContacts });
+            let ok = await pushToCloud({ action: "createUser", username: uName, password: uPass, email: uEmail, role: uRole, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert, viewResignedContacts: uViewResignedContacts, xemChuKySo: false });
             if (ok) {
-                userDatabase[uName] = { role: uRole, email: uEmail, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert, viewResignedContacts: uViewResignedContacts };
+                userDatabase[uName] = { role: uRole, email: uEmail, docsView: uDocsView, docsUpload: uDocsUpload, docsDelete: uDocsDelete, eqView: uEqView, eqManage: uEqManage, hrView: uHrView, hrEdit: uHrEdit, hrDelete: uHrDelete, contractAlert: uContractAlert, viewResignedContacts: uViewResignedContacts, xemChuKySo: false, totpEnabled: false };
                 saveLocalCache();
                 alert(`✔️ Đã khởi tạo tài khoản "${uName}".`);
             } else {
@@ -1597,7 +1882,8 @@
                 eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage,
                 hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete,
                 contractAlert: !!userDatabase[username].contractAlert,
-                viewResignedContacts: !!userDatabase[username].viewResignedContacts
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) { userDatabase[username].email = newEmail; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật email liên kết cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng / định dạng email).`);
@@ -1612,7 +1898,8 @@
             let rpErr = checkPasswordStrengthClient(newPass);
             if (rpErr) { alert("⚠️ " + rpErr); return; }
 
-            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, email: userDatabase[username].email || "", role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert, viewResignedContacts: !!userDatabase[username].viewResignedContacts });
+            let ok = await pushToCloud({ action: "createUser", username: username, password: newPass, email: userDatabase[username].email || "", role: userDatabase[username].role, docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert, viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo });
             alert(ok ? `✔️ Đã đặt lại mật khẩu cho "${username}".` : `❌ Không thể đặt lại mật khẩu (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
         }
@@ -1627,13 +1914,26 @@
             renderUserListViewForAdmin();
         }
 
+        // [BẢO MẬT - 2FA] Admin gỡ 2FA HỘ 1 tài khoản (kể cả Admin) — dùng khi người dùng đó
+        // bị mất điện thoại/thiết bị Authenticator và không thể tự đăng nhập để tự tắt 2FA.
+        // KHÔNG cần biết mật khẩu của tài khoản đó (đây là hành động quản trị, được ghi vào
+        // Nhật ký hoạt động để có thể truy vết sau này).
+        async function adminReset2FAAccount(username) {
+            if (!confirm(`Xác nhận GỠ xác thực 2 lớp (2FA) của tài khoản "${username}"?\nTài khoản đó sẽ đăng nhập lại bằng mật khẩu như bình thường (không cần mã 2FA) cho tới khi tự bật lại.`)) return;
+            let ok = await pushToCloud({ action: "adminReset2FA", username: username });
+            if (ok && userDatabase[username]) { userDatabase[username].totpEnabled = false; saveLocalCache(); }
+            alert(ok ? `✔️ Đã gỡ 2FA của tài khoản "${username}".` : `❌ Không thể gỡ 2FA (kiểm tra quyền Admin / kết nối mạng).`);
+            renderUserListViewForAdmin();
+        }
+
         async function changeUserRole(username, newRole) {
             if (username === "admin") { alert("⚠️ Không thể thay đổi phân quyền của tài khoản Admin gốc!"); renderUserListViewForAdmin(); return; }
             if (!userDatabase[username]) return;
 
             // Không gửi kèm "password" — backend sẽ tự giữ nguyên mật khẩu hiện có của user này,
             // chỉ cập nhật role/quyền. authToken (tự đính kèm bởi pushToCloud) là của Admin đang thao tác.
-            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, email: userDatabase[username].email || "", docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert, viewResignedContacts: !!userDatabase[username].viewResignedContacts });
+            let ok = await pushToCloud({ action: "createUser", username: username, role: newRole, email: userDatabase[username].email || "", docsView: !!userDatabase[username].docsView, docsUpload: !!userDatabase[username].docsUpload, docsDelete: !!userDatabase[username].docsDelete, eqView: !!userDatabase[username].eqView, eqManage: !!userDatabase[username].eqManage, hrView: !!userDatabase[username].hrView, hrEdit: !!userDatabase[username].hrEdit, hrDelete: !!userDatabase[username].hrDelete, contractAlert: !!userDatabase[username].contractAlert, viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo });
             if (ok) { userDatabase[username].role = newRole; saveLocalCache(); }
             alert(ok ? `✔️ Đã cập nhật phân quyền cho "${username}".` : `❌ Không thể cập nhật (kiểm tra quyền Admin / kết nối mạng).`);
             renderUserListViewForAdmin();
@@ -1668,7 +1968,8 @@
                 hrEdit: !!userDatabase[username].hrEdit,
                 hrDelete: !!userDatabase[username].hrDelete,
                 contractAlert: !!userDatabase[username].contractAlert,
-                viewResignedContacts: !!userDatabase[username].viewResignedContacts
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) {
                 userDatabase[username].docsView = newDocsView;
@@ -1708,7 +2009,8 @@
                 hrEdit: !!userDatabase[username].hrEdit,
                 hrDelete: !!userDatabase[username].hrDelete,
                 contractAlert: !!userDatabase[username].contractAlert,
-                viewResignedContacts: !!userDatabase[username].viewResignedContacts
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) {
                 userDatabase[username].eqView = newEqView;
@@ -1750,7 +2052,8 @@
                 hrEdit: !!newHrEdit,
                 hrDelete: !!newHrDelete,
                 contractAlert: !!userDatabase[username].contractAlert,
-                viewResignedContacts: !!userDatabase[username].viewResignedContacts
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) {
                 userDatabase[username].hrView = newHrView;
@@ -1782,7 +2085,8 @@
                 hrEdit: !!userDatabase[username].hrEdit,
                 hrDelete: !!userDatabase[username].hrDelete,
                 contractAlert: !!checked,
-                viewResignedContacts: !!userDatabase[username].viewResignedContacts
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) {
                 userDatabase[username].contractAlert = checked;
@@ -1813,10 +2117,42 @@
                 hrEdit: !!userDatabase[username].hrEdit,
                 hrDelete: !!userDatabase[username].hrDelete,
                 contractAlert: !!userDatabase[username].contractAlert,
-                viewResignedContacts: !!checked
+                viewResignedContacts: !!checked,
+                xemChuKySo: !!userDatabase[username].xemChuKySo
             });
             if (ok) {
                 userDatabase[username].viewResignedContacts = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        // [TAB "CHỮ KÝ SỐ" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền thấy Tab "Chữ Ký Số" cho 1 user cụ
+        // thể — cờ độc lập, không cascade với các quyền khác (giống hệt "CanhBaoHopDong").
+        async function toggleUserChuKySoPermission(username, checked) {
+            if (!userDatabase[username]) return;
+
+            let ok = await pushToCloud({
+                action: "createUser",
+                username: username,
+                role: userDatabase[username].role,
+                email: userDatabase[username].email || "",
+                docsView: !!userDatabase[username].docsView,
+                docsUpload: !!userDatabase[username].docsUpload,
+                docsDelete: !!userDatabase[username].docsDelete,
+                eqView: !!userDatabase[username].eqView,
+                eqManage: !!userDatabase[username].eqManage,
+                hrView: !!userDatabase[username].hrView,
+                hrEdit: !!userDatabase[username].hrEdit,
+                hrDelete: !!userDatabase[username].hrDelete,
+                contractAlert: !!userDatabase[username].contractAlert,
+                viewResignedContacts: !!userDatabase[username].viewResignedContacts,
+                xemChuKySo: !!checked
+            });
+            if (ok) {
+                userDatabase[username].xemChuKySo = checked;
                 saveLocalCache();
             } else {
                 alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
@@ -1882,6 +2218,12 @@
 
                 let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 actionsHtml += `<button class="btn btn-sm" onclick="updateUserLinkedEmail('${safeU}')" title="Gán/sửa email liên kết"><i class="fa-solid fa-envelope"></i></button>`;
+                // [BẢO MẬT - 2FA] Admin có thể GỠ 2FA hộ 1 tài khoản (kể cả Admin) khi người
+                // dùng đó bị mất điện thoại/thiết bị Authenticator — KHÔNG cần biết mật khẩu
+                // của tài khoản đó. Chỉ hiện nút khi tài khoản đó ĐANG bật 2FA.
+                if (userDatabase[u].totpEnabled) {
+                    actionsHtml += `<button class="btn btn-sm btn-danger" onclick="adminReset2FAAccount('${safeU}')" title="Gỡ 2FA hộ (mất thiết bị)"><i class="fa-solid fa-shield-halved"></i></button>`;
+                }
                 if (u !== "admin") {
                     actionsHtml += `<button class="btn btn-sm btn-danger" onclick="deleteUserAccount('${safeU}')" title="Xóa tài khoản"><i class="fa-solid fa-trash"></i></button>`;
                 }
@@ -1889,6 +2231,10 @@
                 let emailBadge = userDatabase[u].email
                     ? `<span style="font-size:11px; color:#2a7; white-space:nowrap;" title="Email liên kết (dùng gửi OTP đổi mật khẩu)"><i class="fa-solid fa-envelope-circle-check"></i> ${escapeHtml(userDatabase[u].email)}</span>`
                     : `<span style="font-size:11px; color:#aaa; white-space:nowrap;" title="Chưa liên kết email"><i class="fa-regular fa-envelope"></i> Chưa liên kết email</span>`;
+                // [BẢO MẬT - 2FA] Nhãn cho biết tài khoản đó đã bật xác thực 2 lớp hay chưa.
+                let twoFaBadge = userDatabase[u].totpEnabled
+                    ? `<span style="font-size:11px; color:#2a7; white-space:nowrap;" title="Đã bật xác thực 2 lớp"><i class="fa-solid fa-shield-halved"></i> 2FA: Bật</span>`
+                    : `<span style="font-size:11px; color:#aaa; white-space:nowrap;" title="Chưa bật xác thực 2 lớp"><i class="fa-solid fa-shield"></i> 2FA: Tắt</span>`;
 
                 let docsControl = "";
                 if (u === "admin") {
@@ -1978,15 +2324,31 @@
                     </span>`;
                 }
 
+                // [TAB "CHỮ KÝ SỐ" - PHÂN QUYỀN RIÊNG] Quyền thấy Tab "Chữ Ký Số"
+                let cksoControl = "";
+                if (u === "admin") {
+                    cksoControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-signature"></i> Luôn thấy Chữ Ký Số</span>';
+                } else {
+                    let cksoChecked = userDatabase[u].xemChuKySo ? "checked" : "";
+                    cksoControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-signature" title="Chữ Ký Số"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${cksoChecked} onchange="toggleUserChuKySoPermission('${safeU}', this.checked)"> Xem tab Chữ Ký Số
+                        </label>
+                    </span>`;
+                }
+
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${safeU}</b> ${roleControl}</span>
                     ${emailBadge}
+                    ${twoFaBadge}
                     ${docsControl}
                     ${eqControl}
                     ${hrControl}
                     ${contractAlertControl}
                     ${resignedControl}
+                    ${cksoControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -2055,6 +2417,94 @@
             return normalizeDateStr(dateStr);
         }
 
+        // [BẢO MẬT - 2FA] Biến tạm giữ "vé" (pendingTicket) + username đang chờ xác thực bước
+        // 2 (mã Authenticator) — chỉ tồn tại trong bộ nhớ trình duyệt, KHÔNG lưu lại lâu dài.
+        var pending2FATicket = null;
+        var pending2FAUsername = null;
+
+        // Hoàn tất đăng nhập với "data" server trả về (token + quyền hạn) — dùng chung cho cả
+        // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
+        async function finishLoginWithData(username, data) {
+            currentUsername = username;
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo };
+            // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
+            // trong bộ nhớ trình duyệt sau bước đăng nhập này.
+            authToken = data.token || null;
+
+            await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
+            saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
+        }
+
+        // Chuyển giao diện từ màn hình đăng nhập sang màn hình chính — dùng chung cho cả 2
+        // luồng (đăng nhập thường / đăng nhập sau khi xác thực 2FA).
+        function showMainSystemAfterLogin(username) {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("main-system").style.display = "flex";
+            document.getElementById("user-display").innerText = escapeHtml(username);
+            let scriptUrlInput = document.getElementById("adm-script-url");
+            if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
+
+            applyUserPermissions();
+            updateSystemData();
+            switchPage('dashboard');
+        }
+
+        // [BẢO MẬT - 2FA] Hủy luồng xác thực 2 lớp đang chờ (bấm "Quay lại Đăng nhập") — xóa
+        // vé tạm khỏi bộ nhớ trình duyệt, KHÔNG có gì được lưu lại phía server (vé sẽ tự hết
+        // hạn sau 5 phút nếu không dùng).
+        function cancelLogin2FA() {
+            pending2FATicket = null;
+            pending2FAUsername = null;
+            document.getElementById("sub-2fa-box").style.display = "none";
+            document.getElementById("sub-login-box").style.display = "block";
+            document.getElementById("password").value = "";
+        }
+
+        // [BẢO MẬT - 2FA] Gửi mã 6 số (bước 2 của đăng nhập) lên server để xác nhận và nhận
+        // authToken thật.
+        async function handleLogin2FAVerify() {
+            let btn = document.getElementById("btn-login-2fa");
+            let code = document.getElementById("tfa-login-code").value.trim();
+            let err = document.getElementById("tfa-login-error");
+            err.style.display = "none";
+
+            if (!/^[0-9]{6}$/.test(code)) {
+                err.innerText = "❌ Vui lòng nhập đủ 6 chữ số.";
+                err.style.display = "block";
+                return;
+            }
+            if (!pending2FATicket || !pending2FAUsername) {
+                err.innerText = "❌ Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại.";
+                err.style.display = "block";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Đang xác nhận...";
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "loginVerify2FA", pendingTicket: pending2FATicket, code: code })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message || "Mã xác thực không đúng.");
+
+                let username = pending2FAUsername;
+                await finishLoginWithData(username, data);
+                pending2FATicket = null;
+                pending2FAUsername = null;
+                document.getElementById("sub-2fa-box").style.display = "none";
+                showMainSystemAfterLogin(username);
+            } catch (e) {
+                err.innerText = "❌ " + e.message;
+                err.style.display = "block";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Xác nhận ✔️";
+            }
+        }
+
         async function handleLogin() {
             let btn = document.getElementById("btn-login");
             let u = document.getElementById("username").value.trim();
@@ -2076,34 +2526,36 @@
                     let data = await res.json();
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
-                    currentUsername = u;
-                    currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts };
-                    // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được
-                    // lưu lại trong bộ nhớ trình duyệt sau bước đăng nhập này.
-                    authToken = data.token || null;
+                    // [BẢO MẬT - 2FA] Tài khoản này đã bật xác thực 2 lớp -> mật khẩu đúng chỉ
+                    // là bước 1. Chuyển sang màn hình nhập mã 6 số từ app Authenticator, CHƯA
+                    // cấp quyền/token thật nào ở bước này.
+                    if (data.require2FA) {
+                        pending2FATicket = data.pendingTicket;
+                        pending2FAUsername = u;
+                        document.getElementById("tfa-login-username").innerText = escapeHtml(u);
+                        document.getElementById("tfa-login-code").value = "";
+                        document.getElementById("tfa-login-error").style.display = "none";
+                        document.getElementById("sub-login-box").style.display = "none";
+                        document.getElementById("sub-2fa-box").style.display = "block";
+                        btn.disabled = false;
+                        btn.innerText = "Đăng nhập";
+                        document.getElementById("tfa-login-code").focus();
+                        return;
+                    }
 
-                    await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
-                    saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
+                    await finishLoginWithData(u, data);
                 } else {
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
                     }
                 }
 
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("main-system").style.display = "flex";
-                document.getElementById("user-display").innerText = escapeHtml(u);
-                let scriptUrlInput = document.getElementById("adm-script-url");
-                if (scriptUrlInput) scriptUrlInput.value = isScriptUrlConfigured() ? SCRIPT_URL : "";
-
-                applyUserPermissions();
-                updateSystemData();
-                switchPage('dashboard');
+                showMainSystemAfterLogin(u);
             } catch (e) {
                 err.innerText = "❌ " + e.message;
                 err.style.display = "block";
@@ -2188,6 +2640,12 @@
             currentUserCanSeeContractAlert = canSeeContractAlert;
             currentUserCanViewResignedContacts = canViewResignedContacts;
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
+
+            // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
+            let canViewChuKySo = (currentUser.role === "Admin") || !!currentUser.xemChuKySo;
+            currentUserCanViewChuKySo = canViewChuKySo;
+            document.getElementById("menu-chukyso").style.display = canViewChuKySo ? "flex" : "none";
+            if (canViewChuKySo) loadSignatureData();
             // Thẻ "HĐ Lao động sắp hết hạn" ở Tab Tổng quan: chỉ hiện với tài khoản được cấp
             // quyền "CanhBaoHopDong" (hoặc Admin). Ẩn hẳn thẻ (không chỉ số đếm) để tránh gợi ý
             // tồn tại thông tin nhạy cảm mà tài khoản đó không được xem.
@@ -2229,6 +2687,11 @@
             if (pageId === "hr") {
                 let canViewHR = currentUser && ((currentUser.role === "Admin") || !!currentUser.hrView);
                 if (!canViewHR) { alert("⚠️ Bạn không có quyền xem Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền."); return; }
+            }
+            if (pageId === "chukyso") {
+                let canViewChuKySo = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemChuKySo);
+                if (!canViewChuKySo) { alert("⚠️ Bạn không có quyền xem Chữ Ký Số. Liên hệ Admin để được cấp quyền."); return; }
+                loadSignatureData();
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -2604,6 +3067,211 @@
             if (ok) {
                 await loadFromCloud(true);
                 updateSystemData();
+            }
+        }
+
+        /* ========== [TAB "CHỮ KÝ SỐ"] ==========
+           Dữ liệu lấy từ 1 Google Sheet + Google Drive RIÊNG (không nằm trong action "getData"
+           chung) — mọi lượt gọi đều dùng action riêng, và authToken vẫn được đính kèm để server
+           xác thực/kiểm tra quyền y hệt mọi action khác trong hệ thống. */
+
+        // Gọi 1 action bất kỳ của Chữ ký số và trả về TOÀN BỘ dữ liệu JSON (không chỉ true/false
+        // như pushToCloud) — cần thiết vì "getSignatureData"/"submitSignatureRequest" phải trả
+        // về danh sách hồ sơ / mã hồ sơ mới tạo cho giao diện dùng tiếp.
+        async function callSignatureApi(payload) {
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return null; }
+            if (authToken && !payload.authToken) payload.authToken = authToken;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                return data;
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function loadSignatureData() {
+            if (!currentUserCanViewChuKySo || !isScriptUrlConfigured() || !authToken) return;
+            let data = await callSignatureApi({ action: "getSignatureData" });
+            if (!data) return;
+            signatureData = data.requests || [];
+            signatureUsernames = data.usernames || [];
+            populateSignatureUserSelect();
+            renderSignatureTabs();
+            renderSignatureTable();
+        }
+
+        function populateSignatureUserSelect() {
+            let sel = document.getElementById("inp-cky-nguoiky");
+            if (!sel) return;
+            let others = signatureUsernames.filter(u => u !== currentUsername);
+            sel.innerHTML = `<option value="">-- Chọn người ký / xử lý --</option>` +
+                others.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+        }
+
+        function renderSignatureTabs() {
+            let wrap = document.getElementById("chukyso-tabs");
+            if (!wrap) return;
+            wrap.innerHTML = CHUKYSO_TABS.map(t => {
+                let count = signatureData.filter(r => (r.tabs || []).indexOf(t) !== -1).length;
+                let active = (t === ckyActiveTab);
+                return `<span onclick="setSignatureTab('${t.replace(/'/g, "\\'")}')"
+                    style="cursor:pointer; padding:7px 14px; border-radius:16px; font-size:13px; white-space:nowrap;
+                    border:1px solid ${active ? 'var(--secondary-color)' : '#ddd'};
+                    background:${active ? 'var(--secondary-color)' : '#f5f5f5'};
+                    color:${active ? '#fff' : '#444'};">${escapeHtml(t)} (${count})</span>`;
+            }).join('');
+        }
+
+        function setSignatureTab(tabName) {
+            ckyActiveTab = tabName;
+            renderSignatureTabs();
+            renderSignatureTable();
+        }
+
+        function renderSignatureTable() {
+            let tbody = document.querySelector("#tbl-chukyso tbody");
+            if (!tbody) return;
+            let rows = signatureData.filter(r => (r.tabs || []).indexOf(ckyActiveTab) !== -1);
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ nào trong mục này.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(r => {
+                let fileCell = r.fileId
+                    ? `<a href="#" onclick="viewSignatureFile('${r.fileId}', '${escapeHtml(r.tenFile).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(r.tenFile)}</a>`
+                    : escapeHtml(r.tenFile || "");
+
+                let actions = "";
+                if (r.canSign) actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="doSignatureAction('${r.maHoSo}', 'Đã ký')" title="Ký hồ sơ này"><i class="fa-solid fa-signature"></i> Ký</button> `;
+                if (r.canReturn) actions += `<button class="btn btn-warning" style="width:auto; padding:6px 10px;" onclick="doSignatureAction('${r.maHoSo}', 'Trả lại để cập nhật')" title="Trả lại để người trình cập nhật"><i class="fa-solid fa-rotate-left"></i> Trả lại</button> `;
+                if (r.canDelegate) actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="delegateSignature('${r.maHoSo}')" title="Giao cho người khác ký thay"><i class="fa-solid fa-user-check"></i> Giao ký thay</button> `;
+                if (r.nguoiTrinh === currentUsername && r.trangThai === "Trả lại để cập nhật") actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editSignatureDraft('${r.maHoSo}')" title="Cập nhật & trình lại"><i class="fa-solid fa-pen"></i> Cập nhật & trình lại</button> `;
+                if (r.canCancel) actions += `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="doSignatureAction('${r.maHoSo}', 'Hủy không trình lại')" title="Hủy, không trình lại"><i class="fa-solid fa-ban"></i> Hủy</button> `;
+
+                return `<tr>
+                    <td>${fileCell}</td>
+                    <td>${escapeHtml(r.nguoiTrinh)}</td>
+                    <td>${escapeHtml(r.nguoiKy)}</td>
+                    <td>${escapeHtml(r.nguoiDuocGiaoKyThay || "")}</td>
+                    <td>${escapeHtml(r.trangThai)}</td>
+                    <td>${escapeHtml(r.ngayTrinh || "")}</td>
+                    <td>${escapeHtml(r.ngayXuLy || "")}</td>
+                    <td>${escapeHtml(r.ngayKy || "")}</td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${actions || "-"}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function resetSignatureForm() {
+            document.getElementById("edit-mahoso-chukyso").value = "";
+            document.getElementById("inp-cky-file").value = "";
+            document.getElementById("inp-cky-nguoiky").value = "";
+            document.getElementById("inp-cky-ghichu").value = "";
+            document.getElementById("cky-current-file-hint").innerText = "";
+            document.getElementById("chukyso-form-title").innerHTML = '<i class="fa-solid fa-file-signature"></i> Trình file ký mới';
+            document.getElementById("btn-cancel-edit-chukyso").style.display = "none";
+        }
+
+        // Mở lại form để cập nhật + trình lại 1 hồ sơ đã bị "Trả lại để cập nhật".
+        function editSignatureDraft(maHoSo) {
+            let r = signatureData.find(x => x.maHoSo === maHoSo);
+            if (!r) return;
+            document.getElementById("edit-mahoso-chukyso").value = maHoSo;
+            document.getElementById("inp-cky-nguoiky").value = r.nguoiKy || "";
+            document.getElementById("inp-cky-ghichu").value = r.ghiChu || "";
+            document.getElementById("cky-current-file-hint").innerText = r.tenFile ? ("File hiện tại: " + r.tenFile + " (chỉ chọn file mới nếu muốn thay thế)") : "";
+            document.getElementById("chukyso-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật & trình lại hồ sơ';
+            document.getElementById("btn-cancel-edit-chukyso").style.display = "inline-block";
+            document.getElementById("chukyso-form-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        async function submitSignatureFile() {
+            let maHoSo = document.getElementById("edit-mahoso-chukyso").value;
+            let nguoiKy = document.getElementById("inp-cky-nguoiky").value;
+            let ghiChu = document.getElementById("inp-cky-ghichu").value.trim();
+            if (!nguoiKy) { alert("Vui lòng chọn người ký / người xử lý!"); return; }
+
+            let fileInput = document.getElementById("inp-cky-file");
+            let file = fileInput.files[0];
+            if (!file && !maHoSo) { alert("Vui lòng chọn file cần trình ký!"); return; }
+            if (file && file.size > 25 * 1024 * 1024) { alert("File quá lớn (giới hạn 25MB)."); return; }
+
+            let payload = { action: "submitSignatureRequest", maHoSo: maHoSo || undefined, nguoiKy: nguoiKy, ghiChu: ghiChu };
+
+            if (file) {
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let data = await callSignatureApi(payload);
+            if (data) {
+                resetSignatureForm();
+                await loadSignatureData();
+                alert("✔️ Đã trình file ký thành công.");
+            }
+        }
+
+        async function doSignatureAction(maHoSo, newStatus) {
+            let labelMap = { "Đã ký": "ký", "Trả lại để cập nhật": "trả lại để cập nhật", "Hủy không trình lại": "hủy, không trình lại" };
+            if (!confirm(`Xác nhận ${labelMap[newStatus] || "cập nhật"} hồ sơ này?`)) return;
+            let data = await callSignatureApi({ action: "updateSignatureRequest", maHoSo: maHoSo, newStatus: newStatus });
+            if (data) await loadSignatureData();
+        }
+
+        async function delegateSignature(maHoSo) {
+            let target = prompt("Nhập tên đăng nhập của người được giao ký thay:");
+            if (!target) return;
+            let data = await callSignatureApi({ action: "delegateSignatureRequest", maHoSo: maHoSo, nguoiDuocGiaoKyThay: target.trim() });
+            if (data) await loadSignatureData();
+        }
+
+        async function deleteSignatureRow(maHoSo) {
+            if (!confirm("Xác nhận xóa hẳn hồ sơ này?")) return;
+            let data = await callSignatureApi({ action: "deleteSignatureRequest", maHoSo: maHoSo });
+            if (data) await loadSignatureData();
+        }
+
+        // Mở/tải file đính kèm của 1 hồ sơ Chữ ký số qua PROXY có kiểm tra quyền — file trên
+        // Drive KHÔNG được chia sẻ công khai, server tự xác nhận người gọi có liên quan tới
+        // đúng hồ sơ chứa file đó hay không (người trình/người ký/người được giao ký thay/Admin).
+        async function viewSignatureFile(fileId, fileName) {
+            if (!fileId) { alert("⚠️ File này chưa có dữ liệu."); return; }
+            try {
+                showSyncBanner("Đang mở file...");
+                let data = await callSignatureApi({ action: "getSignatureFileContent", fileId: fileId });
+                if (!data) return;
+                let byteChars = atob(data.fileData);
+                let byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                let byteArray = new Uint8Array(byteNumbers);
+                let blob = new Blob([byteArray], { type: data.mimeType || "application/octet-stream" });
+                let blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) {
+                alert("❌ Không thể mở file \"" + (fileName || "") + "\": " + err.message);
+                console.error(err);
+            } finally {
+                hideSyncBanner();
             }
         }
 
