@@ -205,6 +205,51 @@
         .hr-badge-expired { background:#fde8e8; color:#b91c1c; border:1px solid #f5c2c2; }
         #hr-expiring-alert-box ul { list-style: none; }
         #hr-expiring-alert-box li { padding: 8px 10px; background:#fff; border-radius:4px; margin-bottom:6px; border-left:3px solid #e67e22; }
+        /* [TAB "LỊCH LÀM VIỆC CÔNG TY"] Lưới hiển thị Thứ 2 -> Chủ nhật */
+        .llv-week-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+            overflow-x: auto;
+        }
+        .llv-day-col {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+        }
+        .llv-day-col.llv-today { border-color: var(--secondary-color); box-shadow: 0 0 0 1px var(--secondary-color); }
+        .llv-day-head {
+            padding: 8px 10px;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+            background: #f7f9fb;
+            border-radius: 8px 8px 0 0;
+        }
+        .llv-day-body { padding: 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .llv-task-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 12.5px;
+            cursor: pointer;
+            background: #fafcff;
+        }
+        .llv-task-card:hover { background: #f0f6ff; }
+        .llv-task-title { font-weight: 600; margin-bottom: 3px; color: var(--primary-color); }
+        .llv-task-meta { color: #666; line-height: 1.5; }
+        .llv-status-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 11px; font-weight: 600; margin-top: 4px;
+        }
+        .llv-status-upcoming { background: #e3edff; color: #1d4ed8; }
+        .llv-status-ongoing { background: #fff3cd; color: #8a6100; }
+        .llv-status-done { background: #e2f5e9; color: #1e7e34; }
+        .llv-empty-day { color: #bbb; font-size: 12px; text-align: center; padding: 10px 0; }
     </style>
 </head>
 <body>
@@ -279,6 +324,7 @@
                     <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
+                    <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
@@ -312,6 +358,10 @@
                     <div class="card"><div class="card-info"><p>Thuyền viên Đội tàu</p><h3 id="dash-crew-count">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="switchPage('groupmail')"><div class="card-info"><p>Group Mail</p><h3 id="dash-groupmail-count">0</h3></div><i class="fa-solid fa-envelope-open-text card-icon"></i></div>
                     <div class="card" id="dash-hr-card" style="cursor:pointer;" onclick="switchPage('hr')"><div class="card-info"><p>HĐ Lao động sắp hết hạn (30 ngày)</p><h3 id="dash-hr-expiring-count">0</h3></div><i class="fa-solid fa-file-circle-exclamation card-icon" style="color:#e67e22;"></i></div>
+                    <!-- [TAB "LỊCH LÀM VIỆC CÔNG TY" - HIỂN THỊ Ở TỔNG QUAN] Thẻ đếm số công việc
+                         diễn ra HÔM NAY, hiện với MỌI tài khoản đã đăng nhập (mặc định ai cũng
+                         xem được Lịch làm việc công ty) — bấm vào để mở thẳng Tab đầy đủ. -->
+                    <div class="card" id="dash-schedule-card" style="cursor:pointer;" onclick="switchPage('lichlamviec')"><div class="card-info"><p>Công việc hôm nay</p><h3 id="dash-schedule-today-count">0</h3></div><i class="fa-solid fa-calendar-week card-icon" style="color:#2980b9;"></i></div>
                 </div>
 
                 <!-- [MỚI] Khối "Chúc mừng sinh nhật" ở Tab Tổng quan: liệt kê nhân viên (Văn phòng
@@ -323,6 +373,19 @@
                 <div class="birthday-section">
                     <div class="birthday-section-header"><i class="fa-solid fa-gifts"></i> Chúc mừng sinh nhật</div>
                     <div id="birthday-grid" class="birthday-grid"></div>
+                </div>
+
+                <!-- [TAB "LỊCH LÀM VIỆC CÔNG TY" - HIỂN THỊ Ở TỔNG QUAN] Xem trước các công việc
+                     trong 7 ngày tới (hôm nay → +6 ngày), dùng LẠI đúng dữ liệu workScheduleData
+                     đã tải sẵn (KHÔNG gọi thêm action nào tới server) — hiện với MỌI tài khoản
+                     đã đăng nhập vì mặc định ai cũng xem được Tab "Lịch Làm Việc Công Ty". Bấm
+                     vào tiêu đề hoặc từng công việc để mở thẳng Tab đầy đủ. -->
+                <div class="birthday-section" id="dashboard-schedule-section">
+                    <div class="birthday-section-header" style="cursor:pointer;" onclick="switchPage('lichlamviec')">
+                        <i class="fa-solid fa-calendar-week"></i> Lịch làm việc công ty (7 ngày tới)
+                        <span style="margin-left:auto; font-weight:400; font-size:12px;">Xem đầy đủ <i class="fa-solid fa-arrow-right"></i></span>
+                    </div>
+                    <div id="dashboard-schedule-list" class="llv-day-body" style="background:#fff; border:1px solid #e5e9f0; border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
                 </div>
 
                 <div id="box-sys-log" class="admin-box" style="background-color: #e3f2fd;">
@@ -757,6 +820,85 @@
                     <tbody></tbody>
                 </table>
                 </div>
+            </div>
+
+            <div id="page-lichlamviec" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Lịch công việc theo tuần (Thứ 2 → Chủ nhật). Trạng thái được tự động tính theo thời gian bắt đầu/kết
+                    thúc của từng công việc so với thời điểm hiện tại.
+                </p>
+
+                <!-- [THÊM/SỬA CÔNG VIỆC] Chỉ hiện với tài khoản có quyền "SuaLichLamViec" (hoặc Admin). -->
+                <div class="admin-box" id="llv-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
+                    <h3 id="llv-form-title"><i class="fa-solid fa-calendar-plus"></i> Thêm / Cập nhật công việc</h3>
+                    <input type="hidden" id="edit-id-llv" value="">
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Tên công việc *</label>
+                            <input type="text" id="inp-llv-ten" placeholder="Ví dụ: Họp giao ban tuần">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày bắt đầu *</label>
+                            <input type="date" id="inp-llv-ngay-bd">
+                        </div>
+                        <div class="input-group">
+                            <label>Giờ bắt đầu</label>
+                            <input type="time" id="inp-llv-gio-bd">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày kết thúc</label>
+                            <input type="date" id="inp-llv-ngay-kt">
+                        </div>
+                        <div class="input-group">
+                            <label>Giờ kết thúc</label>
+                            <input type="time" id="inp-llv-gio-kt">
+                        </div>
+                        <div class="input-group">
+                            <label>Người phụ trách</label>
+                            <input type="text" id="inp-llv-phutrach" placeholder="Ví dụ: Nguyễn Văn A">
+                        </div>
+                        <div class="input-group">
+                            <label>Địa điểm</label>
+                            <input type="text" id="inp-llv-diadiem" placeholder="Ví dụ: Phòng họp tầng 3">
+                        </div>
+                        <div class="input-group">
+                            <label>Hình thức</label>
+                            <input type="text" id="inp-llv-hinhthuc" list="llv-hinhthuc-list" placeholder="Trực tiếp / Trực tuyến / Kết hợp...">
+                            <datalist id="llv-hinhthuc-list">
+                                <option value="Trực tiếp"></option>
+                                <option value="Trực tuyến"></option>
+                                <option value="Kết hợp"></option>
+                            </datalist>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <input type="text" id="inp-llv-ghichu" placeholder="Ghi chú thêm (nếu có)...">
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>File tài liệu đính kèm (tùy chọn)</label>
+                            <input type="file" id="inp-llv-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png">
+                            <span id="llv-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="saveWorkSchedule()">Lưu công việc ✔️</button>
+                            <button class="btn btn-danger" id="btn-delete-llv" onclick="deleteWorkScheduleRow(document.getElementById('edit-id-llv').value)" style="display:none; margin-left:10px; width:auto; padding:12px;">Xóa công việc 🗑️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-llv" onclick="resetWorkScheduleForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-controls" style="align-items:center;">
+                    <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(-1)"><i class="fa-solid fa-chevron-left"></i> Tuần trước</button>
+                    <span id="llv-week-label" style="font-weight:600; color:var(--primary-color); padding: 0 10px;"></span>
+                    <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(1)">Tuần sau <i class="fa-solid fa-chevron-right"></i></button>
+                    <button type="button" class="btn btn-secondary" style="width:auto;" onclick="changeWorkScheduleWeek(0)"><i class="fa-solid fa-calendar-day"></i> Tuần này</button>
+                    <input type="text" id="search-llv" class="search-box" oninput="renderWorkScheduleWeek()" placeholder="Tìm theo tên công việc, người phụ trách, địa điểm..." style="max-width:280px;">
+                </div>
+
+                <div id="llv-week-grid" class="llv-week-grid"></div>
             </div>
 
             <div id="page-chukyso" class="page-content">
@@ -1214,7 +1356,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-09.2fa-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-09.lichlamviec-v2-open";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -1234,12 +1376,15 @@
         let documentsData = []; // {msnv, docType, fileName, fileId, fileUrl, uploadDate}
         // Tài liệu văn bản nội bộ: {maTaiLieu, tenTaiLieu, phienBan, donViChuBien, ngayBanHanh, nguoiPheDuyet, fileName, fileId, fileUrl, uploadDate}
         let internalDocsData = [];
+        let workScheduleData = [];
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
         // chung, phải gọi riêng action "getSignatureData" (xem loadSignatureData()).
         let signatureData = []; // mỗi phần tử đã có sẵn field "tabs" (server tính sẵn hồ sơ này thuộc Tab con nào)
         let signatureUsernames = []; // danh sách tài khoản để chọn "người ký"
         let currentUserCanViewChuKySo = false;
+        let currentUserCanViewLichLamViec = false;
+        let currentUserCanEditLichLamViec = false;
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
 
@@ -1375,7 +1520,7 @@
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
                     mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData,
-                    internalDocsData: internalDocsData
+                    internalDocsData: internalDocsData, workScheduleData: workScheduleData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -1399,6 +1544,7 @@
                 if (cache.documentsData) documentsData = cache.documentsData;
                 if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
+                if (cache.workScheduleData) workScheduleData = cache.workScheduleData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
@@ -1479,6 +1625,7 @@
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
+                if (data.workSchedule) workScheduleData = data.workSchedule;
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
@@ -2160,6 +2307,26 @@
             renderUserListViewForAdmin();
         }
 
+        // [TAB "LỊCH LÀM VIỆC CÔNG TY" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền Thêm/Sửa/Xóa của
+        // Tab "Lịch Làm Việc Công Ty" cho 1 tài khoản. Quyền XEM nay MẶC ĐỊNH BẬT cho mọi tài
+        // khoản (không còn điều khiển được ở đây) — chỉ còn field "suaLichLamViec". Vẫn gửi kèm
+        // xemLichLamViec=true lên server để giữ tương thích với action "setWorkSchedulePermission"
+        // sẵn có (ghi đúng cột 18-19 của sheet "TaiKhoan", không đụng các cột/quyền khác).
+        async function toggleUserWorkSchedulePermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newSua = (field === "suaLichLamViec") ? checked : !!userDatabase[username].suaLichLamViec;
+
+            let ok = await pushToCloud({ action: "setWorkSchedulePermission", username: username, xemLichLamViec: true, suaLichLamViec: newSua });
+            if (ok) {
+                userDatabase[username].xemLichLamViec = true;
+                userDatabase[username].suaLichLamViec = newSua;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // Dò tìm phòng ban của 1 tài khoản dựa trên Email liên kết, bằng cách đối chiếu với
         // Email trong hồ sơ Nhân sự (staffData). Không đổi/không lộ thêm dữ liệu gì — chỉ dùng
         // để nhóm & sắp xếp danh sách User cho Admin dễ quản lý hơn.
@@ -2338,6 +2505,23 @@
                     </span>`;
                 }
 
+                // [TAB "LỊCH LÀM VIỆC CÔNG TY" - PHÂN QUYỀN RIÊNG] MẶC ĐỊNH MỌI TÀI KHOẢN đã
+                // đăng nhập đều XEM ĐƯỢC Tab này (không còn checkbox "Xem tab" vì luôn bật) —
+                // Admin chỉ còn cấp/thu hồi riêng quyền THÊM/SỬA/XÓA công việc cho từng tài khoản.
+                let llvControl = "";
+                if (u === "admin") {
+                    llvControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-calendar-week"></i> Toàn quyền Lịch làm việc</span>';
+                } else {
+                    let llvEChecked = userDatabase[u].suaLichLamViec ? "checked" : "";
+                    llvControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-calendar-week" title="Lịch Làm Việc Công Ty"></i>
+                        <span style="color:#888;">Xem tab: mặc định bật cho mọi tài khoản</span>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${llvEChecked} onchange="toggleUserWorkSchedulePermission('${safeU}', 'suaLichLamViec', this.checked)"> Thêm/Sửa/Xóa
+                        </label>
+                    </span>`;
+                }
+
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
                     <span><b>${safeU}</b> ${roleControl}</span>
@@ -2349,6 +2533,7 @@
                     ${contractAlertControl}
                     ${resignedControl}
                     ${cksoControl}
+                    ${llvControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
             }
@@ -2585,6 +2770,7 @@
             crewData = [];
             equipmentData = [];
             internalDocsData = [];
+            workScheduleData = [];
             documentsData = [];
             mailGroups = [];
             
@@ -2652,6 +2838,20 @@
             let dashHrCardEl = document.getElementById("dash-hr-card");
             if (dashHrCardEl) dashHrCardEl.style.display = canSeeContractAlert ? "" : "none";
 
+            // ==== [TAB "LỊCH LÀM VIỆC CÔNG TY"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được
+            // (không còn cần cấp riêng quyền "XemLichLamViec" như trước). Thêm/Sửa/Xóa: VẪN GIỮ
+            // NGUYÊN yêu cầu quyền riêng "SuaLichLamViec" (hoặc Admin), cấp theo TỪNG tài khoản,
+            // độc lập với Role chung — không đổi cơ chế bảo mật của phần thêm/sửa/xóa. ====
+            let canViewLichLamViec = true;
+            let canEditLichLamViec = (currentUser.role === "Admin") || !!currentUser.suaLichLamViec;
+            currentUserCanViewLichLamViec = canViewLichLamViec;
+            currentUserCanEditLichLamViec = canEditLichLamViec;
+            document.getElementById("menu-lichlamviec").style.display = "flex";
+            let llvFormBox = document.getElementById("llv-form-box");
+            if (llvFormBox) llvFormBox.style.display = canEditLichLamViec ? "block" : "none";
+            renderWorkScheduleWeek();
+            renderDashboardScheduleWidget();
+
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
                 document.getElementById("menu-admin").style.display = "flex";
@@ -2692,6 +2892,11 @@
                 let canViewChuKySo = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemChuKySo);
                 if (!canViewChuKySo) { alert("⚠️ Bạn không có quyền xem Chữ Ký Số. Liên hệ Admin để được cấp quyền."); return; }
                 loadSignatureData();
+            }
+            if (pageId === "lichlamviec") {
+                // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Không còn kiểm tra quyền
+                // "XemLichLamViec" ở đây — chỉ cần đã đăng nhập (currentUser tồn tại) là đủ.
+                renderWorkScheduleWeek();
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -3070,6 +3275,293 @@
             }
         }
 
+        /* ========== [TAB "LỊCH LÀM VIỆC CÔNG TY"] ==========
+           Hiển thị theo tuần (Thứ 2 -> Chủ nhật). "Trạng thái" KHÔNG lưu cố định — luôn được
+           TÍNH LẠI ngay tại trình duyệt (giống hệt cách server tính ở computeScheduleStatus
+           trong code.gs) để không bao giờ hiển thị sai dù dữ liệu được tải từ lâu. */
+        let llvWeekOffset = 0; // 0 = tuần hiện tại, -1 = tuần trước, +1 = tuần sau...
+
+        function llvPad2(n) { return String(n).padStart(2, "0"); }
+        function llvIsoDate(d) { return d.getFullYear() + "-" + llvPad2(d.getMonth() + 1) + "-" + llvPad2(d.getDate()); }
+        function llvFormatDateVN(iso) {
+            let p = String(iso || "").split("-");
+            return p.length === 3 ? (p[2] + "/" + p[1] + "/" + p[0]) : (iso || "");
+        }
+
+        // Tính trạng thái công việc TẠI THỜI ĐIỂM HIỆN TẠI — mirror chính xác logic server
+        // (computeScheduleStatus trong code.gs) để hiển thị luôn khớp nhau.
+        function computeScheduleStatusClient(item) {
+            if (!item.ngayBatDau) return "Chưa diễn ra";
+            function toDate(ngay, gio, endOfDay) {
+                if (!ngay) return null;
+                let d = new Date(ngay + "T00:00:00");
+                if (isNaN(d.getTime())) return null;
+                let h = 0, m = 0;
+                if (gio) {
+                    let mm = String(gio).match(/^(\d{1,2}):(\d{1,2})/);
+                    if (mm) { h = parseInt(mm[1], 10); m = parseInt(mm[2], 10); }
+                } else if (endOfDay) { h = 23; m = 59; }
+                d.setHours(h, m, 0, 0);
+                return d;
+            }
+            let start = toDate(item.ngayBatDau, item.gioBatDau, false);
+            let end = toDate(item.ngayKetThuc || item.ngayBatDau, item.gioKetThuc, true);
+            let now = new Date();
+            if (!start) return "Chưa diễn ra";
+            if (end && now > end) return "Đã hoàn thành";
+            if (now < start) return "Chưa diễn ra";
+            return "Đang diễn ra";
+        }
+        function llvStatusClass(status) {
+            if (status === "Đang diễn ra") return "llv-status-ongoing";
+            if (status === "Đã hoàn thành") return "llv-status-done";
+            return "llv-status-upcoming";
+        }
+
+        function getMondayOfWeek(d) {
+            let day = d.getDay(); // 0 = CN
+            let diffToMon = (day === 0) ? -6 : (1 - day);
+            let mon = new Date(d);
+            mon.setDate(d.getDate() + diffToMon);
+            mon.setHours(0, 0, 0, 0);
+            return mon;
+        }
+
+        function changeWorkScheduleWeek(delta) {
+            llvWeekOffset = (delta === 0) ? 0 : (llvWeekOffset + delta);
+            renderWorkScheduleWeek();
+        }
+
+        function renderWorkScheduleWeek() {
+            let grid = document.getElementById("llv-week-grid");
+            let labelEl = document.getElementById("llv-week-label");
+            if (!grid) return;
+
+            let baseMonday = getMondayOfWeek(new Date());
+            baseMonday.setDate(baseMonday.getDate() + llvWeekOffset * 7);
+            let days = [];
+            for (let i = 0; i < 7; i++) {
+                let d = new Date(baseMonday);
+                d.setDate(baseMonday.getDate() + i);
+                days.push(d);
+            }
+            let sunday = days[6];
+            if (labelEl) labelEl.textContent = "Tuần " + llvFormatDateVN(llvIsoDate(baseMonday)) + " → " + llvFormatDateVN(llvIsoDate(sunday));
+
+            let todayIso = llvIsoDate(new Date());
+            let keyword = (document.getElementById("search-llv") ? document.getElementById("search-llv").value : "").trim().toLowerCase();
+            let dayLabels = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
+
+            let filtered = (workScheduleData || []).filter(item => {
+                if (!keyword) return true;
+                return [item.tenCongViec, item.nguoiPhuTrach, item.diaDiem].some(v => String(v || "").toLowerCase().includes(keyword));
+            });
+
+            let html = days.map((d, idx) => {
+                let iso = llvIsoDate(d);
+                let itemsOfDay = filtered.filter(item => {
+                    let from = item.ngayBatDau, to = item.ngayKetThuc || item.ngayBatDau;
+                    return from && iso >= from && iso <= to;
+                }).sort((a, b) => String(a.gioBatDau || "").localeCompare(String(b.gioBatDau || "")));
+
+                let cardsHtml = itemsOfDay.map(item => {
+                    let status = computeScheduleStatusClient(item);
+                    let gioText = item.gioBatDau ? (escapeHtml(item.gioBatDau) + (item.gioKetThuc ? ("–" + escapeHtml(item.gioKetThuc)) : "")) : "Cả ngày";
+                    return `<div class="llv-task-card" onclick="openWorkScheduleDetail('${item.id}')">
+                        <div class="llv-task-title">${escapeHtml(item.tenCongViec)}</div>
+                        <div class="llv-task-meta">
+                            <i class="fa-regular fa-clock"></i> ${gioText}<br>
+                            ${item.nguoiPhuTrach ? '<i class="fa-regular fa-user"></i> ' + escapeHtml(item.nguoiPhuTrach) + '<br>' : ''}
+                            ${item.diaDiem ? '<i class="fa-solid fa-location-dot"></i> ' + escapeHtml(item.diaDiem) + '' : ''}
+                        </div>
+                        <span class="llv-status-badge ${llvStatusClass(status)}">${status}</span>
+                    </div>`;
+                }).join("");
+
+                return `<div class="llv-day-col ${iso === todayIso ? 'llv-today' : ''}">
+                    <div class="llv-day-head">${dayLabels[idx]}<br><span style="font-weight:400;color:#888;">${llvFormatDateVN(iso)}</span></div>
+                    <div class="llv-day-body">${cardsHtml || '<div class="llv-empty-day">Không có công việc</div>'}</div>
+                </div>`;
+            }).join("");
+
+            grid.innerHTML = html;
+        }
+
+        // [TAB "LỊCH LÀM VIỆC CÔNG TY" - HIỂN THỊ Ở TỔNG QUAN] Vẽ khối xem trước các công việc
+        // trong 7 ngày tới (hôm nay → +6 ngày) trên Tab "Tổng quan" (Bảng điều khiển tổng quan),
+        // đồng thời cập nhật số đếm "Công việc hôm nay". Dùng LẠI đúng workScheduleData đã tải
+        // sẵn theo phiên đăng nhập hiện tại (không gọi thêm action nào tới server). Hiện với MỌI
+        // tài khoản đã đăng nhập vì mặc định ai cũng xem được Lịch làm việc công ty.
+        function renderDashboardScheduleWidget() {
+            let listEl = document.getElementById("dashboard-schedule-list");
+            let countEl = document.getElementById("dash-schedule-today-count");
+            if (!listEl || !countEl) return;
+
+            let todayIso = llvIsoDate(new Date());
+            let endDate = new Date();
+            endDate.setDate(endDate.getDate() + 6);
+            let endIso = llvIsoDate(endDate);
+
+            let todayCount = (workScheduleData || []).filter(item => {
+                let from = item.ngayBatDau, to = item.ngayKetThuc || item.ngayBatDau;
+                return from && todayIso >= from && todayIso <= to;
+            }).length;
+            countEl.innerText = todayCount;
+
+            let upcoming = (workScheduleData || []).filter(item => {
+                let from = item.ngayBatDau, to = item.ngayKetThuc || item.ngayBatDau;
+                if (!from) return false;
+                // Còn diễn ra trong khoảng [hôm nay, hôm nay+6] (bao gồm việc đang diễn ra kéo dài).
+                return to >= todayIso && from <= endIso;
+            }).sort((a, b) => {
+                let da = a.ngayBatDau || "", db = b.ngayBatDau || "";
+                if (da !== db) return da < db ? -1 : 1;
+                return String(a.gioBatDau || "").localeCompare(String(b.gioBatDau || ""));
+            }).slice(0, 6);
+
+            if (upcoming.length === 0) {
+                listEl.innerHTML = '<div class="llv-empty-day" style="padding:16px 0;">Không có công việc nào trong 7 ngày tới</div>';
+                return;
+            }
+
+            listEl.innerHTML = upcoming.map(item => {
+                let status = computeScheduleStatusClient(item);
+                let dateText = llvFormatDateVN(item.ngayBatDau) + (item.ngayKetThuc && item.ngayKetThuc !== item.ngayBatDau ? (" → " + llvFormatDateVN(item.ngayKetThuc)) : "");
+                let gioText = item.gioBatDau ? (escapeHtml(item.gioBatDau) + (item.gioKetThuc ? ("–" + escapeHtml(item.gioKetThuc)) : "")) : "Cả ngày";
+                return `<div class="llv-task-card" style="cursor:pointer;" onclick="switchPage('lichlamviec'); setTimeout(function(){ openWorkScheduleDetail('${item.id}'); }, 50);">
+                    <div class="llv-task-title">${escapeHtml(item.tenCongViec)}</div>
+                    <div class="llv-task-meta">
+                        <i class="fa-regular fa-calendar"></i> ${dateText} &nbsp; <i class="fa-regular fa-clock"></i> ${gioText}<br>
+                        ${item.nguoiPhuTrach ? '<i class="fa-regular fa-user"></i> ' + escapeHtml(item.nguoiPhuTrach) + '<br>' : ''}
+                        ${item.diaDiem ? '<i class="fa-solid fa-location-dot"></i> ' + escapeHtml(item.diaDiem) + '' : ''}
+                    </div>
+                    <span class="llv-status-badge ${llvStatusClass(status)}">${status}</span>
+                </div>`;
+            }).join("");
+        }
+
+        // Hiện chi tiết 1 công việc (khi bấm vào thẻ trong lịch tuần). Nếu tài khoản có quyền
+        // "SuaLichLamViec" thì đưa luôn vào form để chỉnh sửa; ngược lại chỉ hiện thông tin.
+        function openWorkScheduleDetail(id) {
+            let item = (workScheduleData || []).find(w => w.id === id);
+            if (!item) return;
+            if (currentUserCanEditLichLamViec) {
+                editWorkSchedule(id);
+                return;
+            }
+            let status = computeScheduleStatusClient(item);
+            alert(
+                "📌 " + item.tenCongViec + "\n" +
+                "Trạng thái: " + status + "\n" +
+                "Thời gian: " + llvFormatDateVN(item.ngayBatDau) + (item.gioBatDau ? " " + item.gioBatDau : "") +
+                " → " + llvFormatDateVN(item.ngayKetThuc || item.ngayBatDau) + (item.gioKetThuc ? " " + item.gioKetThuc : "") + "\n" +
+                (item.nguoiPhuTrach ? "Người phụ trách: " + item.nguoiPhuTrach + "\n" : "") +
+                (item.diaDiem ? "Địa điểm: " + item.diaDiem + "\n" : "") +
+                (item.hinhThuc ? "Hình thức: " + item.hinhThuc + "\n" : "") +
+                (item.ghiChu ? "Ghi chú: " + item.ghiChu : "")
+            );
+        }
+
+        function editWorkSchedule(id) {
+            let item = (workScheduleData || []).find(w => w.id === id);
+            if (!item) return;
+            document.getElementById("edit-id-llv").value = item.id;
+            document.getElementById("inp-llv-ten").value = item.tenCongViec || "";
+            document.getElementById("inp-llv-ngay-bd").value = item.ngayBatDau || "";
+            document.getElementById("inp-llv-gio-bd").value = item.gioBatDau || "";
+            document.getElementById("inp-llv-ngay-kt").value = item.ngayKetThuc || "";
+            document.getElementById("inp-llv-gio-kt").value = item.gioKetThuc || "";
+            document.getElementById("inp-llv-phutrach").value = item.nguoiPhuTrach || "";
+            document.getElementById("inp-llv-diadiem").value = item.diaDiem || "";
+            document.getElementById("inp-llv-hinhthuc").value = item.hinhThuc || "";
+            document.getElementById("inp-llv-ghichu").value = item.ghiChu || "";
+            document.getElementById("inp-llv-file").value = "";
+            let hint = document.getElementById("llv-current-file-hint");
+            hint.innerHTML = item.fileId
+                ? ('📎 File hiện có: <a href="javascript:void(0)" onclick="viewSecureFile(\'' + item.fileId + '\', \'' + escapeHtml(item.fileName) + '\', \'workSchedule\')">' + escapeHtml(item.fileName) + '</a> (chọn file mới để thay thế)')
+                : "";
+            document.getElementById("llv-form-title").innerHTML = '<i class="fa-solid fa-calendar-pen"></i> Cập nhật công việc';
+            document.getElementById("btn-cancel-edit-llv").style.display = "inline-block";
+            document.getElementById("btn-delete-llv").style.display = "inline-block";
+            document.getElementById("llv-form-box").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function resetWorkScheduleForm() {
+            document.getElementById("edit-id-llv").value = "";
+            ["inp-llv-ten", "inp-llv-ngay-bd", "inp-llv-gio-bd", "inp-llv-ngay-kt", "inp-llv-gio-kt",
+             "inp-llv-phutrach", "inp-llv-diadiem", "inp-llv-hinhthuc", "inp-llv-ghichu"].forEach(id => {
+                let el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            let fileInput = document.getElementById("inp-llv-file");
+            if (fileInput) fileInput.value = "";
+            let hint = document.getElementById("llv-current-file-hint");
+            if (hint) hint.innerHTML = "";
+            document.getElementById("llv-form-title").innerHTML = '<i class="fa-solid fa-calendar-plus"></i> Thêm / Cập nhật công việc';
+            document.getElementById("btn-cancel-edit-llv").style.display = "none";
+            let delBtn = document.getElementById("btn-delete-llv");
+            if (delBtn) delBtn.style.display = "none";
+        }
+
+        async function saveWorkSchedule() {
+            if (!currentUserCanEditLichLamViec) { alert("⚠️ Bạn không có quyền thêm/sửa Lịch Làm Việc Công Ty. Liên hệ Admin để được cấp quyền."); return; }
+            let tenCongViec = document.getElementById("inp-llv-ten").value.trim();
+            let ngayBatDau = document.getElementById("inp-llv-ngay-bd").value;
+            if (!tenCongViec || !ngayBatDau) { alert("Vui lòng điền Tên công việc và Ngày bắt đầu!"); return; }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+
+            let payload = {
+                action: "saveWorkSchedule",
+                id: document.getElementById("edit-id-llv").value || "",
+                tenCongViec: tenCongViec,
+                ngayBatDau: ngayBatDau,
+                gioBatDau: document.getElementById("inp-llv-gio-bd").value,
+                ngayKetThuc: document.getElementById("inp-llv-ngay-kt").value || ngayBatDau,
+                gioKetThuc: document.getElementById("inp-llv-gio-kt").value,
+                nguoiPhuTrach: document.getElementById("inp-llv-phutrach").value.trim(),
+                diaDiem: document.getElementById("inp-llv-diadiem").value.trim(),
+                hinhThuc: document.getElementById("inp-llv-hinhthuc").value.trim(),
+                ghiChu: document.getElementById("inp-llv-ghichu").value.trim()
+            };
+
+            let fileInput = document.getElementById("inp-llv-file");
+            let file = fileInput.files[0];
+            if (file) {
+                if (file.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(true);
+                resetWorkScheduleForm();
+                renderWorkScheduleWeek();
+                alert("✔️ Đã lưu công việc thành công.");
+            }
+        }
+
+        async function deleteWorkScheduleRow(id) {
+            if (!currentUserCanEditLichLamViec) { alert("⚠️ Bạn không có quyền xóa Lịch Làm Việc Công Ty. Liên hệ Admin để được cấp quyền."); return; }
+            let item = (workScheduleData || []).find(w => w.id === id);
+            if (!item) return;
+            if (!confirm(`Xác nhận xóa công việc "${item.tenCongViec}"?`)) return;
+            let ok = await pushToCloud({ action: "deleteWorkSchedule", id: id });
+            if (ok) {
+                await loadFromCloud(true);
+                resetWorkScheduleForm();
+                renderWorkScheduleWeek();
+            }
+        }
+
         /* ========== [TAB "CHỮ KÝ SỐ"] ==========
            Dữ liệu lấy từ 1 Google Sheet + Google Drive RIÊNG (không nằm trong action "getData"
            chung) — mọi lượt gọi đều dùng action riêng, và authToken vẫn được đính kèm để server
@@ -3360,6 +3852,7 @@
             document.getElementById("dash-crew-count").innerText = crewData.length;
             document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
             renderBirthdaySection();
+            renderDashboardScheduleWidget();
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
