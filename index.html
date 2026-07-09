@@ -137,6 +137,19 @@
 
         .admin-box { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .admin-box h3 { margin-bottom: 15px; color: #444; border-bottom: 1px dashed #ccc; padding-bottom: 5px;}
+        /* [SẮP XẾP LẠI - Danh sách User Admin] Sub-tab: User / Phòng ban / Phân quyền */
+        .admusr-subtabs { display:flex; gap:6px; border-bottom:2px solid #e0e0e0; margin-bottom:14px; flex-wrap:wrap; }
+        .admusr-subtab-btn { background:#f2f4f7; border:1px solid #e0e0e0; border-bottom:none; padding:9px 16px; font-size:13px; font-weight:600; color:#555; border-radius:6px 6px 0 0; cursor:pointer; transition:0.2s; }
+        .admusr-subtab-btn:hover { background:#e8edf3; color:#333; }
+        .admusr-subtab-btn.active { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
+        .admusr-subtab-panel { display:none; }
+        .admusr-subtab-panel.active { display:block; }
+        .admusr-dept-group-title { margin-top:14px; margin-bottom:6px; font-size:13px; font-weight:bold; color:#328cc1; text-transform:uppercase; border-bottom:1px solid #e0e0e0; padding-bottom:4px; display:flex; align-items:center; justify-content:space-between; }
+        .admusr-dept-group-title:first-child { margin-top:0; }
+        .admusr-row { padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+        .admusr-perm-card { padding:10px 0 14px 0; border-bottom:1px solid #eee; margin-bottom:6px; }
+        .admusr-perm-card-head { font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+        .admusr-perm-card-body { display:flex; flex-direction:column; gap:6px; padding-left:4px; }
         .chip { display: inline-block; background: #e2e8f0; padding: 5px 10px; border-radius: 20px; margin-right: 5px; margin-bottom: 5px; font-size: 13px; }
         .chip-removable { display: inline-flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 5px 8px 5px 12px; border-radius: 20px; margin-right: 6px; margin-bottom: 8px; font-size: 13px; color: #333; }
         .chip-removable .chip-remove-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #d9534f; color: #fff; font-size: 11px; cursor: pointer; line-height: 1; transition: 0.2s; flex-shrink: 0; }
@@ -875,7 +888,10 @@
                             <label>Ghi chú</label>
                             <input type="text" id="inp-llv-ghichu" placeholder="Ghi chú thêm (nếu có)...">
                         </div>
-                        <div class="input-group" style="grid-column: 1 / -1;">
+                        <!-- [ẨN THEO YÊU CẦU] Không hiển thị trường "File tài liệu đính kèm" trên giao diện nữa.
+                             Vẫn giữ nguyên input + hàm xử lý phía dưới (saveWorkSchedule, openWorkScheduleDetail...)
+                             để KHÔNG ảnh hưởng tới các công việc đã có sẵn file đính kèm từ trước (không mất dữ liệu). -->
+                        <div class="input-group" style="grid-column: 1 / -1; display:none;">
                             <label>File tài liệu đính kèm (tùy chọn)</label>
                             <input type="file" id="inp-llv-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png">
                             <span id="llv-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
@@ -892,9 +908,9 @@
 
                 <div class="table-controls" style="align-items:center;">
                     <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(-1)"><i class="fa-solid fa-chevron-left"></i> Tuần trước</button>
-                    <span id="llv-week-label" style="font-weight:600; color:var(--primary-color); padding: 0 10px;"></span>
-                    <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(1)">Tuần sau <i class="fa-solid fa-chevron-right"></i></button>
                     <button type="button" class="btn btn-secondary" style="width:auto;" onclick="changeWorkScheduleWeek(0)"><i class="fa-solid fa-calendar-day"></i> Tuần này</button>
+                    <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(1)">Tuần sau <i class="fa-solid fa-chevron-right"></i></button>
+                    <span id="llv-week-label" style="font-weight:600; color:var(--primary-color); padding: 0 10px;"></span>
                     <input type="text" id="search-llv" class="search-box" oninput="renderWorkScheduleWeek()" placeholder="Tìm theo tên công việc, người phụ trách, địa điểm..." style="max-width:280px;">
                 </div>
 
@@ -1093,9 +1109,38 @@
                             <button class="btn" style="width:auto" onclick="createNewUserByAdmin()">Cấp tài khoản mới 👤</button>
                         </div>
                     </div>
-                    <div style="margin-top: 10px;">
-                        <label style="font-weight: bold; font-size:13px; color: #555;">Danh sách User hệ thống hiện hành:</label>
-                        <div id="adm-user-list-view" style="margin-top: 5px;"></div>
+                    <div style="margin-top: 14px; border-top: 1px solid #eee; padding-top: 14px;">
+                        <label style="font-weight: bold; font-size:13px; color: #555; display:block; margin-bottom:8px;">Danh sách User hệ thống hiện hành:</label>
+
+                        <!-- [SẮP XẾP LẠI] 3 tab con: (1) Thông tin User, (2) Phòng ban liên quan, (3) Phân quyền chi tiết.
+                             Chỉ thay đổi CÁCH HIỂN THỊ — không thêm/bớt/sửa dữ liệu, không đổi bất kỳ hàm xử lý
+                             hay quyền hạn nào phía dưới (mọi onclick vẫn gọi đúng các hàm gốc như cũ). -->
+                        <div class="admusr-subtabs">
+                            <button type="button" class="admusr-subtab-btn active" id="admusr-tab-btn-users" onclick="switchAdminUserSubTab('users')">
+                                <i class="fa-solid fa-id-card"></i> Thông tin User (<span id="admusr-count-users">0</span>)
+                            </button>
+                            <button type="button" class="admusr-subtab-btn" id="admusr-tab-btn-depts" onclick="switchAdminUserSubTab('depts')">
+                                <i class="fa-solid fa-building"></i> Theo Phòng ban
+                            </button>
+                            <button type="button" class="admusr-subtab-btn" id="admusr-tab-btn-perms" onclick="switchAdminUserSubTab('perms')">
+                                <i class="fa-solid fa-shield-halved"></i> Phân quyền chi tiết
+                            </button>
+                        </div>
+
+                        <div id="admusr-subtab-users" class="admusr-subtab-panel active">
+                            <p style="font-size:12px; color:#888; margin-bottom:8px;">Thông tin tài khoản cơ bản: tên đăng nhập, cấp độ, email liên kết, trạng thái 2FA và các thao tác quản trị.</p>
+                            <div id="adm-user-list-view"></div>
+                        </div>
+
+                        <div id="admusr-subtab-depts" class="admusr-subtab-panel">
+                            <p style="font-size:12px; color:#888; margin-bottom:8px;">Danh sách User được nhóm theo Phòng ban (suy ra từ Email liên kết đối chiếu với hồ sơ Nhân sự) — giúp Admin dễ kiểm soát nhân sự theo từng bộ phận.</p>
+                            <div id="adm-user-list-bydept"></div>
+                        </div>
+
+                        <div id="admusr-subtab-perms" class="admusr-subtab-panel">
+                            <p style="font-size:12px; color:#888; margin-bottom:8px;">Toàn bộ quyền chức năng chi tiết theo từng tab hệ thống (Hồ sơ NV, Thiết bị, Nhân sự, Cảnh báo HĐ, Danh bạ, Chữ ký số, Lịch làm việc) cho từng tài khoản.</p>
+                            <div id="adm-user-list-perms"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -2340,37 +2385,27 @@
         }
 
         function renderUserListViewForAdmin() {
-            let html = "";
+            // [SẮP XẾP LẠI - Danh sách User Admin] Hàm này giờ dựng SONG SONG 3 khối HTML cho 3
+            // tab con: usersHtml (Thông tin User), deptGroups (Theo Phòng ban), permsHtml (Phân
+            // quyền chi tiết). KHÔNG thay đổi bất kỳ dữ liệu, hàm xử lý (onclick vẫn gọi đúng các
+            // hàm gốc createUser/deleteUser/toggle.../changeUserRole...) hay logic phân quyền/bảo
+            // mật nào — chỉ tổ chức lại phần hiển thị cho khoa học, dễ tra cứu hơn.
+            let usersHtml = "";
+            let permsHtml = "";
+            let deptGroups = {}; // { "Tên phòng ban": [ "<div>...</div>", ... ] }
 
-            // Sắp xếp danh sách User theo Phòng ban (suy ra từ Email liên kết) để Admin dễ quản
-            // lý theo từng bộ phận. Tài khoản "admin" gốc luôn được ghim lên đầu danh sách.
-            // Việc sắp xếp chỉ thay đổi THỨ TỰ HIỂN THỊ — không thêm/xóa/sửa bất kỳ dữ liệu nào
-            // và không ảnh hưởng đến logic phân quyền/bảo mật hiện có.
+            // Sắp xếp danh sách User: tài khoản "admin" gốc luôn ghim đầu, còn lại theo A-Z tên
+            // đăng nhập. Việc sắp xếp chỉ thay đổi THỨ TỰ HIỂN THỊ — không thêm/xóa/sửa dữ liệu.
             let sortedUsernames = Object.keys(userDatabase).sort((a, b) => {
                 if (a === "admin") return -1;
                 if (b === "admin") return 1;
-                let deptA = getDeptLabelByLinkedEmail(userDatabase[a].email);
-                let deptB = getDeptLabelByLinkedEmail(userDatabase[b].email);
-                let deptCompare = deptA.localeCompare(deptB, "vi");
-                if (deptCompare !== 0) return deptCompare;
                 return a.localeCompare(b, "vi");
             });
 
-            let lastDeptGroup = null;
             for (let u of sortedUsernames) {
                 let safeU = escapeHtml(u);
+                let deptGroup = (u === "admin") ? "Ban Quản trị hệ thống" : getDeptLabelByLinkedEmail(userDatabase[u].email);
 
-                // Chèn tiêu đề nhóm mỗi khi chuyển sang Phòng ban khác (bỏ qua tài khoản admin gốc,
-                // vốn luôn hiển thị riêng ở đầu danh sách).
-                if (u !== "admin") {
-                    let deptGroup = getDeptLabelByLinkedEmail(userDatabase[u].email);
-                    if (deptGroup !== lastDeptGroup) {
-                        lastDeptGroup = deptGroup;
-                        html += `<div style="margin-top:10px; margin-bottom:2px; font-size:12px; font-weight:bold; color:#328cc1; text-transform:uppercase; border-bottom:1px solid #e0e0e0; padding-bottom:3px;">
-                            <i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}
-                        </div>`;
-                    }
-                }
                 let roleControl = "";
                 if (u === "admin") {
                     roleControl = '<span style="background:#d9534f; color:white; padding:2px 6px; border-radius:3px; font-size:11px;">Admin</span>';
@@ -2522,23 +2557,73 @@
                     </span>`;
                 }
 
+                // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
-                html += `<div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                usersHtml += `<div class="admusr-row">
+                    <span><b>${safeU}</b> ${roleControl}</span>
+                    <span style="font-size:11px; color:#888; white-space:nowrap;" title="Phòng ban (suy ra từ email liên kết)"><i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}</span>
+                    ${emailBadge}
+                    ${twoFaBadge}
+                    <span style="display:flex;gap:4px">${actionsHtml}</span>
+                </div>`;
+
+                // ---------- TAB "Theo Phòng ban": gom nhóm cùng thông tin cơ bản theo từng bộ phận ----------
+                if (!deptGroups[deptGroup]) deptGroups[deptGroup] = [];
+                deptGroups[deptGroup].push(`<div class="admusr-row">
                     <span><b>${safeU}</b> ${roleControl}</span>
                     ${emailBadge}
                     ${twoFaBadge}
-                    ${docsControl}
-                    ${eqControl}
-                    ${hrControl}
-                    ${contractAlertControl}
-                    ${resignedControl}
-                    ${cksoControl}
-                    ${llvControl}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
+                </div>`);
+
+                // ---------- TAB "Phân quyền chi tiết": toàn bộ quyền chức năng theo từng user ----------
+                permsHtml += `<div class="admusr-perm-card">
+                    <div class="admusr-perm-card-head">
+                        <b>${safeU}</b> ${roleControl}
+                        <span style="font-size:11px; color:#888;"><i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}</span>
+                    </div>
+                    <div class="admusr-perm-card-body">
+                        ${docsControl}
+                        ${eqControl}
+                        ${hrControl}
+                        ${contractAlertControl}
+                        ${resignedControl}
+                        ${cksoControl}
+                        ${llvControl}
+                    </div>
                 </div>`;
             }
-            let viewEl = document.getElementById("adm-user-list-view");
-            if (viewEl) viewEl.innerHTML = html;
+
+            // ---- Render TAB 1: Thông tin User ----
+            let usersEl = document.getElementById("adm-user-list-view");
+            if (usersEl) usersEl.innerHTML = usersHtml || `<p style="text-align:center; color:#888; padding:16px;">Chưa có tài khoản nào.</p>`;
+
+            let countEl = document.getElementById("admusr-count-users");
+            if (countEl) countEl.innerText = sortedUsernames.length;
+
+            // ---- Render TAB 2: Theo Phòng ban ----
+            // "Ban Quản trị hệ thống" (chứa admin gốc) luôn hiển thị đầu tiên, các phòng ban khác
+            // xếp A-Z theo tên. Chỉ ảnh hưởng thứ tự hiển thị, không đổi dữ liệu.
+            let deptNames = Object.keys(deptGroups).sort((a, b) => {
+                if (a === "Ban Quản trị hệ thống") return -1;
+                if (b === "Ban Quản trị hệ thống") return 1;
+                return a.localeCompare(b, "vi");
+            });
+            let deptHtml = "";
+            for (let deptName of deptNames) {
+                let members = deptGroups[deptName];
+                deptHtml += `<div class="admusr-dept-group-title">
+                    <span><i class="fa-solid fa-building"></i> ${escapeHtml(deptName)}</span>
+                    <span style="color:#888; font-weight:normal; text-transform:none;">${members.length} tài khoản</span>
+                </div>`;
+                deptHtml += members.join("");
+            }
+            let deptEl = document.getElementById("adm-user-list-bydept");
+            if (deptEl) deptEl.innerHTML = deptHtml || `<p style="text-align:center; color:#888; padding:16px;">Chưa có tài khoản nào.</p>`;
+
+            // ---- Render TAB 3: Phân quyền chi tiết ----
+            let permsEl = document.getElementById("adm-user-list-perms");
+            if (permsEl) permsEl.innerHTML = permsHtml || `<p style="text-align:center; color:#888; padding:16px;">Chưa có tài khoản nào.</p>`;
         }
 
         // [MẢNG 3] Tải và hiển thị Nhật ký hoạt động gần nhất — CHỈ Admin gọi được (server sẽ
@@ -2873,6 +2958,19 @@
                     document.getElementById("menu-admin").style.display = "none";
                 }
             }
+        }
+
+        // [SẮP XẾP LẠI - Danh sách User Admin] Chuyển đổi giữa 3 tab con: 'users' (thông tin cơ
+        // bản), 'depts' (nhóm theo Phòng ban), 'perms' (phân quyền chi tiết). Chỉ đổi hiển thị,
+        // không đụng tới dữ liệu hay logic phân quyền.
+        function switchAdminUserSubTab(tabName) {
+            let tabs = ["users", "depts", "perms"];
+            tabs.forEach(t => {
+                let panel = document.getElementById("admusr-subtab-" + t);
+                let btn = document.getElementById("admusr-tab-btn-" + t);
+                if (panel) panel.classList.toggle("active", t === tabName);
+                if (btn) btn.classList.toggle("active", t === tabName);
+            });
         }
 
         function switchPage(pageId) {
