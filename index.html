@@ -263,6 +263,16 @@
         .llv-status-ongoing { background: #fff3cd; color: #8a6100; }
         .llv-status-done { background: #e2f5e9; color: #1e7e34; }
         .llv-empty-day { color: #bbb; font-size: 12px; text-align: center; padding: 10px 0; }
+        /* [TAB "LỊCH LÀM VIỆC CÔNG TY"] Khối chia Buổi Sáng / Buổi Chiều trong mỗi ngày */
+        .llv-session-block { display: flex; flex-direction: column; gap: 8px; }
+        .llv-session-block + .llv-session-block { margin-top: 4px; padding-top: 10px; border-top: 1px dashed #e0e0e0; }
+        .llv-session-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px;
+            color: #888; display: flex; align-items: center; gap: 5px; margin-bottom: 2px;
+        }
+        .llv-session-label.llv-session-morning i { color: #f39c12; }
+        .llv-session-label.llv-session-afternoon i { color: #2980b9; }
+        .llv-session-empty { color: #ccc; font-size: 11.5px; text-align: center; padding: 6px 0; font-style: italic; }
     </style>
 </head>
 <body>
@@ -3416,6 +3426,21 @@
             return "llv-status-upcoming";
         }
 
+        // [TAB "LỊCH LÀM VIỆC CÔNG TY"] Xác định một công việc thuộc "Buổi Sáng" hay "Buổi Chiều"
+        // dựa theo giờ bắt đầu (gioBatDau). Việc không có giờ bắt đầu (cả ngày) được xếp vào
+        // Buổi Sáng (hiển thị ở trên) kèm nhãn "Cả ngày" sẵn có trong gioText, KHÔNG làm mất
+        // hay thay đổi dữ liệu gốc của công việc.
+        function llvGetSession(item) {
+            if (item.gioBatDau) {
+                let mm = String(item.gioBatDau).match(/^(\d{1,2}):(\d{1,2})/);
+                if (mm) {
+                    let h = parseInt(mm[1], 10);
+                    if (h >= 12) return "afternoon";
+                }
+            }
+            return "morning";
+        }
+
         function getMondayOfWeek(d) {
             let day = d.getDay(); // 0 = CN
             let diffToMon = (day === 0) ? -6 : (1 - day);
@@ -3462,7 +3487,7 @@
                     return from && iso >= from && iso <= to;
                 }).sort((a, b) => String(a.gioBatDau || "").localeCompare(String(b.gioBatDau || "")));
 
-                let cardsHtml = itemsOfDay.map(item => {
+                function llvRenderTaskCard(item) {
                     let status = computeScheduleStatusClient(item);
                     let gioText = item.gioBatDau ? (escapeHtml(item.gioBatDau) + (item.gioKetThuc ? ("–" + escapeHtml(item.gioKetThuc)) : "")) : "Cả ngày";
                     return `<div class="llv-task-card" onclick="openWorkScheduleDetail('${item.id}')">
@@ -3474,11 +3499,35 @@
                         </div>
                         <span class="llv-status-badge ${llvStatusClass(status)}">${status}</span>
                     </div>`;
-                }).join("");
+                }
+
+                // Chia công việc trong ngày thành 2 khối: Buổi Sáng (bao gồm việc "Cả ngày") và
+                // Buổi Chiều, để dễ nhìn hơn cho người xem. Dữ liệu gốc không bị thay đổi, chỉ
+                // thay đổi cách nhóm hiển thị.
+                let morningItems = itemsOfDay.filter(item => llvGetSession(item) === "morning");
+                let afternoonItems = itemsOfDay.filter(item => llvGetSession(item) === "afternoon");
+
+                let morningHtml = morningItems.length
+                    ? morningItems.map(llvRenderTaskCard).join("")
+                    : '<div class="llv-session-empty">Không có công việc</div>';
+                let afternoonHtml = afternoonItems.length
+                    ? afternoonItems.map(llvRenderTaskCard).join("")
+                    : '<div class="llv-session-empty">Không có công việc</div>';
+
+                let bodyHtml = itemsOfDay.length
+                    ? `<div class="llv-session-block">
+                            <div class="llv-session-label llv-session-morning"><i class="fa-solid fa-sun"></i> Buổi Sáng</div>
+                            ${morningHtml}
+                        </div>
+                        <div class="llv-session-block">
+                            <div class="llv-session-label llv-session-afternoon"><i class="fa-solid fa-cloud-moon"></i> Buổi Chiều</div>
+                            ${afternoonHtml}
+                        </div>`
+                    : '<div class="llv-empty-day">Không có công việc</div>';
 
                 return `<div class="llv-day-col ${iso === todayIso ? 'llv-today' : ''}">
                     <div class="llv-day-head">${dayLabels[idx]}<br><span style="font-weight:400;color:#888;">${llvFormatDateVN(iso)}</span></div>
-                    <div class="llv-day-body">${cardsHtml || '<div class="llv-empty-day">Không có công việc</div>'}</div>
+                    <div class="llv-day-body">${bodyHtml}</div>
                 </div>`;
             }).join("");
 
