@@ -147,9 +147,30 @@
         .admusr-dept-group-title { margin-top:14px; margin-bottom:6px; font-size:13px; font-weight:bold; color:#328cc1; text-transform:uppercase; border-bottom:1px solid #e0e0e0; padding-bottom:4px; display:flex; align-items:center; justify-content:space-between; }
         .admusr-dept-group-title:first-child { margin-top:0; }
         .admusr-row { padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-        .admusr-perm-card { padding:10px 0 14px 0; border-bottom:1px solid #eee; margin-bottom:6px; }
-        .admusr-perm-card-head { font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-        .admusr-perm-card-body { display:flex; flex-direction:column; gap:6px; padding-left:4px; }
+        /* [PHÂN QUYỀN CHI TIẾT - Sắp xếp khoa học] Toolbar tìm kiếm + mở/thu gọn tất cả, giúp
+           quản lý dễ dàng khi số lượng tài khoản tăng lên nhiều. */
+        .admusr-perm-toolbar { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; }
+        .admusr-perm-toolbar .search-box { flex:1; min-width:220px; }
+        .admusr-perm-toolbar-actions { display:flex; gap:6px; flex-wrap:wrap; }
+        .admusr-perm-empty-filter { text-align:center; color:#888; padding:18px; font-size:13px; display:none; }
+        /* Mỗi user = 1 thẻ có thể thu gọn/mở rộng (accordion) — mặc định thu gọn để danh sách
+           gọn gàng, dễ tra cứu dù có rất nhiều tài khoản. */
+        .admusr-perm-card { border:1px solid #e5e5e5; border-radius:8px; margin-bottom:8px; overflow:hidden; background:#fff; }
+        .admusr-perm-card-head { font-size:13px; padding:10px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; cursor:pointer; background:#f7f9fb; user-select:none; }
+        .admusr-perm-card-head:hover { background:#eef3f8; }
+        .admusr-perm-chevron { margin-left:auto; color:#999; transition:transform .2s; }
+        .admusr-perm-card.expanded .admusr-perm-chevron { transform:rotate(180deg); color:var(--secondary-color); }
+        .admusr-perm-card-body { display:none; flex-direction:column; gap:0; padding:4px 12px 10px 12px; }
+        .admusr-perm-card.expanded .admusr-perm-card-body { display:flex; }
+        /* Mỗi dòng quyền (module) được trình bày như 1 hàng trong bảng: icon cố định, tên
+           module, rồi tới các checkbox — thay cho danh sách rời rạc trước đây. */
+        .admusr-perm-card-body > span { padding:7px 8px; border-radius:5px; background:#fafcff; border:1px solid #eef0f3; margin-top:5px; }
+        .admusr-perm-card-body > span > i:first-child { width:16px; text-align:center; flex:0 0 auto; color:var(--secondary-color); }
+        .admusr-perm-card.admusr-perm-flash { animation: admusrPermFlash 1.5s ease; }
+        @keyframes admusrPermFlash {
+            0% { box-shadow: 0 0 0 3px rgba(50,140,193,0.55); }
+            100% { box-shadow: 0 0 0 0 rgba(50,140,193,0); }
+        }
         .chip { display: inline-block; background: #e2e8f0; padding: 5px 10px; border-radius: 20px; margin-right: 5px; margin-bottom: 5px; font-size: 13px; }
         .chip-removable { display: inline-flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 5px 8px 5px 12px; border-radius: 20px; margin-right: 6px; margin-bottom: 8px; font-size: 13px; color: #333; }
         .chip-removable .chip-remove-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #d9534f; color: #fff; font-size: 11px; cursor: pointer; line-height: 1; transition: 0.2s; flex-shrink: 0; }
@@ -1148,8 +1169,16 @@
                         </div>
 
                         <div id="admusr-subtab-perms" class="admusr-subtab-panel">
-                            <p style="font-size:12px; color:#888; margin-bottom:8px;">Toàn bộ quyền chức năng chi tiết theo từng tab hệ thống (Hồ sơ NV, Thiết bị, Nhân sự, Cảnh báo HĐ, Danh bạ, Chữ ký số, Lịch làm việc) cho từng tài khoản.</p>
+                            <p style="font-size:12px; color:#888; margin-bottom:8px;">Toàn bộ quyền chức năng chi tiết theo từng tab hệ thống (Hồ sơ NV, Thiết bị, Nhân sự, Cảnh báo HĐ, Danh bạ, Chữ ký số, Lịch làm việc) cho từng tài khoản. Mỗi tài khoản là 1 thẻ có thể thu gọn/mở rộng — bấm vào tiêu đề để xem chi tiết, hoặc dùng ô tìm kiếm/nút bên dưới khi danh sách tài khoản nhiều.</p>
+                            <div class="admusr-perm-toolbar">
+                                <input type="text" id="admusr-perm-search" class="search-box" placeholder="🔍 Tìm theo tên tài khoản..." oninput="filterAdminPermCards(this.value)">
+                                <div class="admusr-perm-toolbar-actions">
+                                    <button type="button" class="btn btn-sm" onclick="setAllAdminPermCards(true)"><i class="fa-solid fa-angles-down"></i> Mở rộng tất cả</button>
+                                    <button type="button" class="btn btn-sm" onclick="setAllAdminPermCards(false)"><i class="fa-solid fa-angles-up"></i> Thu gọn tất cả</button>
+                                </div>
+                            </div>
                             <div id="adm-user-list-perms"></div>
+                            <div id="admusr-perm-empty-filter" class="admusr-perm-empty-filter">Không tìm thấy tài khoản phù hợp.</div>
                         </div>
                     </div>
                 </div>
@@ -2428,7 +2457,8 @@
                     </select>`;
                 }
 
-                let actionsHtml = `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
+                let actionsHtml = `<button class="btn btn-sm" onclick="openUserDetailPermission('${safeU}')" title="Phân quyền chi tiết"><i class="fa-solid fa-user-shield"></i></button>`;
+                actionsHtml += `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 actionsHtml += `<button class="btn btn-sm" onclick="updateUserLinkedEmail('${safeU}')" title="Gán/sửa email liên kết"><i class="fa-solid fa-envelope"></i></button>`;
                 // [BẢO MẬT - 2FA] Admin có thể GỠ 2FA hộ 1 tài khoản (kể cả Admin) khi người
                 // dùng đó bị mất điện thoại/thiết bị Authenticator — KHÔNG cần biết mật khẩu
@@ -2587,12 +2617,18 @@
                 </div>`);
 
                 // ---------- TAB "Phân quyền chi tiết": toàn bộ quyền chức năng theo từng user ----------
-                permsHtml += `<div class="admusr-perm-card">
-                    <div class="admusr-perm-card-head">
+                // [SẮP XẾP LẠI - KHOA HỌC HƠN] Mỗi user là 1 thẻ accordion (mặc định thu gọn),
+                // có id ổn định để icon "Phân quyền chi tiết" ở 2 tab kia (Thông tin User /
+                // Theo Phòng ban) có thể nhảy thẳng tới và tự mở ra. Không đổi bất kỳ dữ liệu
+                // hay quyền hạn nào — chỉ đổi cách trình bày.
+                let permCardId = permCardIdOf(u);
+                permsHtml += `<div class="admusr-perm-card" id="permcard-${permCardId}" data-username="${safeU.toLowerCase()}">
+                    <div class="admusr-perm-card-head" onclick="toggleAdminPermCard('${permCardId}')">
                         <b>${safeU}</b> ${roleControl}
                         <span style="font-size:11px; color:#888;"><i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}</span>
+                        <i class="fa-solid fa-chevron-down admusr-perm-chevron"></i>
                     </div>
-                    <div class="admusr-perm-card-body">
+                    <div class="admusr-perm-card-body" id="permcard-body-${permCardId}">
                         ${docsControl}
                         ${eqControl}
                         ${hrControl}
@@ -2634,6 +2670,9 @@
             // ---- Render TAB 3: Phân quyền chi tiết ----
             let permsEl = document.getElementById("adm-user-list-perms");
             if (permsEl) permsEl.innerHTML = permsHtml || `<p style="text-align:center; color:#888; padding:16px;">Chưa có tài khoản nào.</p>`;
+            // Khôi phục thẻ đang mở rộng + bộ lọc tìm kiếm sau khi render lại (VD: sau khi đổi
+            // 1 quyền của 1 user) — để không bị gián đoạn thao tác đang làm dở.
+            reapplyAdminPermCardState();
         }
 
         // [MẢNG 3] Tải và hiển thị Nhật ký hoạt động gần nhất — CHỈ Admin gọi được (server sẽ
@@ -2981,6 +3020,84 @@
                 if (panel) panel.classList.toggle("active", t === tabName);
                 if (btn) btn.classList.toggle("active", t === tabName);
             });
+        }
+
+        // [PHÂN QUYỀN CHI TIẾT - Sắp xếp khoa học hơn] Chuyển tên tài khoản thành 1 id HTML an
+        // toàn (chỉ chữ/số/gạch), dùng để đặt id ổn định cho từng thẻ accordion và để icon
+        // "Phân quyền chi tiết" ở 2 tab kia nhảy thẳng tới đúng thẻ. Không ảnh hưởng dữ liệu.
+        function permCardIdOf(username) {
+            return "u_" + String(username).replace(/[^a-zA-Z0-9_-]/g, "_");
+        }
+
+        // Ghi nhớ những thẻ đang MỞ RỘNG — vì mỗi lần đổi 1 quyền, danh sách được render lại từ
+        // đầu (renderUserListViewForAdmin), nếu không lưu lại thì thẻ vừa mở sẽ tự đóng lại sau
+        // khi bấm 1 checkbox, gây khó chịu khi thao tác nhiều quyền liên tiếp cho cùng 1 user.
+        let admPermExpandedSet = new Set();
+
+        // Thu gọn/mở rộng 1 thẻ phân quyền (accordion) khi bấm vào tiêu đề thẻ.
+        function toggleAdminPermCard(permCardId) {
+            let card = document.getElementById("permcard-" + permCardId);
+            if (!card) return;
+            let nowExpanded = card.classList.toggle("expanded");
+            if (nowExpanded) admPermExpandedSet.add(permCardId); else admPermExpandedSet.delete(permCardId);
+        }
+
+        // Mở rộng tất cả / Thu gọn tất cả — tiện khi cần rà soát nhanh nhiều tài khoản cùng lúc,
+        // hoặc thu gọn lại cho gọn màn hình khi danh sách tài khoản dài.
+        function setAllAdminPermCards(expand) {
+            document.querySelectorAll("#adm-user-list-perms .admusr-perm-card").forEach(card => {
+                card.classList.toggle("expanded", !!expand);
+                let permCardId = card.id.replace(/^permcard-/, "");
+                if (expand) admPermExpandedSet.add(permCardId); else admPermExpandedSet.delete(permCardId);
+            });
+        }
+
+        // Lọc thẻ phân quyền theo tên tài khoản (không phân biệt hoa/thường) — giúp quản lý
+        // thuận tiện khi số lượng user tăng lên nhiều, không cần cuộn qua toàn bộ danh sách.
+        function filterAdminPermCards(keyword) {
+            let kw = String(keyword || "").trim().toLowerCase();
+            let cards = document.querySelectorAll("#adm-user-list-perms .admusr-perm-card");
+            let visibleCount = 0;
+            cards.forEach(card => {
+                let match = !kw || (card.dataset.username || "").includes(kw);
+                card.style.display = match ? "" : "none";
+                if (match) visibleCount++;
+            });
+            let emptyEl = document.getElementById("admusr-perm-empty-filter");
+            if (emptyEl) emptyEl.style.display = (cards.length && visibleCount === 0) ? "block" : "none";
+        }
+
+        // Được gọi lại NGAY SAU MỖI LẦN render danh sách "Phân quyền chi tiết" (kể cả khi chỉ
+        // đổi 1 quyền của 1 user) — khôi phục đúng các thẻ đang mở rộng (admPermExpandedSet) và
+        // áp lại từ khoá tìm kiếm hiện có trong ô tìm kiếm, để thao tác không bị gián đoạn.
+        function reapplyAdminPermCardState() {
+            document.querySelectorAll("#adm-user-list-perms .admusr-perm-card").forEach(card => {
+                let permCardId = card.id.replace(/^permcard-/, "");
+                card.classList.toggle("expanded", admPermExpandedSet.has(permCardId));
+            });
+            let searchInput = document.getElementById("admusr-perm-search");
+            filterAdminPermCards(searchInput ? searchInput.value : "");
+        }
+
+        // [ĐIỀU HƯỚNG NHANH] Được gọi từ icon 🛡️ ở tab "Thông tin User" và "Theo Phòng ban" —
+        // chuyển thẳng sang tab "Phân quyền chi tiết", xóa mọi bộ lọc đang áp dụng, tự mở rộng
+        // và cuộn tới đúng thẻ của tài khoản đó, kèm hiệu ứng nhấp nháy nhẹ để dễ nhận ra.
+        function openUserDetailPermission(username) {
+            switchPage("admin");
+            switchAdminUserSubTab("perms");
+            let searchInput = document.getElementById("admusr-perm-search");
+            if (searchInput && searchInput.value) {
+                searchInput.value = "";
+            }
+            filterAdminPermCards("");
+            let permCardId = permCardIdOf(username);
+            admPermExpandedSet.add(permCardId);
+            let card = document.getElementById("permcard-" + permCardId);
+            if (!card) return;
+            card.classList.add("expanded");
+            card.classList.add("admusr-perm-flash");
+            setTimeout(() => card.classList.remove("admusr-perm-flash"), 1600);
+            setTimeout(() => card.scrollIntoView({ behavior: "smooth", block: "center" }), 60);
         }
 
         function switchPage(pageId) {
