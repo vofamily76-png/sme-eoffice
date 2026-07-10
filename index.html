@@ -215,11 +215,20 @@
         .app-card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; transition: 0.2s; border: 1px solid #eee; position: relative; }
         .app-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-color: var(--secondary-color); }
         .app-card .app-icon { width: 46px; height: 46px; border-radius: 8px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; }
+        /* [TAB "Các phần mềm khác" - Icon phần mềm] Ảnh icon do Admin tải lên (thay cho ô chữ
+           cái đầu mặc định) — cùng kích thước khung với .app-icon để bố cục thẻ không bị xô lệch
+           dù phần mềm có icon hay chưa. */
+        .app-card .app-icon-img { width: 46px; height: 46px; border-radius: 8px; object-fit: cover; border: 1px solid #eee; background:#fff; }
         .app-card h4 { font-size: 15px; color: #222; }
-        .app-card p.app-url { font-size: 12px; color: #888; word-break: break-all; }
-        .app-card .app-open-tab { position: absolute; top: 12px; right: 12px; color: #aaa; font-size: 13px; }
+        .app-card .app-open-tab { position: absolute; top: 12px; right: 12px; color: #aaa; font-size: 13px; background:none; border:none; cursor:pointer; padding:4px; }
         .app-card .app-open-tab:hover { color: var(--secondary-color); }
         .app-card .app-delete-btn { position: absolute; bottom: 12px; right: 12px; }
+        /* [TAB "Các phần mềm khác" - Icon phần mềm] Vùng chọn/xem trước icon khi Admin thêm mới
+           1 phần mềm, và nút đổi icon nhỏ gọn cho từng phần mềm đã có trong danh sách quản lý. */
+        .app-icon-preview-box { display:flex; align-items:center; gap:8px; }
+        .app-icon-preview-box img { width:40px; height:40px; border-radius:6px; object-fit:cover; border:1px solid #ddd; display:none; background:#fff; }
+        .app-row-icon-thumb { width:28px; height:28px; border-radius:5px; object-fit:cover; border:1px solid #ddd; background:#fff; flex:0 0 auto; }
+        .app-row-icon-placeholder { width:28px; height:28px; border-radius:5px; background:#eee; color:#999; display:flex; align-items:center; justify-content:center; font-size:11px; flex:0 0 auto; }
         .app-launcher-wrap { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9500; flex-direction: column; }
         .app-launcher-header { background: var(--primary-color); color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .app-launcher-header h4 { font-size: 15px; }
@@ -1299,6 +1308,14 @@
                         </label>
                         <button class="btn" style="width:auto; padding: 8px 18px;" onclick="addOtherApp()">Thêm liên kết ➕</button>
                     </div>
+                    <div class="input-group" style="margin-top:8px; max-width:420px;">
+                        <label>Icon phần mềm (không bắt buộc)</label>
+                        <div class="app-icon-preview-box">
+                            <input type="file" id="inp-new-app-icon" accept="image/jpeg, image/jpg, image/png" onchange="processAndValidateAppIcon(this)">
+                            <img id="app-icon-preview-new" alt="Xem trước icon">
+                        </div>
+                        <span class="file-help-text" id="app-icon-info-new">Định dạng: JPG, PNG. Tối đa 15MB, hệ thống tự resize & nén (~480px) — giống ảnh đại diện ở mục Nhân sự. Người dùng thường sẽ chỉ thấy icon này, KHÔNG thấy đường link phần mềm.</span>
+                    </div>
                     <div id="list-other-apps"></div>
                 </div>
             </div>
@@ -1443,6 +1460,18 @@
         let staffData = [];
         let crewData = [];
         let otherApps = [];
+        // [TAB "Các phần mềm khác" - Icon phần mềm] Ảnh icon (nếu Admin đã tải lên) được lưu
+        // trên Google Drive (thư mục AVATAR_FOLDER_ID, dùng chung với ảnh đại diện Nhân sự) và
+        // chỉ được lấy về qua action "getOtherAppIcons" (đã đăng nhập là xem được, giống mức xem
+        // Danh bạ) — không public trên Drive. Biến dưới đây tạm giữ (cache) nội dung ảnh đã tải
+        // về trong phiên làm việc hiện tại, tránh gọi lại nhiều lần cho cùng 1 icon.
+        let otherAppIconCache = {};
+        // Trạng thái staging cho ô "Icon phần mềm" khi THÊM MỚI 1 phần mềm (chưa upload ngay khi
+        // chọn file — chỉ thực sự tải lên Drive khi bấm "Thêm liên kết", giống luồng ảnh đại
+        // diện Nhân sự).
+        let globalAppIconBase64 = "";
+        let globalAppIconMimeType = "";
+        let globalAppIconIsNewUpload = false;
         let mailGroups = [];
         // Danh sách thiết bị: mỗi phần tử { assetCode, name, type, msnv, dept, status, unit, qty, dateReceived, dateReturn, location, note }.
         // Thiết bị có msnv rỗng ("") được xem là "Thiết bị lưu kho" (chưa cấp phát cho ai).
@@ -1509,7 +1538,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-10.lichlamviec-v3-mainsheet";
+        const FRONTEND_BUILD_VERSION = "2026-07-10.otherapps-icon-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -5869,6 +5898,132 @@
             return url;
         }
 
+        // [TAB "Các phần mềm khác" - Icon phần mềm] Đọc + kiểm tra + resize/nén 1 file ảnh icon.
+        // CÙNG giới hạn dung lượng/kích thước như ảnh đại diện Nhân sự (xem
+        // processAndValidateImage ở trên): tối đa 15MB file gốc, resize còn tối đa 480px cạnh
+        // dài, nén JPEG lặp lại tới khi < 2MB. Đây là hàm RIÊNG cho icon phần mềm (không sửa gì
+        // vào processAndValidateImage đang dùng cho Nhân sự) để không ảnh hưởng tính năng đó.
+        function readAndCompressAppIconFile(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) { reject("Chưa chọn file."); return; }
+                if (file.size > 15 * 1024 * 1024) {
+                    reject("Dung lượng ảnh vượt giới hạn cho phép (tối đa 15MB)!");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        const MAX_DIM = 480;
+                        let w = img.width, h = img.height;
+                        if (w >= h && w > MAX_DIM) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+                        else if (h > w && h > MAX_DIM) { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+
+                        const canvas = document.createElement("canvas");
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+
+                        let quality = 0.85;
+                        let compressed = canvas.toDataURL("image/jpeg", quality);
+                        while (compressed.length > 2 * 1024 * 1024 && quality > 0.3) {
+                            quality -= 0.1;
+                            compressed = canvas.toDataURL("image/jpeg", quality);
+                        }
+                        resolve({ dataUrl: compressed, mimeType: "image/jpeg", width: w, height: h });
+                    };
+                    img.onerror = function () { reject("File không phải là ảnh hợp lệ."); };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function () { reject("Không đọc được file."); };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Xử lý khi Admin chọn file icon lúc THÊM MỚI 1 phần mềm — chỉ resize/nén + xem trước
+        // tại đây, icon THỰC SỰ được tải lên Google Drive khi bấm "Thêm liên kết" (addOtherApp),
+        // giống hệt cách ảnh đại diện Nhân sự chỉ upload khi bấm "Lưu".
+        async function processAndValidateAppIcon(inputElement) {
+            const file = inputElement.files[0];
+            if (!file) { clearNewAppIconInput(); return; }
+            try {
+                let result = await readAndCompressAppIconFile(file);
+                globalAppIconBase64 = result.dataUrl;
+                globalAppIconMimeType = result.mimeType;
+                globalAppIconIsNewUpload = true;
+                let previewImg = document.getElementById("app-icon-preview-new");
+                let infoText = document.getElementById("app-icon-info-new");
+                if (previewImg) { previewImg.src = globalAppIconBase64; previewImg.style.display = "inline-block"; }
+                if (infoText) infoText.innerText = `Đã xử lý icon còn ~${Math.round(result.dataUrl.length / 1024)}KB (${result.width}x${result.height}px) — sẽ được tải lên Google Drive khi bấm "Thêm liên kết".`;
+            } catch (errMsg) {
+                alert("❌ " + errMsg);
+                inputElement.value = "";
+                clearNewAppIconInput();
+            }
+        }
+
+        function clearNewAppIconInput() {
+            globalAppIconBase64 = "";
+            globalAppIconMimeType = "";
+            globalAppIconIsNewUpload = false;
+            let previewImg = document.getElementById("app-icon-preview-new");
+            let infoText = document.getElementById("app-icon-info-new");
+            let fileInput = document.getElementById("inp-new-app-icon");
+            if (previewImg) { previewImg.src = ""; previewImg.style.display = "none"; }
+            if (infoText) infoText.innerText = "Định dạng: JPG, PNG. Tối đa 15MB, hệ thống tự resize & nén (~480px) — giống ảnh đại diện ở mục Nhân sự. Người dùng thường sẽ chỉ thấy icon này, KHÔNG thấy đường link phần mềm.";
+            if (fileInput) fileInput.value = "";
+        }
+
+        // Tải 1 icon phần mềm (đã resize/nén) lên Google Drive (thư mục AVATAR_FOLDER_ID, dùng
+        // chung với ảnh đại diện Nhân sự) — trả về fileId nếu thành công, null nếu thất bại.
+        // Đây là action RIÊNG (không đụng tới bất kỳ Sheet nào), Admin only.
+        async function uploadOtherAppIconToServer(dataUrl, mimeType, fileName) {
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Cloud, không thể tải icon phần mềm lên Google Drive."); return null; }
+            try {
+                showSyncBanner("Đang tải icon phần mềm lên Google Drive...");
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "uploadOtherAppIcon",
+                        iconFileData: dataUrl.split(",")[1],
+                        iconMimeType: mimeType || "image/jpeg",
+                        iconFileName: fileName,
+                        authToken: authToken
+                    })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                return data.fileId || null;
+            } catch (err) {
+                alert("❌ Lỗi khi tải icon phần mềm lên: " + err.message);
+                return null;
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
+        // Đổi/gắn icon cho 1 phần mềm ĐÃ CÓ SẴN trong danh sách (áp dụng ngay khi chọn file,
+        // không cần bấm thêm nút "Lưu" — vì đây là 1 thao tác chỉnh sửa độc lập, không đi kèm
+        // form thêm mới).
+        async function changeExistingAppIcon(idx, inputElement) {
+            const file = inputElement.files[0];
+            if (!file || !otherApps[idx]) { inputElement.value = ""; return; }
+            try {
+                let result = await readAndCompressAppIconFile(file);
+                let ext = result.mimeType === "image/png" ? "png" : "jpg";
+                let fileId = await uploadOtherAppIconToServer(result.dataUrl, result.mimeType, "app_" + Date.now() + "." + ext);
+                if (!fileId) return;
+                otherApps[idx].iconFileId = fileId;
+                saveLocalCache();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                updateSystemData();
+            } catch (errMsg) {
+                alert("❌ " + errMsg);
+            } finally {
+                inputElement.value = "";
+            }
+        }
+
         async function addOtherApp() {
             let nameInput = document.getElementById("inp-new-app-name");
             let urlInput = document.getElementById("inp-new-app-url");
@@ -5880,7 +6035,17 @@
             if (!name || !url) { alert("⚠️ Vui lòng nhập đầy đủ Tên phần mềm và URL liên kết!"); return; }
             url = normalizeAppUrl(url);
 
-            otherApps.push({ name: name, url: url, openInNewTab: openInNewTab });
+            // [TAB "Các phần mềm khác" - Icon phần mềm] Nếu Admin đã chọn 1 icon (staging trong
+            // globalAppIconBase64), tải icon đó lên Google Drive TRƯỚC, rồi mới lưu liên kết kèm
+            // fileId vừa nhận được — giống thứ tự xử lý ảnh đại diện Nhân sự.
+            let iconFileId = "";
+            if (globalAppIconIsNewUpload && globalAppIconBase64) {
+                let ext = globalAppIconMimeType === "image/png" ? "png" : "jpg";
+                iconFileId = await uploadOtherAppIconToServer(globalAppIconBase64, globalAppIconMimeType, "app_" + Date.now() + "." + ext);
+                if (!iconFileId && !confirm('⚠️ Tải icon lên thất bại. Vẫn thêm liên kết phần mềm "' + name + '" KHÔNG kèm icon?')) return;
+            }
+
+            otherApps.push({ name: name, url: url, openInNewTab: openInNewTab, iconFileId: iconFileId || "" });
             saveLocalCache();
             let ok = await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
             alert(ok ? `✔️ Đã thêm liên kết "${name}" (Đã đồng bộ).` : `✔️ Đã thêm liên kết "${name}" (Lưu cục bộ).`);
@@ -5888,6 +6053,7 @@
             nameInput.value = "";
             urlInput.value = "";
             if (newTabInput) newTabInput.checked = true;
+            clearNewAppIconInput();
             updateSystemData();
         }
 
@@ -5917,6 +6083,12 @@
             updateSystemData();
         }
 
+        // [BẢO MẬT/GIAO DIỆN - YÊU CẦU MỚI] Người dùng thường (không phải Admin) sẽ KHÔNG còn
+        // thấy đường link (URL) của phần mềm ở đây nữa — chỉ thấy icon (nếu Admin đã tải lên,
+        // qua otherAppIconCache) hoặc ô chữ cái đầu (nếu chưa có icon), và chỉ cần bấm vào thẻ để
+        // mở phần mềm. Vì vậy: (1) đã bỏ hẳn dòng hiển thị domain/URL dạng chữ, (2) nút "mở tab
+        // mới" không còn dùng thẻ <a href> thật trỏ tới URL thật (tránh lộ URL khi rê chuột xem
+        // trước hoặc "Sao chép địa chỉ liên kết") mà chuyển thành 1 nút bấm gọi hàm JS.
         function renderOtherAppsGrid() {
             let canManage = (currentUser && currentUser.role === "Admin");
             let gridEl = document.getElementById("app-grid");
@@ -5929,20 +6101,53 @@
 
             gridEl.innerHTML = otherApps.map((app, idx) => {
                 let initial = (app.name || "?").charAt(0).toUpperCase();
-                let domain = app.url.replace(/^https?:\/\//i, "").replace(/\/$/, "");
                 let deleteBtn = canManage ? `<button class="btn btn-sm btn-danger app-delete-btn" onclick="event.stopPropagation(); deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>` : "";
+                let iconHtml = (app.iconFileId && otherAppIconCache[app.iconFileId])
+                    ? `<img class="app-icon-img" src="${otherAppIconCache[app.iconFileId]}" alt="${escapeHtml(app.name)}">`
+                    : `<div class="app-icon">${escapeHtml(initial)}</div>`;
                 return `
                     <div class="app-card" onclick="handleAppCardClick(${idx})">
-                        <a class="app-open-tab" href="${app.url}" target="_blank" rel="noopener" title="Mở trong tab mới" onclick="event.stopPropagation()"><i class="fa-solid fa-up-right-from-square"></i></a>
-                        <div class="app-icon">${initial}</div>
-                        <h4>${app.name}</h4>
-                        <p class="app-url"><i class="fa-solid fa-link"></i> ${domain}</p>
+                        <button type="button" class="app-open-tab" title="Mở phần mềm" onclick="event.stopPropagation(); handleAppCardClick(${idx})"><i class="fa-solid fa-up-right-from-square"></i></button>
+                        ${iconHtml}
+                        <h4>${escapeHtml(app.name)}</h4>
                         ${deleteBtn}
                     </div>
                 `;
             }).join('');
+
+            loadOtherAppIcons();
         }
 
+        // Tải hàng loạt nội dung icon phần mềm CÒN THIẾU trong otherAppIconCache (chỉ những
+        // fileId chưa từng lấy về trong phiên này) — giống cơ chế "getStaffAvatars" (đã đăng
+        // nhập là xem được, server tự đối chiếu fileId có thực sự đang được dùng làm icon phần
+        // mềm hay không trước khi trả nội dung, không thể dùng để đọc file bất kỳ khác trên
+        // Drive). Sau khi tải xong, vẽ lại lưới phần mềm với icon thật.
+        async function loadOtherAppIcons() {
+            let idsNeeded = [...new Set(otherApps.map(a => a.iconFileId).filter(id => id && !otherAppIconCache[id]))];
+            if (!idsNeeded.length || !isScriptUrlConfigured()) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getOtherAppIcons", fileIds: idsNeeded, authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status !== "SUCCESS" || !data.icons) return;
+                let gotAny = false;
+                Object.keys(data.icons).forEach(id => {
+                    let f = data.icons[id];
+                    otherAppIconCache[id] = `data:${f.mimeType};base64,${f.fileData}`;
+                    gotAny = true;
+                });
+                if (gotAny) renderOtherAppsGrid(); // vẽ lại với icon thật; không lặp vô hạn vì
+                                                     // lần sau idsNeeded sẽ rỗng (đã có trong cache)
+            } catch (e) { /* im lặng bỏ qua — vẫn hiển thị ô chữ cái đầu thay thế, không chặn trang */ }
+        }
+
+        // [ADMIN - Quản lý "Các phần mềm khác"] Vẫn hiển thị URL đầy đủ tại đây (khác với lưới
+        // hiển thị cho người dùng thường ở trên) vì Admin CẦN thấy link thật để quản lý/sửa —
+        // đây là khu vực chỉ Admin mới truy cập được (trong tab Cài đặt hệ thống).
         function renderOtherAppsAdminList() {
             let listEl = document.getElementById("list-other-apps");
             if (!listEl) return;
@@ -5952,17 +6157,30 @@
                 return;
             }
 
-            listEl.innerHTML = otherApps.map((app, idx) => `
+            listEl.innerHTML = otherApps.map((app, idx) => {
+                let iconThumb = (app.iconFileId && otherAppIconCache[app.iconFileId])
+                    ? `<img class="app-row-icon-thumb" src="${otherAppIconCache[app.iconFileId]}" alt="">`
+                    : `<div class="app-row-icon-placeholder">${escapeHtml((app.name || "?").charAt(0).toUpperCase())}</div>`;
+                return `
                 <div style="padding:8px 0; border-bottom:1px dashed #eee; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                    <span><b>${app.name}</b> — <a href="${app.url}" target="_blank" rel="noopener" style="color:#328cc1;">${app.url}</a></span>
-                    <span style="display:flex; align-items:center; gap:10px;">
+                    <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+                        ${iconThumb}
+                        <span><b>${escapeHtml(app.name)}</b> — <a href="${app.url}" target="_blank" rel="noopener" style="color:#328cc1;">${escapeHtml(app.url)}</a></span>
+                    </span>
+                    <span style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <label class="btn btn-sm" style="cursor:pointer; margin:0;" title="Đổi icon phần mềm">
+                            <i class="fa-solid fa-image"></i> Đổi icon
+                            <input type="file" accept="image/jpeg, image/jpg, image/png" style="display:none;" onchange="changeExistingAppIcon(${idx}, this)">
+                        </label>
                         <label style="display:flex; align-items:center; gap:4px; font-size:12px; cursor:pointer; white-space:nowrap;">
                             <input type="checkbox" style="width:auto;" ${app.openInNewTab !== false ? 'checked' : ''} onchange="toggleAppOpenMode(${idx}, this.checked)"> Mở tab mới
                         </label>
                         <button class="btn btn-sm btn-danger" onclick="deleteOtherApp(${idx})" title="Xóa liên kết"><i class="fa-solid fa-trash"></i></button>
                     </span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+            loadOtherAppIcons(); // cũng cần icon thật để hiện thumbnail trong danh sách quản lý
         }
 
         // ===== Group Mail Management =====
