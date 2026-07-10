@@ -171,6 +171,17 @@
             0% { box-shadow: 0 0 0 3px rgba(50,140,193,0.55); }
             100% { box-shadow: 0 0 0 0 rgba(50,140,193,0); }
         }
+        /* [TAB "LỊCH LÀM VIỆC CÔNG TY" - Giờ bắt đầu/kết thúc] Bộ chọn Giờ:Phút dạng dropdown
+           24 giờ, thay cho <input type="time"> mặc định của trình duyệt — vì input gốc hiển thị
+           theo định dạng 12 giờ kèm SA/CH (sáng/chiều) tùy theo hệ điều hành/trình duyệt của
+           từng máy, dễ khiến người nhập chọn nhầm buổi (SA/CH) dẫn đến sai giờ thực tế. Dùng
+           dropdown 24 giờ cố định giúp giờ nhập vào LUÔN chính xác, không phụ thuộc máy/trình
+           duyệt nào. Giá trị cuối cùng vẫn được ghi vào input ẩn "HH:mm" y hệt định dạng cũ nên
+           không ảnh hưởng tới dữ liệu đã lưu hay logic tính trạng thái ở nơi khác.
+        */
+        .llv-time-picker { display:flex; align-items:center; gap:6px; }
+        .llv-time-picker select { padding:8px 6px; border:1px solid #ccc; border-radius:4px; font-size:14px; background:#fff; flex:1; min-width:0; }
+        .llv-time-picker span { color:#888; font-weight:bold; }
         .chip { display: inline-block; background: #e2e8f0; padding: 5px 10px; border-radius: 20px; margin-right: 5px; margin-bottom: 5px; font-size: 13px; }
         .chip-removable { display: inline-flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 5px 8px 5px 12px; border-radius: 20px; margin-right: 6px; margin-bottom: 8px; font-size: 13px; color: #333; }
         .chip-removable .chip-remove-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #d9534f; color: #fff; font-size: 11px; cursor: pointer; line-height: 1; transition: 0.2s; flex-shrink: 0; }
@@ -887,16 +898,26 @@
                             <input type="date" id="inp-llv-ngay-bd">
                         </div>
                         <div class="input-group">
-                            <label>Giờ bắt đầu</label>
-                            <input type="time" id="inp-llv-gio-bd">
+                            <label>Giờ bắt đầu <span style="font-weight:normal; color:#888; font-size:11.5px;">(24 giờ, không phân biệt SA/CH)</span></label>
+                            <div class="llv-time-picker">
+                                <select id="inp-llv-gio-bd-h" onchange="llvSyncTimeHidden('bd')"></select>
+                                <span>:</span>
+                                <select id="inp-llv-gio-bd-m" onchange="llvSyncTimeHidden('bd')"></select>
+                            </div>
+                            <input type="hidden" id="inp-llv-gio-bd">
                         </div>
                         <div class="input-group">
                             <label>Ngày kết thúc</label>
                             <input type="date" id="inp-llv-ngay-kt">
                         </div>
                         <div class="input-group">
-                            <label>Giờ kết thúc</label>
-                            <input type="time" id="inp-llv-gio-kt">
+                            <label>Giờ kết thúc <span style="font-weight:normal; color:#888; font-size:11.5px;">(24 giờ, không phân biệt SA/CH)</span></label>
+                            <div class="llv-time-picker">
+                                <select id="inp-llv-gio-kt-h" onchange="llvSyncTimeHidden('kt')"></select>
+                                <span>:</span>
+                                <select id="inp-llv-gio-kt-m" onchange="llvSyncTimeHidden('kt')"></select>
+                            </div>
+                            <input type="hidden" id="inp-llv-gio-kt">
                         </div>
                         <div class="input-group">
                             <label>Người phụ trách</label>
@@ -3704,6 +3725,55 @@
             }).join("");
         }
 
+        /* [TAB "LỊCH LÀM VIỆC CÔNG TY" - Giờ bắt đầu/kết thúc] Khởi tạo option cho 4 dropdown
+           Giờ/Phút (bắt đầu + kết thúc): Giờ 00–23, Phút 00–59, đều có lựa chọn để trống "--"
+           đầu tiên (cho phép không chọn giờ = công việc "Cả ngày" như trước). Chỉ chạy 1 lần khi
+           tải trang — không đổi dữ liệu, chỉ dựng sẵn giao diện chọn giờ rõ ràng, chính xác. */
+        function llvBuildTimeDropdownOptions(selectEl, max) {
+            if (!selectEl) return;
+            let html = '<option value="">--</option>';
+            for (let i = 0; i <= max; i++) {
+                let v = String(i).padStart(2, "0");
+                html += `<option value="${v}">${v}</option>`;
+            }
+            selectEl.innerHTML = html;
+        }
+        function initLlvTimePickers() {
+            ["bd", "kt"].forEach(which => {
+                llvBuildTimeDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-h"), 23);
+                llvBuildTimeDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-m"), 59);
+            });
+        }
+
+        // Đồng bộ 2 dropdown Giờ/Phút (bd hoặc kt) vào ô ẩn "HH:mm" — ô ẩn này chính là giá trị
+        // thật sự được gửi lên server khi Lưu công việc (giữ nguyên định dạng cũ, không đổi dữ
+        // liệu). Nếu người dùng để trống 1 trong 2 (Giờ hoặc Phút) thì coi như chưa chọn giờ
+        // (công việc "Cả ngày"), giống hành vi cũ khi bỏ trống ô giờ.
+        function llvSyncTimeHidden(which) {
+            let h = document.getElementById("inp-llv-gio-" + which + "-h").value;
+            let m = document.getElementById("inp-llv-gio-" + which + "-m").value;
+            let hidden = document.getElementById("inp-llv-gio-" + which);
+            hidden.value = (h !== "" && m !== "") ? (h + ":" + m) : "";
+        }
+
+        // Đặt lại giá trị hiển thị của bộ chọn Giờ:Phút (bd hoặc kt) từ 1 chuỗi "HH:mm" đã lưu —
+        // dùng khi mở form để CẬP NHẬT 1 công việc đã có sẵn giờ, và khi làm mới (xóa trắng) form.
+        function llvSetTimeValue(which, hhmm) {
+            let hEl = document.getElementById("inp-llv-gio-" + which + "-h");
+            let mEl = document.getElementById("inp-llv-gio-" + which + "-m");
+            let hidden = document.getElementById("inp-llv-gio-" + which);
+            let mm = hhmm ? String(hhmm).match(/^(\d{1,2}):(\d{1,2})/) : null;
+            if (mm) {
+                hEl.value = mm[1].padStart(2, "0");
+                mEl.value = mm[2].padStart(2, "0");
+                hidden.value = hEl.value + ":" + mEl.value;
+            } else {
+                hEl.value = "";
+                mEl.value = "";
+                hidden.value = "";
+            }
+        }
+
         // Hiện chi tiết 1 công việc (khi bấm vào thẻ trong lịch tuần). Nếu tài khoản có quyền
         // "SuaLichLamViec" thì đưa luôn vào form để chỉnh sửa; ngược lại chỉ hiện thông tin.
         function openWorkScheduleDetail(id) {
@@ -3732,9 +3802,9 @@
             document.getElementById("edit-id-llv").value = item.id;
             document.getElementById("inp-llv-ten").value = item.tenCongViec || "";
             document.getElementById("inp-llv-ngay-bd").value = item.ngayBatDau || "";
-            document.getElementById("inp-llv-gio-bd").value = item.gioBatDau || "";
+            llvSetTimeValue("bd", item.gioBatDau || "");
             document.getElementById("inp-llv-ngay-kt").value = item.ngayKetThuc || "";
-            document.getElementById("inp-llv-gio-kt").value = item.gioKetThuc || "";
+            llvSetTimeValue("kt", item.gioKetThuc || "");
             document.getElementById("inp-llv-phutrach").value = item.nguoiPhuTrach || "";
             document.getElementById("inp-llv-diadiem").value = item.diaDiem || "";
             document.getElementById("inp-llv-hinhthuc").value = item.hinhThuc || "";
@@ -3752,11 +3822,13 @@
 
         function resetWorkScheduleForm() {
             document.getElementById("edit-id-llv").value = "";
-            ["inp-llv-ten", "inp-llv-ngay-bd", "inp-llv-gio-bd", "inp-llv-ngay-kt", "inp-llv-gio-kt",
+            ["inp-llv-ten", "inp-llv-ngay-bd", "inp-llv-ngay-kt",
              "inp-llv-phutrach", "inp-llv-diadiem", "inp-llv-hinhthuc", "inp-llv-ghichu"].forEach(id => {
                 let el = document.getElementById(id);
                 if (el) el.value = "";
             });
+            llvSetTimeValue("bd", "");
+            llvSetTimeValue("kt", "");
             let fileInput = document.getElementById("inp-llv-file");
             if (fileInput) fileInput.value = "";
             let hint = document.getElementById("llv-current-file-hint");
@@ -5957,6 +6029,7 @@
         window.addEventListener("load", () => {
             let buildEl = document.getElementById("frontend-build-version");
             if (buildEl) buildEl.innerText = FRONTEND_BUILD_VERSION;
+            initLlvTimePickers();
             loadLocalCache();
             updateSystemData();
             // [F5 KHÔNG BỊ ĐĂNG XUẤT] Thử khôi phục phiên đăng nhập đã lưu (nếu có) trước;
