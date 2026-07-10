@@ -3568,12 +3568,14 @@
         // dựa theo giờ bắt đầu (gioBatDau). Việc không có giờ bắt đầu (cả ngày) được xếp vào
         // Buổi Sáng (hiển thị ở trên) kèm nhãn "Cả ngày" sẵn có trong gioText, KHÔNG làm mất
         // hay thay đổi dữ liệu gốc của công việc.
+        // [QUY ƯỚC CHÍNH XÁC THEO YÊU CẦU] Buổi Sáng: 0h–12h (0:00 đến 12:59); Buổi Chiều:
+        // 13h–23h (13:00 đến 23:59). Tức giờ bắt đầu từ 13:00 trở đi mới tính là Buổi Chiều.
         function llvGetSession(item) {
             if (item.gioBatDau) {
                 let mm = String(item.gioBatDau).match(/^(\d{1,2}):(\d{1,2})/);
                 if (mm) {
                     let h = parseInt(mm[1], 10);
-                    if (h >= 12) return "afternoon";
+                    if (h >= 13) return "afternoon";
                 }
             }
             return "morning";
@@ -3726,13 +3728,33 @@
         }
 
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY" - Giờ bắt đầu/kết thúc] Khởi tạo option cho 4 dropdown
-           Giờ/Phút (bắt đầu + kết thúc): Giờ 00–23, Phút 00–59, đều có lựa chọn để trống "--"
-           đầu tiên (cho phép không chọn giờ = công việc "Cả ngày" như trước). Chỉ chạy 1 lần khi
-           tải trang — không đổi dữ liệu, chỉ dựng sẵn giao diện chọn giờ rõ ràng, chính xác. */
-        function llvBuildTimeDropdownOptions(selectEl, max) {
+           Giờ/Phút (bắt đầu + kết thúc). Phút: 00–59. Giờ: 00–23 nhưng được NHÓM RÕ RÀNG thành
+           2 khối theo đúng quy ước đã chốt — "SA (0h-12h)": 00 đến 12, "CH (13h-23h)": 13 đến 23
+           — để người dùng dễ định hướng buổi sáng/chiều khi chọn, trong khi giá trị lưu vẫn là
+           số giờ 24h chính xác tuyệt đối (không quy đổi qua lại, không còn nhầm lẫn AM/PM như
+           input giờ mặc định của trình duyệt trước đây). Đều có lựa chọn để trống "--" đầu tiên
+           (cho phép không chọn giờ = công việc "Cả ngày" như trước). Chỉ chạy 1 lần khi tải
+           trang — không đổi dữ liệu, chỉ dựng sẵn giao diện chọn giờ rõ ràng, chính xác. */
+        function llvBuildHourDropdownOptions(selectEl) {
             if (!selectEl) return;
             let html = '<option value="">--</option>';
-            for (let i = 0; i <= max; i++) {
+            html += '<optgroup label="SA (0h - 12h)">';
+            for (let i = 0; i <= 12; i++) {
+                let v = String(i).padStart(2, "0");
+                html += `<option value="${v}">${v}</option>`;
+            }
+            html += '</optgroup><optgroup label="CH (13h - 23h)">';
+            for (let i = 13; i <= 23; i++) {
+                let v = String(i).padStart(2, "0");
+                html += `<option value="${v}">${v}</option>`;
+            }
+            html += '</optgroup>';
+            selectEl.innerHTML = html;
+        }
+        function llvBuildMinuteDropdownOptions(selectEl) {
+            if (!selectEl) return;
+            let html = '<option value="">--</option>';
+            for (let i = 0; i <= 59; i++) {
                 let v = String(i).padStart(2, "0");
                 html += `<option value="${v}">${v}</option>`;
             }
@@ -3740,8 +3762,8 @@
         }
         function initLlvTimePickers() {
             ["bd", "kt"].forEach(which => {
-                llvBuildTimeDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-h"), 23);
-                llvBuildTimeDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-m"), 59);
+                llvBuildHourDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-h"));
+                llvBuildMinuteDropdownOptions(document.getElementById("inp-llv-gio-" + which + "-m"));
             });
         }
 
