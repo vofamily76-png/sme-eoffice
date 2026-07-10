@@ -647,8 +647,53 @@
                             <input type="date" id="inp-id-issue-date">
                         </div>
                         <div class="input-group">
+                            <label>Nơi cấp CCCD</label>
+                            <input type="text" id="inp-id-issue-place" placeholder="Ví dụ: Cục Cảnh sát QLHC về TTXH">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày hết hạn CCCD/Passport</label>
+                            <input type="date" id="inp-id-expiry-date">
+                        </div>
+                        <div class="input-group">
                             <label>Quốc tịch</label>
                             <input type="text" id="inp-nationality" placeholder="Ví dụ: Việt Nam">
+                        </div>
+                        <div class="input-group">
+                            <label>Giới tính</label>
+                            <select id="inp-gender">
+                                <option value="">-- Chọn --</option>
+                                <option value="Nam">Nam</option>
+                                <option value="Nữ">Nữ</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Địa chỉ thường trú</label>
+                            <input type="text" id="inp-permanent-address" placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố">
+                        </div>
+                        <div class="input-group">
+                            <label>Mã số BHXH</label>
+                            <input type="text" id="inp-social-insurance" placeholder="Ví dụ: 0123456789">
+                        </div>
+                        <div class="input-group">
+                            <label>Số giấy phép lao động</label>
+                            <input type="text" id="inp-work-permit" placeholder="Áp dụng với lao động nước ngoài (nếu có)">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group">
+                            <label>Trình độ</label>
+                            <input type="text" id="inp-education-level" placeholder="Ví dụ: Đại học / Cao đẳng / Trung cấp...">
+                        </div>
+                        <div class="input-group">
+                            <label>Trường đào tạo</label>
+                            <input type="text" id="inp-education-school" placeholder="Ví dụ: Đại học Hàng hải Việt Nam">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngành đào tạo</label>
+                            <input type="text" id="inp-education-major" placeholder="Ví dụ: Kế toán / Điều khiển tàu biển...">
                         </div>
                     </div>
                     <div class="form-row contract-group">
@@ -5419,7 +5464,19 @@
                     // [BỔ SUNG MỚI] Số CCCD/Passport, Ngày cấp, Quốc tịch.
                     idNumber: document.getElementById("inp-id-number").value.trim(),
                     idIssueDate: document.getElementById("inp-id-issue-date").value,
-                    nationality: document.getElementById("inp-nationality").value.trim()
+                    nationality: document.getElementById("inp-nationality").value.trim(),
+                    // [BỔ SUNG MỚI] Nơi cấp CCCD, Ngày hết hạn CCCD/Passport, Số giấy phép lao
+                    // động, Trình độ, Trường đào tạo, Ngành đào tạo, Giới tính, Địa chỉ thường
+                    // trú, Mã số BHXH.
+                    idIssuePlace: document.getElementById("inp-id-issue-place").value.trim(),
+                    idExpiryDate: document.getElementById("inp-id-expiry-date").value,
+                    workPermitNumber: document.getElementById("inp-work-permit").value.trim(),
+                    educationLevel: document.getElementById("inp-education-level").value.trim(),
+                    educationSchool: document.getElementById("inp-education-school").value.trim(),
+                    educationMajor: document.getElementById("inp-education-major").value.trim(),
+                    gender: document.getElementById("inp-gender").value,
+                    permanentAddress: document.getElementById("inp-permanent-address").value.trim(),
+                    socialInsuranceNumber: document.getElementById("inp-social-insurance").value.trim()
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -5523,6 +5580,19 @@
                 document.getElementById("inp-id-issue-date").value = d.idIssueDate || "";
                 document.getElementById("inp-nationality").value = d.nationality || "";
 
+                // [BỔ SUNG MỚI] Đổ lại Nơi cấp CCCD, Ngày hết hạn CCCD/Passport, Số giấy phép
+                // lao động, Trình độ, Trường đào tạo, Ngành đào tạo, Giới tính, Địa chỉ thường
+                // trú, Mã số BHXH vào form khi sửa.
+                document.getElementById("inp-id-issue-place").value = d.idIssuePlace || "";
+                document.getElementById("inp-id-expiry-date").value = d.idExpiryDate || "";
+                document.getElementById("inp-work-permit").value = d.workPermitNumber || "";
+                document.getElementById("inp-education-level").value = d.educationLevel || "";
+                document.getElementById("inp-education-school").value = d.educationSchool || "";
+                document.getElementById("inp-education-major").value = d.educationMajor || "";
+                document.getElementById("inp-gender").value = d.gender || "";
+                document.getElementById("inp-permanent-address").value = d.permanentAddress || "";
+                document.getElementById("inp-social-insurance").value = d.socialInsuranceNumber || "";
+
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
                 });
@@ -5593,6 +5663,11 @@
             // [BỔ SUNG MỚI] Ô "Ngày cấp CCCD/Passport" (type="date") không nằm trong vòng lặp
             // input phía trên (chỉ reset input KHÔNG phải type="date") nên cần xóa riêng.
             document.getElementById("inp-id-issue-date").value = "";
+            // [BỔ SUNG MỚI] Ô "Ngày hết hạn CCCD/Passport" (type="date") cũng cần xóa riêng vì
+            // lý do tương tự; ô <select> "Giới tính" cũng không nằm trong vòng lặp trên (chỉ
+            // nhắm input) nên cần đưa về mặc định rỗng riêng.
+            document.getElementById("inp-id-expiry-date").value = "";
+            document.getElementById("inp-gender").value = "";
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
         }
