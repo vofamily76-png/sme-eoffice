@@ -477,11 +477,14 @@
                         <select id="hr-export-scope" class="search-box" style="max-width: 260px;" onchange="onHRExportScopeChange()">
                             <option value="all">Tất cả nhân sự</option>
                             <option value="dept">Theo phòng ban cụ thể...</option>
+                            <option value="staff">Xuất theo từng cá nhân...</option>
                             <option value="working">Nhân sự đang làm việc</option>
                             <option value="resigned">Nhân sự đã nghỉ việc</option>
                             <option value="expiring">Nhân sự sắp đến hạn gia hạn hợp đồng (≤30 ngày)</option>
                         </select>
                         <select id="hr-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <input type="text" id="hr-export-staff-search" class="search-box" style="max-width: 200px; display:none;" placeholder="🔎 Tìm theo tên/MSNV..." oninput="filterHRExportStaffOptions()">
+                        <select id="hr-export-staff" class="search-box" style="max-width: 220px; display:none;"></select>
                         <button type="button" class="btn btn-success" onclick="exportHRToExcel()">
                             <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
                         </button>
@@ -4283,7 +4286,19 @@
             // [XUẤT EXCEL] Select chọn phòng ban cụ thể khi xuất (chỉ hiện khi phạm vi = "dept").
             let hrExportDeptSel = document.getElementById("hr-export-dept");
             if (hrExportDeptSel) {
+                let keepHrDept = hrExportDeptSel.value;
                 hrExportDeptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+                if (keepHrDept && hrExportDeptSel.querySelector(`option[value="${CSS.escape(keepHrDept)}"]`)) hrExportDeptSel.value = keepHrDept;
+            }
+            // [XUẤT EXCEL] Select chọn từng nhân viên cụ thể khi xuất (chỉ hiện khi phạm vi = "staff").
+            let hrExportStaffSel = document.getElementById("hr-export-staff");
+            if (hrExportStaffSel) {
+                let keepHrStaff = hrExportStaffSel.value;
+                hrExportStaffSel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' +
+                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)} (${escapeHtml(s.msnv)})</option>`).join('');
+                if (keepHrStaff && hrExportStaffSel.querySelector(`option[value="${CSS.escape(keepHrStaff)}"]`)) hrExportStaffSel.value = keepHrStaff;
+                // Giữ nguyên từ khóa đang tìm (nếu có) sau khi danh sách nhân viên vừa được nạp lại.
+                filterHRExportStaffOptions();
             }
 
             let checkboxesHtml = depts.map((d, i) => `
@@ -4680,19 +4695,54 @@
            API tới server, không đọc/ghi gì khác trên Sheet) -> không ảnh hưởng dữ liệu gốc,
            không làm thay đổi cơ chế phân quyền/bảo mật hiện có. */
 
-        // Hiện/ẩn ô chọn phòng ban cụ thể tùy theo phạm vi xuất đang chọn.
+        // Hiện/ẩn ô chọn phòng ban / cá nhân cụ thể tùy theo phạm vi xuất đang chọn.
         function onHRExportScopeChange() {
             let scopeEl = document.getElementById("hr-export-scope");
             let deptEl = document.getElementById("hr-export-dept");
-            if (!scopeEl || !deptEl) return;
+            let staffEl = document.getElementById("hr-export-staff");
+            let staffSearchEl = document.getElementById("hr-export-staff-search");
+            if (!scopeEl || !deptEl || !staffEl) return;
             deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
+            let isStaffScope = (scopeEl.value === "staff");
+            staffEl.style.display = isStaffScope ? "" : "none";
+            if (staffSearchEl) {
+                staffSearchEl.style.display = isStaffScope ? "" : "none";
+                if (!isStaffScope) {
+                    // Rời khỏi phạm vi "cá nhân" -> xóa từ khóa tìm & hiện lại đầy đủ danh sách,
+                    // để lần sau quay lại chọn "staff" ô tìm kiếm luôn sạch, không gây nhầm lẫn.
+                    staffSearchEl.value = "";
+                    filterHRExportStaffOptions();
+                }
+            }
+        }
+
+        // Lọc nhanh danh sách nhân viên trong select "hr-export-staff" theo tên hoặc MSNV người
+        // dùng gõ vào ô tìm kiếm. CHỈ ẩn/hiện <option> ngay trên trình duyệt (client-side), KHÔNG
+        // gọi thêm API, KHÔNG đổi dữ liệu staffData/quyền hạn hiện có -> không ảnh hưởng bảo mật.
+        function filterHRExportStaffOptions() {
+            let searchEl = document.getElementById("hr-export-staff-search");
+            let staffEl = document.getElementById("hr-export-staff");
+            if (!searchEl || !staffEl) return;
+            let keyword = searchEl.value.trim().toLowerCase();
+            let hasVisibleSelected = false;
+            Array.from(staffEl.options).forEach(opt => {
+                if (!opt.value) { opt.hidden = false; return; } // luôn giữ dòng "-- Chọn nhân viên --"
+                let match = !keyword || opt.text.toLowerCase().includes(keyword);
+                opt.hidden = !match;
+                if (match && opt.selected) hasVisibleSelected = true;
+            });
+            // Nếu nhân viên đang được chọn không còn khớp từ khóa tìm mới, KHÔNG tự xóa lựa chọn
+            // (tránh mất lựa chọn ngoài ý muốn) — chỉ đơn giản ẩn khỏi danh sách xổ xuống, giá trị
+            // đã chọn vẫn được giữ nguyên cho tới khi người dùng chọn lại.
         }
 
         // Xây danh sách nhân sự (đối tượng JS) đúng phạm vi đã chọn, dùng chung cho việc xuất.
-        function buildHRExportRows(scope, deptValue) {
+        function buildHRExportRows(scope, deptValue, staffValue) {
             let rows = staffData.slice();
             if (scope === "dept") {
                 rows = rows.filter(s => Array.isArray(s.dept) ? s.dept.includes(deptValue) : s.dept === deptValue);
+            } else if (scope === "staff") {
+                rows = rows.filter(s => s.msnv === staffValue);
             } else if (scope === "working") {
                 rows = rows.filter(s => s.workStatus !== "OFF");
             } else if (scope === "resigned") {
@@ -4706,7 +4756,9 @@
 
         function exportHRToExcel() {
             // [BẢO MẬT] Chỉ cho phép xuất khi tài khoản có quyền xem Tab "Quản Lý Nhân Sự"
-            // (giống hệt điều kiện đang dùng để hiện/ẩn cả Tab này).
+            // (giống hệt điều kiện đang dùng để hiện/ẩn cả Tab này). KHÔNG thay đổi cơ chế
+            // phân quyền hiện có: người dùng chỉ có thể xuất đúng những nhân sự mà staffData
+            // đã tải về theo đúng quyền của tài khoản đang đăng nhập (không gọi thêm API nào).
             if (!currentUserCanViewHR) {
                 alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền.");
                 return;
@@ -4718,46 +4770,78 @@
 
             let scopeEl = document.getElementById("hr-export-scope");
             let deptEl = document.getElementById("hr-export-dept");
+            let staffEl = document.getElementById("hr-export-staff");
             let scope = scopeEl ? scopeEl.value : "all";
             let deptValue = deptEl ? deptEl.value : "";
+            let staffValue = staffEl ? staffEl.value : "";
 
             if (scope === "dept" && !deptValue) {
                 alert("⚠️ Vui lòng chọn phòng ban cần xuất.");
                 return;
             }
+            if (scope === "staff" && !staffValue) {
+                alert("⚠️ Vui lòng chọn nhân viên cần xuất.");
+                return;
+            }
 
-            let rows = buildHRExportRows(scope, deptValue);
+            let rows = buildHRExportRows(scope, deptValue, staffValue);
             if (rows.length === 0) {
                 alert("Không có dữ liệu nhân sự phù hợp với phạm vi đã chọn để xuất.");
                 return;
             }
 
+            // [ĐẦY ĐỦ TRƯỜNG THÔNG TIN] Xuất toàn bộ các trường hiện có trong hồ sơ nhân sự
+            // (đúng những gì người dùng đã cập nhật ở Form thêm/sửa nhân sự), không chỉ một phần
+            // như trước đây. Toàn bộ dữ liệu lấy lại từ staffData đã tải sẵn — không đọc/ghi
+            // thêm gì trên Sheet, không đổi cơ chế bảo mật.
+            let genderLabelMap = { "Nam": "Nam", "Nữ": "Nữ", "Khác": "Khác" };
             let exportRows = rows.map(s => {
                 let info = getContractStatusInfo(s);
                 let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
                 return {
                     "MSNV": s.msnv || "",
                     "Họ và tên": s.name || "",
+                    "Giới tính": genderLabelMap[s.gender] || s.gender || "",
                     "Ngày sinh": s.dob ? formatDateDisplay(s.dob) : "",
+                    "Quốc tịch": s.nationality || "",
                     "Phòng ban": deptText,
                     "Chức vụ": s.position || "",
                     "Ngày vào làm": s.dateJoin ? formatDateDisplay(s.dateJoin) : "",
                     "Số điện thoại": s.phone || "",
                     "Email": s.email || "",
+                    "Địa chỉ thường trú": s.permanentAddress || "",
                     "Trạng thái làm việc": (s.workStatus === "OFF") ? "Đã nghỉ việc" : "Đang làm việc",
                     "Ngày nghỉ việc": s.resignDate ? formatDateDisplay(s.resignDate) : "",
                     "Loại hợp đồng": s.contractType || "Không thời hạn",
+                    "Số hợp đồng": s.contractNumber || "",
                     "Ngày ký hợp đồng": s.contractSignDate ? formatDateDisplay(s.contractSignDate) : "",
                     "Ngày hết hạn hợp đồng": s.contractExpiryDate ? formatDateDisplay(s.contractExpiryDate) : "",
-                    "Trạng thái hợp đồng": info.label
+                    "Trạng thái hợp đồng": info.label,
+                    "Số CCCD/Passport": s.idNumber || "",
+                    "Ngày cấp CCCD/Passport": s.idIssueDate ? formatDateDisplay(s.idIssueDate) : "",
+                    "Nơi cấp CCCD/Passport": s.idIssuePlace || "",
+                    "Ngày hết hạn CCCD/Passport": s.idExpiryDate ? formatDateDisplay(s.idExpiryDate) : "",
+                    "Số giấy phép lao động": s.workPermitNumber || "",
+                    "Mã số BHXH": s.socialInsuranceNumber || "",
+                    "Trình độ": s.educationLevel || "",
+                    "Trường đào tạo": s.educationSchool || "",
+                    "Ngành đào tạo": s.educationMajor || "",
+                    "Số tài khoản ngân hàng": s.bankAccountNumber || "",
+                    "Ngân hàng/Chi nhánh": s.bankNameBranch || "",
+                    "Người liên hệ khẩn cấp": s.emergencyContactName || "",
+                    "Quan hệ với người liên hệ khẩn cấp": s.emergencyContactRelation || "",
+                    "SĐT liên hệ khẩn cấp": s.emergencyContactPhone || ""
                 };
             });
 
             let ws = XLSX.utils.json_to_sheet(exportRows);
             ws['!cols'] = [
-                { wch: 12 }, { wch: 26 }, { wch: 12 }, { wch: 30 }, { wch: 22 }, { wch: 12 },
-                { wch: 14 }, { wch: 26 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 },
-                { wch: 18 }, { wch: 24 }
+                { wch: 12 }, { wch: 26 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 30 },
+                { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 30 }, { wch: 16 },
+                { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
+                { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
+                { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
+                { wch: 22 }, { wch: 18 }
             ];
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
@@ -4765,6 +4849,7 @@
             let scopeLabelMap = {
                 all: "TatCaNhanSu",
                 dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_"),
                 working: "DangLamViec",
                 resigned: "DaNghiViec",
                 expiring: "SapHetHanHopDong"
