@@ -413,7 +413,7 @@
                      đang mở THỰC SỰ là bản mới nhất (đã có tính năng lưu ảnh lên Google Drive),
                      tránh nhầm lẫn với 1 bản index.html cũ hơn còn sót lại trên máy chủ web/trình
                      duyệt. So sánh chuỗi này với FRONTEND_BUILD_VERSION trong file index.html. -->
-                <p style="margin-top:14px; font-size:10px; color:#5b7ba3; opacity:0.7;">Build: <span id="frontend-build-version"></span></p>
+                <p id="frontend-build-version-line" style="margin-top:14px; font-size:10px; color:#5b7ba3; opacity:0.7;">Build: <span id="frontend-build-version"></span></p>
             </div>
         </div>
 
@@ -2100,7 +2100,15 @@
                 return false;
             }
             try {
-                showSyncBanner("Đang lưu lên Google Sheet...");
+                // [ẨN THÔNG BÁO "ĐANG LƯU..." VỚI TÀI KHOẢN USER] Chỉ hiện banner kỹ thuật này
+                // với Admin (giống lý do ẩn dòng "Build: ..." ở applyUserPermissions) — các tài
+                // khoản khác (ReadWrite/ReadOnly) lưu/cập nhật dữ liệu (kể cả file đính kèm) vẫn
+                // diễn ra bình thường ở NỀN, không hề bị bỏ qua hay đổi cách xử lý, chỉ KHÔNG hiện
+                // dòng chữ thông báo này trên màn hình để giao diện gọn hơn. Không ảnh hưởng tới
+                // việc bắt lỗi (catch/finally bên dưới vẫn chạy như cũ khi có sự cố).
+                if (currentUser && currentUser.role === "Admin") {
+                    showSyncBanner("Đang lưu lên Google Sheet...");
+                }
                 // LƯU Ý: KHÔNG stringify payload.dept ở đây — backend (Apps Script) đã tự
                 // JSON.stringify(data.dept) khi lưu vào Sheet. Nếu stringify thêm ở đây sẽ
                 // gây lỗi "double-encode" khiến phòng ban hiển thị sai và lọc không ra kết quả.
@@ -3159,6 +3167,12 @@
                         ${gvControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
+                        <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-success" onclick="confirmUserPermissions('${safeU}')" title="Đọc lại từ Google Sheet và xác nhận toàn bộ quyền vừa phân cho tài khoản này">
+                                <i class="fa-solid fa-check-double"></i> Xác nhận quyền đã phân
+                            </button>
+                            <span id="permcard-confirm-status-${permCardId}" style="font-size:11px; color:#888;"></span>
+                        </div>
                     </div>
                 </div>`;
             }
@@ -3528,6 +3542,15 @@
             renderMyTaskTable();
             updateNhanViecBadge();
 
+            // [ẨN MÃ PHIÊN BẢN VỚI TÀI KHOẢN USER] Dòng "Build: ..." dưới nút "Đăng xuất" (mục
+            // chẩn đoán kỹ thuật, chỉ hữu ích khi đối chiếu bản index.html/code.gs đang chạy) nay
+            // CHỈ hiển thị với tài khoản Admin — các tài khoản khác (ReadWrite/ReadOnly) không
+            // cần thấy thông tin kỹ thuật này. Đây CHỈ là ẩn/hiện giao diện, không đụng tới biến
+            // FRONTEND_BUILD_VERSION hay bất kỳ logic chẩn đoán/bảo mật nào khác (vẫn cập nhật
+            // bình thường ở nền, phòng khi cần bật lại).
+            let buildVersionLineEl = document.getElementById("frontend-build-version-line");
+            if (buildVersionLineEl) buildVersionLineEl.style.display = (currentUser.role === "Admin") ? "block" : "none";
+
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
                 document.getElementById("menu-admin").style.display = "flex";
@@ -3619,6 +3642,38 @@
             });
             let searchInput = document.getElementById("admusr-perm-search");
             filterAdminPermCards(searchInput ? searchInput.value : "");
+        }
+
+        // [NÚT "XÁC NHẬN" - PHÂN QUYỀN CHI TIẾT] Mỗi checkbox phân quyền vẫn TỰ LƯU NGAY xuống
+        // Google Sheet khi Admin bấm (không đổi gì ở cơ chế đó). Hàm này là THAO TÁC THÊM, bắt
+        // buộc bấm sau khi phân quyền xong cho 1 tài khoản: gọi action "confirmUserPermissions"
+        // để server ĐỌC LẠI TRỰC TIẾP từ Google Sheet (không dựa vào bộ nhớ tạm trên trình duyệt)
+        // toàn bộ quyền hiện đang lưu cho tài khoản đó, hiện hộp thoại tóm tắt cho Admin xem lại,
+        // đồng thời server ghi 1 dòng vào Nhật ký hoạt động xác nhận Admin đã rà soát bộ quyền
+        // này — tạo bằng chứng đối chiếu về sau. Đây CHỈ là thao tác ĐỌC + GHI LOG, không sửa/xóa
+        // bất kỳ quyền nào đang có.
+        async function confirmUserPermissions(username) {
+            let permCardId = permCardIdOf(username);
+            let statusEl = document.getElementById("permcard-confirm-status-" + permCardId);
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Sheet (chưa cấu hình URL Web App)."); return; }
+            if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xác nhận...';
+            try {
+                let payload = { action: "confirmUserPermissions", username: username };
+                if (authToken) payload.authToken = authToken;
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                let lines = Array.isArray(data.summaryLines) ? data.summaryLines : [];
+                alert('✅ ĐÃ XÁC NHẬN QUYỀN cho tài khoản "' + username + '" (đọc trực tiếp từ Google Sheet lúc ' + (data.confirmedAt || "") + '):\n\n' + lines.map(l => "• " + l).join("\n"));
+                if (statusEl) statusEl.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#2a7;"></i> Đã xác nhận lúc ' + escapeHtml(data.confirmedAt || "") + ' bởi ' + escapeHtml(data.confirmedBy || "");
+            } catch (err) {
+                alert("❌ Không thể xác nhận quyền: " + err.message);
+                if (statusEl) statusEl.innerText = "";
+            }
         }
 
         // [ĐIỀU HƯỚNG NHANH] Được gọi từ icon 🛡️ ở tab "Thông tin User" và "Theo Phòng ban" —
