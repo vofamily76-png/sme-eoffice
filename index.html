@@ -1570,6 +1570,75 @@
         </div>
     </div>
 
+    <!-- [MỤC [22] - TAB "NHẬN VIỆC"] Modal chi tiết công việc: bấm vào 1 công việc ở tab "Nhận
+         Việc" sẽ mở modal này, hiện đầy đủ thông tin công việc (Người giao, Tên, Mô tả, Ngày
+         giao, Thời hạn, Ưu tiên, Báo cáo yêu cầu, File đính kèm của người giao) + các trường để
+         NGƯỜI NHẬN báo cáo tiến độ thuận tiện: cập nhật Trạng thái, cập nhật Tiến độ (%), đính
+         kèm thêm file báo cáo, và nút "Cập nhật". Gửi 1 lần duy nhất qua action
+         "updateMyTaskStatus" (đã có sẵn, nay chỉ bổ sung thêm khả năng đính kèm file — xem
+         Code.gs mục [22]) — không tạo action mới, không đổi bảo mật. -->
+    <div id="nv-detail-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 560px; max-height: 88vh; overflow-y: auto;">
+            <h2><i class="fa-solid fa-clipboard-list"></i> Chi tiết công việc</h2>
+            <div id="nvd-info-block" style="background:#f7f8fa; border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:14px; line-height:1.8;"></div>
+
+            <div class="input-group">
+                <label>Cập nhật trạng thái</label>
+                <select id="nvd-trangthai">
+                    <option value="Mới giao">Mới giao</option>
+                    <option value="Đang thực hiện">Đang thực hiện</option>
+                    <option value="Hoàn thành">Hoàn thành</option>
+                    <option value="Trễ hạn">Trễ hạn</option>
+                </select>
+            </div>
+
+            <!-- [MỤC "MÔ TẢ" - NỘI DUNG BÁO CÁO CỦA NGƯỜI NHẬN] Người nhận việc gõ nhận xét/nội
+                 dung báo cáo tại đây. Đây là điều kiện BẮT BUỘC (cùng với đính kèm file bên dưới)
+                 để được phép điều chỉnh ô "Tiến độ (%)" — xem hàm nvdUpdateProgressLockState(). -->
+            <div id="nvd-history-wrap" style="display:none; margin-bottom:12px;">
+                <label style="font-weight:600; font-size:13px; display:block; margin-bottom:6px;"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử tiến độ</label>
+                <div id="nvd-history" style="max-height:140px; overflow-y:auto; background:#f7f8fa; border-radius:8px; padding:10px 12px; font-size:12.5px; line-height:1.6;"></div>
+            </div>
+            <div class="input-group">
+                <label>Mô tả / Nội dung báo cáo <span style="color:#d9534f;">*</span></label>
+                <textarea id="nvd-noidung" rows="3" placeholder="Nhập nội dung báo cáo, nhận xét về tiến độ công việc..." oninput="nvdUpdateProgressLockState()" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-family:inherit; resize:vertical;"></textarea>
+                <small style="color:#888;">Bắt buộc nhập nội dung ở đây <b>và</b> đính kèm ít nhất 1 file báo cáo bên dưới thì mới được phép điều chỉnh ô "Tiến độ (%)".</small>
+            </div>
+            <div class="input-group">
+                <label>Cập nhật tiến độ (%)</label>
+                <input type="number" id="nvd-tiendo" min="0" max="100" placeholder="0 - 100" disabled>
+                <small id="nvd-tiendo-lock-hint" style="color:#d9534f;"><i class="fa-solid fa-lock"></i> Nhập nội dung báo cáo và đính kèm file để mở khóa chỉnh tiến độ.</small>
+            </div>
+            <div class="input-group">
+                <label>File đính kèm hiện có</label>
+                <div id="nvd-current-files" style="font-size:13px;"></div>
+            </div>
+            <div class="input-group">
+                <label>Đính kèm thêm file báo cáo (có thể chọn nhiều)</label>
+                <input type="file" id="nvd-file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.rar" onchange="nvdUpdateProgressLockState()">
+                <small style="color:#888;">Giới hạn 15MB/file. File cũ của người giao việc KHÔNG bị mất, file mới chỉ được thêm vào.</small>
+            </div>
+            <div id="nvd-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [MỤC "LỊCH SỬ TIẾN ĐỘ"] Modal DÙNG CHUNG cho cả tab "Giao Việc" và "Nhận Việc": hiện toàn
+         bộ lịch sử các lần cập nhật Trạng thái/Tiến độ/File đính kèm của 1 công việc (cả các lần
+         người giao lẫn người nhận cập nhật), để cả 2 phía cùng xem lại được quá trình tiến độ. -->
+    <div id="progress-history-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10600; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 560px; max-height: 88vh; overflow-y: auto;">
+            <h2 id="pgh-title"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử tiến độ</h2>
+            <div id="pgh-body" style="font-size:13px;"></div>
+            <div style="display:flex; gap:10px; margin-top:14px;">
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeProgressHistoryModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <div class="app-launcher-wrap" id="app-launcher-wrap">
         <div class="app-launcher-header">
             <h4 id="app-launcher-title"><i class="fa-solid fa-plug"></i> Đang mở phần mềm...</h4>
@@ -1691,7 +1760,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v5-chandoan";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v8-lichsu-tiendo";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -4546,6 +4615,43 @@
             }
         }
 
+        // [MỤC "LỊCH SỬ TIẾN ĐỘ"] Hàm DÙNG CHUNG để hiển thị danh sách các lần cập nhật Trạng
+        // thái/Tiến độ/File đính kèm của 1 công việc (dữ liệu t.baoCaoNguoiNhan trả về từ server,
+        // đã gồm cả các lần NGƯỜI GIAO cập nhật ở tab "Giao Việc" lẫn NGƯỜI NHẬN cập nhật ở tab
+        // "Nhận Việc" — xem Code.gs: saveTaskAssignItem + action "updateMyTaskStatus"). Dùng lại
+        // ở CẢ 2 tab để cả người giao việc và người nhận việc đều xem lại được toàn bộ quá trình
+        // tiến độ công việc đã thay đổi như thế nào.
+        function renderProgressHistoryHtml(reports) {
+            let list = Array.isArray(reports) ? reports : [];
+            if (!list.length) return '<div style="color:#aaa; padding:8px 0;">— Chưa có lịch sử cập nhật —</div>';
+            return list.slice().reverse().map(rp => {
+                let isGiao = rp.vaiTro === "NguoiGiao";
+                let roleBadge = `<span style="background:${isGiao ? '#1565c0' : '#2e7d32'}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px;">${isGiao ? 'Người giao' : 'Người nhận'}</span>`;
+                let statusHtml = rp.trangThai ? `<span style="background:${gvStatusBadgeColor(rp.trangThai)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;">${escapeHtml(rp.trangThai)}</span>` : '';
+                let progressHtml = (rp.tienDo !== undefined && rp.tienDo !== "") ? `<span style="margin-left:6px; font-weight:600;">${Number(rp.tienDo) || 0}%</span>` : '';
+                let filesHtml = (rp.files && rp.files.length)
+                    ? rp.files.map(f => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${f.fileId}', '${escapeHtml(f.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(f.fileName)}</a></div>`).join('')
+                    : '';
+                return `<div style="padding:8px 0; border-bottom:1px solid #e5e5e5;">
+                    <div style="color:#888; font-size:11px; margin-bottom:3px;">${escapeHtml(rp.thoiGian || '')}${rp.nguoiGui ? ' • ' + escapeHtml(rp.nguoiGui) : ''} ${roleBadge}${statusHtml}${progressHtml}</div>
+                    ${rp.noiDung ? `<div style="margin-bottom:3px;">${escapeHtml(rp.noiDung)}</div>` : ''}
+                    ${filesHtml}
+                </div>`;
+            }).join('');
+        }
+
+        function openProgressHistoryModal(id) {
+            let t = (taskAssignData || []).find(x => x.id === id) || (myReceivedTasks || []).find(x => x.id === id);
+            if (!t) return;
+            document.getElementById("pgh-title").innerText = "Lịch sử tiến độ: " + (t.tenCongViec || "");
+            document.getElementById("pgh-body").innerHTML = renderProgressHistoryHtml(t.baoCaoNguoiNhan);
+            document.getElementById("progress-history-modal").style.display = "flex";
+        }
+
+        function closeProgressHistoryModal() {
+            document.getElementById("progress-history-modal").style.display = "none";
+        }
+
         function renderMyTaskTable() {
             let tbody = document.querySelector("#tbl-nhanviec tbody");
             if (!tbody) return;
@@ -4574,7 +4680,7 @@
                     t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Báo cáo hàng tuần</span>' : ''
                 ].filter(Boolean).join('<br>') || '<span style="color:#aaa;">— Không yêu cầu —</span>';
                 let newBadge = !t.daXem ? `<span style="background:#e53935; color:#fff; padding:2px 7px; border-radius:8px; font-size:11px; margin-left:6px;">MỚI</span>` : '';
-                return `<tr>
+                return `<tr class="nv-row-clickable" style="cursor:pointer;" onclick="openNvDetailModal('${t.id}')" title="Bấm để xem chi tiết & cập nhật tiến độ">
                     <td>${escapeHtml(t.nguoiGiao)}</td>
                     <td><b>${escapeHtml(t.tenCongViec)}</b>${newBadge}${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
                     <td style="white-space:nowrap;">
@@ -4582,7 +4688,7 @@
                         <div><i class="fa-solid fa-calendar-check" title="Thời hạn xử lý"></i> ${gvFormatDateVN(t.thoiHan)}</div>
                     </td>
                     <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
-                    <td>
+                    <td onclick="event.stopPropagation()">
                         <select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
                             <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
@@ -4590,11 +4696,11 @@
                             <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
                         </select>
                     </td>
-                    <td style="white-space:nowrap;">
-                        <input type="number" min="0" max="100" value="${Number(t.tienDo) || 0}" style="width:60px;" onchange="updateMyTaskStatus('${t.id}', undefined, this.value)"> %
+                    <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & cập nhật tiến độ (yêu cầu nhập nội dung báo cáo + đính kèm file)">
+                        ${Number(t.tienDo) || 0}%
                     </td>
                     <td>${baoCaoHtml}</td>
-                    <td>${attachHtml}</td>
+                    <td onclick="event.stopPropagation()">${attachHtml}</td>
                 </tr>`;
             }).join('');
         }
@@ -4617,17 +4723,164 @@
 
         // Tự cập nhật Trạng thái/Tiến độ của MỘT công việc CỦA CHÍNH MÌNH (server đối chiếu lại
         // đúng Người nhận trước khi cho ghi — xem action "updateMyTaskStatus" ở Code.gs).
-        async function updateMyTaskStatus(id, newTrangThai, newTienDo) {
-            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+        async function updateMyTaskStatus(id, newTrangThai, newTienDo, attachments, noiDungBaoCao) {
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return false; }
             let payload = { action: "updateMyTaskStatus", id: id };
             if (newTrangThai !== undefined) payload.trangThai = newTrangThai;
             if (newTienDo !== undefined) payload.tienDo = newTienDo;
+            if (attachments && attachments.length) payload.attachments = attachments;
+            // [MỤC "MÔ TẢ" - NỘI DUNG BÁO CÁO] Gửi kèm nội dung báo cáo/nhận xét của người nhận
+            // (nếu có) — server dùng để: (1) đối chiếu điều kiện bắt buộc trước khi cho đổi Tiến
+            // độ, (2) lưu vào lịch sử báo cáo, (3) gửi email thông báo cho người giao việc.
+            if (noiDungBaoCao !== undefined && noiDungBaoCao !== "") payload.noiDungBaoCao = noiDungBaoCao;
             let ok = await pushToCloud(payload);
             if (ok) {
                 await loadFromCloud(false);
                 renderMyTaskTable();
                 renderTaskAssignTable();
                 updateNhanViecBadge();
+            }
+            return ok;
+        }
+
+        /* [MỤC [22] - TAB "NHẬN VIỆC"] Modal chi tiết công việc: bấm vào 1 dòng công việc ở tab
+           "Nhận Việc" mở modal hiện đầy đủ thông tin (Người giao, Tên, Mô tả, Ngày giao, Thời
+           hạn, Ưu tiên, Báo cáo yêu cầu, File đính kèm của người giao) kèm khu vực để người nhận
+           báo cáo tiến độ thuận tiện: chọn Trạng thái, nhập Tiến độ (%), đính kèm thêm file, và
+           nút "Cập nhật" gửi tất cả cùng lúc — thay vì phải bấm rời rạc từng ô trên bảng. */
+        let nvdCurrentTaskId = "";
+
+        function openNvDetailModal(id) {
+            let t = (myReceivedTasks || []).find(x => x.id === id);
+            if (!t) return;
+            nvdCurrentTaskId = id;
+
+            let infoEl = document.getElementById("nvd-info-block");
+            let baoCaoHtml = [
+                t.baoCaoHangNgay ? 'Báo cáo hàng ngày' : '',
+                t.baoCaoHangTuan ? 'Báo cáo hàng tuần' : ''
+            ].filter(Boolean).join(', ') || 'Không yêu cầu';
+            infoEl.innerHTML = `
+                <div><b>Người giao:</b> ${escapeHtml(t.nguoiGiao)}</div>
+                <div><b>Tên công việc:</b> ${escapeHtml(t.tenCongViec)}</div>
+                ${t.moTa ? `<div><b>Mô tả:</b> ${escapeHtml(t.moTa)}</div>` : ''}
+                <div><b>Ngày giao:</b> ${gvFormatDateVN(t.ngayGiao) || '—'} &nbsp;|&nbsp; <b>Thời hạn:</b> ${gvFormatDateVN(t.thoiHan) || '—'}</div>
+                <div><b>Ưu tiên:</b> <span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></div>
+                <div><b>Yêu cầu báo cáo:</b> ${escapeHtml(baoCaoHtml)}</div>`;
+
+            document.getElementById("nvd-trangthai").value = t.trangThai || "Mới giao";
+            document.getElementById("nvd-tiendo").value = Number(t.tienDo) || 0;
+            nvdOriginalTienDo = Number(t.tienDo) || 0;
+            nvdOriginalTrangThai = t.trangThai || "Mới giao";
+
+            let filesEl = document.getElementById("nvd-current-files");
+            filesEl.innerHTML = (t.attachments && t.attachments.length)
+                ? t.attachments.map(a => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${a.fileId}', '${escapeHtml(a.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(a.fileName)}</a></div>`).join('')
+                : '<span style="color:#aaa;">— Không có file đính kèm —</span>';
+
+            // [MỤC "LỊCH SỬ TIẾN ĐỘ"] Hiện toàn bộ các lần cập nhật Trạng thái/Tiến độ/File đính
+            // kèm trước đó (gồm cả các lần chính người giao việc cập nhật ở tab "Giao Việc") —
+            // dùng chung 1 hàm hiển thị với modal "Lịch sử tiến độ" ở tab "Giao Việc".
+            let historyWrap = document.getElementById("nvd-history-wrap");
+            let historyEl = document.getElementById("nvd-history");
+            let reports = Array.isArray(t.baoCaoNguoiNhan) ? t.baoCaoNguoiNhan : [];
+            historyWrap.style.display = reports.length ? "block" : "none";
+            historyEl.innerHTML = reports.length ? renderProgressHistoryHtml(reports) : "";
+
+            document.getElementById("nvd-noidung").value = "";
+            document.getElementById("nvd-file").value = "";
+            document.getElementById("nvd-error").style.display = "none";
+            nvdUpdateProgressLockState();
+            document.getElementById("nv-detail-modal").style.display = "flex";
+
+            // Bấm mở chi tiết cũng coi như đã xem, giống hành vi trước đây (đánh dấu daXem).
+            if (!t.daXem) markMyTasksSeen([t.id]);
+        }
+
+        function closeNvDetailModal() {
+            document.getElementById("nv-detail-modal").style.display = "none";
+            nvdCurrentTaskId = "";
+        }
+
+        // [MỤC "MÔ TẢ" - KHÓA/MỞ KHÓA Ô TIẾN ĐỘ] Người nhận việc chỉ được sửa ô "Tiến độ (%)"
+        // khi ĐÃ nhập nội dung vào "Mô tả / Nội dung báo cáo" VÀ đã chọn ít nhất 1 file đính kèm.
+        // Đây là ràng buộc ở GIAO DIỆN để hướng dẫn người dùng; ràng buộc THẬT SỰ (không thể bị
+        // vượt qua) nằm ở SERVER, xem action "updateMyTaskStatus" trong Code.gs.
+        let nvdOriginalTienDo = 0;
+        let nvdOriginalTrangThai = "";
+        function nvdUpdateProgressLockState() {
+            let noidung = (document.getElementById("nvd-noidung")?.value || "").trim();
+            let fileInput = document.getElementById("nvd-file");
+            let hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
+            let tienDoInput = document.getElementById("nvd-tiendo");
+            let lockHint = document.getElementById("nvd-tiendo-lock-hint");
+            let unlocked = !!noidung && hasFile;
+            tienDoInput.disabled = !unlocked;
+            if (!unlocked) tienDoInput.value = nvdOriginalTienDo; // chưa đủ điều kiện -> giữ nguyên giá trị cũ
+            if (lockHint) lockHint.style.display = unlocked ? "none" : "block";
+        }
+
+        async function submitNvDetailUpdate() {
+            if (!nvdCurrentTaskId) return;
+            let errEl = document.getElementById("nvd-error");
+            errEl.style.display = "none";
+
+            let trangThai = document.getElementById("nvd-trangthai").value;
+            let noiDungBaoCao = (document.getElementById("nvd-noidung").value || "").trim();
+
+            let fileInput = document.getElementById("nvd-file");
+            let files = Array.from(fileInput.files || []);
+            if (files.some(f => f.size > 15 * 1024 * 1024)) {
+                errEl.textContent = "Có file quá lớn (giới hạn 15MB/file).";
+                errEl.style.display = "block";
+                return;
+            }
+
+            let attachments = [];
+            if (files.length) {
+                try {
+                    attachments = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+                        let reader = new FileReader();
+                        reader.onload = () => resolve({
+                            fileName: file.name,
+                            mimeType: file.type || "application/octet-stream",
+                            fileData: reader.result.split(",")[1]
+                        });
+                        reader.onerror = () => reject(new Error("Không thể đọc file " + file.name));
+                        reader.readAsDataURL(file);
+                    })));
+                } catch (err) {
+                    errEl.textContent = err.message;
+                    errEl.style.display = "block";
+                    return;
+                }
+            }
+
+            // [MỤC "MÔ TẢ" - ĐIỀU KIỆN BẮT BUỘC ĐỂ ĐỔI TIẾN ĐỘ] Chỉ gửi kèm giá trị Tiến độ mới
+            // khi ô đó đang MỞ KHÓA (đã nhập nội dung báo cáo + đính kèm file) VÀ giá trị thực sự
+            // thay đổi so với ban đầu; nếu không, KHÔNG gửi tienDo lên server (tránh việc gửi giá
+            // trị cũ giữ nguyên nhưng vẫn bị hiểu nhầm là "yêu cầu đổi tiến độ").
+            let tienDoInput = document.getElementById("nvd-tiendo");
+            let tienDo = undefined;
+            if (!tienDoInput.disabled) {
+                let tienDoRaw = tienDoInput.value;
+                let candidate = Math.max(0, Math.min(100, Number(tienDoRaw) || 0));
+                if (candidate !== nvdOriginalTienDo) tienDo = candidate;
+            }
+
+            if (tienDo === undefined && !noiDungBaoCao && trangThai === nvdOriginalTrangThai) {
+                errEl.textContent = "Chưa có thay đổi nào để cập nhật.";
+                errEl.style.display = "block";
+                return;
+            }
+
+            let ok = await updateMyTaskStatus(nvdCurrentTaskId, trangThai, tienDo, attachments, noiDungBaoCao);
+            if (ok) {
+                alert("✔️ Đã cập nhật công việc.");
+                closeNvDetailModal();
+            } else {
+                errEl.textContent = "Không thể cập nhật (kiểm tra kết nối mạng, hoặc bạn chưa nhập nội dung báo cáo + đính kèm file khi muốn đổi Tiến độ).";
+                errEl.style.display = "block";
             }
         }
 
@@ -4656,10 +4909,11 @@
                     t.baoCaoHangNgay ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-day"></i> Ngày</span>' : '',
                     t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Tuần</span>' : ''
                 ].filter(Boolean).join(' ') || '<span style="color:#aaa;">—</span>';
-                let actionsHtml = currentUserCanAssignTask
+                let actionsHtml = (currentUserCanAssignTask
                     ? `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editTaskAssign('${t.id}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
                        <button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
-                    : '';
+                    : '')
+                    + `<button class="btn" style="width:auto; padding:6px 10px; background:#607d8b;" onclick="openProgressHistoryModal('${t.id}')" title="Xem lịch sử tiến độ"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
                 return `<tr>
                     <td><b>${escapeHtml(t.tenCongViec)}</b>${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
                     <td>${escapeHtml(t.nguoiGiao)}</td>
