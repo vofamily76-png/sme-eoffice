@@ -1035,8 +1035,10 @@
                 <h2 class="page-title"><i class="fa-solid fa-list-check"></i> Giao Việc</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
                     Giao công việc cho nhân sự, theo dõi trạng thái/tiến độ và đính kèm tài liệu liên quan.
-                    Mọi tài khoản đã đăng nhập đều xem được danh sách; chỉ tài khoản được Admin cấp quyền
-                    "Được giao việc" mới tạo/sửa/xóa được công việc.
+                    Danh sách dưới đây chỉ hiện những công việc <b>do chính bạn tạo/giao</b> (Admin xem được toàn
+                    bộ để quản trị) — công việc người khác giao cho bạn sẽ hiện ở tab "Nhận Việc". Chỉ tài khoản
+                    được Admin cấp quyền "Được giao việc" mới tạo/sửa/xóa được công việc; nếu Admin đã liên kết
+                    sẵn danh sách người nhận, bạn chỉ chọn được trong đúng danh sách đó.
                 </p>
 
                 <!-- [GIAO VIỆC MỚI] Chỉ hiện với tài khoản có quyền "DuocGiaoViec" (hoặc Admin). -->
@@ -1696,6 +1698,17 @@
         // thoiHan, uuTien, baoCaoHangNgay, baoCaoHangTuan, trangThai, tienDo, attachments,
         // ngayTao, nguoiTao, ngayCapNhat, nguoiCapNhat}
         let taskAssignData = [];
+        // [TAB "NHẬN VIỆC" - RIÊNG TƯ THEO TỪNG TÀI KHOẢN] Công việc do NGƯỜI KHÁC giao cho
+        // CHÍNH tài khoản đang đăng nhập (server đã tự lọc sẵn theo MSNV đã liên kết — xem
+        // output.myReceivedTasks ở code.gs). KHÔNG còn dùng chung mảng "taskAssignData" cho tab
+        // "Nhận Việc" nữa, vì "taskAssignData" nay CHỈ còn chứa công việc do CHÍNH MÌNH giao
+        // (tab "Giao Việc"), không còn chứa công việc của người khác.
+        let myReceivedTasks = [];
+        // [TAB "GIAO VIỆC" - LIÊN KẾT TÀI KHOẢN] Danh sách TÊN nhân sự mà tài khoản đang đăng
+        // nhập được phép chọn làm "Người nhận" khi giao việc — null = KHÔNG giới hạn (giữ đúng
+        // hành vi cũ), mảng (kể cả rỗng) = CHỈ được chọn trong danh sách này (do Admin cấu hình
+        // qua action "setTaskAssignLinks").
+        let myAssignableStaffNames = null;
         let currentUserCanAssignTask = false;
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
@@ -1814,7 +1827,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -1842,7 +1855,7 @@
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
                     mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData,
                     internalDocsData: internalDocsData, workScheduleData: workScheduleData,
-                    taskAssignData: taskAssignData
+                    taskAssignData: taskAssignData, myReceivedTasks: myReceivedTasks
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -1868,6 +1881,7 @@
                 if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
                 if (cache.workScheduleData) workScheduleData = cache.workScheduleData;
                 if (cache.taskAssignData) taskAssignData = cache.taskAssignData;
+                if (cache.myReceivedTasks) myReceivedTasks = cache.myReceivedTasks;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
@@ -1950,6 +1964,13 @@
                 if (data.internalDocs) internalDocsData = data.internalDocs;
                 if (data.workSchedule) workScheduleData = data.workSchedule;
                 if (data.taskAssignments) taskAssignData = data.taskAssignments;
+                // [TAB "NHẬN VIỆC" - RIÊNG TƯ THEO TỪNG TÀI KHOẢN] Server đã tự lọc sẵn đúng
+                // công việc của tài khoản đang đăng nhập (xem output.myReceivedTasks/code.gs).
+                if (data.myReceivedTasks) myReceivedTasks = data.myReceivedTasks;
+                // [TAB "GIAO VIỆC" - LIÊN KẾT TÀI KHOẢN] null = không giới hạn, mảng (kể cả
+                // rỗng) = chỉ được chọn trong danh sách này -> phải kiểm tra "!== undefined" vì
+                // giá trị hợp lệ "null" bị coi là falsy.
+                if (data.myAssignableStaffNames !== undefined) myAssignableStaffNames = data.myAssignableStaffNames;
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
@@ -2668,6 +2689,35 @@
             renderUserListViewForAdmin();
         }
 
+        // [TAB "GIAO VIỆC" - LIÊN KẾT TÀI KHOẢN] Bật/tắt 1 tài khoản trong danh sách "được giao
+        // việc tới" của tài khoản "username" (Admin tick/bỏ tick từng checkbox). Gửi lại TOÀN BỘ
+        // danh sách hiện có (đã cộng/trừ đúng 1 phần tử) lên server qua action RIÊNG
+        // "setTaskAssignLinks" — chỉ ghi đúng cột 22 của sheet "TaiKhoan", không đụng quyền/dữ
+        // liệu nào khác của tài khoản đó.
+        async function toggleUserTaskAssignLink(username, targetUsername, checked) {
+            if (!userDatabase[username]) return;
+            let current = Array.isArray(userDatabase[username].linkedAssignUsernames) ? userDatabase[username].linkedAssignUsernames.slice() : [];
+            if (checked) {
+                if (!current.includes(targetUsername)) current.push(targetUsername);
+            } else {
+                current = current.filter(x => x !== targetUsername);
+            }
+            let ok = await pushToCloud({ action: "setTaskAssignLinks", username: username, linkedUsers: current });
+            if (ok) {
+                userDatabase[username].linkedAssignUsernames = current;
+                saveLocalCache();
+                // Nếu Admin vừa sửa liên kết của CHÍNH tài khoản đang đăng nhập -> cập nhật lại
+                // ngay danh sách "được chọn làm người nhận" đang hiển thị ở form Giao việc.
+                if (username === currentUsername) {
+                    await loadFromCloud(false);
+                    populateGiaoViecFormOptions();
+                }
+            } else {
+                alert(`⚠️ Không thể cập nhật liên kết cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+                renderUserListViewForAdmin();
+            }
+        }
+
         // [TAB "NHẬN VIỆC"] Admin liên kết (hoặc gỡ liên kết, nếu msnv rỗng) 1 tài khoản với
         // đúng 1 nhân sự — để tab "Nhận việc" của tài khoản đó hiện đúng công việc được giao cho
         // họ ở tab "Giao việc". Không ảnh hưởng bất kỳ quyền/dữ liệu nào khác của tài khoản.
@@ -2910,6 +2960,33 @@
                     </span>`;
                 }
 
+                // [TAB "GIAO VIỆC" - LIÊN KẾT TÀI KHOẢN] Chỉ hiện khi tài khoản này ĐANG được
+                // cấp quyền "Được giao việc" (gvEChecked). Admin chọn những tài khoản mà "u" được
+                // phép giao việc tới — server sẽ chỉ cho "u" chọn đúng những người này khi giao
+                // việc (nếu bỏ trống toàn bộ = không giới hạn, giữ nguyên hành vi cũ). Dùng action
+                // RIÊNG "setTaskAssignLinks" (chỉ ghi đúng cột 22 của sheet "TaiKhoan").
+                let gvLinksControl = "";
+                if (u !== "admin" && userDatabase[u].duocGiaoViec) {
+                    let curLinks = userDatabase[u].linkedAssignUsernames || [];
+                    let otherUsernames = sortedUsernames.filter(x => x !== u);
+                    let linksHtml = otherUsernames.length
+                        ? otherUsernames.map(x => {
+                            let safeX = escapeHtml(x);
+                            let checked = curLinks.includes(x) ? "checked" : "";
+                            return `<label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer; margin-right:10px;">
+                                <input type="checkbox" style="width:auto;" value="${safeX}" ${checked} onchange="toggleUserTaskAssignLink('${safeU}', '${safeX}', this.checked)"> ${safeX}
+                            </label>`;
+                        }).join('')
+                        : '<span style="color:#aaa;">— Chưa có tài khoản nào khác —</span>';
+                    gvLinksControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                        <i class="fa-solid fa-link" title="Liên kết tài khoản được giao việc"></i>
+                        <span style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                            <span style="color:#888;">Chỉ cho phép giao việc tới (bỏ trống = không giới hạn, được chọn mọi nhân sự):</span>
+                            <span style="display:flex; flex-wrap:wrap;">${linksHtml}</span>
+                        </span>
+                    </span>`;
+                }
+
                 // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 usersHtml += `<div class="admusr-row">
@@ -2950,6 +3027,7 @@
                         ${cksoControl}
                         ${llvControl}
                         ${gvControl}
+                        ${gvLinksControl}
                         ${staffLinkControl}
                     </div>
                 </div>`;
@@ -3060,7 +3138,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -3182,7 +3260,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -3221,6 +3299,8 @@
             internalDocsData = [];
             workScheduleData = [];
             taskAssignData = [];
+            myReceivedTasks = [];
+            myAssignableStaffNames = null;
             documentsData = [];
             mailGroups = [];
             
@@ -4278,8 +4358,18 @@
 
         // Sinh HTML <option> cho "Người nhận", lọc theo 1 phòng ban (deptFilter rỗng = tất cả nhân
         // viên). Value = TÊN nhân viên (giữ đúng định dạng lưu cũ), kèm data-msnv để tra cứu phòng ban.
+        // [LIÊN KẾT TÀI KHOẢN] Nếu Admin đã giới hạn danh sách người nhận cho tài khoản đang đăng
+        // nhập (myAssignableStaffNames là 1 MẢNG, khác null), CHỈ hiện đúng những người đó — dù
+        // có chọn phòng ban nào. null = không giới hạn (giữ nguyên hành vi cũ, hiện toàn bộ nhân
+        // viên/nhân viên theo phòng ban như trước khi có tính năng này).
         function buildGvStaffOptionsHtml(deptFilter) {
             let list = deptFilter ? staffData.filter(s => getStaffDeptList(s.msnv).includes(deptFilter)) : staffData;
+            if (Array.isArray(myAssignableStaffNames)) {
+                list = list.filter(s => myAssignableStaffNames.includes(s.name));
+            }
+            if (Array.isArray(myAssignableStaffNames) && myAssignableStaffNames.length === 0) {
+                return '<option value="">-- Bạn chưa được Admin liên kết người nhận nào --</option>';
+            }
             return '<option value="">-- Chọn người nhận --</option>' +
                 list.map(s => `<option value="${escapeHtml(s.name)}" data-msnv="${escapeHtml(s.msnv)}">${escapeHtml(s.name)} (${escapeHtml(s.msnv)})</option>`).join('');
         }
@@ -4337,11 +4427,13 @@
         }
 
         /* ===== [TAB "NHẬN VIỆC"] =====
-           Hiện đúng công việc (đã giao ở tab "Giao Việc") thuộc về tài khoản ĐANG ĐĂNG NHẬP,
-           bằng cách đối chiếu: tài khoản -> MSNV đã được Admin liên kết (currentUser.msnv) ->
-           TÊN nhân sự tương ứng trong staffData -> so khớp với trường "nguoiNhan" của từng công
-           việc. Không đổi định dạng lưu trữ cũ, không đụng tới quyền "DuocGiaoViec" (chỉ quyết
-           định ai được GIAO việc, không liên quan tới việc XEM/CẬP NHẬT công việc của chính mình). */
+           Hiện đúng công việc do NGƯỜI KHÁC giao cho tài khoản ĐANG ĐĂNG NHẬP. Server đã tự lọc
+           sẵn đúng danh sách này (đối chiếu MSNV đã liên kết -> tên nhân sự -> "nguoiNhan") và
+           trả về riêng ở "myReceivedTasks" (KHÁC với "taskAssignData", nay chỉ còn chứa công
+           việc do CHÍNH MÌNH giao ở tab "Giao Việc") — để công việc của người khác giao cho
+           mình KHÔNG bị lộ ra cho các tài khoản không liên quan. Không đụng tới quyền
+           "DuocGiaoViec" (chỉ quyết định ai được GIAO việc, không liên quan tới việc XEM/CẬP
+           NHẬT công việc của chính mình). */
 
         // Tên nhân sự (nếu có) tương ứng với tài khoản đang đăng nhập, dựa trên MSNV đã liên kết.
         function getMyStaffName() {
@@ -4350,11 +4442,10 @@
             return s ? s.name : "";
         }
 
-        // Danh sách công việc (ở tab Giao Việc) đang được giao cho chính tài khoản đang đăng nhập.
+        // Danh sách công việc đang được giao cho chính tài khoản đang đăng nhập (đã lọc sẵn ở
+        // server — xem myReceivedTasks/output.myReceivedTasks).
         function getMyTasks() {
-            let myName = getMyStaffName();
-            if (!myName) return [];
-            return (taskAssignData || []).filter(t => t.nguoiNhan === myName);
+            return myReceivedTasks || [];
         }
 
         function countUnseenMyTasks() {
@@ -4435,7 +4526,7 @@
             let ok = await pushToCloud({ action: "markTaskAssignSeen", ids: ids });
             if (ok) {
                 ids.forEach(id => {
-                    let t = (taskAssignData || []).find(x => x.id === id);
+                    let t = (myReceivedTasks || []).find(x => x.id === id);
                     if (t) t.daXem = true;
                 });
                 saveLocalCache();
