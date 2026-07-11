@@ -1131,7 +1131,7 @@
                     <thead><tr>
                         <th>Tên công việc</th><th>Người giao</th><th>Người nhận</th><th>Phòng ban</th>
                         <th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ</th>
-                        <th>Báo cáo</th><th>Đính kèm</th>
+                        <th>Báo cáo</th><th>Đính kèm</th><th>Nội dung báo cáo mới nhất</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -1162,6 +1162,7 @@
                     <thead><tr>
                         <th>Người giao việc</th><th>Tên công việc được giao</th><th>Thời gian xử lý công việc</th>
                         <th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ</th><th>Mục báo cáo tiến độ</th><th>File đính kèm</th>
+                        <th>Nội dung báo cáo mới nhất</th>
                     </tr></thead>
                     <tbody></tbody>
                 </table>
@@ -1760,7 +1761,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v8-lichsu-tiendo";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v9-baocao-2chieu";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -4652,6 +4653,33 @@
             document.getElementById("progress-history-modal").style.display = "none";
         }
 
+        // [MỤC "NỘI DUNG BÁO CÁO MỚI NHẤT"] Lấy mục lịch sử GẦN NHẤT có nhập nội dung báo cáo
+        // (bỏ qua các mục chỉ đổi Trạng thái/Tiến độ mà không có nội dung) — dùng để hiện xem
+        // trước ngay trên bảng, cả ở tab "Giao Việc" lẫn tab "Nhận Việc", không cần mở modal.
+        function getLatestReportEntry(reports) {
+            let list = Array.isArray(reports) ? reports : [];
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i] && list[i].noiDung) return list[i];
+            }
+            return null;
+        }
+
+        // Trả về HTML xem trước ngắn gọn (nội dung + thời gian + người gửi + vai trò) của lần
+        // báo cáo gần nhất, kèm nút mở modal xem TOÀN BỘ lịch sử — dùng chung cho 2 tab.
+        function renderLatestReportPreviewHtml(t) {
+            let latest = getLatestReportEntry(t.baoCaoNguoiNhan);
+            let btn = `<button class="btn" style="width:auto; padding:3px 8px; font-size:11px; margin-top:4px;" onclick="openProgressHistoryModal('${t.id}')"><i class="fa-solid fa-clock-rotate-left"></i> Xem lịch sử</button>`;
+            if (!latest) {
+                return '<span style="color:#aaa;">— Chưa có báo cáo —</span><br>' + btn;
+            }
+            let isGiao = latest.vaiTro === "NguoiGiao";
+            let roleBadge = `<span style="background:${isGiao ? '#1565c0' : '#2e7d32'}; color:#fff; padding:1px 6px; border-radius:8px; font-size:10px;">${isGiao ? 'Người giao' : 'Người nhận'}</span>`;
+            return `<div style="font-size:12.5px; max-width:220px;">
+                <div style="color:#888; font-size:11px; margin-bottom:2px;">${escapeHtml(latest.thoiGian || '')}${latest.nguoiGui ? ' • ' + escapeHtml(latest.nguoiGui) : ''} ${roleBadge}</div>
+                <div style="white-space:normal; word-break:break-word;">${escapeHtml(latest.noiDung)}</div>
+            </div>${btn}`;
+        }
+
         function renderMyTaskTable() {
             let tbody = document.querySelector("#tbl-nhanviec tbody");
             if (!tbody) return;
@@ -4667,7 +4695,7 @@
 
             if (list.length === 0) {
                 let emptyMsg = myName ? "Bạn chưa được giao công việc nào." : "Chưa có công việc để hiển thị (tài khoản chưa liên kết nhân sự).";
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888; padding:16px;">${emptyMsg}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888; padding:16px;">${emptyMsg}</td></tr>`;
                 return;
             }
 
@@ -4701,6 +4729,7 @@
                     </td>
                     <td>${baoCaoHtml}</td>
                     <td onclick="event.stopPropagation()">${attachHtml}</td>
+                    <td onclick="event.stopPropagation()">${renderLatestReportPreviewHtml(t)}</td>
                 </tr>`;
             }).join('');
         }
@@ -4897,7 +4926,7 @@
             }).slice().sort((a, b) => (b.ngayTao || "").localeCompare(a.ngayTao || ""));
 
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888; padding:16px;">Chưa có công việc nào được giao.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:#888; padding:16px;">Chưa có công việc nào được giao.</td></tr>`;
                 return;
             }
 
@@ -4926,6 +4955,7 @@
                     <td>${Number(t.tienDo) || 0}%</td>
                     <td>${baoCaoHtml}</td>
                     <td>${attachHtml}</td>
+                    <td>${renderLatestReportPreviewHtml(t)}</td>
                     <td style="white-space:nowrap;">${actionsHtml}</td>
                 </tr>`;
             }).join('');
