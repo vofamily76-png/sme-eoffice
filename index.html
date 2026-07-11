@@ -1138,14 +1138,17 @@
             <div id="page-nhanviec" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-inbox"></i> Nhận Việc</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
-                    Danh sách công việc <b>được giao riêng cho tài khoản của bạn</b> ở tab "Giao Việc" (khớp
-                    theo đúng nhân sự đã liên kết với tài khoản). Công việc chưa mở xem sẽ có nhãn "Mới";
-                    bạn có thể tự cập nhật Trạng thái/Tiến độ ngay tại đây để người giao việc theo dõi.
+                    Danh sách công việc <b>được giao riêng cho tài khoản của bạn</b> ở tab "Giao Việc". Hệ thống
+                    <b>tự động nhận diện</b> đúng nhân sự của bạn qua Email đăng nhập (khớp với Email trong hồ sơ
+                    nhân sự) — không cần Admin thiết lập liên kết thủ công. Công việc chưa mở xem sẽ có nhãn
+                    "Mới"; bạn có thể tự cập nhật Trạng thái/Tiến độ ngay tại đây để người giao việc theo dõi.
                 </p>
                 <div id="nv-link-warning" style="display:none; margin-bottom:14px; padding:10px 14px; background:#fff3cd; border:1px solid #ffe69c; border-radius:8px; color:#7a5b00; font-size:13px;">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Tài khoản của bạn <b>chưa được Admin liên kết với 1 nhân sự cụ thể</b>
-                    nên chưa thể tự động nhận thông báo công việc được giao. Liên hệ Admin để liên kết
-                    (tab Admin → Quản lý tài khoản → thẻ "Phân quyền chi tiết" → "Liên kết nhân sự").
+                    <i class="fa-solid fa-triangle-exclamation"></i> Hệ thống <b>chưa tự động nhận diện được nhân sự tương ứng
+                    với tài khoản của bạn</b> (Email đăng nhập chưa khớp với Email trong hồ sơ nhân sự nào), nên
+                    chưa thể tự động nhận thông báo công việc được giao. Vui lòng liên hệ Admin để kiểm tra Email
+                    tài khoản có khớp với Email trong hồ sơ nhân sự không, hoặc liên kết thủ công (tab Admin →
+                    Cài đặt hệ thống → thẻ "Phân quyền chi tiết" → "Liên kết nhân sự").
                 </div>
                 <div class="table-controls">
                     <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
@@ -1673,7 +1676,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v2-gopsheetchinh";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v3-tudonglienket";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2941,20 +2944,27 @@
                     </span>`;
                 }
 
-                // [TAB "NHẬN VIỆC" - LIÊN KẾT TÀI KHOẢN VỚI NHÂN SỰ] Cho phép Admin gắn 1 tài
-                // khoản đăng nhập với ĐÚNG 1 nhân sự (MSNV) trong danh mục Nhân sự. Việc liên kết
-                // này CHỈ dùng để tab "Nhận việc" biết công việc nào (được giao ở tab "Giao việc")
-                // là của chính tài khoản đang đăng nhập — KHÔNG ảnh hưởng bất kỳ quyền/tính năng
-                // nào khác của tài khoản.
+                // [TAB "NHẬN VIỆC" - MỤC [19] TỰ ĐỘNG LIÊN KẾT TÀI KHOẢN VỚI NHÂN SỰ] Hệ thống TỰ
+                // ĐỘNG đối chiếu Email tài khoản với Email nhân sự để biết công việc nào (giao ở
+                // tab "Giao việc") là của chính tài khoản đang đăng nhập — Admin KHÔNG cần thiết
+                // lập gì ở đây trong đa số trường hợp. Dropdown này CHỈ dùng để Admin GHI ĐÈ THỦ
+                // CÔNG cho các trường hợp đặc biệt (VD Email tài khoản khác Email hồ sơ nhân sự).
                 let staffLinkControl = "";
                 {
                     let curMsnv = userDatabase[u].msnv || "";
-                    let staffOptionsHtml = '<option value="">-- Chưa liên kết --</option>' +
+                    let autoMsnv = userDatabase[u].msnvAuto || "";
+                    let staffOptionsHtml = '<option value="">-- Chưa liên kết thủ công (dùng tự động) --</option>' +
                         (staffData || []).map(s => `<option value="${escapeHtml(s.msnv)}" ${s.msnv === curMsnv ? "selected" : ""}>${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
+                    let autoHint = curMsnv
+                        ? ''
+                        : (autoMsnv
+                            ? `<span style="color:#1a7f37;"><i class="fa-solid fa-circle-check"></i> Tự động phát hiện: ${escapeHtml(autoMsnv)} - ${escapeHtml(getStaffNameByMsnv(autoMsnv) || "")} (theo Email)</span>`
+                            : `<span style="color:#aaa;"><i class="fa-solid fa-circle-question"></i> Chưa tự động phát hiện được (Email tài khoản chưa khớp Email nhân sự nào)</span>`);
                     staffLinkControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <i class="fa-solid fa-id-badge" title="Liên kết nhân sự (dùng cho tab Nhận việc)"></i>
+                        <i class="fa-solid fa-id-badge" title="Liên kết nhân sự (dùng cho tab Nhận việc) - mặc định TỰ ĐỘNG theo Email"></i>
+                        ${autoHint}
                         <label style="font-weight:normal; display:flex; align-items:center; gap:5px; cursor:pointer;">
-                            Liên kết nhân sự (tab Nhận việc):
+                            Ghi đè thủ công (tùy chọn):
                             <select style="width:auto; padding:2px 4px;" onchange="setUserStaffLink('${safeU}', this.value)">${staffOptionsHtml}</select>
                         </label>
                     </span>`;
@@ -4435,7 +4445,9 @@
            "DuocGiaoViec" (chỉ quyết định ai được GIAO việc, không liên quan tới việc XEM/CẬP
            NHẬT công việc của chính mình). */
 
-        // Tên nhân sự (nếu có) tương ứng với tài khoản đang đăng nhập, dựa trên MSNV đã liên kết.
+        // Tên nhân sự (nếu có) tương ứng với tài khoản đang đăng nhập. currentUser.msnv được server
+        // trả về đã TỰ ĐỘNG đối chiếu qua Email (nếu Admin chưa liên kết thủ công) — xem
+        // getEffectiveStaffMsnvForUser ở Code.gs — nên không cần xử lý gì thêm ở đây.
         function getMyStaffName() {
             if (!currentUser || !currentUser.msnv) return "";
             let s = staffData.find(x => x.msnv === currentUser.msnv);
