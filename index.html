@@ -1069,6 +1069,10 @@
                             <select id="inp-gv-nguoinhan" onchange="gvOnNguoiNhanChange()">
                                 <option value="">-- Chọn người nhận --</option>
                             </select>
+                            <!-- [MỤC [20]] Chỉ để HIỂN THỊ THAM KHẢO — hệ thống tự động chuyển công việc
+                                 tới đúng tài khoản có Email trùng Email nhân sự này, không cần chọn/nhập
+                                 gì thêm. Không phải trường dữ liệu mới, không lưu thêm cột nào. -->
+                            <small id="gv-nguoinhan-email-hint" style="display:block; margin-top:4px; color:#888;"></small>
                         </div>
                         <div class="input-group">
                             <label>Ngày giao</label>
@@ -1676,7 +1680,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v3-tudonglienket";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v4-fixuutien-email";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2944,13 +2948,15 @@
                     </span>`;
                 }
 
-                // [TAB "NHẬN VIỆC" - MỤC [19] TỰ ĐỘNG LIÊN KẾT TÀI KHOẢN VỚI NHÂN SỰ] Hệ thống TỰ
-                // ĐỘNG đối chiếu Email tài khoản với Email nhân sự để biết công việc nào (giao ở
-                // tab "Giao việc") là của chính tài khoản đang đăng nhập — Admin KHÔNG cần thiết
-                // lập gì ở đây trong đa số trường hợp. Dropdown này CHỈ dùng để Admin GHI ĐÈ THỦ
-                // CÔNG cho các trường hợp đặc biệt (VD Email tài khoản khác Email hồ sơ nhân sự).
+                // [MỤC [20] - ẨN Ô "GHI ĐÈ THỦ CÔNG"] Theo yêu cầu: từ khi liên kết đã HOÀN TOÀN
+                // tự động qua Email (mục [19]/[20]), ô chọn nhân sự thủ công này trở nên dư thừa
+                // trên giao diện Admin — ẨN ĐI cho gọn. KHÔNG xóa cột "MSNV" trên Sheet, KHÔNG xóa
+                // action "setUserStaffLink" ở server — chỉ tắt hiển thị (đổi cờ bên dưới thành
+                // true nếu sau này cần dùng lại, VD hiển thị mọi ghi đè thủ công cho Admin xử lý
+                // trường hợp đặc biệt).
+                const SHOW_STAFF_LINK_OVERRIDE_UI = false;
                 let staffLinkControl = "";
-                {
+                if (SHOW_STAFF_LINK_OVERRIDE_UI) {
                     let curMsnv = userDatabase[u].msnv || "";
                     let autoMsnv = userDatabase[u].msnvAuto || "";
                     let staffOptionsHtml = '<option value="">-- Chưa liên kết thủ công (dùng tự động) --</option>' +
@@ -4415,6 +4421,24 @@
             } else {
                 staffSel.value = "";
             }
+            updateGvNguoiNhanEmailHint();
+        }
+
+        // [MỤC [20]] Cập nhật dòng chú thích "Email liên kết (tự động)" bên dưới ô "Người nhận" ở
+        // form Giao việc — CHỈ hiển thị tham khảo, lấy trực tiếp từ staffData (Email khai báo
+        // trong hồ sơ nhân sự), không lưu thêm cột/trường dữ liệu nào. Nhắc người giao việc biết
+        // công việc sẽ tự động tới đúng tài khoản có Email trùng Email này (xem mục [19]/[20]).
+        function updateGvNguoiNhanEmailHint() {
+            let hintEl = document.getElementById("gv-nguoinhan-email-hint");
+            if (!hintEl) return;
+            let staffSel = document.getElementById("inp-gv-nguoinhan");
+            let name = staffSel ? staffSel.value : "";
+            if (!name) { hintEl.innerHTML = ""; return; }
+            let staff = (staffData || []).find(s => s.name === name);
+            let email = staff ? (staff.email || "").trim() : "";
+            hintEl.innerHTML = email
+                ? `<i class="fa-solid fa-envelope"></i> Email liên kết (tự động): <b>${escapeHtml(email)}</b> — công việc sẽ tự động hiện ở tab "Nhận Việc" của tài khoản dùng đúng Email này.`
+                : `<i class="fa-solid fa-triangle-exclamation" style="color:#c98a00;"></i> Nhân sự này chưa khai báo Email trong hồ sơ — cần bổ sung Email (tab Nhân sự) để tự động nhận việc, nếu không Admin phải liên kết thủ công.`;
         }
 
         // Chọn Người nhận ở form Giao việc -> tự động đồng bộ đúng Phòng ban tương ứng của nhân
@@ -4422,10 +4446,10 @@
         function gvOnNguoiNhanChange() {
             let staffSel = document.getElementById("inp-gv-nguoinhan");
             let deptSel = document.getElementById("inp-gv-phongban");
-            if (!staffSel || !deptSel || !staffSel.value) return;
+            if (!staffSel || !deptSel || !staffSel.value) { updateGvNguoiNhanEmailHint(); return; }
             let opt = staffSel.selectedOptions[0];
             let msnv = opt ? opt.dataset.msnv : "";
-            if (!msnv) return;
+            if (!msnv) { updateGvNguoiNhanEmailHint(); return; }
             let deptList = getStaffDeptList(msnv);
             if (deptList.length && !deptList.includes(deptSel.value)) {
                 let keepName = staffSel.value;
@@ -4434,6 +4458,7 @@
                 staffSel.innerHTML = buildGvStaffOptionsHtml(deptSel.value);
                 if (staffSel.querySelector(`option[value="${CSS.escape(keepName)}"]`)) staffSel.value = keepName;
             }
+            updateGvNguoiNhanEmailHint();
         }
 
         /* ===== [TAB "NHẬN VIỆC"] =====
@@ -4620,6 +4645,7 @@
             populateGiaoViecFormOptions();
             document.getElementById("inp-gv-phongban").value = "";
             document.getElementById("inp-gv-nguoinhan").value = "";
+            updateGvNguoiNhanEmailHint();
             document.getElementById("inp-gv-uutien").value = "Bình thường";
             document.getElementById("inp-gv-trangthai").value = "Mới giao";
             document.getElementById("inp-gv-baocaongay").checked = false;
@@ -4674,6 +4700,7 @@
                 }
                 gvStaffSel.value = item.nguoiNhan || "";
             }
+            updateGvNguoiNhanEmailHint();
             document.getElementById("inp-gv-ngaygiao").value = item.ngayGiao || "";
             document.getElementById("inp-gv-thoihan").value = item.thoiHan || "";
             document.getElementById("inp-gv-uutien").value = item.uuTien || "Bình thường";
