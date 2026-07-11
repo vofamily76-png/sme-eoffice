@@ -1278,6 +1278,17 @@
                 </div>
 
                 <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-magnifying-glass-location"></i> Chẩn đoán nơi lưu dữ liệu "Giao Việc"</h3>
+                    <p style="color:#666; font-size:13px; margin-bottom:10px;">
+                        Bấm nút bên dưới để server (bản code ĐANG THỰC SỰ CHẠY) trả lời chính xác: dữ liệu Giao việc
+                        hiện đang đọc/ghi vào đúng Google Sheet + tab nào, và đang có bao nhiêu dòng dữ liệu — giúp
+                        xác định ngay có phải do chưa triển khai lại (Deploy) bản code mới hay không.
+                    </p>
+                    <button class="btn" style="width:auto" onclick="chanDoanGiaoViec()"><i class="fa-solid fa-stethoscope"></i> Kiểm tra ngay</button>
+                    <div id="chandoan-giaoviec-result" style="margin-top:12px; font-size:13px;"></div>
+                </div>
+
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
                     <h3><i class="fa-solid fa-user-gear"></i> Tạo tài khoản người dùng & Phân quyền</h3>
                     <div class="form-row">
                         <div class="input-group">
@@ -1680,7 +1691,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v4-fixuutien-email";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v5-chandoan";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2054,6 +2065,38 @@
             localStorage.setItem("sme_script_url", url);
             alert("✔️ Đã lưu URL kết nối. Đang đồng bộ dữ liệu...");
             loadFromCloud(manual=true).then(() => updateSystemData());
+        }
+
+        // [CHẨN ĐOÁN - TRẢ LỜI TRỰC TIẾP TỪ SERVER ĐANG CHẠY] Gọi action "diagGiaoViecStorage"
+        // (chỉ Admin) để biết CHÍNH XÁC bản code đang thực thi hiện tại (không phải bản Claude vừa
+        // gửi, không phải suy đoán) đang đọc/ghi dữ liệu Giao việc vào đúng Google Sheet + tab nào,
+        // và đang có bao nhiêu dòng — loại bỏ hoàn toàn nghi ngờ do chưa Deploy lại/deploy nhầm URL.
+        async function chanDoanGiaoViec() {
+            let resultEl = document.getElementById("chandoan-giaoviec-result");
+            if (!resultEl) return;
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Sheet (chưa cấu hình URL Web App)."); return; }
+            resultEl.innerHTML = '<span style="color:#888;"><i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...</span>';
+            try {
+                let payload = { action: "diagGiaoViecStorage", authToken: authToken };
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                resultEl.innerHTML = `
+                    <div style="padding:10px 14px; background:#eef7ff; border:1px solid #bcdcff; border-radius:8px;">
+                        <div>📄 <b>Google Sheet:</b> "${escapeHtml(data.spreadsheetName || "")}" — <a href="${escapeHtml(data.spreadsheetUrl)}" target="_blank">Mở Google Sheet ↗</a></div>
+                        <div>📑 <b>Tab (sheet con):</b> "${escapeHtml(data.sheetName || "")}"</div>
+                        <div>🔢 <b>Số dòng công việc hiện có:</b> ${data.rowCount}</div>
+                        <div>🏷️ <b>Phiên bản backend đang chạy:</b> ${escapeHtml(data.buildVersion || "(không rõ)")}</div>
+                        <div style="margin-top:6px; color:#555;">Nếu URL Google Sheet ở trên KHÔNG PHẢI là "Danh bạ SME" của bạn,
+                        nghĩa là Web App đang chạy code CŨ chưa được Deploy lại đúng cách (xem hướng dẫn "Triển khai lại" ở tài liệu).</div>
+                    </div>`;
+            } catch (err) {
+                resultEl.innerHTML = `<span style="color:#c0392b;">❌ Lỗi khi kiểm tra: ${escapeHtml(err.message)}</span>`;
+            }
         }
 
         function toggleForgotPasswordForm(show) {
