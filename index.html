@@ -1633,6 +1633,7 @@
     <div id="progress-history-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10600; justify-content: center; align-items: center;">
         <div class="login-box" style="max-width: 560px; max-height: 88vh; overflow-y: auto;">
             <h2 id="pgh-title"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử tiến độ</h2>
+            <div id="pgh-subtitle" style="font-size:12.5px; margin:-6px 0 10px;"></div>
             <div id="pgh-body" style="font-size:13px;"></div>
             <div style="display:flex; gap:10px; margin-top:14px;">
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeProgressHistoryModal()">Đóng</button>
@@ -4479,6 +4480,58 @@
             return "#8e8e8e"; // Mới giao
         }
 
+        // [MỤC "CẢNH BÁO THỜI HẠN"] Tính trạng thái ĐỐI CHIẾU THỜI HẠN của 1 công việc (dùng
+        // CHUNG cho cả tab "Giao Việc" và tab "Nhận Việc", để 2 bên luôn nhìn thấy CÙNG 1 màu
+        // cảnh báo cho CÙNG 1 công việc — đúng mục đích "đối chiếu công việc hai bên"):
+        //   - "done"    : Trạng thái đã là "Hoàn thành" -> màu XANH (hiển thị hoàn thành).
+        //   - "overdue" : Chưa hoàn thành và ĐÃ QUA Thời hạn xử lý -> màu ĐỎ (cảnh báo quá hạn).
+        //   - "soon"    : Chưa hoàn thành và còn <= 3 ngày nữa là tới Thời hạn -> màu CAM (cảnh
+        //                 báo sắp đến hạn).
+        //   - "normal"  : Còn nhiều thời gian / chưa có Thời hạn -> màu mặc định, không cảnh báo.
+        // CHỈ tính toán để TÔ MÀU hiển thị — không đụng tới/không ghi đè bất kỳ dữ liệu nào đã
+        // lưu (Trạng thái/Tiến độ vẫn do người dùng tự chọn/cập nhật như cũ).
+        var GV_SAP_HET_HAN_SO_NGAY = 3; // Ngưỡng "sắp đến hạn": còn từ 0-3 ngày nữa tới Thời hạn.
+        function gvDueStatus(t) {
+            if (!t) return "normal";
+            if (t.trangThai === "Hoàn thành") return "done";
+            if (!t.thoiHan) return "normal";
+            let due = new Date(t.thoiHan + "T23:59:59");
+            if (isNaN(due.getTime())) return "normal";
+            let now = new Date();
+            if (now > due) return "overdue";
+            let diffDays = (due - now) / (1000 * 60 * 60 * 24);
+            if (diffDays <= GV_SAP_HET_HAN_SO_NGAY) return "soon";
+            return "normal";
+        }
+        function gvDueStatusColor(status) {
+            if (status === "done") return "#2e7d32";     // xanh lá — hoàn thành
+            if (status === "overdue") return "#c62828";  // đỏ — quá hạn
+            if (status === "soon") return "#ef6c00";     // cam — sắp đến hạn
+            return "#333333";                             // mặc định — còn nhiều thời gian
+        }
+        function gvDueStatusBg(status) {
+            if (status === "done") return "#e8f5e9";
+            if (status === "overdue") return "#fdecea";
+            if (status === "soon") return "#fff3e0";
+            return "transparent";
+        }
+        function gvDueStatusLabel(status) {
+            if (status === "done") return "Hoàn thành";
+            if (status === "overdue") return "Quá hạn";
+            if (status === "soon") return "Sắp đến hạn";
+            return "";
+        }
+        // Sinh HTML hiển thị "Thời hạn" kèm màu/nhãn cảnh báo — dùng chung cho bảng "Giao Việc",
+        // bảng "Nhận Việc" và các modal chi tiết, để đồng bộ 1 màu duy nhất ở mọi nơi.
+        function gvRenderThoiHanHtml(t) {
+            let status = gvDueStatus(t);
+            let label = gvDueStatusLabel(status);
+            let color = gvDueStatusColor(status);
+            let dateHtml = `<span style="color:${color}; font-weight:${status === 'normal' ? 'normal' : '700'};">${gvFormatDateVN(t.thoiHan) || '—'}</span>`;
+            if (!label) return dateHtml;
+            return `${dateHtml}<br><span style="background:${gvDueStatusBg(status)}; color:${color}; border:1px solid ${color}; padding:0 6px; border-radius:8px; font-size:10.5px; display:inline-block; margin-top:2px;">${label}</span>`;
+        }
+
         // ===== [GIAO VIỆC] Đồng bộ "Người nhận" <-> "Phòng ban" theo đúng dữ liệu nhân sự thật
         //       (staffData/depts đã có sẵn trong hệ thống), tương tự cơ chế đang dùng ở tab
         //       "Quản lý thiết bị". KHÔNG đổi định dạng lưu trữ: nguoiNhan/phongBan vẫn được lưu
@@ -4645,6 +4698,12 @@
             let t = (taskAssignData || []).find(x => x.id === id) || (myReceivedTasks || []).find(x => x.id === id);
             if (!t) return;
             document.getElementById("pgh-title").innerText = "Lịch sử tiến độ: " + (t.tenCongViec || "");
+            // [ĐỐI CHIẾU 2 BÊN] Hiện lại Người giao/Người nhận + Thời hạn kèm màu cảnh báo ngay
+            // trên đầu modal lịch sử, để cả 2 phía dễ đối chiếu công việc mà không cần rời màn
+            // hình khác — chỉ hiển thị, không đụng tới dữ liệu.
+            document.getElementById("pgh-subtitle").innerHTML =
+                `<b>Người giao:</b> ${escapeHtml(t.nguoiGiao || '—')} &nbsp;→&nbsp; <b>Người nhận:</b> ${escapeHtml(t.nguoiNhan || '—')}` +
+                `&nbsp;|&nbsp; <b>Thời hạn:</b> ${gvRenderThoiHanHtml(t)}`;
             document.getElementById("pgh-body").innerHTML = renderProgressHistoryHtml(t.baoCaoNguoiNhan);
             document.getElementById("progress-history-modal").style.display = "flex";
         }
@@ -4713,7 +4772,7 @@
                     <td><b>${escapeHtml(t.tenCongViec)}</b>${newBadge}${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
                     <td style="white-space:nowrap;">
                         <div><i class="fa-solid fa-calendar-plus" title="Ngày giao"></i> ${gvFormatDateVN(t.ngayGiao)}</div>
-                        <div><i class="fa-solid fa-calendar-check" title="Thời hạn xử lý"></i> ${gvFormatDateVN(t.thoiHan)}</div>
+                        <div><i class="fa-solid fa-calendar-check" title="Thời hạn xử lý"></i> ${gvRenderThoiHanHtml(t)}</div>
                     </td>
                     <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
                     <td onclick="event.stopPropagation()">
@@ -4793,7 +4852,7 @@
                 <div><b>Người giao:</b> ${escapeHtml(t.nguoiGiao)}</div>
                 <div><b>Tên công việc:</b> ${escapeHtml(t.tenCongViec)}</div>
                 ${t.moTa ? `<div><b>Mô tả:</b> ${escapeHtml(t.moTa)}</div>` : ''}
-                <div><b>Ngày giao:</b> ${gvFormatDateVN(t.ngayGiao) || '—'} &nbsp;|&nbsp; <b>Thời hạn:</b> ${gvFormatDateVN(t.thoiHan) || '—'}</div>
+                <div><b>Ngày giao:</b> ${gvFormatDateVN(t.ngayGiao) || '—'} &nbsp;|&nbsp; <b>Thời hạn:</b> ${gvRenderThoiHanHtml(t)}</div>
                 <div><b>Ưu tiên:</b> <span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></div>
                 <div><b>Yêu cầu báo cáo:</b> ${escapeHtml(baoCaoHtml)}</div>`;
 
@@ -4949,7 +5008,7 @@
                     <td>${escapeHtml(t.nguoiNhan)}</td>
                     <td>${escapeHtml(t.phongBan)}</td>
                     <td>${gvFormatDateVN(t.ngayGiao)}</td>
-                    <td>${gvFormatDateVN(t.thoiHan)}</td>
+                    <td>${gvRenderThoiHanHtml(t)}</td>
                     <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
                     <td><span style="background:${gvStatusBadgeColor(t.trangThai)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.trangThai)}</span></td>
                     <td>${Number(t.tienDo) || 0}%</td>
