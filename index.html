@@ -2547,6 +2547,27 @@
             renderUserListViewForAdmin();
         }
 
+        // [KHÓA TÀI KHOẢN - ADMIN] Khóa/mở khóa 1 tài khoản — dùng action RIÊNG "setUserLockStatus"
+        // (chỉ ghi đúng cột "TaiKhoanBiKhoa", KHÔNG đụng tới mật khẩu/phân quyền/dữ liệu nào
+        // khác của tài khoản đó). Tài khoản bị khóa sẽ không đăng nhập được nữa (dù đúng mật
+        // khẩu) và phiên đăng nhập đang hoạt động (nếu có) cũng lập tức mất hiệu lực ở lần gọi
+        // tiếp theo. Mở khóa lại là dùng được ngay như cũ — KHÔNG mất dữ liệu.
+        async function toggleUserLockStatus(username, lock) {
+            if (username === "admin") { alert("⚠️ Không thể khóa tài khoản Admin gốc!"); return; }
+            if (username === currentUser.username) { alert("⚠️ Không thể tự khóa chính tài khoản đang đăng nhập!"); return; }
+            let confirmMsg = lock
+                ? `Xác nhận KHÓA tài khoản "${username}"?\nTài khoản này sẽ KHÔNG đăng nhập được nữa cho tới khi được mở khóa lại (mật khẩu và toàn bộ quyền hạn vẫn được giữ nguyên).`
+                : `Xác nhận MỞ KHÓA tài khoản "${username}"?\nTài khoản này sẽ đăng nhập được trở lại như bình thường.`;
+            if (!confirm(confirmMsg)) return;
+
+            let ok = await pushToCloud({ action: "setUserLockStatus", username: username, locked: !!lock });
+            if (ok && userDatabase[username]) { userDatabase[username].locked = !!lock; saveLocalCache(); }
+            alert(ok
+                ? (lock ? `🔒 Đã khóa tài khoản "${username}".` : `🔓 Đã mở khóa tài khoản "${username}".`)
+                : `❌ Không thể ${lock ? "khóa" : "mở khóa"} tài khoản (kiểm tra quyền Admin / kết nối mạng).`);
+            renderUserListViewForAdmin();
+        }
+
         async function changeUserRole(username, newRole) {
             if (username === "admin") { alert("⚠️ Không thể thay đổi phân quyền của tài khoản Admin gốc!"); renderUserListViewForAdmin(); return; }
             if (!userDatabase[username]) return;
@@ -2916,6 +2937,20 @@
                 let actionsHtml = `<button class="btn btn-sm" onclick="openUserDetailPermission('${safeU}')" title="Phân quyền chi tiết"><i class="fa-solid fa-user-shield"></i></button>`;
                 actionsHtml += `<button class="btn btn-sm btn-warning" onclick="resetUserPassword('${safeU}')" title="Đặt lại mật khẩu"><i class="fa-solid fa-key"></i></button>`;
                 actionsHtml += `<button class="btn btn-sm" onclick="updateUserLinkedEmail('${safeU}')" title="Gán/sửa email liên kết"><i class="fa-solid fa-envelope"></i></button>`;
+                // [KHÓA TÀI KHOẢN] Nút khóa/mở khóa 1 tài khoản — tài khoản bị khóa sẽ KHÔNG
+                // đăng nhập được nữa (dù đúng mật khẩu), mọi thông tin/quyền hạn khác vẫn được
+                // GIỮ NGUYÊN, mở khóa lại là dùng được ngay như cũ. Không cho phép tự khóa CHÍNH
+                // tài khoản đang đăng nhập (ẩn hẳn nút với chính mình, tránh tự khóa nhầm không
+                // ai mở khóa lại được), và KHÔNG hiện nút này với riêng tài khoản "admin" gốc
+                // (tài khoản quản trị cao nhất, giống hệt cách nút "Xóa tài khoản" cũng luôn ẩn
+                // với "admin") — server cũng tự kiểm tra lại cả 2 điều kiện này dù gọi thẳng API.
+                if (u !== currentUser.username && u !== "admin") {
+                    if (userDatabase[u].locked) {
+                        actionsHtml += `<button class="btn btn-sm btn-success" onclick="toggleUserLockStatus('${safeU}', false)" title="Mở khóa tài khoản"><i class="fa-solid fa-lock-open"></i></button>`;
+                    } else {
+                        actionsHtml += `<button class="btn btn-sm btn-danger" onclick="toggleUserLockStatus('${safeU}', true)" title="Khóa tài khoản (không cho đăng nhập)"><i class="fa-solid fa-lock"></i></button>`;
+                    }
+                }
                 // [BẢO MẬT - 2FA] Admin có thể GỠ 2FA hộ 1 tài khoản (kể cả Admin) khi người
                 // dùng đó bị mất điện thoại/thiết bị Authenticator — KHÔNG cần biết mật khẩu
                 // của tài khoản đó. Chỉ hiện nút khi tài khoản đó ĐANG bật 2FA.
@@ -2933,6 +2968,11 @@
                 let twoFaBadge = userDatabase[u].totpEnabled
                     ? `<span style="font-size:11px; color:#2a7; white-space:nowrap;" title="Đã bật xác thực 2 lớp"><i class="fa-solid fa-shield-halved"></i> 2FA: Bật</span>`
                     : `<span style="font-size:11px; color:#aaa; white-space:nowrap;" title="Chưa bật xác thực 2 lớp"><i class="fa-solid fa-shield"></i> 2FA: Tắt</span>`;
+                // [KHÓA TÀI KHOẢN] Nhãn nổi bật cho biết tài khoản đang bị khóa — chỉ hiện khi
+                // đang bị khóa (không chiếm thêm chỗ với các tài khoản bình thường).
+                let lockBadge = userDatabase[u].locked
+                    ? `<span style="font-size:11px; color:#fff; background:#d9534f; padding:2px 6px; border-radius:3px; white-space:nowrap;" title="Tài khoản đang bị khóa, không đăng nhập được"><i class="fa-solid fa-lock"></i> Đã khóa</span>`
+                    : "";
 
                 let docsControl = "";
                 if (u === "admin") {
@@ -3132,6 +3172,7 @@
                     <span style="font-size:11px; color:#888; white-space:nowrap;" title="Phòng ban (suy ra từ email liên kết)"><i class="fa-solid fa-building"></i> ${escapeHtml(deptGroup)}</span>
                     ${emailBadge}
                     ${twoFaBadge}
+                    ${lockBadge}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`;
 
@@ -3141,6 +3182,7 @@
                     <span><b>${safeU}</b> ${roleControl}</span>
                     ${emailBadge}
                     ${twoFaBadge}
+                    ${lockBadge}
                     <span style="display:flex;gap:4px">${actionsHtml}</span>
                 </div>`);
 
