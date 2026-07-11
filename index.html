@@ -389,6 +389,11 @@
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
+                    <li class="menu-item" id="menu-giaoviec" onclick="switchPage('giaoviec')"><i class="fa-solid fa-list-check"></i> Giao Việc</li>
+                    <li class="menu-item" id="menu-nhanviec" onclick="switchPage('nhanviec')">
+                        <i class="fa-solid fa-inbox"></i> Nhận Việc
+                        <span id="nv-badge-count" style="display:none; background:#e53935; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">0</span>
+                    </li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
@@ -1026,6 +1031,134 @@
                 <div id="llv-week-grid" class="llv-week-grid"></div>
             </div>
 
+            <div id="page-giaoviec" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-list-check"></i> Giao Việc</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Giao công việc cho nhân sự, theo dõi trạng thái/tiến độ và đính kèm tài liệu liên quan.
+                    Mọi tài khoản đã đăng nhập đều xem được danh sách; chỉ tài khoản được Admin cấp quyền
+                    "Được giao việc" mới tạo/sửa/xóa được công việc.
+                </p>
+
+                <!-- [GIAO VIỆC MỚI] Chỉ hiện với tài khoản có quyền "DuocGiaoViec" (hoặc Admin). -->
+                <div class="admin-box" id="gv-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
+                    <h3 id="gv-form-title"><i class="fa-solid fa-square-plus"></i> Giao việc mới</h3>
+                    <input type="hidden" id="edit-id-gv" value="">
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Tên công việc *</label>
+                            <input type="text" id="inp-gv-ten" placeholder="Ví dụ: Soạn báo cáo doanh thu tháng 7">
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Mô tả</label>
+                            <textarea id="inp-gv-mota" rows="3" placeholder="Mô tả chi tiết nội dung, yêu cầu công việc..."></textarea>
+                        </div>
+                        <div class="input-group">
+                            <label>Phòng ban</label>
+                            <!-- Chọn Phòng ban trước để lọc đúng danh sách Người nhận thuộc phòng ban đó
+                                 (chọn "-- Chọn phòng ban --" = hiện lại toàn bộ nhân viên). -->
+                            <select id="inp-gv-phongban" onchange="gvOnPhongBanChange()">
+                                <option value="">-- Chọn phòng ban --</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Người nhận *</label>
+                            <!-- Chọn nhân viên từ danh sách hệ thống -> tự động đồng bộ đúng Phòng ban
+                                 tương ứng của nhân viên đó (giống cơ chế ở tab Quản lý thiết bị). -->
+                            <select id="inp-gv-nguoinhan" onchange="gvOnNguoiNhanChange()">
+                                <option value="">-- Chọn người nhận --</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày giao</label>
+                            <input type="date" id="inp-gv-ngaygiao">
+                        </div>
+                        <div class="input-group">
+                            <label>Thời hạn</label>
+                            <input type="date" id="inp-gv-thoihan">
+                        </div>
+                        <div class="input-group">
+                            <label>Ưu tiên</label>
+                            <select id="inp-gv-uutien">
+                                <option value="Thấp">Thấp</option>
+                                <option value="Bình thường" selected>Bình thường</option>
+                                <option value="Cao">Cao</option>
+                                <option value="Khẩn cấp">Khẩn cấp</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Trạng thái</label>
+                            <select id="inp-gv-trangthai">
+                                <option value="Mới giao">Mới giao</option>
+                                <option value="Đang thực hiện">Đang thực hiện</option>
+                                <option value="Hoàn thành">Hoàn thành</option>
+                                <option value="Trễ hạn">Trễ hạn</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Đính kèm (có thể chọn nhiều file)</label>
+                            <input type="file" id="inp-gv-file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.rar">
+                            <span id="gv-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1; flex-direction: row; gap: 24px; align-items: center;">
+                            <label style="font-weight:normal; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="inp-gv-baocaongay" style="width:auto;"> Cho phép báo cáo hàng ngày
+                            </label>
+                            <label style="font-weight:normal; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                                <input type="checkbox" id="inp-gv-baocaotuan" style="width:auto;"> Cho phép báo cáo hàng tuần
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="saveTaskAssign()">Giao việc ✔️</button>
+                            <button class="btn btn-danger" id="btn-delete-gv" onclick="deleteTaskAssignRow(document.getElementById('edit-id-gv').value)" style="display:none; margin-left:10px; width:auto; padding:12px;">Xóa công việc 🗑️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-gv" onclick="resetTaskAssignForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-controls">
+                    <input type="text" id="search-gv" class="search-box" oninput="renderTaskAssignTable()" placeholder="Tìm theo tên công việc, người giao, người nhận, phòng ban...">
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-giaoviec">
+                    <thead><tr>
+                        <th>Tên công việc</th><th>Người giao</th><th>Người nhận</th><th>Phòng ban</th>
+                        <th>Ngày giao</th><th>Thời hạn</th><th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ</th>
+                        <th>Báo cáo</th><th>Đính kèm</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
+            <div id="page-nhanviec" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-inbox"></i> Nhận Việc</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Danh sách công việc <b>được giao riêng cho tài khoản của bạn</b> ở tab "Giao Việc" (khớp
+                    theo đúng nhân sự đã liên kết với tài khoản). Công việc chưa mở xem sẽ có nhãn "Mới";
+                    bạn có thể tự cập nhật Trạng thái/Tiến độ ngay tại đây để người giao việc theo dõi.
+                </p>
+                <div id="nv-link-warning" style="display:none; margin-bottom:14px; padding:10px 14px; background:#fff3cd; border:1px solid #ffe69c; border-radius:8px; color:#7a5b00; font-size:13px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Tài khoản của bạn <b>chưa được Admin liên kết với 1 nhân sự cụ thể</b>
+                    nên chưa thể tự động nhận thông báo công việc được giao. Liên hệ Admin để liên kết
+                    (tab Admin → Quản lý tài khoản → thẻ "Phân quyền chi tiết" → "Liên kết nhân sự").
+                </div>
+                <div class="table-controls">
+                    <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-nhanviec">
+                    <thead><tr>
+                        <th>Người giao việc</th><th>Tên công việc được giao</th><th>Thời gian xử lý công việc</th>
+                        <th>Ưu tiên</th><th>Trạng thái</th><th>Tiến độ</th><th>Mục báo cáo tiến độ</th><th>File đính kèm</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-chukyso" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-signature"></i> Chữ Ký Số</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Trình file ký, theo dõi và xử lý các hồ sơ chữ ký số. Dữ liệu và file đính kèm của tính năng này được lưu ở 1 Google Sheet + Google Drive RIÊNG, tách biệt hoàn toàn với dữ liệu Danh bạ/Nhân sự/Thiết bị.</p>
@@ -1538,7 +1671,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-10.otherapps-icon-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -1559,6 +1692,12 @@
         // Tài liệu văn bản nội bộ: {maTaiLieu, tenTaiLieu, phienBan, donViChuBien, ngayBanHanh, nguoiPheDuyet, fileName, fileId, fileUrl, uploadDate}
         let internalDocsData = [];
         let workScheduleData = [];
+        // [TAB "GIAO VIỆC"] {id, tenCongViec, moTa, nguoiGiao, nguoiNhan, phongBan, ngayGiao,
+        // thoiHan, uuTien, baoCaoHangNgay, baoCaoHangTuan, trangThai, tienDo, attachments,
+        // ngayTao, nguoiTao, ngayCapNhat, nguoiCapNhat}
+        let taskAssignData = [];
+        let currentUserCanAssignTask = false;
+        let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
         // chung, phải gọi riêng action "getSignatureData" (xem loadSignatureData()).
@@ -1675,7 +1814,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -1702,7 +1841,8 @@
                     depts: depts, vessels: vessels, staffData: staffData,
                     crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
                     mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData,
-                    internalDocsData: internalDocsData, workScheduleData: workScheduleData
+                    internalDocsData: internalDocsData, workScheduleData: workScheduleData,
+                    taskAssignData: taskAssignData
                 }));
             } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
         }
@@ -1727,6 +1867,7 @@
                 if (cache.equipmentData) equipmentData = cache.equipmentData;
                 if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
                 if (cache.workScheduleData) workScheduleData = cache.workScheduleData;
+                if (cache.taskAssignData) taskAssignData = cache.taskAssignData;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
@@ -1808,6 +1949,7 @@
                 if (data.equipment) equipmentData = data.equipment;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
                 if (data.workSchedule) workScheduleData = data.workSchedule;
+                if (data.taskAssignments) taskAssignData = data.taskAssignments;
                 if (data.users && Object.keys(data.users).length) {
                     // data.users không còn chứa trường "password" (server không gửi mật khẩu về client nữa)
                     userDatabase = data.users;
@@ -2509,6 +2651,43 @@
             renderUserListViewForAdmin();
         }
 
+        // [TAB "GIAO VIỆC" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Được giao việc" (tạo/sửa/xóa công
+        // việc giao cho người khác) của 1 tài khoản. Xem danh sách công việc MẶC ĐỊNH BẬT cho
+        // mọi tài khoản (không điều khiển được ở đây). Dùng action RIÊNG
+        // "setTaskAssignPermission" (chỉ ghi đúng cột 20 của sheet "TaiKhoan", không đụng các
+        // cột/quyền khác) — giống hệt cách làm với "setWorkSchedulePermission".
+        async function toggleUserTaskAssignPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setTaskAssignPermission", username: username, duocGiaoViec: checked });
+            if (ok) {
+                userDatabase[username].duocGiaoViec = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        // [TAB "NHẬN VIỆC"] Admin liên kết (hoặc gỡ liên kết, nếu msnv rỗng) 1 tài khoản với
+        // đúng 1 nhân sự — để tab "Nhận việc" của tài khoản đó hiện đúng công việc được giao cho
+        // họ ở tab "Giao việc". Không ảnh hưởng bất kỳ quyền/dữ liệu nào khác của tài khoản.
+        async function setUserStaffLink(username, msnv) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setUserStaffLink", username: username, msnv: msnv });
+            if (ok) {
+                userDatabase[username].msnv = msnv || "";
+                saveLocalCache();
+                if (username === currentUsername) {
+                    currentUser.msnv = msnv || "";
+                    renderMyTaskTable();
+                    updateNhanViecBadge();
+                }
+            } else {
+                alert(`⚠️ Không thể liên kết nhân sự cho tài khoản "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+                renderUserListViewForAdmin();
+            }
+        }
+
         // Dò tìm phòng ban của 1 tài khoản dựa trên Email liên kết, bằng cách đối chiếu với
         // Email trong hồ sơ Nhân sự (staffData). Không đổi/không lộ thêm dữ liệu gì — chỉ dùng
         // để nhóm & sắp xếp danh sách User cho Admin dễ quản lý hơn.
@@ -2695,6 +2874,42 @@
                     </span>`;
                 }
 
+                // [TAB "GIAO VIỆC" - PHÂN QUYỀN RIÊNG] MẶC ĐỊNH MỌI TÀI KHOẢN đã đăng nhập đều
+                // XEM ĐƯỢC danh sách công việc (không cần checkbox riêng) — Admin chỉ cấp/thu
+                // hồi riêng quyền GIAO việc (tạo/sửa/xóa) cho từng tài khoản.
+                let gvControl = "";
+                if (u === "admin") {
+                    gvControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-list-check"></i> Toàn quyền Giao việc</span>';
+                } else {
+                    let gvEChecked = userDatabase[u].duocGiaoViec ? "checked" : "";
+                    gvControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-list-check" title="Giao việc"></i>
+                        <span style="color:#888;">Xem tab: mặc định bật cho mọi tài khoản</span>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${gvEChecked} onchange="toggleUserTaskAssignPermission('${safeU}', this.checked)"> Được giao việc
+                        </label>
+                    </span>`;
+                }
+
+                // [TAB "NHẬN VIỆC" - LIÊN KẾT TÀI KHOẢN VỚI NHÂN SỰ] Cho phép Admin gắn 1 tài
+                // khoản đăng nhập với ĐÚNG 1 nhân sự (MSNV) trong danh mục Nhân sự. Việc liên kết
+                // này CHỈ dùng để tab "Nhận việc" biết công việc nào (được giao ở tab "Giao việc")
+                // là của chính tài khoản đang đăng nhập — KHÔNG ảnh hưởng bất kỳ quyền/tính năng
+                // nào khác của tài khoản.
+                let staffLinkControl = "";
+                {
+                    let curMsnv = userDatabase[u].msnv || "";
+                    let staffOptionsHtml = '<option value="">-- Chưa liên kết --</option>' +
+                        (staffData || []).map(s => `<option value="${escapeHtml(s.msnv)}" ${s.msnv === curMsnv ? "selected" : ""}>${escapeHtml(s.msnv)} - ${escapeHtml(s.name)}</option>`).join('');
+                    staffLinkControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-id-badge" title="Liên kết nhân sự (dùng cho tab Nhận việc)"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                            Liên kết nhân sự (tab Nhận việc):
+                            <select style="width:auto; padding:2px 4px;" onchange="setUserStaffLink('${safeU}', this.value)">${staffOptionsHtml}</select>
+                        </label>
+                    </span>`;
+                }
+
                 // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 usersHtml += `<div class="admusr-row">
@@ -2734,6 +2949,8 @@
                         ${resignedControl}
                         ${cksoControl}
                         ${llvControl}
+                        ${gvControl}
+                        ${staffLinkControl}
                     </div>
                 </div>`;
             }
@@ -2843,7 +3060,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -3003,6 +3220,7 @@
             equipmentData = [];
             internalDocsData = [];
             workScheduleData = [];
+            taskAssignData = [];
             documentsData = [];
             mailGroups = [];
             
@@ -3083,6 +3301,22 @@
             if (llvFormBox) llvFormBox.style.display = canEditLichLamViec ? "block" : "none";
             renderWorkScheduleWeek();
             renderDashboardScheduleWidget();
+
+            // ==== [TAB "GIAO VIỆC"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được danh sách
+            // công việc. Giao việc (tạo/sửa/xóa): CHỈ tài khoản có quyền riêng "DuocGiaoViec"
+            // (hoặc Admin) mới được phép — không đổi cơ chế bảo mật của phần thêm/sửa/xóa. ====
+            currentUserCanAssignTask = (currentUser.role === "Admin") || !!currentUser.duocGiaoViec;
+            document.getElementById("menu-giaoviec").style.display = "flex";
+            let gvFormBox = document.getElementById("gv-form-box");
+            if (gvFormBox) gvFormBox.style.display = currentUserCanAssignTask ? "block" : "none";
+            populateGiaoViecFormOptions();
+            renderTaskAssignTable();
+
+            // ==== [TAB "NHẬN VIỆC"] Mọi tài khoản đã đăng nhập đều xem được (giống "Giao Việc"),
+            // chỉ hiện đúng công việc CỦA CHÍNH MÌNH (đối chiếu theo MSNV đã liên kết). ====
+            document.getElementById("menu-nhanviec").style.display = "flex";
+            renderMyTaskTable();
+            updateNhanViecBadge();
 
             if (currentUser.role === "Admin") {
                 document.getElementById("menu-add-person").style.display = "flex";
@@ -3220,6 +3454,20 @@
                 // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Không còn kiểm tra quyền
                 // "XemLichLamViec" ở đây — chỉ cần đã đăng nhập (currentUser tồn tại) là đủ.
                 renderWorkScheduleWeek();
+            }
+            if (pageId === "giaoviec") {
+                // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Giống hệt "Lịch làm việc
+                // công ty" — chỉ cần đã đăng nhập là xem được danh sách công việc.
+                populateGiaoViecFormOptions();
+                renderTaskAssignTable();
+            }
+            if (pageId === "nhanviec") {
+                // [TAB "NHẬN VIỆC"] Mở tab -> hiện danh sách công việc của mình, đồng thời tự
+                // đánh dấu ĐÃ XEM các công việc đang hiện (chưa xem) để tắt thông báo, giống cách
+                // 1 hộp thư đến hoạt động.
+                renderMyTaskTable();
+                let nvUnseenIds = getMyTasks().filter(t => !t.daXem).map(t => t.id);
+                if (nvUnseenIds.length) markMyTasksSeen(nvUnseenIds);
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -3997,6 +4245,418 @@
             }
         }
 
+        /* ========== [TAB "GIAO VIỆC"] ==========
+           Xem: mọi tài khoản đã đăng nhập (giống hệt "Lịch làm việc công ty"). Giao/sửa/xóa
+           công việc: yêu cầu quyền riêng "DuocGiaoViec" (hoặc Admin) — xem
+           currentUserCanAssignTask, được thiết lập ở applyRolePermissions(). */
+
+        function gvFormatDateVN(iso) {
+            if (!iso) return "";
+            let m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+        }
+
+        function gvPriorityBadgeColor(uuTien) {
+            if (uuTien === "Khẩn cấp") return "#e53935";
+            if (uuTien === "Cao") return "#fb8c00";
+            if (uuTien === "Thấp") return "#789262";
+            return "#607d8b"; // Bình thường
+        }
+
+        function gvStatusBadgeColor(trangThai) {
+            if (trangThai === "Hoàn thành") return "#2e7d32";
+            if (trangThai === "Đang thực hiện") return "#1976d2";
+            if (trangThai === "Trễ hạn") return "#c62828";
+            return "#8e8e8e"; // Mới giao
+        }
+
+        // ===== [GIAO VIỆC] Đồng bộ "Người nhận" <-> "Phòng ban" theo đúng dữ liệu nhân sự thật
+        //       (staffData/depts đã có sẵn trong hệ thống), tương tự cơ chế đang dùng ở tab
+        //       "Quản lý thiết bị". KHÔNG đổi định dạng lưu trữ: nguoiNhan/phongBan vẫn được lưu
+        //       là CHUỖI TÊN như cũ (để không làm mất/hỏng dữ liệu Giao việc đã có từ trước), chỉ
+        //       thay cách người dùng NHẬP LIỆU từ gõ tay tự do -> chọn đúng từ danh sách có sẵn.
+
+        // Sinh HTML <option> cho "Người nhận", lọc theo 1 phòng ban (deptFilter rỗng = tất cả nhân
+        // viên). Value = TÊN nhân viên (giữ đúng định dạng lưu cũ), kèm data-msnv để tra cứu phòng ban.
+        function buildGvStaffOptionsHtml(deptFilter) {
+            let list = deptFilter ? staffData.filter(s => getStaffDeptList(s.msnv).includes(deptFilter)) : staffData;
+            return '<option value="">-- Chọn người nhận --</option>' +
+                list.map(s => `<option value="${escapeHtml(s.name)}" data-msnv="${escapeHtml(s.msnv)}">${escapeHtml(s.name)} (${escapeHtml(s.msnv)})</option>`).join('');
+        }
+
+        // Đổ dữ liệu Phòng ban + Người nhận cho form Giao việc (gọi lại mỗi khi staffData/depts thay
+        // đổi, hoặc khi mở tab/mở form, để danh sách luôn đúng và cập nhật mới nhất).
+        function populateGiaoViecFormOptions() {
+            let deptSel = document.getElementById("inp-gv-phongban");
+            if (deptSel) {
+                let keep = deptSel.value;
+                deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                if (keep && deptSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) deptSel.value = keep;
+            }
+            let staffSel = document.getElementById("inp-gv-nguoinhan");
+            if (staffSel) {
+                let keep = staffSel.value;
+                staffSel.innerHTML = buildGvStaffOptionsHtml(deptSel ? deptSel.value : "");
+                if (keep && staffSel.querySelector(`option[value="${CSS.escape(keep)}"]`)) staffSel.value = keep;
+            }
+        }
+
+        // Chọn Phòng ban ở form Giao việc -> lọc lại danh sách Người nhận chỉ còn đúng nhân viên
+        // thuộc phòng ban đó ("-- Chọn phòng ban --" = hiện lại toàn bộ nhân viên).
+        function gvOnPhongBanChange() {
+            let deptSel = document.getElementById("inp-gv-phongban");
+            let staffSel = document.getElementById("inp-gv-nguoinhan");
+            if (!deptSel || !staffSel) return;
+            let curStaff = staffSel.value;
+            staffSel.innerHTML = buildGvStaffOptionsHtml(deptSel.value);
+            if (curStaff && staffSel.querySelector(`option[value="${CSS.escape(curStaff)}"]`)) {
+                staffSel.value = curStaff;
+            } else {
+                staffSel.value = "";
+            }
+        }
+
+        // Chọn Người nhận ở form Giao việc -> tự động đồng bộ đúng Phòng ban tương ứng của nhân
+        // viên đó (theo dữ liệu nhân sự thật), đảm bảo Người nhận và Phòng ban luôn khớp nhau.
+        function gvOnNguoiNhanChange() {
+            let staffSel = document.getElementById("inp-gv-nguoinhan");
+            let deptSel = document.getElementById("inp-gv-phongban");
+            if (!staffSel || !deptSel || !staffSel.value) return;
+            let opt = staffSel.selectedOptions[0];
+            let msnv = opt ? opt.dataset.msnv : "";
+            if (!msnv) return;
+            let deptList = getStaffDeptList(msnv);
+            if (deptList.length && !deptList.includes(deptSel.value)) {
+                let keepName = staffSel.value;
+                deptSel.value = deptSel.querySelector(`option[value="${CSS.escape(deptList[0])}"]`) ? deptList[0] : "";
+                // Lọc lại danh sách Người nhận theo Phòng ban vừa tự đồng bộ, rồi giữ đúng người vừa chọn.
+                staffSel.innerHTML = buildGvStaffOptionsHtml(deptSel.value);
+                if (staffSel.querySelector(`option[value="${CSS.escape(keepName)}"]`)) staffSel.value = keepName;
+            }
+        }
+
+        /* ===== [TAB "NHẬN VIỆC"] =====
+           Hiện đúng công việc (đã giao ở tab "Giao Việc") thuộc về tài khoản ĐANG ĐĂNG NHẬP,
+           bằng cách đối chiếu: tài khoản -> MSNV đã được Admin liên kết (currentUser.msnv) ->
+           TÊN nhân sự tương ứng trong staffData -> so khớp với trường "nguoiNhan" của từng công
+           việc. Không đổi định dạng lưu trữ cũ, không đụng tới quyền "DuocGiaoViec" (chỉ quyết
+           định ai được GIAO việc, không liên quan tới việc XEM/CẬP NHẬT công việc của chính mình). */
+
+        // Tên nhân sự (nếu có) tương ứng với tài khoản đang đăng nhập, dựa trên MSNV đã liên kết.
+        function getMyStaffName() {
+            if (!currentUser || !currentUser.msnv) return "";
+            let s = staffData.find(x => x.msnv === currentUser.msnv);
+            return s ? s.name : "";
+        }
+
+        // Danh sách công việc (ở tab Giao Việc) đang được giao cho chính tài khoản đang đăng nhập.
+        function getMyTasks() {
+            let myName = getMyStaffName();
+            if (!myName) return [];
+            return (taskAssignData || []).filter(t => t.nguoiNhan === myName);
+        }
+
+        function countUnseenMyTasks() {
+            return getMyTasks().filter(t => !t.daXem).length;
+        }
+
+        // Cập nhật số thông báo (badge đỏ) ở mục menu "Nhận Việc" — gọi lại mỗi khi dữ liệu Giao
+        // việc thay đổi (đăng nhập, đồng bộ lại, mở tab, giao/sửa/xóa việc, tự cập nhật trạng thái).
+        function updateNhanViecBadge() {
+            let badge = document.getElementById("nv-badge-count");
+            if (!badge) return;
+            let n = countUnseenMyTasks();
+            if (n > 0) {
+                badge.style.display = "inline-block";
+                badge.innerText = n > 99 ? "99+" : String(n);
+            } else {
+                badge.style.display = "none";
+            }
+        }
+
+        function renderMyTaskTable() {
+            let tbody = document.querySelector("#tbl-nhanviec tbody");
+            if (!tbody) return;
+            let myName = getMyStaffName();
+            let warnEl = document.getElementById("nv-link-warning");
+            if (warnEl) warnEl.style.display = (currentUser && currentUser.role !== "Admin" && !myName) ? "block" : "none";
+
+            let kw = (document.getElementById("search-nv")?.value || "").trim().toLowerCase();
+            let list = getMyTasks().filter(t => {
+                if (!kw) return true;
+                return (t.tenCongViec || "").toLowerCase().includes(kw) || (t.nguoiGiao || "").toLowerCase().includes(kw);
+            }).slice().sort((a, b) => (b.ngayTao || "").localeCompare(a.ngayTao || ""));
+
+            if (list.length === 0) {
+                let emptyMsg = myName ? "Bạn chưa được giao công việc nào." : "Chưa có công việc để hiển thị (tài khoản chưa liên kết nhân sự).";
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888; padding:16px;">${emptyMsg}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(t => {
+                let attachHtml = (t.attachments && t.attachments.length)
+                    ? t.attachments.map(a => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${a.fileId}', '${escapeHtml(a.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(a.fileName)}</a></div>`).join('')
+                    : '<span style="color:#aaa;">— Không có file đính kèm —</span>';
+                let baoCaoHtml = [
+                    t.baoCaoHangNgay ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-day"></i> Báo cáo hàng ngày</span>' : '',
+                    t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Báo cáo hàng tuần</span>' : ''
+                ].filter(Boolean).join('<br>') || '<span style="color:#aaa;">— Không yêu cầu —</span>';
+                let newBadge = !t.daXem ? `<span style="background:#e53935; color:#fff; padding:2px 7px; border-radius:8px; font-size:11px; margin-left:6px;">MỚI</span>` : '';
+                return `<tr>
+                    <td>${escapeHtml(t.nguoiGiao)}</td>
+                    <td><b>${escapeHtml(t.tenCongViec)}</b>${newBadge}${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
+                    <td style="white-space:nowrap;">
+                        <div><i class="fa-solid fa-calendar-plus" title="Ngày giao"></i> ${gvFormatDateVN(t.ngayGiao)}</div>
+                        <div><i class="fa-solid fa-calendar-check" title="Thời hạn xử lý"></i> ${gvFormatDateVN(t.thoiHan)}</div>
+                    </td>
+                    <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
+                    <td>
+                        <select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
+                            <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
+                            <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
+                            <option value="Hoàn thành" ${t.trangThai === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
+                            <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
+                        </select>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <input type="number" min="0" max="100" value="${Number(t.tienDo) || 0}" style="width:60px;" onchange="updateMyTaskStatus('${t.id}', undefined, this.value)"> %
+                    </td>
+                    <td>${baoCaoHtml}</td>
+                    <td>${attachHtml}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Đánh dấu ĐÃ XEM 1 hoặc nhiều công việc của mình (gọi khi mở tab "Nhận Việc"). Chỉ cập
+        // nhật cục bộ (không cần tải lại toàn bộ dữ liệu) để phản hồi tức thì cho người dùng.
+        async function markMyTasksSeen(ids) {
+            if (!ids || !ids.length || !isScriptUrlConfigured()) return;
+            let ok = await pushToCloud({ action: "markTaskAssignSeen", ids: ids });
+            if (ok) {
+                ids.forEach(id => {
+                    let t = (taskAssignData || []).find(x => x.id === id);
+                    if (t) t.daXem = true;
+                });
+                saveLocalCache();
+                updateNhanViecBadge();
+                renderMyTaskTable();
+            }
+        }
+
+        // Tự cập nhật Trạng thái/Tiến độ của MỘT công việc CỦA CHÍNH MÌNH (server đối chiếu lại
+        // đúng Người nhận trước khi cho ghi — xem action "updateMyTaskStatus" ở Code.gs).
+        async function updateMyTaskStatus(id, newTrangThai, newTienDo) {
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+            let payload = { action: "updateMyTaskStatus", id: id };
+            if (newTrangThai !== undefined) payload.trangThai = newTrangThai;
+            if (newTienDo !== undefined) payload.tienDo = newTienDo;
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(false);
+                renderMyTaskTable();
+                renderTaskAssignTable();
+                updateNhanViecBadge();
+            }
+        }
+
+        function renderTaskAssignTable() {
+            let tbody = document.querySelector("#tbl-giaoviec tbody");
+            if (!tbody) return;
+            let kw = (document.getElementById("search-gv")?.value || "").trim().toLowerCase();
+            let list = (taskAssignData || []).filter(t => {
+                if (!kw) return true;
+                return (t.tenCongViec || "").toLowerCase().includes(kw)
+                    || (t.nguoiGiao || "").toLowerCase().includes(kw)
+                    || (t.nguoiNhan || "").toLowerCase().includes(kw)
+                    || (t.phongBan || "").toLowerCase().includes(kw);
+            }).slice().sort((a, b) => (b.ngayTao || "").localeCompare(a.ngayTao || ""));
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888; padding:16px;">Chưa có công việc nào được giao.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = list.map(t => {
+                let attachHtml = (t.attachments && t.attachments.length)
+                    ? t.attachments.map(a => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${a.fileId}', '${escapeHtml(a.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(a.fileName)}</a></div>`).join('')
+                    : '<span style="color:#aaa;">—</span>';
+                let baoCaoHtml = [
+                    t.baoCaoHangNgay ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-day"></i> Ngày</span>' : '',
+                    t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Tuần</span>' : ''
+                ].filter(Boolean).join(' ') || '<span style="color:#aaa;">—</span>';
+                let actionsHtml = currentUserCanAssignTask
+                    ? `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editTaskAssign('${t.id}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                       <button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
+                    : '';
+                return `<tr>
+                    <td><b>${escapeHtml(t.tenCongViec)}</b>${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
+                    <td>${escapeHtml(t.nguoiGiao)}</td>
+                    <td>${escapeHtml(t.nguoiNhan)}</td>
+                    <td>${escapeHtml(t.phongBan)}</td>
+                    <td>${gvFormatDateVN(t.ngayGiao)}</td>
+                    <td>${gvFormatDateVN(t.thoiHan)}</td>
+                    <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
+                    <td><span style="background:${gvStatusBadgeColor(t.trangThai)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.trangThai)}</span></td>
+                    <td>${Number(t.tienDo) || 0}%</td>
+                    <td>${baoCaoHtml}</td>
+                    <td>${attachHtml}</td>
+                    <td style="white-space:nowrap;">${actionsHtml}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function resetTaskAssignForm() {
+            document.getElementById("edit-id-gv").value = "";
+            ["inp-gv-ten", "inp-gv-mota", "inp-gv-ngaygiao", "inp-gv-thoihan"].forEach(id => {
+                let el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            // Nạp lại đầy đủ (không lọc) danh sách Phòng ban/Người nhận, xóa các option "dữ liệu cũ"
+            // tạm thời (nếu có) từng thêm khi sửa 1 công việc trước đó.
+            populateGiaoViecFormOptions();
+            document.getElementById("inp-gv-phongban").value = "";
+            document.getElementById("inp-gv-nguoinhan").value = "";
+            document.getElementById("inp-gv-uutien").value = "Bình thường";
+            document.getElementById("inp-gv-trangthai").value = "Mới giao";
+            document.getElementById("inp-gv-baocaongay").checked = false;
+            document.getElementById("inp-gv-baocaotuan").checked = false;
+            let fileInput = document.getElementById("inp-gv-file");
+            if (fileInput) fileInput.value = "";
+            let hint = document.getElementById("gv-current-file-hint");
+            if (hint) hint.innerHTML = "";
+            gvRemovedFileIds = [];
+            document.getElementById("gv-form-title").innerHTML = '<i class="fa-solid fa-square-plus"></i> Giao việc mới';
+            document.getElementById("btn-cancel-edit-gv").style.display = "none";
+            let delBtn = document.getElementById("btn-delete-gv");
+            if (delBtn) delBtn.style.display = "none";
+        }
+
+        // Gỡ 1 file đính kèm đang có sẵn khi sửa công việc (chỉ đánh dấu để xóa lúc bấm "Lưu",
+        // chưa gọi API ngay — cho phép người dùng "Hủy chỉnh sửa" mà không mất file).
+        function gvMarkRemoveFile(fileId) {
+            if (!fileId || gvRemovedFileIds.includes(fileId)) return;
+            gvRemovedFileIds.push(fileId);
+            let row = document.getElementById(`gv-file-row-${fileId}`);
+            if (row) row.style.display = "none";
+        }
+
+        function editTaskAssign(id) {
+            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền sửa Giao việc. Liên hệ Admin để được cấp quyền."); return; }
+            let item = (taskAssignData || []).find(t => t.id === id);
+            if (!item) return;
+            gvRemovedFileIds = [];
+            document.getElementById("edit-id-gv").value = item.id;
+            document.getElementById("inp-gv-ten").value = item.tenCongViec || "";
+            document.getElementById("inp-gv-mota").value = item.moTa || "";
+            // Đổ đầy đủ (không lọc) danh sách Phòng ban rồi chọn đúng phòng ban đã lưu của công việc
+            // này; nếu phòng ban cũ không còn nằm trong danh mục hiện tại, TỰ THÊM lại làm 1 lựa
+            // chọn riêng để không mất dữ liệu đã lưu.
+            let gvDeptSel = document.getElementById("inp-gv-phongban");
+            if (gvDeptSel) {
+                gvDeptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                if (item.phongBan && !gvDeptSel.querySelector(`option[value="${CSS.escape(item.phongBan)}"]`)) {
+                    gvDeptSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(item.phongBan)}">${escapeHtml(item.phongBan)} (dữ liệu cũ)</option>`);
+                }
+                gvDeptSel.value = item.phongBan || "";
+            }
+            // Tương tự cho Người nhận: lọc theo phòng ban vừa chọn ở trên; nếu người nhận cũ không
+            // khớp/không còn trong danh sách nhân sự hiện tại, TỰ THÊM lại để giữ nguyên dữ liệu cũ.
+            let gvStaffSel = document.getElementById("inp-gv-nguoinhan");
+            if (gvStaffSel) {
+                gvStaffSel.innerHTML = buildGvStaffOptionsHtml(gvDeptSel ? gvDeptSel.value : "");
+                if (item.nguoiNhan && !gvStaffSel.querySelector(`option[value="${CSS.escape(item.nguoiNhan)}"]`)) {
+                    gvStaffSel.insertAdjacentHTML("beforeend", `<option value="${escapeHtml(item.nguoiNhan)}">${escapeHtml(item.nguoiNhan)} (dữ liệu cũ / ngoài danh sách)</option>`);
+                }
+                gvStaffSel.value = item.nguoiNhan || "";
+            }
+            document.getElementById("inp-gv-ngaygiao").value = item.ngayGiao || "";
+            document.getElementById("inp-gv-thoihan").value = item.thoiHan || "";
+            document.getElementById("inp-gv-uutien").value = item.uuTien || "Bình thường";
+            document.getElementById("inp-gv-trangthai").value = item.trangThai || "Mới giao";
+            document.getElementById("inp-gv-baocaongay").checked = !!item.baoCaoHangNgay;
+            document.getElementById("inp-gv-baocaotuan").checked = !!item.baoCaoHangTuan;
+            document.getElementById("inp-gv-file").value = "";
+            let hint = document.getElementById("gv-current-file-hint");
+            if (hint) {
+                hint.innerHTML = (item.attachments && item.attachments.length)
+                    ? "📎 File hiện có (chọn file mới bên trên để đính kèm thêm):<br>" + item.attachments.map(a =>
+                        `<span id="gv-file-row-${a.fileId}">
+                            <a href="javascript:void(0)" onclick="viewSecureFile('${a.fileId}', '${escapeHtml(a.fileName)}', 'taskAssign')">${escapeHtml(a.fileName)}</a>
+                            <a href="javascript:void(0)" onclick="gvMarkRemoveFile('${a.fileId}')" style="color:#c62828; margin-left:6px;" title="Gỡ file này">✕</a>
+                        </span>`).join('<br>')
+                    : "";
+            }
+            document.getElementById("gv-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật công việc';
+            document.getElementById("btn-cancel-edit-gv").style.display = "inline-block";
+            document.getElementById("btn-delete-gv").style.display = "inline-block";
+            document.getElementById("gv-form-box").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        async function saveTaskAssign() {
+            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền Giao việc. Liên hệ Admin để được cấp quyền."); return; }
+            let tenCongViec = document.getElementById("inp-gv-ten").value.trim();
+            let nguoiNhan = document.getElementById("inp-gv-nguoinhan").value.trim();
+            if (!tenCongViec || !nguoiNhan) { alert("Vui lòng điền Tên công việc và Người nhận!"); return; }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+
+            let payload = {
+                action: "saveTaskAssign",
+                id: document.getElementById("edit-id-gv").value || "",
+                tenCongViec: tenCongViec,
+                moTa: document.getElementById("inp-gv-mota").value.trim(),
+                nguoiNhan: nguoiNhan,
+                phongBan: document.getElementById("inp-gv-phongban").value.trim(),
+                ngayGiao: document.getElementById("inp-gv-ngaygiao").value,
+                thoiHan: document.getElementById("inp-gv-thoihan").value,
+                uuTien: document.getElementById("inp-gv-uutien").value,
+                trangThai: document.getElementById("inp-gv-trangthai").value,
+                baoCaoHangNgay: document.getElementById("inp-gv-baocaongay").checked,
+                baoCaoHangTuan: document.getElementById("inp-gv-baocaotuan").checked,
+                removedFileIds: gvRemovedFileIds
+            };
+
+            let fileInput = document.getElementById("inp-gv-file");
+            let files = Array.from(fileInput.files || []);
+            if (files.some(f => f.size > 15 * 1024 * 1024)) { alert("Có file quá lớn (giới hạn 15MB/file)."); return; }
+            if (files.length) {
+                try {
+                    payload.attachments = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+                        let reader = new FileReader();
+                        reader.onload = () => resolve({
+                            fileName: file.name,
+                            mimeType: file.type || "application/octet-stream",
+                            fileData: reader.result.split(",")[1]
+                        });
+                        reader.onerror = () => reject(new Error("Không thể đọc file " + file.name));
+                        reader.readAsDataURL(file);
+                    })));
+                } catch (err) { alert(err.message); return; }
+            }
+
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(true);
+                resetTaskAssignForm();
+                renderTaskAssignTable();
+                alert("✔️ Đã giao việc thành công.");
+            }
+        }
+
+        async function deleteTaskAssignRow(id) {
+            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền xóa Giao việc. Liên hệ Admin để được cấp quyền."); return; }
+            let item = (taskAssignData || []).find(t => t.id === id);
+            if (!item) return;
+            if (!confirm(`Xác nhận xóa công việc "${item.tenCongViec}"?`)) return;
+            let ok = await pushToCloud({ action: "deleteTaskAssign", id: id });
+            if (ok) {
+                await loadFromCloud(true);
+                resetTaskAssignForm();
+                renderTaskAssignTable();
+            }
+        }
+
         /* ========== [TAB "CHỮ KÝ SỐ"] ==========
            Dữ liệu lấy từ 1 Google Sheet + Google Drive RIÊNG (không nằm trong action "getData"
            chung) — mọi lượt gọi đều dùng action riêng, và authToken vẫn được đính kèm để server
@@ -4346,7 +5006,11 @@
             renderHRTable();
             renderCrewTable();
             populateEquipmentFormOptions();
+            populateGiaoViecFormOptions();
             renderEquipmentTable();
+            renderTaskAssignTable();
+            renderMyTaskTable();
+            updateNhanViecBadge();
             renderOtherAppsGrid();
             renderOtherAppsAdminList();
             renderDeptVesselLists();
