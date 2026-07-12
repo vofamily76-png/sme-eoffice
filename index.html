@@ -1618,8 +1618,11 @@
                 <small style="color:#888;">Giới hạn 15MB/file. File cũ của người giao việc KHÔNG bị mất, file mới chỉ được thêm vào.</small>
             </div>
             <div id="nvd-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+            <div id="nvd-done-hint" style="display:none; color:#2e7d32; background:#eaf5ea; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;">
+                <i class="fa-solid fa-circle-check"></i> Công việc đã <b>Hoàn thành</b> — không còn tính năng cập nhật tiến độ nữa.
+            </div>
             <div style="display:flex; gap:10px;">
-                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
+                <button id="nvd-submit-btn" class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
             </div>
         </div>
@@ -4895,14 +4898,16 @@
                     </td>
                     <td><span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></td>
                     <td onclick="event.stopPropagation()">
-                        <select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
+                        ${t.trangThai === "Hoàn thành"
+                            ? `<span style="background:#2e7d32; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
+                            : `<select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
                             <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
                             <option value="Hoàn thành" ${t.trangThai === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
                             <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
-                        </select>
+                        </select>`}
                     </td>
-                    <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & cập nhật tiến độ (yêu cầu nhập nội dung báo cáo + đính kèm file)">
+                    <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & xem tiến độ">
                         ${Number(t.tienDo) || 0}%
                     </td>
                     <td>${baoCaoHtml}</td>
@@ -4997,6 +5002,17 @@
             document.getElementById("nvd-noidung").value = "";
             document.getElementById("nvd-file").value = "";
             document.getElementById("nvd-error").style.display = "none";
+
+            // [MỤC "HOÀN THÀNH - KHÓA CẬP NHẬT"] Công việc ĐÃ Hoàn thành thì không còn tính năng
+            // cập nhật tiến độ nữa: khóa hẳn Trạng thái/Mô tả báo cáo/Tiến độ/File đính kèm mới +
+            // ẩn nút "Cập nhật". Vẫn xem được đầy đủ thông tin và Lịch sử tiến độ như bình thường.
+            let isDone = (t.trangThai === "Hoàn thành");
+            document.getElementById("nvd-trangthai").disabled = isDone;
+            document.getElementById("nvd-noidung").disabled = isDone;
+            document.getElementById("nvd-file").disabled = isDone;
+            document.getElementById("nvd-submit-btn").style.display = isDone ? "none" : "";
+            document.getElementById("nvd-done-hint").style.display = isDone ? "block" : "none";
+
             nvdUpdateProgressLockState();
             document.getElementById("nv-detail-modal").style.display = "flex";
 
