@@ -1937,16 +1937,47 @@
             }
         }
 
+        // [TỐI ƯU HÓA - SELECTIVE CACHING] Trước đây saveLocalCache() lưu TOÀN BỘ dữ liệu hệ
+        // thống (kể cả các mảng LỚN chứa ảnh Base64/file đính kèm: staffData (ảnh đại diện
+        // nhân sự), documentsData, equipmentData, internalDocsData, workScheduleData,
+        // taskAssignData, myReceivedTasks) vào localStorage mỗi khi có thay đổi. localStorage
+        // của trình duyệt CHỈ có hạn mức ~5-10MB — với dữ liệu càng ngày càng nhiều (nhân sự,
+        // thiết bị, lịch làm việc, giao việc tích lũy theo thời gian, kèm ảnh/file Base64), hạn
+        // mức này BỊ VƯỢT dần theo thời gian, gây lỗi "QuotaExceededError" làm saveLocalCache()
+        // thất bại ÂM THẦM (bị try/catch nuốt lỗi) — người dùng KHÔNG hề biết cache đã ngừng
+        // hoạt động, chỉ thấy app "load chậm" hoặc dữ liệu tạm hiển thị lúc mở app bị cũ/thiếu.
+        //
+        // NAY: chỉ lưu vào localStorage những mảng NHỎ, TĨNH (ít thay đổi, không chứa Base64):
+        // "depts" (danh mục phòng ban), "vessels" (danh mục đội tàu), "userDatabase" (danh sách
+        // tài khoản + quyền hạn — không phải mật khẩu, vốn dĩ server KHÔNG BAO GIỜ gửi mật khẩu
+        // xuống client) và "otherApps"/"mailGroups" (danh mục nhỏ, hiếm đổi). Mục đích DUY NHẤT
+        // của cache cục bộ là hiển thị NGAY màn hình đăng nhập + khung giao diện (tên phòng
+        // ban/đội tàu, quyền hạn tài khoản) trong lúc chờ server phản hồi — KHÔNG phải để né
+        // việc gọi server lấy dữ liệu nghiệp vụ. Các mảng dữ liệu LỚN (staffData, crewData,
+        // documentsData, equipmentData, internalDocsData, workScheduleData, taskAssignData,
+        // myReceivedTasks) bị LOẠI BỎ HOÀN TOÀN khỏi localStorage — những mảng này LUÔN được
+        // tải mới từ server qua fetchSystemData()/updateSystemData() mỗi phiên làm việc (xem
+        // window.addEventListener("load", ...) ở cuối file: loadLocalCache() chỉ khôi phục
+        // phần khung nói trên, ngay sau đó tryResumeSessionFromStorage()/loadFromCloud() vẫn
+        // luôn được gọi để lấy dữ liệu nghiệp vụ mới nhất từ server như trước đây) — vì vậy
+        // KHÔNG có bất kỳ dữ liệu nghiệp vụ nào bị mất, chỉ là không còn giữ 1 bản sao (đã có
+        // thể lỗi thời) của chúng trong localStorage nữa. KHÔNG đổi cơ chế xác thực/bảo mật —
+        // token đăng nhập vẫn được lưu riêng như cũ (xem tryResumeSessionFromStorage), không
+        // liên quan tới "sme_local_cache".
         function saveLocalCache() {
             try {
                 localStorage.setItem("sme_local_cache", JSON.stringify({
-                    depts: depts, vessels: vessels, staffData: staffData,
-                    crewData: crewData, userDatabase: userDatabase, otherApps: otherApps,
-                    mailGroups: mailGroups, documentsData: documentsData, equipmentData: equipmentData,
-                    internalDocsData: internalDocsData, workScheduleData: workScheduleData,
-                    taskAssignData: taskAssignData, myReceivedTasks: myReceivedTasks
+                    depts: depts, vessels: vessels, userDatabase: userDatabase,
+                    otherApps: otherApps, mailGroups: mailGroups
                 }));
-            } catch (e) { console.warn("Không thể lưu cache cục bộ:", e); }
+            } catch (e) {
+                // Dù đã loại bỏ các mảng lớn, vẫn giữ try/catch phòng hờ (VD: trình duyệt ở chế
+                // độ duyệt web riêng tư/Private Browsing có thể chặn hẳn localStorage) — lỗi ở
+                // đây KHÔNG được để làm hỏng luồng chính của ứng dụng, dữ liệu nghiệp vụ vẫn
+                // luôn lấy trực tiếp từ server nên không phụ thuộc vào việc cache có lưu được
+                // hay không.
+                console.warn("Không thể lưu cache cục bộ:", e);
+            }
         }
 
         function loadLocalCache() {
@@ -1956,25 +1987,18 @@
                 let cache = JSON.parse(raw);
                 if (cache.depts && cache.depts.length) depts = cache.depts;
                 if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
-                if (cache.staffData) {
-                    staffData = cache.staffData.map(item => {
-                        item.dept = normalizeDept(item.dept);
-                        return item;
-                    });
-                }
-                if (cache.crewData) crewData = cache.crewData;
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
-                if (cache.documentsData) documentsData = cache.documentsData;
-                if (cache.equipmentData) equipmentData = cache.equipmentData;
-                if (cache.internalDocsData) internalDocsData = cache.internalDocsData;
-                if (cache.workScheduleData) workScheduleData = cache.workScheduleData;
-                if (cache.taskAssignData) taskAssignData = cache.taskAssignData;
-                if (cache.myReceivedTasks) myReceivedTasks = cache.myReceivedTasks;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
                     userDatabase.admin = userDatabase.admin || { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true };
                 }
+                // [SELECTIVE CACHING] staffData, crewData, documentsData, equipmentData,
+                // internalDocsData, workScheduleData, taskAssignData, myReceivedTasks KHÔNG còn
+                // được đọc từ localStorage nữa (xem giải thích tại saveLocalCache) — các biến
+                // này giữ nguyên giá trị khởi tạo rỗng ([]) cho tới khi fetchSystemData() nhận
+                // được dữ liệu thật từ server, ngay sau lệnh gọi loadLocalCache() này (xem
+                // window.addEventListener("load", ...) ở cuối file).
                 return true;
             } catch (e) { console.warn("Không thể đọc cache cục bộ:", e); return false; }
         }
