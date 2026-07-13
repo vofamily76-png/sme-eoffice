@@ -746,6 +746,7 @@
                     <div class="card" style="cursor:pointer;" onclick="filterEquipmentShowAll()"><div class="card-info"><p>Tổng số thiết bị</p><h3 id="eq-total-count">0</h3></div><i class="fa-solid fa-boxes-stacked card-icon"></i></div>
                     <div class="card"><div class="card-info"><p>Đang cấp phát</p><h3 id="eq-assigned-count">0</h3></div><i class="fa-solid fa-user-check card-icon"></i></div>
                     <div class="card" style="cursor:pointer;" onclick="filterEquipmentByWarehouse()"><div class="card-info"><p>Thiết bị lưu kho</p><h3 id="eq-warehouse-count">0</h3></div><i class="fa-solid fa-warehouse card-icon"></i></div>
+                    <div class="card" style="cursor:pointer;" onclick="filterEquipmentByShared()"><div class="card-info"><p>Thiết bị dùng chung</p><h3 id="eq-shared-count">0</h3></div><i class="fa-solid fa-building-user card-icon"></i></div>
                 </div>
 
                 <!-- [XUẤT EXCEL] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ dùng LẠI dữ liệu
@@ -759,6 +760,7 @@
                             <option value="dept">Theo phòng ban cụ thể...</option>
                             <option value="staff">Xuất theo từng cá nhân...</option>
                             <option value="warehouse">Thiết bị lưu kho</option>
+                            <option value="shared">Thiết bị dùng chung</option>
                             <option value="liquidated">Thiết bị đã thanh lý</option>
                         </select>
                         <select id="eq-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
@@ -790,7 +792,7 @@
                             <input type="date" id="inp-eq-date-return">
                         </div>
                         <div class="input-group">
-                            <label>Vị trí làm việc</label>
+                            <label>Vị trí thiết bị</label>
                             <input type="text" id="inp-eq-location" placeholder="Ví dụ: Văn phòng SME Quảng Ngãi - Tầng 2">
                         </div>
                     </div>
@@ -803,6 +805,74 @@
                     <div class="form-row" style="margin-top:-5px; margin-bottom:20px;">
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <button type="button" class="btn btn-sm" id="btn-add-eq-item" style="background:var(--secondary-color); width:auto;" onclick="addEquipmentItemRow()"><i class="fa-solid fa-plus"></i> Thêm thiết bị khác cho nhân viên này</button>
+                        </div>
+                    </div>
+
+                    <!-- [THIẾT BỊ DÙNG CHUNG] Khối RIÊNG, độc lập với việc cấp phát thiết bị cho
+                         cá nhân ở trên. Khi lưu sẽ tạo/cập nhật MỘT thiết bị KHÔNG gán cho nhân
+                         viên/phòng ban cụ thể (dùng chung nhiều người, đặt tại 1 tầng/văn phòng). -->
+                    <div class="admin-box" id="eq-shared-box" style="border-left: 5px solid #8e44ad; background:#f9f5fc; margin: 4px 0 20px 0;">
+                        <h4 id="eq-shared-form-title" style="margin:0 0 10px 0;"><i class="fa-solid fa-building-user" style="color:#8e44ad;"></i> Khai báo Thiết bị dùng chung (không cấp phát cho cá nhân)</h4>
+                        <input type="hidden" id="edit-index-eq-shared" value="">
+                        <div class="form-row">
+                            <div class="input-group">
+                                <label>Tên thiết bị</label>
+                                <input type="text" id="inp-eq-shared-name" placeholder="Ví dụ: Máy in dùng chung">
+                            </div>
+                            <div class="input-group">
+                                <label>Mã số thiết bị</label>
+                                <input type="text" id="inp-eq-shared-code" placeholder="Ví dụ: TB-DC-001">
+                            </div>
+                            <div class="input-group">
+                                <label>Tình trạng thiết bị</label>
+                                <select id="inp-eq-shared-status"></select>
+                            </div>
+                            <div class="input-group">
+                                <label>Đơn vị tính</label>
+                                <input type="text" id="inp-eq-shared-unit" placeholder="Ví dụ: Cái, Bộ...">
+                            </div>
+                            <div class="input-group">
+                                <label>Số lượng</label>
+                                <input type="number" id="inp-eq-shared-qty" min="1" step="1" value="1">
+                            </div>
+                            <div class="input-group">
+                                <label>Ngày lắp đặt</label>
+                                <input type="date" id="inp-eq-shared-install-date">
+                            </div>
+                            <div class="input-group">
+                                <label>Thiết bị dùng chung (tầng)</label>
+                                <select id="inp-eq-shared" onchange="onEqSharedChange()">
+                                    <option value="">-- Chọn tầng --</option>
+                                    <option value="Tầng trệt">Tầng trệt</option>
+                                    <option value="Tầng 1">Tầng 1</option>
+                                    <option value="Tầng 2">Tầng 2</option>
+                                    <option value="Tầng 3">Tầng 3</option>
+                                    <option value="Khác">Khác...</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="eq-shared-other-wrap" style="display:none;">
+                                <label>Tầng khác (tự điền)</label>
+                                <input type="text" id="inp-eq-shared-other" placeholder="Ví dụ: Tầng hầm, Sân thượng...">
+                            </div>
+                            <div class="input-group">
+                                <label>Vị Trí</label>
+                                <select id="inp-eq-shared-office" onchange="onEqSharedOfficeChange()">
+                                    <option value="">-- Chọn văn phòng --</option>
+                                    <option value="Văn Phòng Vũng Tàu">Văn Phòng Vũng Tàu</option>
+                                    <option value="Văn Phòng Quảng Ngãi">Văn Phòng Quảng Ngãi</option>
+                                    <option value="Khác">Khác...</option>
+                                </select>
+                            </div>
+                            <div class="input-group" id="eq-shared-office-other-wrap" style="display:none;">
+                                <label>Vị trí khác (tự điền)</label>
+                                <input type="text" id="inp-eq-shared-office-other" placeholder="Ví dụ: Văn phòng đại diện Hà Nội...">
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top:10px">
+                            <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                                <button type="button" class="btn btn-success" style="width:auto;" onclick="saveSharedEquipment()">Lưu thiết bị dùng chung ✔️</button>
+                                <button type="button" class="btn btn-danger" id="btn-cancel-edit-eq-shared" onclick="resetSharedEquipmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                            </div>
                         </div>
                     </div>
 
@@ -825,6 +895,7 @@
                     <select id="filter-eq-dept" class="search-box" onchange="onFilterEqDeptChange()" style="max-width: 220px;"></select>
                     <select id="filter-eq-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
                     <select id="filter-eq-type" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
+                    <select id="filter-eq-shared" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
                 </div>
                 <div style="overflow-x:auto;">
                 <table id="tbl-equipment">
@@ -832,7 +903,7 @@
                         <th>Mã TB</th><th>Tên thiết bị</th><th>Loại</th><th>Nhân viên sử dụng</th><th>Phòng ban</th>
                         <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày nhận</th><th>Ngày bàn giao</th>
                         <th>Ngày nhập kho</th><th>Ngày xuất kho</th><th>Ngày thanh lý</th>
-                        <th>Vị trí</th><th>Ghi chú</th>
+                        <th>Vị trí</th><th>Thiết bị dùng chung</th><th>Vị Trí (văn phòng)</th><th>Ngày lắp đặt</th><th>Ghi chú</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -6302,6 +6373,25 @@
                 filterTypeSel.dataset.filled = "1";
             }
 
+            // [THIẾT BỊ DÙNG CHUNG] Select "Tình trạng thiết bị" trong khối khai báo riêng, và bộ
+            // lọc "Thiết bị dùng chung" trong khu vực tìm kiếm bảng.
+            let sharedStatusSel = document.getElementById("inp-eq-shared-status");
+            if (sharedStatusSel && !sharedStatusSel.dataset.filled) {
+                sharedStatusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+                sharedStatusSel.dataset.filled = "1";
+            }
+            let filterSharedSel = document.getElementById("filter-eq-shared");
+            if (filterSharedSel && !filterSharedSel.dataset.filled) {
+                filterSharedSel.innerHTML = '<option value="Tất cả">-- Thiết bị dùng chung (tất cả) --</option>' +
+                    '<option value="__NONE__">Không phải thiết bị dùng chung</option>' +
+                    '<option value="Tầng trệt">Tầng trệt</option>' +
+                    '<option value="Tầng 1">Tầng 1</option>' +
+                    '<option value="Tầng 2">Tầng 2</option>' +
+                    '<option value="Tầng 3">Tầng 3</option>' +
+                    '<option value="__OTHER__">Khác (tự điền)</option>';
+                filterSharedSel.dataset.filled = "1";
+            }
+
             // [XUẤT EXCEL] Select chọn phòng ban / cá nhân cụ thể khi xuất (chỉ hiện đúng ô tương
             // ứng với phạm vi đang chọn — xem onEqExportScopeChange()).
             let eqExportDeptSel = document.getElementById("eq-export-dept");
@@ -6476,22 +6566,80 @@
             });
         }
 
+        // Khi chọn "Khác" ở mục "Thiết bị dùng chung" -> hiện ô cho người dùng tự điền vị trí;
+        // ngược lại (chọn tầng có sẵn hoặc "Không") -> ẩn ô và xóa nội dung đã điền (nếu có).
+        function onEqSharedChange() {
+            let sel = document.getElementById("inp-eq-shared");
+            let wrap = document.getElementById("eq-shared-other-wrap");
+            let other = document.getElementById("inp-eq-shared-other");
+            if (!sel || !wrap) return;
+            if (sel.value === "Khác") {
+                wrap.style.display = "";
+            } else {
+                wrap.style.display = "none";
+                if (other) other.value = "";
+            }
+        }
+
+        // Lấy giá trị cuối cùng của "Thiết bị dùng chung": nếu chọn "Khác" thì lấy nội dung
+        // người dùng tự điền, ngược lại lấy thẳng giá trị đã chọn trong danh sách có sẵn.
+        function getEqSharedValue() {
+            let sel = document.getElementById("inp-eq-shared");
+            if (!sel) return "";
+            if (sel.value === "Khác") {
+                let other = document.getElementById("inp-eq-shared-other");
+                return other ? other.value.trim() : "";
+            }
+            return sel.value;
+        }
+
+        // Khi chọn "Khác" ở mục "Vị Trí" (văn phòng) -> hiện ô cho người dùng tự điền;
+        // ngược lại -> ẩn ô và xóa nội dung đã điền (nếu có).
+        function onEqSharedOfficeChange() {
+            let sel = document.getElementById("inp-eq-shared-office");
+            let wrap = document.getElementById("eq-shared-office-other-wrap");
+            let other = document.getElementById("inp-eq-shared-office-other");
+            if (!sel || !wrap) return;
+            if (sel.value === "Khác") {
+                wrap.style.display = "";
+            } else {
+                wrap.style.display = "none";
+                if (other) other.value = "";
+            }
+        }
+
+        // Lấy giá trị cuối cùng của "Vị Trí" (văn phòng): nếu chọn "Khác" thì lấy nội dung
+        // người dùng tự điền, ngược lại lấy thẳng giá trị đã chọn trong danh sách có sẵn.
+        function getEqSharedOfficeValue() {
+            let sel = document.getElementById("inp-eq-shared-office");
+            if (!sel) return "";
+            if (sel.value === "Khác") {
+                let other = document.getElementById("inp-eq-shared-office-other");
+                return other ? other.value.trim() : "";
+            }
+            return sel.value;
+        }
+
         function renderEquipmentTable() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || !!currentUser.eqManage));
             let formBox = document.getElementById("equipment-form-box");
             if (formBox) formBox.style.display = canEdit ? "block" : "none";
 
             let totalCount = equipmentData.length;
-            let warehouseCount = equipmentData.filter(e => !e.msnv || e.status === "Lưu kho").length;
-            let assignedCount = totalCount - warehouseCount;
+            let warehouseCount = equipmentData.filter(e => !e.isShared && (!e.msnv || e.status === "Lưu kho")).length;
+            let sharedCount = equipmentData.filter(e => e.isShared).length;
+            let assignedCount = totalCount - warehouseCount - sharedCount;
             document.getElementById("eq-total-count").innerText = totalCount;
             document.getElementById("eq-assigned-count").innerText = assignedCount;
             document.getElementById("eq-warehouse-count").innerText = warehouseCount;
+            document.getElementById("eq-shared-count").innerText = sharedCount;
 
             let rowsHtml = equipmentData.map((e, idx) => {
                 let staffLabel = e.msnv
                     ? escapeHtml(getStaffNameByMsnv(e.msnv))
-                    : `<span style="color:#888;"><i class="fa-solid fa-box"></i> Lưu kho</span>`;
+                    : (e.isShared
+                        ? `<span style="color:#8e44ad;"><i class="fa-solid fa-building-user"></i> Dùng chung</span>`
+                        : `<span style="color:#888;"><i class="fa-solid fa-box"></i> Lưu kho</span>`);
                 let statusColor = (e.status === "Lưu kho") ? "#888"
                     : (e.status === "Hỏng - Chờ sửa") ? "#d9534f"
                     : (e.status === "Đang sử dụng") ? "#27ae60"
@@ -6517,13 +6665,16 @@
                         <td>${formatDateDisplay(e.dateWarehouseOut)}</td>
                         <td>${formatDateDisplay(e.dateLiquidation)}</td>
                         <td>${escapeHtml(e.location)}</td>
+                        <td>${escapeHtml(e.sharedDevice)}</td>
+                        <td>${escapeHtml(e.officeLocation)}</td>
+                        <td>${formatDateDisplay(e.installDate)}</td>
                         <td>${escapeHtml(e.note)}</td>
                         <td style="display:${canEdit ? '' : 'none'}">${actionsHtml}</td>
                     </tr>`;
             }).join('');
 
             document.querySelector("#tbl-equipment tbody").innerHTML = rowsHtml ||
-                `<tr><td colspan="16" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
+                `<tr><td colspan="19" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo.</td></tr>`;
 
             filterEquipmentTable();
         }
@@ -6533,12 +6684,15 @@
             let staffFEl = document.getElementById("filter-eq-staff");
             let deptFEl = document.getElementById("filter-eq-dept");
             let typeFEl = document.getElementById("filter-eq-type");
+            let sharedFEl = document.getElementById("filter-eq-shared");
             if (!searchEl || !staffFEl || !deptFEl || !typeFEl) return;
 
             let search = (searchEl.value || "").toLowerCase();
             let staffF = staffFEl.value;
             let deptF = deptFEl.value;
             let typeF = typeFEl.value;
+            let sharedF = sharedFEl ? sharedFEl.value : "Tất cả";
+            let presetShared = ["Tầng trệt", "Tầng 1", "Tầng 2", "Tầng 3"];
             let rows = document.querySelectorAll("#tbl-equipment tbody tr");
 
             equipmentData.forEach((e, idx) => {
@@ -6548,10 +6702,14 @@
                     (e.name || "").toLowerCase().includes(search) ||
                     (e.chiTiet || "").toLowerCase().includes(search) ||
                     (getStaffNameByMsnv(e.msnv) || "").toLowerCase().includes(search);
-                let matchStaff = (staffF === "Tất cả") || (e.msnv === staffF) || (staffF === "__WAREHOUSE__" && !e.msnv);
+                let matchStaff = (staffF === "Tất cả") || (e.msnv === staffF) || (staffF === "__WAREHOUSE__" && !e.msnv && !e.isShared);
                 let matchDept = (deptF === "Tất cả" || e.dept === deptF);
                 let matchType = (typeF === "Tất cả" || e.type === typeF);
-                rows[idx].style.display = (matchSearch && matchStaff && matchDept && matchType) ? "" : "none";
+                let matchShared = (sharedF === "Tất cả") ||
+                    (sharedF === "__NONE__" && !e.sharedDevice) ||
+                    (sharedF === "__OTHER__" && e.sharedDevice && !presetShared.includes(e.sharedDevice)) ||
+                    (presetShared.includes(sharedF) && e.sharedDevice === sharedF);
+                rows[idx].style.display = (matchSearch && matchStaff && matchDept && matchType && matchShared) ? "" : "none";
             });
         }
 
@@ -6560,10 +6718,28 @@
             filterEquipmentTable();
         }
 
+        function filterEquipmentByShared() {
+            let sharedFEl = document.getElementById("filter-eq-shared");
+            if (sharedFEl) sharedFEl.value = "Tất cả";
+            document.getElementById("filter-eq-staff").value = "Tất cả";
+            document.getElementById("filter-eq-dept").value = "Tất cả";
+            document.getElementById("filter-eq-type").value = "Tất cả";
+            document.getElementById("search-equipment").value = "";
+            filterEquipmentTable();
+            // Sau khi lọc theo bộ lọc chuẩn, ẩn tiếp các dòng KHÔNG phải thiết bị dùng chung
+            // (lọc trực tiếp theo cờ isShared, không phụ thuộc quy ước đặt mã số/tên).
+            let rows = document.querySelectorAll("#tbl-equipment tbody tr");
+            equipmentData.forEach((e, idx) => {
+                if (rows[idx] && rows[idx].style.display !== "none" && !e.isShared) rows[idx].style.display = "none";
+            });
+        }
+
         function filterEquipmentShowAll() {
             document.getElementById("filter-eq-staff").value = "Tất cả";
             document.getElementById("filter-eq-dept").value = "Tất cả";
             document.getElementById("filter-eq-type").value = "Tất cả";
+            let sharedFEl = document.getElementById("filter-eq-shared");
+            if (sharedFEl) sharedFEl.value = "Tất cả";
             document.getElementById("search-equipment").value = "";
             filterEquipmentTable();
         }
@@ -6649,6 +6825,12 @@
         function startEditEquipment(idx) {
             let d = equipmentData[idx];
             if (!d) return;
+            // [THIẾT BỊ DÙNG CHUNG] Thiết bị được khai báo qua khối riêng (không gán cho cá
+            // nhân/phòng ban) -> chuyển sang nạp lại đúng form "Thiết bị dùng chung" bên dưới.
+            if (d.isShared) {
+                startEditSharedEquipment(idx);
+                return;
+            }
             document.getElementById("edit-index-eq").value = idx;
             document.getElementById("eq-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị: ${escapeHtml(d.name)}`;
             document.getElementById("inp-eq-dept").value = d.dept || "";
@@ -6698,6 +6880,125 @@
             populateEquipmentFormOptions();
         }
 
+        // [THIẾT BỊ DÙNG CHUNG] Lưu (thêm mới/cập nhật) MỘT thiết bị dùng chung, KHÔNG gán cho
+        // nhân viên/phòng ban cụ thể — độc lập hoàn toàn với danh sách thiết bị cấp phát ở trên.
+        async function saveSharedEquipment() {
+            let idxRaw = document.getElementById("edit-index-eq-shared").value;
+            let isEdit = (idxRaw !== "");
+            let checkIndex = isEdit ? parseInt(idxRaw) : -1;
+
+            let name = document.getElementById("inp-eq-shared-name").value.trim();
+            let code = document.getElementById("inp-eq-shared-code").value.trim();
+            let status = document.getElementById("inp-eq-shared-status").value;
+            let unit = document.getElementById("inp-eq-shared-unit").value.trim();
+            let qty = parseFloat(document.getElementById("inp-eq-shared-qty").value) || 1;
+            let installDate = document.getElementById("inp-eq-shared-install-date").value;
+
+            if (!name || !code) { alert("⚠️ Vui lòng điền đầy đủ Tên thiết bị và Mã số thiết bị!"); return; }
+
+            if (document.getElementById("inp-eq-shared").value === "Khác" && !getEqSharedValue()) {
+                alert("⚠️ Vui lòng điền tầng dùng chung (mục \"Khác\") hoặc chọn lại 1 tầng có sẵn!");
+                return;
+            }
+            if (document.getElementById("inp-eq-shared-office").value === "Khác" && !getEqSharedOfficeValue()) {
+                alert("⚠️ Vui lòng điền Vị Trí (mục \"Khác\") hoặc chọn lại 1 văn phòng có sẵn!");
+                return;
+            }
+
+            // Chặn trùng Mã số thiết bị với dữ liệu đã có trong hệ thống (kể cả thiết bị cấp phát cá nhân).
+            let lc = code.toLowerCase();
+            let duplicateCode = equipmentData.find((item, idx) => item.assetCode.trim().toLowerCase() === lc && idx !== checkIndex);
+            if (duplicateCode) { alert(`❌ Lỗi: Mã số thiết bị "${code}" đã tồn tại trong hệ thống!`); return; }
+
+            let obj = {
+                assetCode: code, name: name, type: "", chiTiet: "",
+                msnv: "", dept: "",
+                status: status, unit: unit, qty: qty,
+                dateReceived: "", dateReturn: "",
+                location: "", note: "",
+                dateWarehouseIn: "", dateWarehouseOut: "", dateLiquidation: "",
+                sharedDevice: getEqSharedValue(),
+                officeLocation: getEqSharedOfficeValue(),
+                installDate: installDate,
+                isShared: true
+            };
+
+            if (isEdit) { equipmentData[checkIndex] = obj; } else { equipmentData.push(obj); }
+            let ok = await pushToCloud(Object.assign({ action: "saveEquipment" }, obj));
+
+            saveLocalCache();
+            if (isEdit) {
+                alert(ok ? "✔️ Đã cập nhật thiết bị dùng chung lên hệ thống." : "✔️ Đã cập nhật thiết bị dùng chung (lưu cục bộ, chưa đồng bộ được lên Google Sheet).");
+            } else {
+                alert(ok ? "✔️ Đã lưu thiết bị dùng chung lên hệ thống." : "✔️ Đã lưu thiết bị dùng chung (lưu cục bộ, chưa đồng bộ được lên Google Sheet).");
+            }
+            resetSharedEquipmentForm();
+            updateSystemData();
+        }
+
+        // [THIẾT BỊ DÙNG CHUNG] Nạp lại dữ liệu 1 thiết bị dùng chung đã có vào form riêng để sửa.
+        function startEditSharedEquipment(idx) {
+            let d = equipmentData[idx];
+            if (!d) return;
+            document.getElementById("edit-index-eq-shared").value = idx;
+            document.getElementById("eq-shared-form-title").innerHTML = `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa thiết bị dùng chung: ${escapeHtml(d.name)}`;
+            document.getElementById("inp-eq-shared-name").value = d.name || "";
+            document.getElementById("inp-eq-shared-code").value = d.assetCode || "";
+            document.getElementById("inp-eq-shared-status").value = d.status || EQUIPMENT_STATUS[0];
+            document.getElementById("inp-eq-shared-unit").value = d.unit || "";
+            document.getElementById("inp-eq-shared-qty").value = d.qty || 1;
+            document.getElementById("inp-eq-shared-install-date").value = toDateInputValue(d.installDate);
+
+            let sharedSel = document.getElementById("inp-eq-shared");
+            let sharedOtherWrap = document.getElementById("eq-shared-other-wrap");
+            let sharedOtherInp = document.getElementById("inp-eq-shared-other");
+            let presetShared = ["", "Tầng trệt", "Tầng 1", "Tầng 2", "Tầng 3"];
+            let dShared = d.sharedDevice || "";
+            if (presetShared.includes(dShared)) {
+                sharedSel.value = dShared;
+                sharedOtherWrap.style.display = "none";
+                sharedOtherInp.value = "";
+            } else {
+                sharedSel.value = "Khác";
+                sharedOtherWrap.style.display = "";
+                sharedOtherInp.value = dShared;
+            }
+
+            let officeSel = document.getElementById("inp-eq-shared-office");
+            let officeOtherWrap = document.getElementById("eq-shared-office-other-wrap");
+            let officeOtherInp = document.getElementById("inp-eq-shared-office-other");
+            let presetOffice = ["", "Văn Phòng Vũng Tàu", "Văn Phòng Quảng Ngãi"];
+            let dOffice = d.officeLocation || "";
+            if (presetOffice.includes(dOffice)) {
+                officeSel.value = dOffice;
+                officeOtherWrap.style.display = "none";
+                officeOtherInp.value = "";
+            } else {
+                officeSel.value = "Khác";
+                officeOtherWrap.style.display = "";
+                officeOtherInp.value = dOffice;
+            }
+
+            document.getElementById("btn-cancel-edit-eq-shared").style.display = "inline-block";
+            document.getElementById("eq-shared-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        // [THIẾT BỊ DÙNG CHUNG] Xóa trắng form khai báo thiết bị dùng chung (sau khi lưu xong,
+        // hoặc khi bấm "Hủy chỉnh sửa").
+        function resetSharedEquipmentForm() {
+            document.getElementById("edit-index-eq-shared").value = "";
+            document.getElementById("eq-shared-form-title").innerHTML = `<i class="fa-solid fa-building-user" style="color:#8e44ad;"></i> Khai báo Thiết bị dùng chung (không cấp phát cho cá nhân)`;
+            ["inp-eq-shared-name", "inp-eq-shared-code", "inp-eq-shared-unit", "inp-eq-shared-install-date",
+             "inp-eq-shared", "inp-eq-shared-other", "inp-eq-shared-office", "inp-eq-shared-office-other"]
+                .forEach(id => { let el = document.getElementById(id); if (el) el.value = ""; });
+            document.getElementById("inp-eq-shared-qty").value = 1;
+            let statusSel = document.getElementById("inp-eq-shared-status");
+            if (statusSel) statusSel.value = EQUIPMENT_STATUS[0];
+            document.getElementById("eq-shared-other-wrap").style.display = "none";
+            document.getElementById("eq-shared-office-other-wrap").style.display = "none";
+            document.getElementById("btn-cancel-edit-eq-shared").style.display = "none";
+        }
+
         async function deleteEquipmentRow(idx) {
             if (!equipmentData[idx]) return;
             if (!confirm(`Xác nhận xóa thiết bị "${equipmentData[idx].name}"?`)) return;
@@ -6733,8 +7034,13 @@
                 rows = rows.filter(e => e.msnv === staffValue);
             } else if (scope === "warehouse") {
                 // Đồng nhất với định nghĩa "Thiết bị lưu kho" đang dùng ở thẻ tổng quan phía trên
-                // (chưa gán MSNV cho ai, hoặc đang được đánh dấu Tình trạng = "Lưu kho").
-                rows = rows.filter(e => !e.msnv || e.status === "Lưu kho");
+                // (chưa gán MSNV cho ai, hoặc đang được đánh dấu Tình trạng = "Lưu kho"; KHÔNG
+                // tính thiết bị dùng chung vào đây — đã có phạm vi "shared" riêng bên dưới).
+                rows = rows.filter(e => !e.isShared && (!e.msnv || e.status === "Lưu kho"));
+            } else if (scope === "shared") {
+                // [THIẾT BỊ DÙNG CHUNG] Chỉ lấy các thiết bị được khai báo qua khối "Thiết bị
+                // dùng chung" (isShared = true, không gán cho nhân viên/phòng ban cụ thể).
+                rows = rows.filter(e => e.isShared);
             } else if (scope === "liquidated") {
                 rows = rows.filter(e => e.status === "Đã thanh lý");
             }
@@ -6783,7 +7089,7 @@
                     "Mã TB": e.assetCode || "",
                     "Tên thiết bị": e.name || "",
                     "Loại": typeLabel,
-                    "Nhân viên sử dụng": e.msnv ? getStaffNameByMsnv(e.msnv) : "Lưu kho",
+                    "Nhân viên sử dụng": e.msnv ? getStaffNameByMsnv(e.msnv) : (e.isShared ? "Dùng chung" : "Lưu kho"),
                     "Phòng ban": e.dept || "",
                     "Tình trạng": e.status || "",
                     "ĐVT": e.unit || "",
@@ -6794,6 +7100,9 @@
                     "Ngày xuất kho": e.dateWarehouseOut ? formatDateDisplay(e.dateWarehouseOut) : "",
                     "Ngày thanh lý": e.dateLiquidation ? formatDateDisplay(e.dateLiquidation) : "",
                     "Vị trí": e.location || "",
+                    "Thiết bị dùng chung": e.sharedDevice || "",
+                    "Vị Trí (văn phòng)": e.officeLocation || "",
+                    "Ngày lắp đặt": e.installDate ? formatDateDisplay(e.installDate) : "",
                     "Ghi chú": e.note || ""
                 };
             });
@@ -6802,7 +7111,7 @@
             ws['!cols'] = [
                 { wch: 12 }, { wch: 26 }, { wch: 20 }, { wch: 22 }, { wch: 28 },
                 { wch: 16 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 14 },
-                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 26 }
+                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 24 }, { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 26 }
             ];
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "ThietBi");
@@ -6812,6 +7121,7 @@
                 dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
                 staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_"),
                 warehouse: "LuuKho",
+                shared: "ThietBiDungChung",
                 liquidated: "DaThanhLy"
             };
             let now = new Date();
