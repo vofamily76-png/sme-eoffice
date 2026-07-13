@@ -126,14 +126,44 @@
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
-        .contact-card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px; display: flex; gap: 15px; position: relative;}
+        .contact-card { background: var(--card-bg); border-radius: 8px; box-shadow: var(--card-shadow); padding: 20px; display: flex; flex-wrap: wrap; gap: 15px; position: relative;}
         .contact-card img.avatar { width: 85px; height: 100px; border-radius: 4px; object-fit: cover; border: 1px solid #ddd; background-color: #fafafa; }
         .contact-card .placeholder-avatar { width: 85px; height: 100px; border-radius: 4px; background-color: #e0e0e0; display: flex; align-items: center; justify-content: center; color: #757575; font-size: 32px; }
-        .contact-card .info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .contact-card .info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
         .contact-card .info h4 { font-size: 16px; margin-bottom: 6px; color: #1967d2; font-weight: bold; }
         .contact-card .info p { font-size: 13px; color: #5f6368; margin-bottom: 4px; line-height: 1.2; }
         .contact-card .info .label { font-weight: normal; color: #777; width: 55px; display: inline-block; }
         .contact-card .actions { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 5px; }
+
+        /* [DANH BẠ CBCNV - BẢO MẬT THÔNG TIN CÁ NHÂN]
+           - Tên của CHÍNH MÌNH (trùng MSNV đã liên kết với tài khoản đang đăng nhập, xem
+             currentUser.msnv / getEffectiveStaffMsnvForUser ở Code.gs) hiển thị dạng "có thể
+             bấm" (cursor pointer, có mũi tên) để mở/đóng khối "Xem đầy đủ thông tin" của
+             CHÍNH mình ngay bên dưới thẻ.
+           - Tên của NGƯỜI KHÁC hiển thị dạng chữ thường (không có hiệu ứng bấm được) — bấm vào
+             sẽ KHÔNG có tác dụng gì (xem hàm toggleMyContactDetail ở phần mã JavaScript), bảo vệ
+             thông tin cá nhân (ngày sinh, SĐT, email, hợp đồng, ngân hàng, CCCD...) của đồng
+             nghiệp không bị người khác xem được. */
+        .contact-card .info h4.contact-name-mine { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+        .contact-card .info h4.contact-name-mine:hover { text-decoration: underline; }
+        .contact-card .info .mine-badge { font-size: 10px; font-weight: normal; background: #e8f0fe; color: #1967d2; border: 1px solid #c6dafc; border-radius: 10px; padding: 1px 8px; margin-left: 2px; }
+        .contact-card .info h4.contact-name-other { cursor: default; }
+        .contact-card .info p.view-full-link { cursor: pointer; color: #1967d2; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; margin-top: -2px; }
+        .contact-card .info p.view-full-link:hover { text-decoration: underline; }
+
+        /* [DANH BẠ CBCNV] Khối "Xem đầy đủ thông tin của chính mình" — hiển thị dưới dạng 1 thẻ
+           độc lập (own-profile-card), tách biệt hoàn toàn khỏi lưới danh bạ (lưới đã bị ẩn đi
+           display:none trong lúc khối này hiển thị, xem openMyFullContactDetail/closeMyFullContactDetail). */
+        .own-profile-card { max-width: 900px; }
+        .own-profile-card .info h4 { font-size: 20px; }
+
+        .contact-detail-extra { flex-basis: 100%; width: 100%; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #dcdfe3; display: none; }
+        .contact-detail-extra.open { display: block; }
+        .contact-detail-extra h5 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--primary-color); margin: 12px 0 8px 0; }
+        .contact-detail-extra h5:first-child { margin-top: 0; }
+        .contact-detail-extra .detail-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; }
+        .contact-detail-extra .detail-fields p { font-size: 13px; color: #5f6368; margin: 0; line-height: 1.3; }
+        .contact-detail-extra .detail-fields .label { font-weight: normal; color: #777; display: block; font-size: 11px; }
 
         .admin-box { background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .admin-box h3 { margin-bottom: 15px; color: #444; border-bottom: 1px dashed #ccc; padding-bottom: 5px;}
@@ -471,11 +501,25 @@
 
             <div id="page-contacts" class="page-content">
                 <h2 class="page-title">Danh bạ Cán bộ Công nhân viên Văn phòng</h2>
-                <div class="table-controls">
+                <div class="table-controls" id="contact-list-controls">
                     <input type="text" id="search-contacts" class="search-box" oninput="filterStaffGrid()" placeholder="Tìm theo tên, MSNV, chức vụ...">
                     <select id="filter-dept" class="search-box" onchange="filterStaffGrid()" style="max-width: 250px;"></select>
                 </div>
                 <div class="contact-grid" id="contact-grid"></div>
+
+                <!-- [DANH BẠ CBCNV - BẢO MẬT THÔNG TIN CÁ NHÂN] Khối "Xem đầy đủ thông tin của
+                     CHÍNH MÌNH" — chỉ hiện lên khi người dùng bấm vào thẻ/tên của chính họ trong
+                     danh bạ (xem openMyFullContactDetail() ở phần mã JavaScript). Khi khối này
+                     đang hiển thị thì toàn bộ lưới danh bạ (danh sách nhân viên khác) và ô tìm
+                     kiếm/lọc phòng ban đều được ẨN ĐI (display:none) — chỉ còn đúng hồ sơ đầy đủ
+                     của chính người đang xem, không có nhân sự nào khác hiện ra cùng lúc. Bấm nút
+                     "Quay lại Danh bạ" sẽ đóng khối này và hiện lại lưới danh bạ như bình thường. -->
+                <div id="contact-own-detail-wrap" style="display:none;">
+                    <button type="button" class="btn btn-sm" style="width:auto; background:#5f6368; margin-bottom:16px;" onclick="closeMyFullContactDetail()">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại Danh bạ
+                    </button>
+                    <div id="contact-own-detail-body"></div>
+                </div>
             </div>
 
             <div id="page-hr" class="page-content">
@@ -3872,6 +3916,12 @@
                 let nvUnseenIds = getMyTasks().filter(t => !t.daXem).map(t => t.id);
                 if (nvUnseenIds.length) markMyTasksSeen(nvUnseenIds);
             }
+            if (pageId === "contacts") {
+                // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
+                // (không giữ lại trạng thái "đang xem hồ sơ đầy đủ của chính mình" từ lần trước),
+                // tránh gây nhầm lẫn khi dữ liệu đã được đồng bộ/tải lại từ Google Sheet.
+                closeMyFullContactDetail();
+            }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
             document.getElementById("page-" + pageId).classList.add("active");
@@ -5889,30 +5939,175 @@
             document.getElementById("img-file-info").innerText = "";
         }
 
+        // [DANH BẠ CBCNV - BẢO MẬT THÔNG TIN CÁ NHÂN] MSNV của CHÍNH tài khoản đang đăng nhập
+        // (server đã tự đối chiếu qua Email hoặc Admin liên kết thủ công -> currentUser.msnv,
+        // xem getEffectiveStaffMsnvForUser ở Code.gs). Dùng để xác định 1 thẻ nhân viên trong
+        // Danh bạ có phải LÀ CHÍNH MÌNH hay không -> quyết định có được mở xem đầy đủ thông tin
+        // hay chỉ được xem các trường thông tin cơ bản (áp dụng cho MỌI tài khoản, kể cả Admin/
+        // tài khoản có quyền Sửa-Xóa nhân sự, vì đây là quyền XEM ở Danh bạ — KHÁC với quyền
+        // Sửa/Xóa hrEdit/hrDelete vốn đã có sẵn form riêng để xem/sửa đầy đủ thông tin).
+        function getMyStaffMsnv() {
+            return (currentUser && currentUser.msnv) ? String(currentUser.msnv).trim() : "";
+        }
+
+        // [DANH BẠ CBCNV] Dựng HTML các trường thông tin ĐẦY ĐỦ (nhạy cảm) của 1 nhân sự — hàm
+        // này CHỈ được gọi để dựng cho đúng hồ sơ của CHÍNH tài khoản đang đăng nhập (xem điều
+        // kiện kiểm tra isMine ở openMyFullContactDetail() bên dưới trước khi gọi hàm này).
+        function buildStaffFullFieldsHtml(s) {
+            let fld = (label, value, icon) => `
+                <p>${icon ? `<i class="fa-solid ${icon}" style="margin-right:6px;color:#328cc1"></i>` : `<span class="label">${label}</span>`}${value ? escapeHtml(value) : 'Chưa cập nhật'}</p>
+            `;
+            let contractInfo = getContractStatusInfo(s);
+            return `
+                <h5><i class="fa-solid fa-id-card"></i> Thông tin cá nhân</h5>
+                <div class="detail-fields">
+                    ${fld('', s.gender, 'fa-venus-mars')}
+                    ${fld('', s.nationality, 'fa-flag')}
+                    ${fld('', s.permanentAddress, 'fa-house')}
+                </div>
+                <h5><i class="fa-solid fa-file-signature"></i> Hợp đồng lao động</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Loại HĐ:</span>${escapeHtml(s.contractType) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Số HĐ:</span>${escapeHtml(s.contractNumber) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngày ký:</span>${s.contractSignDate ? formatDateDisplay(s.contractSignDate) : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Trạng thái:</span> <span class="chip-dept ${contractInfo.cls}">${escapeHtml(contractInfo.label)}</span></p>
+                    <p><span class="label">Số BHXH:</span>${escapeHtml(s.socialInsuranceNumber) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">GP lao động:</span>${escapeHtml(s.workPermitNumber) || 'Chưa cập nhật'}</p>
+                </div>
+                <h5><i class="fa-solid fa-building-columns"></i> Ngân hàng</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Số TK:</span>${escapeHtml(s.bankAccountNumber) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngân hàng - CN:</span>${escapeHtml(s.bankNameBranch) || 'Chưa cập nhật'}</p>
+                </div>
+                <h5><i class="fa-solid fa-id-badge"></i> Giấy tờ tùy thân</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Số CCCD/Passport:</span>${escapeHtml(s.idNumber) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngày cấp:</span>${s.idIssueDate ? formatDateDisplay(s.idIssueDate) : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Nơi cấp:</span>${escapeHtml(s.idIssuePlace) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngày hết hạn:</span>${s.idExpiryDate ? formatDateDisplay(s.idExpiryDate) : 'Chưa cập nhật'}</p>
+                </div>
+                <h5><i class="fa-solid fa-graduation-cap"></i> Học vấn</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Trình độ:</span>${escapeHtml(s.educationLevel) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Trường:</span>${escapeHtml(s.educationSchool) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngành:</span>${escapeHtml(s.educationMajor) || 'Chưa cập nhật'}</p>
+                </div>
+                <h5><i class="fa-solid fa-phone-volume"></i> Liên hệ khẩn cấp</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Họ tên:</span>${escapeHtml(s.emergencyContactName) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Quan hệ:</span>${escapeHtml(s.emergencyContactRelation) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">SĐT:</span>${escapeHtml(s.emergencyContactPhone) || 'Chưa cập nhật'}</p>
+                </div>
+            `;
+        }
+
+        // [DANH BẠ CBCNV - BẢO MẬT THÔNG TIN CÁ NHÂN] Bấm vào thẻ/tên của CHÍNH MÌNH trong danh
+        // bạ -> chuyển sang chế độ "Xem đầy đủ thông tin": ẨN TOÀN BỘ lưới danh bạ (mọi nhân sự
+        // khác không còn hiện ra trên màn hình nữa) và ẨN ô tìm kiếm/lọc phòng ban, chỉ còn hiển
+        // thị đúng 1 hồ sơ đầy đủ của chính người đang xem. Hàm luôn tự kiểm tra lại "idx truyền
+        // vào có đúng là hồ sơ của chính tài khoản đang đăng nhập hay không" (so khớp lại MSNV
+        // qua getMyStaffMsnv()) trước khi hiển thị bất kỳ trường dữ liệu nào — KHÔNG dựa hoàn
+        // toàn vào việc "nút bấm chỉ được gắn cho đúng thẻ của mình" ở renderStaffGrid, để phòng
+        // trường hợp DOM bị can thiệp thủ công (vd. sửa tay onclick bằng DevTools) vẫn không thể
+        // xem được hồ sơ của người khác qua đường này.
+        function openMyFullContactDetail(idx) {
+            let myMsnv = getMyStaffMsnv();
+            let s = staffData[idx];
+            if (!s || !myMsnv || String(s.msnv).trim() !== myMsnv) {
+                alert('🔒 Bạn chỉ có thể xem đầy đủ thông tin của chính mình.');
+                return;
+            }
+
+            let safeName = escapeHtml(s.name);
+            let avatarHtml = buildContactAvatarHtml(s, safeName);
+            let deptChips = "";
+            if (Array.isArray(s.dept)) {
+                deptChips = s.dept.map(d => `<span class="chip-dept">${escapeHtml(d)}</span>`).join('');
+            } else if (s.dept) {
+                deptChips = `<span class="chip-dept">${escapeHtml(s.dept)}</span>`;
+            }
+            let workStatusHtml = (s.workStatus === "OFF")
+                ? `<span class="chip-dept" style="background:#fde8e8; color:#b91c1c; border-color:#f5c2c2;">Đã nghỉ việc${s.resignDate ? ' - ' + formatDateDisplay(s.resignDate) : ''}</span>`
+                : `<span class="chip-dept" style="background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;">Đang làm việc</span>`;
+
+            let ownDobHtml = s.dob
+                ? `<p><i class="fa-solid fa-cake-candles" style="margin-right:6px;color:#328cc1;width:14px;"></i>${formatDateDisplay(s.dob)}</p>` : '';
+            let ownDateJoinHtml = s.dateJoin
+                ? `<p><i class="fa-solid fa-calendar-check" style="margin-right:6px;color:#328cc1;width:14px;"></i>${formatDateDisplay(s.dateJoin)}</p>` : '';
+            let ownPhoneHtml = s.phone
+                ? `<p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1;width:14px;"></i>${escapeHtml(s.phone)}</p>` : '';
+            let ownEmailHtml = s.email
+                ? `<p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1;width:14px;"></i>${escapeHtml(s.email)}</p>` : '';
+
+            document.getElementById("contact-own-detail-body").innerHTML = `
+                <div class="contact-card own-profile-card">
+                    ${avatarHtml}
+                    <div class="info">
+                        <h4>${safeName} <span class="mine-badge">Của bạn</span></h4>
+                        <p><span class="label">MSNV:</span><strong>${escapeHtml(s.msnv)}</strong></p>
+                        <p><span class="label">Phòng ban:</span> ${deptChips}</p>
+                        <p><span class="label">Chức vụ:</span>${escapeHtml(s.position)}</p>
+                        ${ownDobHtml}
+                        ${ownDateJoinHtml}
+                        ${ownPhoneHtml}
+                        ${ownEmailHtml}
+                        <p>${workStatusHtml}</p>
+                    </div>
+                    <div class="contact-detail-extra open">
+                        ${buildStaffFullFieldsHtml(s)}
+                    </div>
+                </div>
+            `;
+
+            // Ẩn lưới danh bạ + ô tìm kiếm/lọc (mọi nhân sự khác không còn hiện ra), chỉ hiện
+            // đúng khối hồ sơ đầy đủ của chính mình vừa dựng ở trên.
+            document.getElementById("contact-grid").style.display = "none";
+            document.getElementById("contact-list-controls").style.display = "none";
+            document.getElementById("contact-own-detail-wrap").style.display = "block";
+        }
+
+        // Quay lại lưới Danh bạ CBCNV bình thường (hiện lại toàn bộ nhân sự theo đúng bộ lọc
+        // đang chọn) sau khi đã xem xong hồ sơ đầy đủ của chính mình.
+        function closeMyFullContactDetail() {
+            document.getElementById("contact-own-detail-wrap").style.display = "none";
+            document.getElementById("contact-own-detail-body").innerHTML = "";
+            document.getElementById("contact-grid").style.display = "grid";
+            document.getElementById("contact-list-controls").style.display = "flex";
+        }
+
+        // [DANH BẠ CBCNV] Dựng HTML ảnh đại diện — tách riêng thành hàm dùng CHUNG cho cả lưới
+        // danh bạ (renderStaffGrid) và khối "Xem đầy đủ thông tin của chính mình"
+        // (openMyFullContactDetail) để không lặp code, không thay đổi cách ảnh được tải/hiển thị.
+        function buildContactAvatarHtml(s, safeName) {
+            if (isDriveAvatarId(s.imgUrl)) {
+                // Ảnh đã chuyển sang lưu trên Google Drive (thư mục avatar riêng tư) — nếu đã
+                // có sẵn trong cache (đã tải trước đó trong phiên) thì hiển thị ngay, ngược lại
+                // hiển thị khung chờ rồi loadStaffAvatars() sẽ tự điền ảnh vào sau.
+                let cached = avatarCache[s.imgUrl];
+                return cached
+                    ? `<img src="${cached}" alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
+                    : `<img alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" style="background:#eef1f5;">`;
+            } else if (s.imgUrl) {
+                // Dữ liệu cũ (Base64 lưu trực tiếp trong Sheet trước khi nâng cấp) — vẫn hiển thị
+                // bình thường, KHÔNG bị mất hay bị ép chuyển đổi.
+                return `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`;
+            }
+            return `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
+        }
+
         function renderStaffGrid() {
             // [TAB "QUẢN LÝ NHÂN SỰ" - PHÂN QUYỀN RIÊNG] Nút Sửa/Xóa nhân sự ở Danh bạ CBCNV
             // dùng CHUNG 1 hành động dữ liệu (saveStaff/deletePerson) với Tab "Quản Lý Nhân Sự",
             // nên áp dụng cùng quyền riêng hrEdit/hrDelete do Admin cấp cho từng tài khoản.
+            // (Quyền Sửa/Xóa này KHÔNG liên quan tới việc bấm xem chi tiết ở đây — 1 tài khoản
+            // có quyền Sửa/Xóa vẫn chỉ bấm mở được đúng thẻ của chính mình như mọi người).
             let canEditStaff = currentUserCanEditHR;
             let canDeleteStaff = currentUserCanDeleteHR;
+            let myMsnv = getMyStaffMsnv();
             let htmlStaffGrid = staffData.map((s, idx) => {
                 let safeName = escapeHtml(s.name);
-                let avatarHtml;
-                if (isDriveAvatarId(s.imgUrl)) {
-                    // Ảnh đã chuyển sang lưu trên Google Drive (thư mục avatar riêng tư) — nếu
-                    // đã có sẵn trong cache (đã tải trước đó trong phiên) thì hiển thị ngay,
-                    // ngược lại hiển thị khung chờ rồi loadStaffAvatars() sẽ tự điền ảnh vào sau.
-                    let cached = avatarCache[s.imgUrl];
-                    avatarHtml = cached
-                        ? `<img src="${cached}" alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`
-                        : `<img alt="${safeName}" class="avatar" data-avatar-fileid="${escapeHtml(s.imgUrl)}" style="background:#eef1f5;">`;
-                } else if (s.imgUrl) {
-                    // Dữ liệu cũ (Base64 lưu trực tiếp trong Sheet trước khi nâng cấp) — vẫn hiển
-                    // thị bình thường, KHÔNG bị mất hay bị ép chuyển đổi.
-                    avatarHtml = `<img src="${escapeHtml(s.imgUrl)}" alt="${safeName}" class="avatar" onerror="this.outerHTML='<div class=\'placeholder-avatar\'>${safeName.charAt(0)}</div>'">`;
-                } else {
-                    avatarHtml = `<div class="placeholder-avatar">${safeName.charAt(0)}</div>`;
-                }
+                let isMine = !!myMsnv && String(s.msnv).trim() === myMsnv;
+                let avatarHtml = buildContactAvatarHtml(s, safeName);
 
                 let actionsHtml = (canEditStaff || canDeleteStaff) ? `
                     <div class="actions">
@@ -5928,25 +6123,53 @@
                     deptChips = `<span class="chip-dept">${escapeHtml(s.dept)}</span>`;
                 }
 
-                // [BỔ SUNG] Hiển thị Ngày sinh, Ngày vào làm và Tình trạng làm việc (ON/OFF) trong
-                // thẻ Danh bạ CBCNV. Nhân viên nào chưa có dữ liệu (bản ghi cũ) sẽ hiển thị
-                // "Chưa cập nhật" / mặc định coi như đang làm việc — không làm mất dữ liệu cũ.
+                // [BỔ SUNG] Hiển thị Tình trạng làm việc (ON/OFF) trong thẻ Danh bạ CBCNV — đây
+                // là thông tin CƠ BẢN, mọi tài khoản đều xem được cho mọi nhân viên (giống MSNV/
+                // Phòng ban/Chức vụ). Nhân viên nào chưa có dữ liệu (bản ghi cũ) sẽ hiển thị
+                // mặc định coi như đang làm việc — không làm mất dữ liệu cũ.
                 let workStatusHtml = (s.workStatus === "OFF")
                     ? `<span class="chip-dept" style="background:#fde8e8; color:#b91c1c; border-color:#f5c2c2;">Đã nghỉ việc${s.resignDate ? ' - ' + formatDateDisplay(s.resignDate) : ''}</span>`
                     : `<span class="chip-dept" style="background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;">Đang làm việc</span>`;
+
+                // [BẢO MẬT THÔNG TIN CÁ NHÂN - CHẾ ĐỘ XEM ĐẦY ĐỦ RIÊNG]
+                // - CHÍNH MÌNH (isMine=true): tên gắn onclick gọi openMyFullContactDetail(idx) ->
+                //   chuyển sang màn hình "Xem đầy đủ thông tin" (ẨN toàn bộ lưới danh bạ, mọi
+                //   nhân sự khác không hiện ra), có thêm dòng gợi ý nhỏ "Xem đầy đủ thông tin".
+                // - NGƯỜI KHÁC (isMine=false): KHÔNG gắn onclick nào cả -> bấm vào tên người
+                //   khác không có tác dụng gì, dữ liệu đầy đủ của họ cũng không được dựng ra ở
+                //   bất kỳ đâu trong thao tác này.
+                let nameHtml = isMine
+                    ? `<h4 class="contact-name-mine" onclick="openMyFullContactDetail(${idx})" title="Bấm để xem đầy đủ thông tin của bạn">${safeName} <span class="mine-badge">Của bạn</span></h4>
+                       <p class="view-full-link" onclick="openMyFullContactDetail(${idx})"><i class="fa-solid fa-eye"></i> Xem đầy đủ thông tin của bạn</p>`
+                    : `<h4 class="contact-name-other">${safeName}</h4>`;
+
+                // [KHÔI PHỤC ĐÚNG THIẾT KẾ GỐC] Ngày sinh/Ngày vào làm/SĐT/Email là các trường
+                // THÔNG TIN CƠ BẢN vốn dĩ luôn hiển thị công khai cho MỌI nhân sự trong Danh bạ
+                // (giống hệt MSNV/Phòng ban/Chức vụ) — KHÔNG thuộc nhóm "thông tin đầy đủ" chỉ
+                // xem được khi bấm vào hồ sơ của chính mình. Các trường thực sự nhạy cảm (hợp
+                // đồng lao động, ngân hàng, CCCD/Passport, học vấn, liên hệ khẩn cấp...) vẫn CHỈ
+                // hiển thị trong openMyFullContactDetail()/buildStaffFullFieldsHtml() như cũ.
+                let dobHtml = s.dob
+                    ? `<p><i class="fa-solid fa-cake-candles" style="margin-right:6px;color:#328cc1;width:14px;"></i>${formatDateDisplay(s.dob)}</p>` : '';
+                let dateJoinHtml = s.dateJoin
+                    ? `<p><i class="fa-solid fa-calendar-check" style="margin-right:6px;color:#328cc1;width:14px;"></i>${formatDateDisplay(s.dateJoin)}</p>` : '';
+                let phoneHtml = s.phone
+                    ? `<p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1;width:14px;"></i>${escapeHtml(s.phone)}</p>` : '';
+                let emailHtml = s.email
+                    ? `<p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1;width:14px;"></i>${escapeHtml(s.email)}</p>` : '';
 
                 return `
                     <div class="contact-card">
                         ${avatarHtml}
                         <div class="info">
-                            <h4>${safeName}</h4>
+                            ${nameHtml}
                             <p><span class="label">MSNV:</span><strong>${escapeHtml(s.msnv)}</strong></p>
                             <p><span class="label">Phòng ban:</span> ${deptChips}</p>
                             <p><span class="label">Chức vụ:</span>${escapeHtml(s.position)}</p>
-                            <p><i class="fa-solid fa-cake-candles" style="margin-right:6px;color:#328cc1"></i>${s.dob ? formatDateDisplay(s.dob) : 'Chưa cập nhật'}</p>
-                            <p><i class="fa-solid fa-calendar-check" style="margin-right:6px;color:#328cc1"></i>${s.dateJoin ? formatDateDisplay(s.dateJoin) : 'Chưa cập nhật'}</p>
-                            <p><i class="fa-solid fa-phone" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.phone) || 'Chưa cập nhật'}</p>
-                            <p><i class="fa-solid fa-envelope" style="margin-right:6px;color:#328cc1"></i>${escapeHtml(s.email) || 'Chưa cập nhật'}</p>
+                            ${dobHtml}
+                            ${dateJoinHtml}
+                            ${phoneHtml}
+                            ${emailHtml}
                             <p>${workStatusHtml}</p>
                         </div>
                         ${actionsHtml}
