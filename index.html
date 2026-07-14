@@ -415,7 +415,14 @@
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
-                    <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
+                    <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
+                         chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
+                         quyền (canViewChuKySo/xemChuKySo) và trang nội dung #page-chukyso vẫn
+                         được GIỮ NGUYÊN trong mã nguồn (không xóa, không đổi cơ chế bảo mật) —
+                         chỉ không còn lối vào từ menu để người dùng thấy/bấm nữa. Nếu cần bật lại
+                         sau này, chỉ cần khôi phục lại đúng dòng <li> bên dưới:
+                         <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
+                    -->
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
@@ -3684,9 +3691,14 @@
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
+            // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
+            // phần tử "menu-chukyso" không tồn tại nữa. Toàn bộ logic phân quyền/dữ liệu bên dưới
+            // vẫn được giữ nguyên (không đổi cơ chế bảo mật, không mất dữ liệu) — chỉ thêm kiểm
+            // tra null để tránh lỗi JS khi phần tử menu không còn trên trang.
             let canViewChuKySo = (currentUser.role === "Admin") || !!currentUser.xemChuKySo;
             currentUserCanViewChuKySo = canViewChuKySo;
-            document.getElementById("menu-chukyso").style.display = canViewChuKySo ? "flex" : "none";
+            let elMenuChuKySo = document.getElementById("menu-chukyso");
+            if (elMenuChuKySo) elMenuChuKySo.style.display = canViewChuKySo ? "flex" : "none";
             if (canViewChuKySo) loadSignatureData();
             // Thẻ "HĐ Lao động sắp hết hạn" ở Tab Tổng quan: chỉ hiện với tài khoản được cấp
             // quyền "CanhBaoHopDong" (hoặc Admin). Ẩn hẳn thẻ (không chỉ số đếm) để tránh gợi ý
