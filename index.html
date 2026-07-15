@@ -2001,7 +2001,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-15.dangky-nghiphep-v4-nhieunguoiduyet-nuabuoi";
+        const FRONTEND_BUILD_VERSION = "2026-07-15.dangky-nghiphep-v5-fix-lech-ngay";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -3570,6 +3570,22 @@
             if (!dateStr) return "";
             let s = dateStr.toString().trim();
             if (!s) return "";
+            // [SỬA LỆCH NGÀY] Chuỗi ISO có "Z" ở cuối (VD "2026-07-11T17:00:00.000Z") là dấu hiệu
+            // Google Sheet đã lỡ tự chuyển 1 chuỗi Ngày thuần túy (VD "2026-07-12") thành kiểu
+            // Date nội bộ, rồi khi trả JSON về bị quy đổi sang giờ UTC. Nếu chỉ cắt bỏ phần sau
+            // "T" như cách cũ sẽ LỆCH 1 NGÀY. Phải cộng lại 7 tiếng (múi giờ Việt Nam, GMT+7) rồi
+            // mới lấy Ngày/Tháng/Năm, để khớp đúng với ngày người dùng đã thực sự chọn/nhập.
+            let isoUtcMatch = s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
+            if (isoUtcMatch) {
+                let d = new Date(s);
+                if (!isNaN(d.getTime())) {
+                    let vn = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+                    let yyyy = vn.getUTCFullYear();
+                    let mm = String(vn.getUTCMonth() + 1).padStart(2, "0");
+                    let dd = String(vn.getUTCDate()).padStart(2, "0");
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+            }
             let isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})T/);
             if (isoMatch) return isoMatch[1];
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -6082,8 +6098,8 @@
 
                 return `<tr>
                     <td>${escapeHtml(r.hoTen || r.nguoiTaoUsername)}</td>
-                    <td>${escapeHtml(r.tuNgay || "")}</td>
-                    <td>${escapeHtml(r.denNgay || "")}</td>
+                    <td>${escapeHtml(formatDateDisplay(r.tuNgay))}</td>
+                    <td>${escapeHtml(formatDateDisplay(r.denNgay))}</td>
                     <td>${escapeHtml(r.loaiNghi || "Cả ngày")}</td>
                     <td style="text-align:center;">${r.soNgayNghi ?? ""}</td>
                     <td>${escapeHtml(r.lyDo || "")}</td>
