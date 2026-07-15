@@ -6083,7 +6083,10 @@
 
             tbody.innerHTML = rows.map(r => {
                 let fileCell = r.fileId
-                    ? `<a href="#" onclick="viewLeaveFile('${r.fileId}', '${escapeHtml(r.fileName).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-pdf"></i> ${escapeHtml(r.fileName)}</a>`
+                    ? `<a href="#" onclick="viewLeaveFile('${r.fileId}', '${escapeHtml(r.fileName).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-pdf"></i> ${escapeHtml(r.fileName)}</a>` +
+                      ((r.trangThai === "Đã duyệt" || r.trangThai === "Từ chối")
+                          ? `<br><small style="color:${r.trangThai === "Đã duyệt" ? "#0a8a3e" : "#c0392b"};"><i class="fa-solid fa-stamp"></i> Đã đóng dấu xác nhận trên PDF</small>`
+                          : "")
                     : "-";
                 let statusColor = LEAVE_STATUS_COLORS[r.trangThai] || "#888";
                 let statusCell = `<span style="color:#fff; background:${statusColor}; padding:3px 10px; border-radius:12px; font-size:12px; white-space:nowrap;">${escapeHtml(r.trangThai)}</span>`;
