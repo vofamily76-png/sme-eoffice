@@ -1743,6 +1743,7 @@
             <div id="nvd-done-hint" style="display:none; color:#2e7d32; background:#eaf5ea; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;">
                 <i class="fa-solid fa-circle-check"></i> Công việc đã <b>Hoàn thành</b> — không còn tính năng cập nhật tiến độ nữa.
             </div>
+            <div id="nvd-recall-hint" style="display:none; color:#6a1b9a; background:#f3e5f5; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;"></div>
             <div style="display:flex; gap:10px;">
                 <button id="nvd-submit-btn" class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
@@ -1760,6 +1761,31 @@
             <div id="pgh-body" style="font-size:13px;"></div>
             <div style="display:flex; gap:10px; margin-top:14px;">
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeProgressHistoryModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [TAB "GIAO VIỆC" - THU HỒI CÔNG VIỆC] Modal nhập lý do khi người giao việc bấm "Thu hồi"
+         1 công việc đã giao. Sau khi giao việc xong, người giao KHÔNG còn được "Sửa" công việc đó
+         nữa (xem renderTaskAssignTable) — thay vào đó chỉ có thể "Thu hồi" kèm lý do bắt buộc.
+         Thao tác này KHÔNG xóa dữ liệu công việc: chỉ đổi Trạng thái sang "Đã thu hồi" + lưu lý
+         do (cột riêng "LyDoThuHoi" + ghi thêm 1 mục vào lịch sử tiến độ) — xem action
+         "recallTaskAssign" ở Code.gs. -->
+    <div id="recall-task-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10600; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 480px;">
+            <h2><i class="fa-solid fa-rotate-left"></i> Thu hồi công việc</h2>
+            <div id="rt-task-name" style="font-size:13px; color:#555; margin:-6px 0 12px;"></div>
+            <div style="font-size:12.5px; color:#c62828; margin-bottom:10px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Sau khi thu hồi, công việc sẽ chuyển sang trạng thái "Đã thu hồi" và người nhận sẽ không thể tiếp tục cập nhật tiến độ. Vui lòng nhập rõ lý do thu hồi bên dưới.
+            </div>
+            <div class="form-group">
+                <label>Lý do thu hồi <span style="color:#c62828;">*</span></label>
+                <textarea id="rt-lydo" rows="4" placeholder="Nhập lý do thu hồi công việc..."></textarea>
+            </div>
+            <div id="rt-error" style="color:#c62828; font-size:12.5px; margin-bottom:8px; display:none;"></div>
+            <div style="display:flex; gap:10px; margin-top:6px;">
+                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitRecallTaskAssign()">Xác nhận thu hồi</button>
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeRecallTaskModal()">Hủy</button>
             </div>
         </div>
     </div>
@@ -4732,6 +4758,7 @@
             if (trangThai === "Hoàn thành") return "#2e7d32";
             if (trangThai === "Đang thực hiện") return "#1976d2";
             if (trangThai === "Trễ hạn") return "#c62828";
+            if (trangThai === "Đã thu hồi") return "#6a1b9a";
             return "#8e8e8e"; // Mới giao
         }
 
@@ -5033,6 +5060,8 @@
                     <td onclick="event.stopPropagation()">
                         ${t.trangThai === "Hoàn thành"
                             ? `<span style="background:#2e7d32; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
+                            : t.trangThai === "Đã thu hồi"
+                            ? `<span style="background:#6a1b9a; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Người giao đã thu hồi công việc này"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
                             : `<select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
                             <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
@@ -5140,11 +5169,20 @@
             // cập nhật tiến độ nữa: khóa hẳn Trạng thái/Mô tả báo cáo/Tiến độ/File đính kèm mới +
             // ẩn nút "Cập nhật". Vẫn xem được đầy đủ thông tin và Lịch sử tiến độ như bình thường.
             let isDone = (t.trangThai === "Hoàn thành");
-            document.getElementById("nvd-trangthai").disabled = isDone;
-            document.getElementById("nvd-noidung").disabled = isDone;
-            document.getElementById("nvd-file").disabled = isDone;
-            document.getElementById("nvd-submit-btn").style.display = isDone ? "none" : "";
+            let isRecalled = (t.trangThai === "Đã thu hồi");
+            let isLocked = isDone || isRecalled;
+            document.getElementById("nvd-trangthai").disabled = isLocked;
+            document.getElementById("nvd-noidung").disabled = isLocked;
+            document.getElementById("nvd-file").disabled = isLocked;
+            document.getElementById("nvd-submit-btn").style.display = isLocked ? "none" : "";
             document.getElementById("nvd-done-hint").style.display = isDone ? "block" : "none";
+            let recallHint = document.getElementById("nvd-recall-hint");
+            if (recallHint) {
+                recallHint.style.display = isRecalled ? "block" : "none";
+                recallHint.innerHTML = isRecalled
+                    ? `<i class="fa-solid fa-rotate-left"></i> Công việc này đã bị <b>thu hồi</b> — không còn tính năng cập nhật tiến độ nữa.`
+                    : "";
+            }
 
             nvdUpdateProgressLockState();
             document.getElementById("nv-detail-modal").style.display = "flex";
@@ -5265,9 +5303,22 @@
                     t.baoCaoHangNgay ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-day"></i> Ngày</span>' : '',
                     t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Tuần</span>' : ''
                 ].filter(Boolean).join(' ') || '<span style="color:#aaa;">—</span>';
+                // [TAB "GIAO VIỆC" - THU HỒI] Công việc đã giao (đã tồn tại) thì KHÔNG còn nút
+                // "Sửa" nữa — thay bằng nút "Thu hồi" (yêu cầu nhập lý do, xem openRecallTaskModal).
+                // Công việc ĐÃ thu hồi rồi thì không hiện lại nút "Thu hồi" nữa (tránh thu hồi 2
+                // lần chồng lý do), chỉ còn xem được lý do đã thu hồi qua "Xem lịch sử tiến độ".
+                // Công việc ĐÃ "Hoàn thành" thì cũng KHÔNG còn nút "Thu hồi" nữa (việc đã xong,
+                // xem thêm điều kiện chặn ở recallTaskAssignItem() phía Code.gs — server chặn
+                // luôn, không chỉ ẩn/hiện ở giao diện).
+                let staIsRecalled = (t.trangThai === "Đã thu hồi");
+                let staIsDone = (t.trangThai === "Hoàn thành");
                 let actionsHtml = (currentUserCanAssignTask
-                    ? `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editTaskAssign('${t.id}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                       <button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
+                    ? (staIsRecalled
+                        ? `<span style="display:inline-block; padding:6px 10px; color:#c62828; font-size:12px;" title="Công việc đã thu hồi"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
+                        : staIsDone
+                        ? `<span style="display:inline-block; padding:6px 10px; color:#2e7d32; font-size:12px;" title="Công việc đã hoàn thành, không thể thu hồi"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
+                        : `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="openRecallTaskModal('${t.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i></button>`)
+                       + `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
                     : '')
                     + `<button class="btn" style="width:auto; padding:6px 10px; background:#607d8b;" onclick="openProgressHistoryModal('${t.id}')" title="Xem lịch sử tiến độ"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
                 return `<tr>
@@ -5438,6 +5489,54 @@
                 await loadFromCloud(true);
                 resetTaskAssignForm();
                 renderTaskAssignTable();
+            }
+        }
+
+        /* [TAB "GIAO VIỆC" - THU HỒI CÔNG VIỆC] Thay cho nút "Sửa" khi công việc đã được giao:
+           người giao chỉ còn có thể "Thu hồi" (kèm lý do bắt buộc) — KHÔNG chỉnh sửa được nội
+           dung công việc đã giao nữa. Thao tác này CHỈ đổi Trạng thái + lưu lý do, KHÔNG xóa bất
+           kỳ dữ liệu nào khác của công việc (file đính kèm, lịch sử tiến độ... vẫn giữ nguyên) —
+           xem action "recallTaskAssign" ở Code.gs. */
+        let rtCurrentTaskId = "";
+
+        function openRecallTaskModal(id) {
+            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền thu hồi Giao việc. Liên hệ Admin để được cấp quyền."); return; }
+            let item = (taskAssignData || []).find(t => t.id === id);
+            if (!item) return;
+            if (item.trangThai === "Đã thu hồi") { alert("Công việc này đã được thu hồi trước đó."); return; }
+            if (item.trangThai === "Hoàn thành") { alert("Công việc đã Hoàn thành, không thể thu hồi."); return; }
+            rtCurrentTaskId = id;
+            document.getElementById("rt-task-name").innerHTML = `Công việc: <b>${escapeHtml(item.tenCongViec)}</b> — Người nhận: <b>${escapeHtml(item.nguoiNhan)}</b>`;
+            document.getElementById("rt-lydo").value = "";
+            document.getElementById("rt-error").style.display = "none";
+            document.getElementById("recall-task-modal").style.display = "flex";
+        }
+
+        function closeRecallTaskModal() {
+            document.getElementById("recall-task-modal").style.display = "none";
+            rtCurrentTaskId = "";
+        }
+
+        async function submitRecallTaskAssign() {
+            if (!rtCurrentTaskId) return;
+            let errEl = document.getElementById("rt-error");
+            errEl.style.display = "none";
+            let lyDo = (document.getElementById("rt-lydo").value || "").trim();
+            if (!lyDo) {
+                errEl.textContent = "Vui lòng nhập lý do thu hồi.";
+                errEl.style.display = "block";
+                return;
+            }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+            let ok = await pushToCloud({ action: "recallTaskAssign", id: rtCurrentTaskId, lyDo: lyDo });
+            if (ok) {
+                await loadFromCloud(true);
+                renderTaskAssignTable();
+                closeRecallTaskModal();
+                alert("✔️ Đã thu hồi công việc.");
+            } else {
+                errEl.textContent = "Không thể thu hồi (kiểm tra kết nối mạng).";
+                errEl.style.display = "block";
             }
         }
 
