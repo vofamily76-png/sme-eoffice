@@ -413,8 +413,9 @@
                 </div>
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
+                    <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
+                    <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
-                    <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
                     <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
                          chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
                          quyền (canViewChuKySo/xemChuKySo) và trang nội dung #page-chukyso vẫn
@@ -424,17 +425,16 @@
                          <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
                     -->
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
-                    <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
-                    <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-giaoviec" onclick="switchPage('giaoviec')"><i class="fa-solid fa-list-check"></i> Giao Việc</li>
                     <li class="menu-item" id="menu-nhanviec" onclick="switchPage('nhanviec')">
                         <i class="fa-solid fa-inbox"></i> Nhận Việc
                         <span id="nv-badge-count" style="display:none; background:#e53935; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">0</span>
                     </li>
-                    <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
-                    <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
-                    <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
+                    <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
+                    <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
+                    <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
+                    <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
                 </ul>
