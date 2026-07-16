@@ -1752,6 +1752,9 @@
                 <i class="fa-solid fa-circle-check"></i> Công việc đã <b>Hoàn thành</b> — không còn tính năng cập nhật tiến độ nữa.
             </div>
             <div id="nvd-recall-hint" style="display:none; color:#6a1b9a; background:#f3e5f5; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;"></div>
+            <div id="nvd-pending-hint" style="display:none; color:#ef6c00; background:#fff3e0; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;">
+                <i class="fa-solid fa-hourglass-half"></i> Bạn đang có 1 yêu cầu cập nhật <b>đang chờ người giao việc phê duyệt</b>. Nếu gửi yêu cầu mới, yêu cầu này sẽ được THAY THẾ.
+            </div>
             <div style="display:flex; gap:10px;">
                 <button id="nvd-submit-btn" class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
@@ -1794,6 +1797,31 @@
             <div style="display:flex; gap:10px; margin-top:6px;">
                 <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitRecallTaskAssign()">Xác nhận thu hồi</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeRecallTaskModal()">Hủy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ" - TAB "GIAO VIỆC"] Modal hiện chi tiết 1 yêu cầu cập
+         nhật Trạng thái/Tiến độ/Nội dung báo cáo/File mà người NHẬN việc vừa gửi (đang lưu tạm ở
+         cột "ChoDuyet", CHƯA có hiệu lực) — người GIAO việc xem rồi bấm "Đồng ý" (áp dụng thật,
+         action "approveTaskUpdate") hoặc "Không đồng ý" (hủy yêu cầu, KHÔNG đụng dữ liệu thật,
+         action "rejectTaskUpdate"). Xem renderTaskAssignTable() (nút mở modal này) và Code.gs. -->
+    <div id="approve-update-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10600; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 520px; max-height: 88vh; overflow-y: auto;">
+            <h2><i class="fa-solid fa-clipboard-check"></i> Yêu cầu cập nhật tiến độ</h2>
+            <div id="atu-task-name" style="font-size:13px; color:#555; margin:-6px 0 12px;"></div>
+            <div id="atu-body" style="font-size:13.5px; background:#f7f8fa; border-radius:8px; padding:10px 12px; margin-bottom:12px;"></div>
+            <div class="form-group">
+                <label>Lý do (chỉ cần nhập nếu bấm "Không đồng ý")</label>
+                <textarea id="atu-lydo" rows="3" placeholder="VD: Số liệu chưa chính xác, cần bổ sung thêm minh chứng..."></textarea>
+            </div>
+            <div id="atu-error" style="color:#c62828; font-size:12.5px; margin-bottom:8px; display:none;"></div>
+            <div style="display:flex; gap:10px; margin-top:6px;">
+                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitApproveDecision(true)"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="submitApproveDecision(false)"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+            </div>
+            <div style="margin-top:8px;">
+                <button class="btn" style="width:100%; background:#607d8b;" onclick="closeApproveUpdateModal()">Đóng, xem lại sau</button>
             </div>
         </div>
     </div>
@@ -4975,11 +5003,25 @@
                 let roleBadge = `<span style="background:${isGiao ? '#1565c0' : '#2e7d32'}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px;">${isGiao ? 'Người giao' : 'Người nhận'}</span>`;
                 let statusHtml = rp.trangThai ? `<span style="background:${gvStatusBadgeColor(rp.trangThai)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;">${escapeHtml(rp.trangThai)}</span>` : '';
                 let progressHtml = (rp.tienDo !== undefined && rp.tienDo !== "") ? `<span style="margin-left:6px; font-weight:600;">${Number(rp.tienDo) || 0}%</span>` : '';
+                // [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ"] Đánh dấu rõ trạng thái xử lý của MỖI yêu cầu
+                // cập nhật do người nhận việc gửi: "cho_duyet" (mới gửi, đang chờ) / "da_duyet"
+                // (người giao đã đồng ý, đã có hiệu lực) / "tu_choi" (người giao đã từ chối, KHÔNG
+                // có hiệu lực). Các mục lịch sử CŨ (trước khi có tính năng này, hoặc do chính người
+                // giao việc tự cập nhật ở tab "Giao Việc") không có trường này -> không hiện nhãn,
+                // giữ nguyên hiển thị như trước.
+                let pheDuyetHtml = '';
+                if (rp.trangThaiPheDuyet === "cho_duyet") {
+                    pheDuyetHtml = `<span style="background:#ef6c00; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;"><i class="fa-solid fa-hourglass-half"></i> Đang chờ duyệt</span>`;
+                } else if (rp.trangThaiPheDuyet === "da_duyet") {
+                    pheDuyetHtml = `<span style="background:#2e7d32; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;" title="${rp.nguoiPheDuyet ? ('Duyệt bởi ' + escapeHtml(rp.nguoiPheDuyet) + (rp.thoiGianPheDuyet ? ' lúc ' + escapeHtml(rp.thoiGianPheDuyet) : '')) : ''}"><i class="fa-solid fa-check"></i> Đã duyệt</span>`;
+                } else if (rp.trangThaiPheDuyet === "tu_choi") {
+                    pheDuyetHtml = `<span style="background:#c62828; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;"><i class="fa-solid fa-xmark"></i> Từ chối</span>`;
+                }
                 let filesHtml = (rp.files && rp.files.length)
                     ? rp.files.map(f => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${f.fileId}', '${escapeHtml(f.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(f.fileName)}</a></div>`).join('')
                     : '';
                 return `<div style="padding:8px 0; border-bottom:1px solid #e5e5e5;">
-                    <div style="color:#888; font-size:11px; margin-bottom:3px;">${escapeHtml(rp.thoiGian || '')}${rp.nguoiGui ? ' • ' + escapeHtml(rp.nguoiGui) : ''} ${roleBadge}${statusHtml}${progressHtml}</div>
+                    <div style="color:#888; font-size:11px; margin-bottom:3px;">${escapeHtml(rp.thoiGian || '')}${rp.nguoiGui ? ' • ' + escapeHtml(rp.nguoiGui) : ''} ${roleBadge}${statusHtml}${progressHtml}${pheDuyetHtml}</div>
                     ${rp.noiDung ? `<div style="margin-bottom:3px;">${escapeHtml(rp.noiDung)}</div>` : ''}
                     ${filesHtml}
                 </div>`;
@@ -5074,13 +5116,14 @@
                             ? `<span style="background:#ef6c00; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Công việc đã đóng"><i class="fa-solid fa-xmark"></i> Không hoàn thành</span>`
                             : t.trangThai === "Đã thu hồi"
                             ? `<span style="background:#6a1b9a; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Người giao đã thu hồi công việc này"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
-                            : `<select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
+                            : `<select style="padding:4px 6px;" onchange="handleQuickNvStatusChange('${t.id}', this.value)">
                             <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
                             <option value="Hoàn thành" ${t.trangThai === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
                             <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
                             <option value="Không hoàn thành">Không hoàn thành</option>
                         </select>`}
+                        ${t.choDuyet ? `<div style="margin-top:4px;"><span style="background:#ef6c00; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px;" title="Yêu cầu đang chờ người giao việc phê duyệt"><i class="fa-solid fa-hourglass-half"></i> Đang chờ duyệt</span></div>` : ''}
                     </td>
                     <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & xem tiến độ">
                         ${Number(t.tienDo) || 0}%
@@ -5105,6 +5148,18 @@
                 saveLocalCache();
                 updateNhanViecBadge();
                 renderMyTaskTable();
+            }
+        }
+
+        // [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ" - Ô CHỌN NHANH TRÊN BẢNG] Chọn nhanh 1 Trạng thái mới
+        // ở bảng "Nhận Việc" (không qua modal chi tiết) giờ đây cũng chỉ TẠO YÊU CẦU chờ người
+        // giao việc phê duyệt (xem updateMyTaskStatus() bên dưới, action "updateMyTaskStatus" ở
+        // Code.gs) — KHÔNG có hiệu lực ngay. Hiện rõ thông báo để người dùng không nhầm tưởng đã
+        // đổi trạng thái thành công ngay lập tức.
+        async function handleQuickNvStatusChange(id, newVal) {
+            let ok = await updateMyTaskStatus(id, newVal, undefined);
+            if (ok) {
+                alert("✔️ Đã gửi yêu cầu đổi trạng thái, đang chờ người giao việc phê duyệt.");
             }
         }
 
@@ -5201,6 +5256,12 @@
                     ? `<i class="fa-solid fa-rotate-left"></i> Công việc này đã bị <b>thu hồi</b> — không còn tính năng cập nhật tiến độ nữa.`
                     : "";
             }
+            // [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ"] Báo cho người nhận việc biết ĐANG có 1 yêu cầu
+            // cập nhật của chính họ còn chờ người giao việc xử lý (t.choDuyet, xem action
+            // "updateMyTaskStatus") — chỉ hiện khi công việc CHƯA bị khóa (isLocked), vì công việc
+            // đã đóng/thu hồi thì không thể còn yêu cầu chờ duyệt hợp lệ.
+            let pendingHint = document.getElementById("nvd-pending-hint");
+            if (pendingHint) pendingHint.style.display = (!isLocked && t.choDuyet) ? "block" : "none";
 
             nvdUpdateProgressLockState();
             document.getElementById("nv-detail-modal").style.display = "flex";
@@ -5288,7 +5349,7 @@
 
             let ok = await updateMyTaskStatus(nvdCurrentTaskId, trangThai, tienDo, attachments, noiDungBaoCao);
             if (ok) {
-                alert("✔️ Đã cập nhật công việc.");
+                alert("✔️ Đã gửi yêu cầu cập nhật, đang chờ người giao việc phê duyệt (bấm \"Đồng ý\"/\"Không đồng ý\").");
                 closeNvDetailModal();
             } else {
                 errEl.textContent = "Không thể cập nhật (kiểm tra kết nối mạng, hoặc bạn chưa nhập nội dung báo cáo + đính kèm file khi muốn đổi Tiến độ).";
@@ -5331,7 +5392,13 @@
                 // giao diện.
                 let staIsRecalled = (t.trangThai === "Đã thu hồi");
                 let staIsDone = (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành");
-                let actionsHtml = (currentUserCanAssignTask
+                // [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ"] Công việc đang có yêu cầu cập nhật chờ duyệt
+                // (t.choDuyet, xem action "updateMyTaskStatus") -> hiện nút nổi bật để người giao
+                // việc mở modal xem chi tiết + bấm "Đồng ý"/"Không đồng ý" (openApproveUpdateModal).
+                let staApproveBtn = (currentUserCanAssignTask && t.choDuyet)
+                    ? `<button class="btn" style="width:auto; padding:6px 10px; background:#ef6c00; animation:none;" onclick="openApproveUpdateModal('${t.id}')" title="Có yêu cầu cập nhật tiến độ đang chờ duyệt"><i class="fa-solid fa-clipboard-check"></i> Chờ duyệt</button>`
+                    : '';
+                let actionsHtml = staApproveBtn + (currentUserCanAssignTask
                     ? (staIsRecalled
                         ? `<span style="display:inline-block; padding:6px 10px; color:#c62828; font-size:12px;" title="Công việc đã thu hồi"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
                         : staIsDone
@@ -5517,6 +5584,7 @@
            kỳ dữ liệu nào khác của công việc (file đính kèm, lịch sử tiến độ... vẫn giữ nguyên) —
            xem action "recallTaskAssign" ở Code.gs. */
         let rtCurrentTaskId = "";
+        let atuCurrentTaskId = "";
 
         function openRecallTaskModal(id) {
             if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền thu hồi Giao việc. Liên hệ Admin để được cấp quyền."); return; }
@@ -5534,6 +5602,67 @@
         function closeRecallTaskModal() {
             document.getElementById("recall-task-modal").style.display = "none";
             rtCurrentTaskId = "";
+        }
+
+        /* [MỤC "PHÊ DUYỆT CẬP NHẬT TIẾN ĐỘ" - TAB "GIAO VIỆC"] Mở modal hiện chi tiết yêu cầu
+           đang chờ duyệt (t.choDuyet, đã parse sẵn từ server) của 1 công việc, để người giao việc
+           xem rồi bấm "Đồng ý"/"Không đồng ý". Chỉ hiện được khi công việc THẬT SỰ đang có yêu
+           cầu chờ duyệt (nút mở modal này chỉ xuất hiện trong trường hợp đó — xem
+           renderTaskAssignTable) — nếu không còn (VD người khác vừa xử lý xong), báo lỗi và đóng
+           lại, không cho thao tác trên dữ liệu đã cũ. */
+        function openApproveUpdateModal(id) {
+            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền phê duyệt cập nhật tiến độ. Liên hệ Admin để được cấp quyền."); return; }
+            let item = (taskAssignData || []).find(t => t.id === id);
+            if (!item || !item.choDuyet) { alert("Yêu cầu này không còn tồn tại (có thể đã được xử lý)."); return; }
+            atuCurrentTaskId = id;
+            let p = item.choDuyet;
+            document.getElementById("atu-task-name").innerHTML = `Công việc: <b>${escapeHtml(item.tenCongViec)}</b> — Người nhận: <b>${escapeHtml(item.nguoiNhan)}</b>`;
+            let rows = [];
+            rows.push(`<div style="color:#888; font-size:11.5px; margin-bottom:6px;">Gửi lúc ${escapeHtml(p.submittedAt || '')} bởi ${escapeHtml(p.submittedByName || p.submittedBy || '')}</div>`);
+            if (p.trangThai !== undefined && p.trangThai !== "") {
+                rows.push(`<div style="margin-bottom:4px;"><b>Trạng thái đề xuất:</b> <span style="background:${gvStatusBadgeColor(p.trangThai)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11.5px;">${escapeHtml(p.trangThai)}</span></div>`);
+            }
+            if (p.tienDo !== undefined && p.tienDo !== "") {
+                rows.push(`<div style="margin-bottom:4px;"><b>Tiến độ đề xuất:</b> ${Number(p.tienDo) || 0}%</div>`);
+            }
+            rows.push(`<div style="margin-bottom:4px;"><b>Nội dung báo cáo:</b> ${p.noiDungBaoCao ? escapeHtml(p.noiDungBaoCao) : '<span style="color:#aaa;">— Không có —</span>'}</div>`);
+            if (p.files && p.files.length) {
+                rows.push(`<div><b>File đính kèm:</b>${p.files.map(f => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${f.fileId}', '${escapeHtml(f.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(f.fileName)}</a></div>`).join('')}</div>`);
+            }
+            document.getElementById("atu-body").innerHTML = rows.join('');
+            document.getElementById("atu-lydo").value = "";
+            document.getElementById("atu-error").style.display = "none";
+            document.getElementById("approve-update-modal").style.display = "flex";
+        }
+
+        function closeApproveUpdateModal() {
+            document.getElementById("approve-update-modal").style.display = "none";
+            atuCurrentTaskId = "";
+        }
+
+        // approved = true -> gọi action "approveTaskUpdate" (Đồng ý, áp dụng thật yêu cầu).
+        // approved = false -> gọi action "rejectTaskUpdate" (Không đồng ý, hủy yêu cầu, KHÔNG
+        // đụng dữ liệu thật của công việc) — lý do là TÙY CHỌN, không bắt buộc phải nhập.
+        async function submitApproveDecision(approved) {
+            if (!atuCurrentTaskId) return;
+            let errEl = document.getElementById("atu-error");
+            errEl.style.display = "none";
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+            let lyDo = (document.getElementById("atu-lydo").value || "").trim();
+            let payload = approved
+                ? { action: "approveTaskUpdate", id: atuCurrentTaskId }
+                : { action: "rejectTaskUpdate", id: atuCurrentTaskId, lyDo: lyDo };
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(true);
+                renderTaskAssignTable();
+                renderMyTaskTable();
+                closeApproveUpdateModal();
+                alert(approved ? "✔️ Đã đồng ý — tiến độ đã được cập nhật." : "✔️ Đã từ chối yêu cầu cập nhật.");
+            } else {
+                errEl.textContent = "Không thể xử lý (kiểm tra kết nối mạng).";
+                errEl.style.display = "block";
+            }
         }
 
         async function submitRecallTaskAssign() {
