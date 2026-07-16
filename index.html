@@ -413,28 +413,24 @@
                 </div>
                 <ul class="sidebar-menu">
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
-                    <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
-                    <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
-                    <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
-                         chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
-                         quyền (canViewChuKySo/xemChuKySo) và trang nội dung #page-chukyso vẫn
-                         được GIỮ NGUYÊN trong mã nguồn (không xóa, không đổi cơ chế bảo mật) —
-                         chỉ không còn lối vào từ menu để người dùng thấy/bấm nữa. Nếu cần bật lại
-                         sau này, chỉ cần khôi phục lại đúng dòng <li> bên dưới:
-                         <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
-                    -->
+                    <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
+                    <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
+                    <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
+                    <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-giaoviec" onclick="switchPage('giaoviec')"><i class="fa-solid fa-list-check"></i> Giao Việc</li>
                     <li class="menu-item" id="menu-nhanviec" onclick="switchPage('nhanviec')">
                         <i class="fa-solid fa-inbox"></i> Nhận Việc
                         <span id="nv-badge-count" style="display:none; background:#e53935; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">0</span>
                     </li>
-                    <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
-                    <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
-                    <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
+                    <li class="menu-item" id="menu-nghiphep" onclick="switchPage('nghiphep')">
+                        <i class="fa-solid fa-calendar-minus"></i> Đăng ký nghỉ phép
+                    </li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
+                    <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
+                    <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
                 </ul>
@@ -1289,6 +1285,126 @@
                 </div>
             </div>
 
+            <div id="page-nghiphep" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-calendar-minus"></i> Đăng ký nghỉ phép</h2>
+
+                <!-- ===== KHU VỰC 1 - TỔNG QUAN PHÉP ===== -->
+                <div id="np-overview-card" class="card" style="display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; margin-bottom:24px;">
+                    <div style="flex:1 1 260px; min-width:220px;">
+                        <p style="color:#888; font-size:12px; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px;">Thông tin nhân sự</p>
+                        <table style="width:100%; font-size:14px; border-collapse:collapse;">
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Họ tên</td><td style="padding:4px 0; font-weight:600;" id="np-info-hoten">-</td></tr>
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Ngày sinh</td><td style="padding:4px 0;" id="np-info-ngaysinh">-</td></tr>
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Mã nhân viên</td><td style="padding:4px 0;" id="np-info-msnv">-</td></tr>
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Phòng ban</td><td style="padding:4px 0;" id="np-info-phongban">-</td></tr>
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Địa chỉ mail</td><td style="padding:4px 0;" id="np-info-email">-</td></tr>
+                            <tr><td style="padding:4px 8px 4px 0; color:#666; white-space:nowrap;">Số điện thoại</td><td style="padding:4px 0;" id="np-info-dienthoai">-</td></tr>
+                        </table>
+                    </div>
+                    <div style="flex:2 1 360px; min-width:280px; display:flex; gap:16px; flex-wrap:wrap;">
+                        <div style="flex:1 1 140px; background:#eef5ff; border-radius:8px; padding:14px; text-align:center;">
+                            <div style="font-size:12px; color:#666;">Tổng phép năm</div>
+                            <div style="font-size:26px; font-weight:700; color:var(--primary-color);" id="np-total-days">0</div>
+                        </div>
+                        <div style="flex:1 1 140px; background:#fff4e5; border-radius:8px; padding:14px; text-align:center;">
+                            <div style="font-size:12px; color:#666;">Đã nghỉ</div>
+                            <div style="font-size:26px; font-weight:700; color:#e67e22;" id="np-used-days">0</div>
+                        </div>
+                        <div style="flex:1 1 140px; background:#e9f9ee; border-radius:8px; padding:14px; text-align:center;">
+                            <div style="font-size:12px; color:#666;">Còn lại</div>
+                            <div style="font-size:26px; font-weight:700; color:#27ae60;" id="np-remaining-days">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="np-link-warning" style="display:none; margin-bottom:14px; padding:14px 16px; background:#fff3cd; border:1px solid #ffe69c; border-radius:8px; color:#7a5b00; font-size:13px;">
+                    <div style="margin-bottom:10px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Hệ thống <b>chưa tự động nhận diện được nhân sự
+                        tương ứng với tài khoản của bạn</b> (Email đăng nhập chưa khớp với Email trong hồ sơ nhân sự nào).
+                        Vui lòng chọn ĐÚNG hồ sơ của bạn bên dưới để hệ thống ghi nhớ cho các lần sau — chỉ cần làm 1 lần.
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <select id="inp-np-selflink" style="flex:1 1 280px; min-width:220px; padding:8px; border-radius:6px; border:1px solid #ddd;">
+                            <option value="">-- Tìm và chọn tên của bạn --</option>
+                        </select>
+                        <button class="btn btn-success" style="width:auto; padding:8px 16px;" onclick="submitLeaveSelfLink()"><i class="fa-solid fa-link"></i> Liên kết hồ sơ này với tài khoản của tôi</button>
+                    </div>
+                </div>
+
+                <!-- ===== [ADMIN] Kiểm tra kết nối ===== -->
+                <div id="np-admin-box" class="admin-box" style="display:none; border-top: 4px solid #8e44ad; margin-bottom:20px;">
+                    <h3><i class="fa-solid fa-user-shield"></i> (Admin) Kiểm tra kết nối tính năng Đăng ký nghỉ phép</h3>
+                    <p style="font-size:13px; color:#666; margin-bottom:10px;">
+                        Dùng khi nghi ngờ tính năng chưa hoạt động đúng (VD: danh sách người duyệt trống, không truy cập được
+                        Sheet/Drive riêng của đơn nghỉ phép...).
+                        <button class="btn" style="width:auto; padding:5px 12px; margin-left:8px;" onclick="runLeaveDiag()"><i class="fa-solid fa-stethoscope"></i> Kiểm tra kết nối</button>
+                    </p>
+                    <div id="np-diag-result" style="display:none; padding:10px 14px; background:#eef5ff; border-radius:8px; font-size:12.5px; white-space:pre-wrap; font-family:monospace;"></div>
+                </div>
+
+                <!-- ===== KHU VỰC 2 - TẠO ĐƠN ===== -->
+                <div class="admin-box" id="np-form-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3><i class="fa-solid fa-square-plus"></i> Tạo đơn xin nghỉ phép</h3>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Từ ngày *</label>
+                            <input type="date" id="inp-np-tungay" onchange="npUpdateLoaiNghiAvailability()">
+                        </div>
+                        <div class="input-group">
+                            <label>Đến ngày *</label>
+                            <input type="date" id="inp-np-denngay" onchange="npUpdateLoaiNghiAvailability()">
+                        </div>
+                        <div class="input-group">
+                            <label>Loại nghỉ</label>
+                            <select id="inp-np-loainghi">
+                                <option value="Cả ngày">Cả ngày</option>
+                                <option value="Nửa ngày - Buổi sáng">Nửa ngày - Buổi sáng</option>
+                                <option value="Nửa ngày - Buổi chiều">Nửa ngày - Buổi chiều</option>
+                            </select>
+                            <small id="np-loainghi-hint" style="display:block; margin-top:4px; color:#888;">Chỉ áp dụng nghỉ nửa buổi khi Từ ngày = Đến ngày.</small>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Lý do</label>
+                            <textarea id="inp-np-lydo" rows="3" placeholder="Lý do xin nghỉ phép..."></textarea>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1; position:relative;">
+                            <label>Người duyệt * (có thể chọn nhiều người — ai duyệt/từ chối trước sẽ quyết định kết quả đơn)</label>
+                            <input type="text" id="inp-np-nguoiduyet-search" autocomplete="off" placeholder="Gõ tên để tìm và chọn người duyệt..."
+                                oninput="renderNpApproverOptions()" onfocus="renderNpApproverOptions()"
+                                onblur="setTimeout(() => { let dd = document.getElementById('np-approver-dropdown'); if (dd) dd.style.display = 'none'; }, 150)">
+                            <div id="np-approver-dropdown" style="display:none; border:1px solid #ddd; border-radius:6px; max-height:240px; overflow-y:auto; margin-top:4px; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,0.08); position:absolute; z-index:30; width:100%;"></div>
+                            <div id="np-approver-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Đính kèm đơn (PDF)</label>
+                            <input type="file" id="inp-np-file" accept="application/pdf">
+                            <span class="file-help-text">Có thể tải lên bản scan/PDF đơn xin nghỉ phép đã ký tay (không bắt buộc).</span>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="submitLeaveRequestFn()">Trình đơn ✔️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== KHU VỰC 3 - DANH SÁCH ĐƠN ===== -->
+                <h3 style="margin: 20px 0 10px; color: var(--primary-color);"><i class="fa-solid fa-list"></i> Danh sách đơn</h3>
+                <div id="np-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 16px;"></div>
+                <div class="table-controls">
+                    <input type="text" id="search-np" class="search-box" oninput="renderLeaveTable()" placeholder="Tìm theo họ tên, người duyệt, lý do...">
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-nghiphep">
+                    <thead><tr>
+                        <th>Người tạo</th><th>Từ ngày</th><th>Đến ngày</th><th>Loại nghỉ</th><th>Số ngày</th><th>Lý do</th>
+                        <th>Người duyệt</th><th>Đính kèm</th><th>Trạng thái</th><th>Lý do từ chối</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-chukyso" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-signature"></i> Chữ Ký Số</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Trình file ký, theo dõi và xử lý các hồ sơ chữ ký số. Dữ liệu và file đính kèm của tính năng này được lưu ở 1 Google Sheet + Google Drive RIÊNG, tách biệt hoàn toàn với dữ liệu Danh bạ/Nhân sự/Thiết bị.</p>
@@ -1703,6 +1819,12 @@
             <h2><i class="fa-solid fa-clipboard-list"></i> Chi tiết công việc</h2>
             <div id="nvd-info-block" style="background:#f7f8fa; border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:14px; line-height:1.8;"></div>
 
+            <!-- [MỤC "CHỜ NGƯỜI GIAO DUYỆT"] Chỉ hiện khi công việc đang có 1 đề nghị đổi Trạng
+                 thái/Tiến độ CHƯA được người giao việc xử lý — nhắc người nhận biết Trạng
+                 thái/Tiến độ đang hiển thị vẫn là giá trị CŨ, gửi đề nghị mới sẽ THAY THẾ đề nghị
+                 đang chờ này (xem openNvDetailModal). -->
+            <div id="nvd-pending-notice" style="display:none; background:#fff8e1; border:1px solid #ffe082; color:#7a5b00; border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px;"></div>
+
             <div class="input-group">
                 <label>Cập nhật trạng thái</label>
                 <select id="nvd-trangthai">
@@ -1710,15 +1832,7 @@
                     <option value="Đang thực hiện">Đang thực hiện</option>
                     <option value="Hoàn thành">Hoàn thành</option>
                     <option value="Trễ hạn">Trễ hạn</option>
-                    <!-- [MỤC "KHÔNG HOÀN THÀNH" - ĐÓNG CÔNG VIỆC] Đây là 1 trạng thái ĐÓNG công
-                         việc, xử lý giống hệt "Hoàn thành": khi chọn mục này rồi bấm "Cập nhật",
-                         hệ thống LƯU trạng thái này lên server rồi ĐÓNG lại (khóa hẳn, không còn
-                         cập nhật Trạng thái/Tiến độ/File báo cáo thêm được nữa) — xem điều kiện
-                         khóa ở hàm openNvDetailModal() (isDone) và ở SERVER trong Code.gs, action
-                         "updateMyTaskStatus". -->
-                    <option value="Không hoàn thành">Không hoàn thành</option>
                 </select>
-                <small style="color:#888;">Chọn "Không hoàn thành" rồi bấm "Cập nhật" sẽ ĐÓNG công việc lại (giống như khi chọn "Hoàn thành") — sau đó không thể cập nhật thêm.</small>
             </div>
 
             <!-- [MỤC "MÔ TẢ" - NỘI DUNG BÁO CÁO CỦA NGƯỜI NHẬN] Người nhận việc gõ nhận xét/nội
@@ -1751,7 +1865,6 @@
             <div id="nvd-done-hint" style="display:none; color:#2e7d32; background:#eaf5ea; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;">
                 <i class="fa-solid fa-circle-check"></i> Công việc đã <b>Hoàn thành</b> — không còn tính năng cập nhật tiến độ nữa.
             </div>
-            <div id="nvd-recall-hint" style="display:none; color:#6a1b9a; background:#f3e5f5; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;"></div>
             <div style="display:flex; gap:10px;">
                 <button id="nvd-submit-btn" class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
@@ -1769,31 +1882,6 @@
             <div id="pgh-body" style="font-size:13px;"></div>
             <div style="display:flex; gap:10px; margin-top:14px;">
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeProgressHistoryModal()">Đóng</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- [TAB "GIAO VIỆC" - THU HỒI CÔNG VIỆC] Modal nhập lý do khi người giao việc bấm "Thu hồi"
-         1 công việc đã giao. Sau khi giao việc xong, người giao KHÔNG còn được "Sửa" công việc đó
-         nữa (xem renderTaskAssignTable) — thay vào đó chỉ có thể "Thu hồi" kèm lý do bắt buộc.
-         Thao tác này KHÔNG xóa dữ liệu công việc: chỉ đổi Trạng thái sang "Đã thu hồi" + lưu lý
-         do (cột riêng "LyDoThuHoi" + ghi thêm 1 mục vào lịch sử tiến độ) — xem action
-         "recallTaskAssign" ở Code.gs. -->
-    <div id="recall-task-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10600; justify-content: center; align-items: center;">
-        <div class="login-box" style="max-width: 480px;">
-            <h2><i class="fa-solid fa-rotate-left"></i> Thu hồi công việc</h2>
-            <div id="rt-task-name" style="font-size:13px; color:#555; margin:-6px 0 12px;"></div>
-            <div style="font-size:12.5px; color:#c62828; margin-bottom:10px;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Sau khi thu hồi, công việc sẽ chuyển sang trạng thái "Đã thu hồi" và người nhận sẽ không thể tiếp tục cập nhật tiến độ. Vui lòng nhập rõ lý do thu hồi bên dưới.
-            </div>
-            <div class="form-group">
-                <label>Lý do thu hồi <span style="color:#c62828;">*</span></label>
-                <textarea id="rt-lydo" rows="4" placeholder="Nhập lý do thu hồi công việc..."></textarea>
-            </div>
-            <div id="rt-error" style="color:#c62828; font-size:12.5px; margin-bottom:8px; display:none;"></div>
-            <div style="display:flex; gap:10px; margin-top:6px;">
-                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitRecallTaskAssign()">Xác nhận thu hồi</button>
-                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeRecallTaskModal()">Hủy</button>
             </div>
         </div>
     </div>
@@ -1919,7 +2007,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v9-baocao-2chieu";
+        const FRONTEND_BUILD_VERSION = "2026-07-15.dangky-nghiphep-v5-fix-lech-ngay";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -1967,6 +2055,17 @@
         let currentUserCanEditLichLamViec = false;
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
+
+        // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
+        // LEAVE_SPREADSHEET_ID/LEAVE_FOLDER_ID ở Code.gs) — không nằm trong getData chung, phải
+        // gọi riêng action "getLeaveData" (xem loadLeaveData()).
+        let leaveData = []; // mỗi phần tử đã có sẵn field canApprove/canReject/canCancel (server tính sẵn)
+        let leaveApprovers = []; // TOÀN BỘ nhân sự đang làm việc { name, email, position } để chọn "Người duyệt" (nhiều người)
+        let leaveBalance = { total: 0, used: 0, remaining: 0 };
+        let leaveMyInfo = { hoTen: "", ngaySinh: "", msnv: "", phongBan: "", email: "", dienThoai: "" };
+        let leaveStaffDirectory = []; // [TỰ LIÊN KẾT] danh sách rút gọn nhân sự để user tự chọn hồ sơ của mình khi chưa nhận diện được
+        const NGHIPHEP_TABS = ["Đơn của tôi", "Chờ tôi duyệt", "Tất cả"];
+        let npActiveTab = "Đơn của tôi";
 
         // Nhận diện 1 giá trị imgUrl có phải là fileId Google Drive (avatar đã chuyển sang
         // lưu trên Drive) hay không — phân biệt với: rỗng (chưa có ảnh), hoặc chuỗi Base64
@@ -3477,6 +3576,22 @@
             if (!dateStr) return "";
             let s = dateStr.toString().trim();
             if (!s) return "";
+            // [SỬA LỆCH NGÀY] Chuỗi ISO có "Z" ở cuối (VD "2026-07-11T17:00:00.000Z") là dấu hiệu
+            // Google Sheet đã lỡ tự chuyển 1 chuỗi Ngày thuần túy (VD "2026-07-12") thành kiểu
+            // Date nội bộ, rồi khi trả JSON về bị quy đổi sang giờ UTC. Nếu chỉ cắt bỏ phần sau
+            // "T" như cách cũ sẽ LỆCH 1 NGÀY. Phải cộng lại 7 tiếng (múi giờ Việt Nam, GMT+7) rồi
+            // mới lấy Ngày/Tháng/Năm, để khớp đúng với ngày người dùng đã thực sự chọn/nhập.
+            let isoUtcMatch = s.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
+            if (isoUtcMatch) {
+                let d = new Date(s);
+                if (!isNaN(d.getTime())) {
+                    let vn = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+                    let yyyy = vn.getUTCFullYear();
+                    let mm = String(vn.getUTCMonth() + 1).padStart(2, "0");
+                    let dd = String(vn.getUTCDate()).padStart(2, "0");
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+            }
             let isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})T/);
             if (isoMatch) return isoMatch[1];
             if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -3725,14 +3840,9 @@
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
-            // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
-            // phần tử "menu-chukyso" không tồn tại nữa. Toàn bộ logic phân quyền/dữ liệu bên dưới
-            // vẫn được giữ nguyên (không đổi cơ chế bảo mật, không mất dữ liệu) — chỉ thêm kiểm
-            // tra null để tránh lỗi JS khi phần tử menu không còn trên trang.
             let canViewChuKySo = (currentUser.role === "Admin") || !!currentUser.xemChuKySo;
             currentUserCanViewChuKySo = canViewChuKySo;
-            let elMenuChuKySo = document.getElementById("menu-chukyso");
-            if (elMenuChuKySo) elMenuChuKySo.style.display = canViewChuKySo ? "flex" : "none";
+            document.getElementById("menu-chukyso").style.display = canViewChuKySo ? "flex" : "none";
             if (canViewChuKySo) loadSignatureData();
             // Thẻ "HĐ Lao động sắp hết hạn" ở Tab Tổng quan: chỉ hiện với tài khoản được cấp
             // quyền "CanhBaoHopDong" (hoặc Admin). Ẩn hẳn thẻ (không chỉ số đếm) để tránh gợi ý
@@ -3961,6 +4071,16 @@
                 renderMyTaskTable();
                 let nvUnseenIds = getMyTasks().filter(t => !t.daXem).map(t => t.id);
                 if (nvUnseenIds.length) markMyTasksSeen(nvUnseenIds);
+                // [TÍCH HỢP ĐƠN NGHỈ PHÉP] Tải lại dữ liệu nghỉ phép để có đủ thông tin hiện nút
+                // "Đồng ý"/"Không đồng ý" cho các thông báo đơn xin nghỉ phép trong danh sách
+                // này (đề phòng user vào thẳng tab "Nhận Việc" mà chưa từng mở tab "Đăng ký nghỉ
+                // phép" nên leaveData còn rỗng), rồi vẽ lại bảng.
+                loadLeaveData().then(() => renderMyTaskTable());
+            }
+            if (pageId === "nghiphep") {
+                // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM/DÙNG ĐƯỢC] Giống hệt "Lịch làm
+                // việc công ty"/"Giao Việc" — chỉ cần đã đăng nhập là dùng được.
+                loadLeaveData();
             }
             if (pageId === "contacts") {
                 // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
@@ -4766,18 +4886,15 @@
             if (trangThai === "Hoàn thành") return "#2e7d32";
             if (trangThai === "Đang thực hiện") return "#1976d2";
             if (trangThai === "Trễ hạn") return "#c62828";
-            if (trangThai === "Đã thu hồi") return "#6a1b9a";
-            if (trangThai === "Không hoàn thành") return "#ef6c00";
             return "#8e8e8e"; // Mới giao
         }
 
         // [MỤC "CẢNH BÁO THỜI HẠN"] Tính trạng thái ĐỐI CHIẾU THỜI HẠN của 1 công việc (dùng
         // CHUNG cho cả tab "Giao Việc" và tab "Nhận Việc", để 2 bên luôn nhìn thấy CÙNG 1 màu
         // cảnh báo cho CÙNG 1 công việc — đúng mục đích "đối chiếu công việc hai bên"):
-        //   - "done"    : Trạng thái đã là "Hoàn thành"/"Không hoàn thành" (công việc đã ĐÓNG,
-        //                 không còn cập nhật thêm) -> không còn cảnh báo quá hạn/sắp đến hạn nữa.
-        //   - "overdue" : Chưa đóng và ĐÃ QUA Thời hạn xử lý -> màu ĐỎ (cảnh báo quá hạn).
-        //   - "soon"    : Chưa đóng và còn <= 3 ngày nữa là tới Thời hạn -> màu CAM (cảnh
+        //   - "done"    : Trạng thái đã là "Hoàn thành" -> màu XANH (hiển thị hoàn thành).
+        //   - "overdue" : Chưa hoàn thành và ĐÃ QUA Thời hạn xử lý -> màu ĐỎ (cảnh báo quá hạn).
+        //   - "soon"    : Chưa hoàn thành và còn <= 3 ngày nữa là tới Thời hạn -> màu CAM (cảnh
         //                 báo sắp đến hạn).
         //   - "normal"  : Còn nhiều thời gian / chưa có Thời hạn -> màu mặc định, không cảnh báo.
         // CHỈ tính toán để TÔ MÀU hiển thị — không đụng tới/không ghi đè bất kỳ dữ liệu nào đã
@@ -4785,7 +4902,7 @@
         var GV_SAP_HET_HAN_SO_NGAY = 3; // Ngưỡng "sắp đến hạn": còn từ 0-3 ngày nữa tới Thời hạn.
         function gvDueStatus(t) {
             if (!t) return "normal";
-            if (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành") return "done";
+            if (t.trangThai === "Hoàn thành") return "done";
             if (!t.thoiHan) return "normal";
             let due = new Date(t.thoiHan + "T23:59:59");
             if (isNaN(due.getTime())) return "normal";
@@ -4975,11 +5092,15 @@
                 let roleBadge = `<span style="background:${isGiao ? '#1565c0' : '#2e7d32'}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px;">${isGiao ? 'Người giao' : 'Người nhận'}</span>`;
                 let statusHtml = rp.trangThai ? `<span style="background:${gvStatusBadgeColor(rp.trangThai)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;">${escapeHtml(rp.trangThai)}</span>` : '';
                 let progressHtml = (rp.tienDo !== undefined && rp.tienDo !== "") ? `<span style="margin-left:6px; font-weight:600;">${Number(rp.tienDo) || 0}%</span>` : '';
+                // [MỤC "CHỜ NGƯỜI GIAO DUYỆT"] Mục lịch sử được đánh dấu choDuyet=true nghĩa là
+                // ĐỀ NGHỊ này CHƯA được áp dụng vào Trạng thái/Tiến độ thật (đang/đã chờ duyệt) —
+                // hiện thêm nhãn cam để không nhầm với các mục đã áp dụng ngay.
+                let pendingTag = rp.choDuyet ? `<span style="background:#ff9800; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px; margin-left:6px;">Đề nghị - chờ duyệt</span>` : '';
                 let filesHtml = (rp.files && rp.files.length)
                     ? rp.files.map(f => `<div><a href="javascript:void(0)" onclick="viewSecureFile('${f.fileId}', '${escapeHtml(f.fileName)}', 'taskAssign')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(f.fileName)}</a></div>`).join('')
                     : '';
                 return `<div style="padding:8px 0; border-bottom:1px solid #e5e5e5;">
-                    <div style="color:#888; font-size:11px; margin-bottom:3px;">${escapeHtml(rp.thoiGian || '')}${rp.nguoiGui ? ' • ' + escapeHtml(rp.nguoiGui) : ''} ${roleBadge}${statusHtml}${progressHtml}</div>
+                    <div style="color:#888; font-size:11px; margin-bottom:3px;">${escapeHtml(rp.thoiGian || '')}${rp.nguoiGui ? ' • ' + escapeHtml(rp.nguoiGui) : ''} ${roleBadge}${statusHtml}${progressHtml}${pendingTag}</div>
                     ${rp.noiDung ? `<div style="margin-bottom:3px;">${escapeHtml(rp.noiDung)}</div>` : ''}
                     ${filesHtml}
                 </div>`;
@@ -5059,9 +5180,44 @@
                     t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Báo cáo hàng tuần</span>' : ''
                 ].filter(Boolean).join('<br>') || '<span style="color:#aaa;">— Không yêu cầu —</span>';
                 let newBadge = !t.daXem ? `<span style="background:#e53935; color:#fff; padding:2px 7px; border-radius:8px; font-size:11px; margin-left:6px;">MỚI</span>` : '';
+
+                // [MỤC "CHỜ NGƯỜI GIAO DUYỆT"] Nếu đề nghị đổi Trạng thái/Tiến độ gần nhất của
+                // CHÍNH MÌNH đang chờ người giao việc xử lý (chưa bấm "Đồng ý"/"Không đồng ý"),
+                // hiện rõ nhãn để người nhận biết Trạng thái/Tiến độ đang hiển thị VẪN LÀ giá trị
+                // CŨ (chưa áp dụng đề nghị mới) — chỉ hiển thị, không có nút bấm (chỉ người giao
+                // việc/Admin mới được duyệt — xem renderPendingApprovalHtml ở tab "Giao Việc").
+                let pendingInfo = t.choDuyetCapNhat;
+                let pendingBadgeHtml = pendingInfo
+                    ? `<div style="margin-top:4px;"><span style="background:#ff9800; color:#fff; padding:1px 8px; border-radius:10px; font-size:11px;"><i class="fa-solid fa-hourglass-half"></i> Đang chờ người giao duyệt${pendingInfo.tienDo !== undefined ? ' (' + Number(pendingInfo.tienDo) + '%)' : ''}${pendingInfo.trangThai !== undefined ? ' — ' + escapeHtml(pendingInfo.trangThai) : ''}</span></div>`
+                    : '';
+
+                // [TÍCH HỢP "ĐĂNG KÝ NGHỈ PHÉP"] Nếu Mô tả có gắn nhãn LEAVE_TASK_MARKER_REGEX ->
+                // đây là thông báo đơn xin nghỉ phép -> bóc mã đơn, ẩn nhãn khỏi phần hiển thị, và
+                // vẽ thêm nút "Đồng ý ✅"/"Không đồng ý ❌" (hoặc badge trạng thái nếu đơn đã được
+                // ai đó xử lý) ngay trong dòng công việc này — không cần rời sang tab khác.
+                let leaveMatch = (t.moTa || "").match(LEAVE_TASK_MARKER_REGEX);
+                let displayMoTa = leaveMatch ? (t.moTa || "").replace(leaveMatch[0], "") : t.moTa;
+                let leaveActionHtml = "";
+                if (leaveMatch) {
+                    let leaveRec = (leaveData || []).find(r => r.maDon === leaveMatch[1]);
+                    if (leaveRec) {
+                        if (leaveRec.canApprove || leaveRec.canReject) {
+                            leaveActionHtml = `<div style="margin-top:8px;" onclick="event.stopPropagation()">
+                                <button class="btn btn-success" style="width:auto; padding:5px 10px; font-size:12px;" onclick="doLeaveApprove('${leaveRec.maDon}')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                                <button class="btn btn-danger" style="width:auto; padding:5px 10px; font-size:12px;" onclick="openLeaveRejectModal('${leaveRec.maDon}')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+                            </div>`;
+                        } else {
+                            let sc = LEAVE_STATUS_COLORS[leaveRec.trangThai] || "#888";
+                            leaveActionHtml = `<div style="margin-top:8px;"><span style="color:#fff; background:${sc}; padding:3px 10px; border-radius:12px; font-size:12px;">Đơn nghỉ phép: ${escapeHtml(leaveRec.trangThai)}</span>${leaveRec.nguoiXuLyUsername ? ` <small style="color:#888;">(xử lý bởi ${escapeHtml(leaveRec.nguoiXuLyUsername)})</small>` : ''}</div>`;
+                        }
+                    } else {
+                        leaveActionHtml = `<div style="margin-top:8px; color:#aaa; font-size:12px;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải thông tin đơn nghỉ phép...</div>`;
+                    }
+                }
+
                 return `<tr class="nv-row-clickable" style="cursor:pointer;" onclick="openNvDetailModal('${t.id}')" title="Bấm để xem chi tiết & cập nhật tiến độ">
                     <td>${escapeHtml(t.nguoiGiao)}</td>
-                    <td><b>${escapeHtml(t.tenCongViec)}</b>${newBadge}${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
+                    <td><b>${escapeHtml(t.tenCongViec)}</b>${newBadge}${displayMoTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(displayMoTa)}</span>` : ''}${leaveActionHtml}</td>
                     <td style="white-space:nowrap;">
                         <div><i class="fa-solid fa-calendar-plus" title="Ngày giao"></i> ${gvFormatDateVN(t.ngayGiao)}</div>
                         <div><i class="fa-solid fa-calendar-check" title="Thời hạn xử lý"></i> ${gvRenderThoiHanHtml(t)}</div>
@@ -5070,17 +5226,13 @@
                     <td onclick="event.stopPropagation()">
                         ${t.trangThai === "Hoàn thành"
                             ? `<span style="background:#2e7d32; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
-                            : t.trangThai === "Không hoàn thành"
-                            ? `<span style="background:#ef6c00; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Công việc đã đóng"><i class="fa-solid fa-xmark"></i> Không hoàn thành</span>`
-                            : t.trangThai === "Đã thu hồi"
-                            ? `<span style="background:#6a1b9a; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Người giao đã thu hồi công việc này"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
                             : `<select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
                             <option value="Mới giao" ${t.trangThai === "Mới giao" ? "selected" : ""}>Mới giao</option>
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
                             <option value="Hoàn thành" ${t.trangThai === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
                             <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
-                            <option value="Không hoàn thành">Không hoàn thành</option>
                         </select>`}
+                        ${pendingBadgeHtml}
                     </td>
                     <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & xem tiến độ">
                         ${Number(t.tienDo) || 0}%
@@ -5130,6 +5282,42 @@
             return ok;
         }
 
+        // [MỤC "CHỜ NGƯỜI GIAO DUYỆT"] Người giao việc (hoặc Admin) bấm "Đồng ý"/"Không đồng ý"
+        // cho 1 đề nghị đổi Trạng thái/Tiến độ mà người nhận việc vừa gửi (xem action
+        // "resolveTaskUpdateRequest" ở Code.gs — server tự đối chiếu lại đúng người giao/Admin
+        // trước khi cho xử lý). "Đồng ý": Tiến độ/Trạng thái tự động được cập nhật ngay theo đúng
+        // đề nghị. "Không đồng ý": Tiến độ/Trạng thái tự động KHÔNG được cập nhật, giữ nguyên như
+        // trước — chỉ xóa đề nghị đang chờ.
+        async function resolveTaskUpdateRequest(id, approve) {
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+            if (!approve && !confirm("Xác nhận KHÔNG đồng ý đề nghị cập nhật tiến độ này? Trạng thái/Tiến độ sẽ giữ nguyên như trước.")) return;
+            let ok = await pushToCloud({ action: "resolveTaskUpdateRequest", id: id, approve: !!approve });
+            if (ok) {
+                await loadFromCloud(false);
+                renderTaskAssignTable();
+                renderMyTaskTable();
+                updateNhanViecBadge();
+            } else {
+                alert("Không thể xử lý đề nghị này (kiểm tra kết nối mạng hoặc quyền hạn).");
+            }
+        }
+
+        // Trả về HTML khối "Đề nghị cập nhật tiến độ đang chờ duyệt" (kèm nút Đồng ý/Không đồng
+        // ý) để hiện ngay trong dòng công việc ở tab "Giao Việc" — dùng chung style với khối
+        // Đồng ý/Không đồng ý của tính năng "Đăng ký nghỉ phép" tích hợp sẵn ở tab "Nhận Việc".
+        function renderPendingApprovalHtml(t) {
+            let p = t && t.choDuyetCapNhat;
+            if (!p) return "";
+            let parts = [];
+            if (p.trangThai !== undefined) parts.push(`Trạng thái đề nghị: <b>${escapeHtml(p.trangThai)}</b>`);
+            if (p.tienDo !== undefined) parts.push(`Tiến độ đề nghị: <b>${Number(p.tienDo) || 0}%</b>`);
+            return `<div style="margin-top:8px; padding:8px 10px; background:#fff8e1; border:1px solid #ffe082; border-radius:8px;" onclick="event.stopPropagation()">
+                <div style="font-size:12px; color:#7a5b00; margin-bottom:6px;"><i class="fa-solid fa-hourglass-half"></i> ${escapeHtml(p.nguoiYeuCau || '')} đề nghị cập nhật (${escapeHtml(p.thoiGianYeuCau || '')}): ${parts.join(' • ')}</div>
+                <button class="btn btn-success" style="width:auto; padding:5px 10px; font-size:12px;" onclick="resolveTaskUpdateRequest('${t.id}', true)"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                <button class="btn btn-danger" style="width:auto; padding:5px 10px; font-size:12px;" onclick="resolveTaskUpdateRequest('${t.id}', false)"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+            </div>`;
+        }
+
         /* [MỤC [22] - TAB "NHẬN VIỆC"] Modal chi tiết công việc: bấm vào 1 dòng công việc ở tab
            "Nhận Việc" mở modal hiện đầy đủ thông tin (Người giao, Tên, Mô tả, Ngày giao, Thời
            hạn, Ưu tiên, Báo cáo yêu cầu, File đính kèm của người giao) kèm khu vực để người nhận
@@ -5147,10 +5335,11 @@
                 t.baoCaoHangNgay ? 'Báo cáo hàng ngày' : '',
                 t.baoCaoHangTuan ? 'Báo cáo hàng tuần' : ''
             ].filter(Boolean).join(', ') || 'Không yêu cầu';
+            let nvdMoTa = (t.moTa || "").replace(LEAVE_TASK_MARKER_REGEX, "");
             infoEl.innerHTML = `
                 <div><b>Người giao:</b> ${escapeHtml(t.nguoiGiao)}</div>
                 <div><b>Tên công việc:</b> ${escapeHtml(t.tenCongViec)}</div>
-                ${t.moTa ? `<div><b>Mô tả:</b> ${escapeHtml(t.moTa)}</div>` : ''}
+                ${nvdMoTa ? `<div><b>Mô tả:</b> ${escapeHtml(nvdMoTa)}</div>` : ''}
                 <div><b>Ngày giao:</b> ${gvFormatDateVN(t.ngayGiao) || '—'} &nbsp;|&nbsp; <b>Thời hạn:</b> ${gvRenderThoiHanHtml(t)}</div>
                 <div><b>Ưu tiên:</b> <span style="background:${gvPriorityBadgeColor(t.uuTien)}; color:#fff; padding:1px 8px; border-radius:10px; font-size:12px;">${escapeHtml(t.uuTien)}</span></div>
                 <div><b>Yêu cầu báo cáo:</b> ${escapeHtml(baoCaoHtml)}</div>`;
@@ -5159,6 +5348,21 @@
             document.getElementById("nvd-tiendo").value = Number(t.tienDo) || 0;
             nvdOriginalTienDo = Number(t.tienDo) || 0;
             nvdOriginalTrangThai = t.trangThai || "Mới giao";
+
+            // [MỤC "CHỜ NGƯỜI GIAO DUYỆT"] Nhắc rõ nếu đang có 1 đề nghị trước đó CHƯA được
+            // người giao việc xử lý — Trạng thái/Tiến độ trên đây vẫn là giá trị CŨ (chưa áp
+            // dụng), và nếu gửi cập nhật mới ở đây, đề nghị MỚI sẽ thay thế đề nghị đang chờ.
+            let nvdPendingEl = document.getElementById("nvd-pending-notice");
+            if (t.choDuyetCapNhat) {
+                let p = t.choDuyetCapNhat;
+                let pParts = [];
+                if (p.trangThai !== undefined) pParts.push("Trạng thái: " + p.trangThai);
+                if (p.tienDo !== undefined) pParts.push("Tiến độ: " + Number(p.tienDo) + "%");
+                nvdPendingEl.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> Bạn đang có 1 đề nghị cập nhật (${escapeHtml(pParts.join(' • '))}) gửi lúc ${escapeHtml(p.thoiGianYeuCau || '')}, <b>CHƯA</b> được người giao việc xác nhận. Trạng thái/Tiến độ hiển thị bên trên vẫn là giá trị hiện tại (chưa đổi). Nếu bạn gửi cập nhật mới, đề nghị mới sẽ thay thế đề nghị đang chờ này.`;
+                nvdPendingEl.style.display = "block";
+            } else {
+                nvdPendingEl.style.display = "none";
+            }
 
             let filesEl = document.getElementById("nvd-current-files");
             filesEl.innerHTML = (t.attachments && t.attachments.length)
@@ -5178,29 +5382,15 @@
             document.getElementById("nvd-file").value = "";
             document.getElementById("nvd-error").style.display = "none";
 
-            // [MỤC "HOÀN THÀNH / KHÔNG HOÀN THÀNH - KHÓA CẬP NHẬT"] Công việc ĐÃ ở 1 trong 2
-            // trạng thái ĐÓNG này thì không còn tính năng cập nhật tiến độ nữa: khóa hẳn Trạng
-            // thái/Mô tả báo cáo/Tiến độ/File đính kèm mới + ẩn nút "Cập nhật". Vẫn xem được đầy
-            // đủ thông tin và Lịch sử tiến độ như bình thường.
-            let isDone = (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành");
-            let isRecalled = (t.trangThai === "Đã thu hồi");
-            let isLocked = isDone || isRecalled;
-            document.getElementById("nvd-trangthai").disabled = isLocked;
-            document.getElementById("nvd-noidung").disabled = isLocked;
-            document.getElementById("nvd-file").disabled = isLocked;
-            document.getElementById("nvd-submit-btn").style.display = isLocked ? "none" : "";
-            let doneHint = document.getElementById("nvd-done-hint");
-            doneHint.style.display = isDone ? "block" : "none";
-            if (isDone) {
-                doneHint.innerHTML = `<i class="fa-solid fa-circle-check"></i> Công việc đã <b>${escapeHtml(t.trangThai)}</b> — không còn tính năng cập nhật tiến độ nữa.`;
-            }
-            let recallHint = document.getElementById("nvd-recall-hint");
-            if (recallHint) {
-                recallHint.style.display = isRecalled ? "block" : "none";
-                recallHint.innerHTML = isRecalled
-                    ? `<i class="fa-solid fa-rotate-left"></i> Công việc này đã bị <b>thu hồi</b> — không còn tính năng cập nhật tiến độ nữa.`
-                    : "";
-            }
+            // [MỤC "HOÀN THÀNH - KHÓA CẬP NHẬT"] Công việc ĐÃ Hoàn thành thì không còn tính năng
+            // cập nhật tiến độ nữa: khóa hẳn Trạng thái/Mô tả báo cáo/Tiến độ/File đính kèm mới +
+            // ẩn nút "Cập nhật". Vẫn xem được đầy đủ thông tin và Lịch sử tiến độ như bình thường.
+            let isDone = (t.trangThai === "Hoàn thành");
+            document.getElementById("nvd-trangthai").disabled = isDone;
+            document.getElementById("nvd-noidung").disabled = isDone;
+            document.getElementById("nvd-file").disabled = isDone;
+            document.getElementById("nvd-submit-btn").style.display = isDone ? "none" : "";
+            document.getElementById("nvd-done-hint").style.display = isDone ? "block" : "none";
 
             nvdUpdateProgressLockState();
             document.getElementById("nv-detail-modal").style.display = "flex";
@@ -5321,27 +5511,13 @@
                     t.baoCaoHangNgay ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-day"></i> Ngày</span>' : '',
                     t.baoCaoHangTuan ? '<span style="font-size:11px; color:#555;"><i class="fa-solid fa-calendar-week"></i> Tuần</span>' : ''
                 ].filter(Boolean).join(' ') || '<span style="color:#aaa;">—</span>';
-                // [TAB "GIAO VIỆC" - THU HỒI] Công việc đã giao (đã tồn tại) thì KHÔNG còn nút
-                // "Sửa" nữa — thay bằng nút "Thu hồi" (yêu cầu nhập lý do, xem openRecallTaskModal).
-                // Công việc ĐÃ thu hồi rồi thì không hiện lại nút "Thu hồi" nữa (tránh thu hồi 2
-                // lần chồng lý do), chỉ còn xem được lý do đã thu hồi qua "Xem lịch sử tiến độ".
-                // Công việc ĐÃ ĐÓNG (trạng thái "Hoàn thành" HOẶC "Không hoàn thành") thì cũng
-                // KHÔNG còn nút "Thu hồi" nữa (việc đã xong) — xem thêm điều kiện chặn ở
-                // recallTaskAssignItem() phía Code.gs — server chặn luôn, không chỉ ẩn/hiện ở
-                // giao diện.
-                let staIsRecalled = (t.trangThai === "Đã thu hồi");
-                let staIsDone = (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành");
                 let actionsHtml = (currentUserCanAssignTask
-                    ? (staIsRecalled
-                        ? `<span style="display:inline-block; padding:6px 10px; color:#c62828; font-size:12px;" title="Công việc đã thu hồi"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
-                        : staIsDone
-                        ? `<span style="display:inline-block; padding:6px 10px; color:${t.trangThai === "Hoàn thành" ? "#2e7d32" : "#ef6c00"}; font-size:12px;" title="Công việc đã đóng, không thể thu hồi"><i class="fa-solid fa-check"></i> ${escapeHtml(t.trangThai)}</span>`
-                        : `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="openRecallTaskModal('${t.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i></button>`)
-                       + `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
+                    ? `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editTaskAssign('${t.id}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                       <button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
                     : '')
                     + `<button class="btn" style="width:auto; padding:6px 10px; background:#607d8b;" onclick="openProgressHistoryModal('${t.id}')" title="Xem lịch sử tiến độ"><i class="fa-solid fa-clock-rotate-left"></i></button>`;
                 return `<tr>
-                    <td><b>${escapeHtml(t.tenCongViec)}</b>${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}</td>
+                    <td><b>${escapeHtml(t.tenCongViec)}</b>${t.moTa ? `<br><span style="font-size:12px; color:#777;">${escapeHtml(t.moTa)}</span>` : ''}${renderPendingApprovalHtml(t)}</td>
                     <td>${escapeHtml(t.nguoiGiao)}</td>
                     <td>${escapeHtml(t.nguoiNhan)}</td>
                     <td>${escapeHtml(t.phongBan)}</td>
@@ -5508,54 +5684,6 @@
                 await loadFromCloud(true);
                 resetTaskAssignForm();
                 renderTaskAssignTable();
-            }
-        }
-
-        /* [TAB "GIAO VIỆC" - THU HỒI CÔNG VIỆC] Thay cho nút "Sửa" khi công việc đã được giao:
-           người giao chỉ còn có thể "Thu hồi" (kèm lý do bắt buộc) — KHÔNG chỉnh sửa được nội
-           dung công việc đã giao nữa. Thao tác này CHỈ đổi Trạng thái + lưu lý do, KHÔNG xóa bất
-           kỳ dữ liệu nào khác của công việc (file đính kèm, lịch sử tiến độ... vẫn giữ nguyên) —
-           xem action "recallTaskAssign" ở Code.gs. */
-        let rtCurrentTaskId = "";
-
-        function openRecallTaskModal(id) {
-            if (!currentUserCanAssignTask) { alert("⚠️ Bạn không có quyền thu hồi Giao việc. Liên hệ Admin để được cấp quyền."); return; }
-            let item = (taskAssignData || []).find(t => t.id === id);
-            if (!item) return;
-            if (item.trangThai === "Đã thu hồi") { alert("Công việc này đã được thu hồi trước đó."); return; }
-            if (item.trangThai === "Hoàn thành") { alert("Công việc đã Hoàn thành, không thể thu hồi."); return; }
-            rtCurrentTaskId = id;
-            document.getElementById("rt-task-name").innerHTML = `Công việc: <b>${escapeHtml(item.tenCongViec)}</b> — Người nhận: <b>${escapeHtml(item.nguoiNhan)}</b>`;
-            document.getElementById("rt-lydo").value = "";
-            document.getElementById("rt-error").style.display = "none";
-            document.getElementById("recall-task-modal").style.display = "flex";
-        }
-
-        function closeRecallTaskModal() {
-            document.getElementById("recall-task-modal").style.display = "none";
-            rtCurrentTaskId = "";
-        }
-
-        async function submitRecallTaskAssign() {
-            if (!rtCurrentTaskId) return;
-            let errEl = document.getElementById("rt-error");
-            errEl.style.display = "none";
-            let lyDo = (document.getElementById("rt-lydo").value || "").trim();
-            if (!lyDo) {
-                errEl.textContent = "Vui lòng nhập lý do thu hồi.";
-                errEl.style.display = "block";
-                return;
-            }
-            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
-            let ok = await pushToCloud({ action: "recallTaskAssign", id: rtCurrentTaskId, lyDo: lyDo });
-            if (ok) {
-                await loadFromCloud(true);
-                renderTaskAssignTable();
-                closeRecallTaskModal();
-                alert("✔️ Đã thu hồi công việc.");
-            } else {
-                errEl.textContent = "Không thể thu hồi (kiểm tra kết nối mạng).";
-                errEl.style.display = "block";
             }
         }
 
@@ -5763,6 +5891,361 @@
                 hideSyncBanner();
             }
         }
+
+        /* ========== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] ==========
+           Dữ liệu lấy từ 1 Google Sheet + Google Drive RIÊNG (không nằm trong action "getData"
+           chung) — mọi lượt gọi đều dùng action riêng, và authToken vẫn được đính kèm để server
+           xác thực/kiểm tra quyền y hệt mọi action khác trong hệ thống (giống hệt cơ chế đang
+           dùng cho tính năng Chữ ký số — xem callSignatureApi()). */
+        async function callLeaveApi(payload) {
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return null; }
+            if (authToken && !payload.authToken) payload.authToken = authToken;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                return data;
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                console.error(err);
+                return null;
+            }
+        }
+
+        const LEAVE_STATUS_COLORS = { "Chờ duyệt": "#f0ad4e", "Đã duyệt": "#27ae60", "Từ chối": "#d9534f", "Đã hủy": "#888" };
+        // [TÍCH HỢP TAB "NHẬN VIỆC"] Nhãn nhận diện 1 công việc trong "Nhận Việc" có phải là
+        // thông báo đơn nghỉ phép hay không — PHẢI khớp với LEAVE_TASK_MARKER_PREFIX/SUFFIX bên
+        // Code.gs (server gắn nhãn này vào đầu Mô tả khi tạo thông báo cho từng người duyệt).
+        const LEAVE_TASK_MARKER_REGEX = /^\[\[NGHIPHEP:([^\]]+)\]\]\n?/;
+
+        async function loadLeaveData() {
+            if (!currentUser || !isScriptUrlConfigured() || !authToken) return;
+            let data = await callLeaveApi({ action: "getLeaveData" });
+            if (!data) return;
+            leaveData = data.requests || [];
+            leaveApprovers = data.approvers || [];
+            leaveBalance = data.balance || { total: 0, used: 0, remaining: 0 };
+            leaveMyInfo = data.myInfo || { hoTen: "", ngaySinh: "", msnv: "", phongBan: "", email: "", dienThoai: "" };
+            leaveStaffDirectory = data.staffDirectory || [];
+            renderLeaveOverviewCard();
+            npResetApproverPicker();
+            renderLeaveTabs();
+            renderLeaveTable();
+        }
+
+        // [KHU VỰC 1 - TỔNG QUAN PHÉP]
+        function renderLeaveOverviewCard() {
+            document.getElementById("np-info-hoten").innerText = leaveMyInfo.hoTen || "-";
+            document.getElementById("np-info-ngaysinh").innerText = normalizeDateStr(leaveMyInfo.ngaySinh) ? formatDateDisplay(leaveMyInfo.ngaySinh) : (leaveMyInfo.ngaySinh || "-");
+            document.getElementById("np-info-msnv").innerText = leaveMyInfo.msnv || "-";
+            document.getElementById("np-info-phongban").innerText = leaveMyInfo.phongBan || "-";
+            document.getElementById("np-info-email").innerText = leaveMyInfo.email || "-";
+            document.getElementById("np-info-dienthoai").innerText = leaveMyInfo.dienThoai || "-";
+            document.getElementById("np-total-days").innerText = leaveBalance.total || 0;
+            document.getElementById("np-used-days").innerText = leaveBalance.used || 0;
+            document.getElementById("np-remaining-days").innerText = leaveBalance.remaining || 0;
+
+            let warn = document.getElementById("np-link-warning");
+            let hasLink = !!leaveMyInfo.msnv;
+            if (warn) warn.style.display = hasLink ? "none" : "block";
+            if (!hasLink) {
+                let sel = document.getElementById("inp-np-selflink");
+                if (sel) {
+                    sel.innerHTML = `<option value="">-- Tìm và chọn tên của bạn --</option>` +
+                        leaveStaffDirectory.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)} - ${escapeHtml(s.phongBan || "")} (${escapeHtml(s.msnv)})</option>`).join('');
+                }
+            }
+
+            let adminBox = document.getElementById("np-admin-box");
+            if (adminBox) adminBox.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
+        }
+
+        // [TỰ LIÊN KẾT] User tự chọn ĐÚNG hồ sơ nhân sự của mình (chỉ cần làm 1 lần) khi hệ thống
+        // chưa tự nhận diện qua Email — từ lần sau hệ thống tự hiển thị đúng thông tin, không cần
+        // Admin can thiệp gì thêm.
+        async function submitLeaveSelfLink() {
+            let sel = document.getElementById("inp-np-selflink");
+            let msnv = sel ? sel.value : "";
+            if (!msnv) { alert("Vui lòng chọn đúng tên của bạn trong danh sách!"); return; }
+            if (!confirm("Xác nhận đây là ĐÚNG hồ sơ nhân sự của bạn? (Hệ thống sẽ ghi nhớ liên kết này cho các lần đăng nhập sau)")) return;
+            let data = await callLeaveApi({ action: "linkMyStaffRecord", msnv: msnv });
+            if (data) {
+                await loadLeaveData();
+                alert("✔️ Đã liên kết hồ sơ nhân sự với tài khoản của bạn.");
+            }
+        }
+
+        // [KHU VỰC 2 - TẠO ĐƠN] "Người duyệt" — chọn NHIỀU người, tìm theo tên, hiện TẤT CẢ nhân
+        // sự đang có (leaveApprovers do server trả về qua listAllStaffBasicForLeave()).
+        let npSelectedApprovers = []; // [{name, email, position}]
+
+        function npResetApproverPicker() {
+            npSelectedApprovers = [];
+            let searchInp = document.getElementById("inp-np-nguoiduyet-search");
+            if (searchInp) searchInp.value = "";
+            renderNpApproverChips();
+            let dd = document.getElementById("np-approver-dropdown");
+            if (dd) dd.style.display = "none";
+        }
+
+        function renderNpApproverOptions() {
+            let dd = document.getElementById("np-approver-dropdown");
+            let searchInp = document.getElementById("inp-np-nguoiduyet-search");
+            if (!dd || !searchInp) return;
+            let kw = searchInp.value.trim().toLowerCase();
+            let selectedEmails = npSelectedApprovers.map(a => a.email.toLowerCase());
+            let options = leaveApprovers.filter(a => !selectedEmails.includes((a.email || "").toLowerCase()));
+            if (kw) options = options.filter(a => (a.name || "").toLowerCase().includes(kw) || (a.email || "").toLowerCase().includes(kw));
+            options = options.slice(0, 50); // Giới hạn hiển thị để tránh danh sách quá dài khi chưa gõ tìm
+
+            if (options.length === 0) {
+                dd.innerHTML = `<div style="padding:10px; color:#888; font-size:13px;">Không tìm thấy nhân sự phù hợp.</div>`;
+            } else {
+                dd.innerHTML = options.map(a => `<div onmousedown="event.preventDefault(); npAddApprover('${escapeHtml(a.email).replace(/'/g, "\\'")}')"
+                    style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:13.5px;"
+                    onmouseover="this.style.background='#f5f8ff'" onmouseout="this.style.background='#fff'">
+                    <b>${escapeHtml(a.name)}</b> <span style="color:#888;">- ${escapeHtml(a.position || "")}</span><br>
+                    <span style="color:#888; font-size:12px;">${escapeHtml(a.email)}</span>
+                </div>`).join('');
+            }
+            dd.style.display = "block";
+        }
+
+        function npAddApprover(email) {
+            let found = leaveApprovers.find(a => a.email === email);
+            if (!found) return;
+            if (!npSelectedApprovers.some(a => a.email === email)) npSelectedApprovers.push(found);
+            let searchInp = document.getElementById("inp-np-nguoiduyet-search");
+            if (searchInp) { searchInp.value = ""; searchInp.focus(); }
+            renderNpApproverChips();
+            renderNpApproverOptions();
+        }
+
+        function npRemoveApprover(email) {
+            npSelectedApprovers = npSelectedApprovers.filter(a => a.email !== email);
+            renderNpApproverChips();
+        }
+
+        function renderNpApproverChips() {
+            let wrap = document.getElementById("np-approver-chips");
+            if (!wrap) return;
+            wrap.innerHTML = npSelectedApprovers.map(a => `<span style="display:inline-flex; align-items:center; gap:6px; background:#eef5ff; border:1px solid #cfe0ff; color:#2255aa; padding:5px 10px; border-radius:16px; font-size:13px;">
+                ${escapeHtml(a.name)}
+                <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="npRemoveApprover('${escapeHtml(a.email).replace(/'/g, "\\'")}')"></i>
+            </span>`).join('') || `<span style="color:#aaa; font-size:12.5px;">Chưa chọn người duyệt nào.</span>`;
+        }
+
+        // [MỤC "NGHỈ 1/2 BUỔI"] Chỉ cho chọn nửa buổi khi Từ ngày = Đến ngày (đúng 1 ngày).
+        function npUpdateLoaiNghiAvailability() {
+            let tuNgay = document.getElementById("inp-np-tungay").value;
+            let denNgay = document.getElementById("inp-np-denngay").value;
+            let sel = document.getElementById("inp-np-loainghi");
+            let hint = document.getElementById("np-loainghi-hint");
+            if (!sel) return;
+            let isSingleDay = !!tuNgay && tuNgay === denNgay;
+            Array.from(sel.options).forEach(opt => {
+                if (opt.value !== "Cả ngày") opt.disabled = !isSingleDay;
+            });
+            if (!isSingleDay && sel.value !== "Cả ngày") sel.value = "Cả ngày";
+            if (hint) hint.style.color = isSingleDay ? "#888" : "#c0392b";
+        }
+
+        function resetLeaveForm() {
+            document.getElementById("inp-np-tungay").value = "";
+            document.getElementById("inp-np-denngay").value = "";
+            document.getElementById("inp-np-lydo").value = "";
+            document.getElementById("inp-np-loainghi").value = "Cả ngày";
+            document.getElementById("inp-np-file").value = "";
+            npResetApproverPicker();
+            npUpdateLoaiNghiAvailability();
+        }
+
+        async function submitLeaveRequestFn() {
+            let tuNgay = document.getElementById("inp-np-tungay").value;
+            let denNgay = document.getElementById("inp-np-denngay").value;
+            let lyDo = document.getElementById("inp-np-lydo").value.trim();
+            let loaiNghi = document.getElementById("inp-np-loainghi").value;
+
+            if (!tuNgay || !denNgay) { alert("Vui lòng chọn Từ ngày và Đến ngày!"); return; }
+            if (denNgay < tuNgay) { alert("\"Đến ngày\" phải sau hoặc bằng \"Từ ngày\"!"); return; }
+            if (npSelectedApprovers.length === 0) { alert("Vui lòng chọn ít nhất 1 Người duyệt!"); return; }
+
+            let fileInput = document.getElementById("inp-np-file");
+            let file = fileInput.files[0];
+            if (file && file.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+
+            let payload = {
+                action: "submitLeaveRequest", tuNgay: tuNgay, denNgay: denNgay, lyDo: lyDo, loaiNghi: loaiNghi,
+                approvers: npSelectedApprovers.map(a => ({ name: a.name, email: a.email }))
+            };
+
+            if (file) {
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/pdf";
+                payload.fileData = base64Data;
+            }
+
+            let data = await callLeaveApi(payload);
+            if (data) {
+                resetLeaveForm();
+                await loadLeaveData();
+                alert("✔️ Đã trình đơn xin nghỉ phép thành công.");
+            }
+        }
+
+        // [KHU VỰC 3 - DANH SÁCH ĐƠN]
+        function renderLeaveTabs() {
+            let wrap = document.getElementById("np-tabs");
+            if (!wrap) return;
+            wrap.innerHTML = NGHIPHEP_TABS.map(t => {
+                let count = leaveTabRows(t).length;
+                let active = (t === npActiveTab);
+                return `<span onclick="setLeaveTab('${t.replace(/'/g, "\\'")}')"
+                    style="cursor:pointer; padding:7px 14px; border-radius:16px; font-size:13px; white-space:nowrap;
+                    border:1px solid ${active ? 'var(--secondary-color)' : '#ddd'};
+                    background:${active ? 'var(--secondary-color)' : '#f5f5f5'};
+                    color:${active ? '#fff' : '#444'};">${escapeHtml(t)} (${count})</span>`;
+            }).join('');
+        }
+
+        function leaveTabRows(tabName) {
+            if (tabName === "Đơn của tôi") return leaveData.filter(r => r.isOwner);
+            if (tabName === "Chờ tôi duyệt") return leaveData.filter(r => r.isApprover && r.trangThai === "Chờ duyệt");
+            return leaveData; // "Tất cả" — server đã lọc sẵn chỉ những đơn liên quan tới mình
+        }
+
+        function setLeaveTab(tabName) {
+            npActiveTab = tabName;
+            renderLeaveTabs();
+            renderLeaveTable();
+        }
+
+        // Hiện gọn "Số ngày" + "Loại nghỉ" — VD "0.5 (Nửa ngày - Buổi sáng)" khi nghỉ nửa buổi.
+        function npFormatSoNgay(r) {
+            if (r.loaiNghi && r.loaiNghi !== "Cả ngày") return `${r.soNgayNghi} <br><small style="color:#888;">${escapeHtml(r.loaiNghi)}</small>`;
+            return String(r.soNgayNghi || "");
+        }
+
+        function renderLeaveTable() {
+            let tbody = document.querySelector("#tbl-nghiphep tbody");
+            if (!tbody) return;
+            let keyword = (document.getElementById("search-np")?.value || "").trim().toLowerCase();
+            let rows = leaveTabRows(npActiveTab).filter(r => {
+                if (!keyword) return true;
+                return (r.hoTen || "").toLowerCase().includes(keyword) ||
+                    (r.tenNguoiDuyet || "").toLowerCase().includes(keyword) ||
+                    (r.lyDo || "").toLowerCase().includes(keyword);
+            });
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888; padding:20px;">Không có đơn nào trong mục này.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(r => {
+                let fileCell = r.fileId
+                    ? `<a href="#" onclick="viewLeaveFile('${r.fileId}', '${escapeHtml(r.fileName).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-pdf"></i> ${escapeHtml(r.fileName)}</a>`
+                    : "-";
+                let statusColor = LEAVE_STATUS_COLORS[r.trangThai] || "#888";
+                let statusCell = `<span style="color:#fff; background:${statusColor}; padding:3px 10px; border-radius:12px; font-size:12px; white-space:nowrap;">${escapeHtml(r.trangThai)}</span>`;
+                let approverListHtml = (r.nguoiDuyetList && r.nguoiDuyetList.length)
+                    ? r.nguoiDuyetList.map(a => `${escapeHtml(a.name || a.email)}${r.nguoiXuLyUsername && r.trangThai !== "Chờ duyệt" ? '' : ''}`).join(', ')
+                    : escapeHtml(r.tenNguoiDuyet || "");
+
+                let actions = "";
+                if (r.canApprove) actions += `<button class="btn btn-success" style="width:auto; padding:6px 10px;" onclick="doLeaveApprove('${r.maDon}')" title="Phê duyệt đơn này"><i class="fa-solid fa-check"></i> Duyệt ✔️</button> `;
+                if (r.canReject) actions += `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="openLeaveRejectModal('${r.maDon}')" title="Từ chối đơn này"><i class="fa-solid fa-xmark"></i> Không phê duyệt ❌</button> `;
+                if (r.canCancel) actions += `<button class="btn btn-warning" style="width:auto; padding:6px 10px;" onclick="doLeaveCancel('${r.maDon}')" title="Hủy đơn này"><i class="fa-solid fa-ban"></i> Hủy đơn</button> `;
+
+                return `<tr>
+                    <td>${escapeHtml(r.hoTen || r.nguoiTaoUsername)}</td>
+                    <td>${escapeHtml(formatDateDisplay(r.tuNgay))}</td>
+                    <td>${escapeHtml(formatDateDisplay(r.denNgay))}</td>
+                    <td>${escapeHtml(r.loaiNghi || "Cả ngày")}</td>
+                    <td style="text-align:center;">${r.soNgayNghi ?? ""}</td>
+                    <td>${escapeHtml(r.lyDo || "")}</td>
+                    <td>${approverListHtml}${r.nguoiXuLyUsername ? `<br><small style="color:#888;">Xử lý: ${escapeHtml(r.nguoiXuLyUsername)}</small>` : ''}</td>
+                    <td>${fileCell}</td>
+                    <td>${statusCell}</td>
+                    <td>${escapeHtml(r.lyDoTuChoi || "")}</td>
+                    <td>${actions || "-"}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function doLeaveApprove(maDon) {
+            if (!confirm("Xác nhận phê duyệt đơn nghỉ phép này?")) return;
+            let data = await callLeaveApi({ action: "updateLeaveRequestStatus", maDon: maDon, newStatus: "Đã duyệt" });
+            if (data) { await loadLeaveData(); renderMyTaskTable(); }
+        }
+
+        async function doLeaveCancel(maDon) {
+            if (!confirm("Xác nhận hủy đơn nghỉ phép này?")) return;
+            let data = await callLeaveApi({ action: "updateLeaveRequestStatus", maDon: maDon, newStatus: "Đã hủy" });
+            if (data) { await loadLeaveData(); renderMyTaskTable(); }
+        }
+
+        // "nếu không phê duyệt sẽ hiện bảng để ghi lý do" — dùng prompt() để nhập lý do từ chối
+        // (nhẹ, không cần dựng thêm modal riêng), bắt buộc phải nhập mới gửi được.
+        async function openLeaveRejectModal(maDon) {
+            let lyDo = prompt("Nhập lý do KHÔNG phê duyệt đơn nghỉ phép này:");
+            if (lyDo === null) return; // Người dùng bấm Hủy
+            lyDo = lyDo.trim();
+            if (!lyDo) { alert("Vui lòng nhập lý do từ chối!"); return; }
+            let data = await callLeaveApi({ action: "updateLeaveRequestStatus", maDon: maDon, newStatus: "Từ chối", lyDoTuChoi: lyDo });
+            if (data) { await loadLeaveData(); renderMyTaskTable(); }
+        }
+
+        // Mở/tải file đính kèm của 1 đơn nghỉ phép qua PROXY có kiểm tra quyền — file trên Drive
+        // KHÔNG được chia sẻ công khai, server tự xác nhận người gọi có liên quan tới đúng đơn
+        // chứa file đó hay không (người tạo đơn/1 trong các người duyệt/Admin), giống hệt cơ chế
+        // xem file của tính năng Chữ ký số (viewSignatureFile).
+        async function viewLeaveFile(fileId, fileName) {
+            if (!fileId) { alert("⚠️ File này chưa có dữ liệu."); return; }
+            try {
+                showSyncBanner("Đang mở file...");
+                let data = await callLeaveApi({ action: "getLeaveFileContent", fileId: fileId });
+                if (!data) return;
+                let byteChars = atob(data.fileData);
+                let byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                let byteArray = new Uint8Array(byteNumbers);
+                let blob = new Blob([byteArray], { type: data.mimeType || "application/pdf" });
+                let blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) {
+                alert("❌ Không thể mở file \"" + (fileName || "") + "\": " + err.message);
+                console.error(err);
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
+        // [ADMIN] Nút "Kiểm tra kết nối" — tự chẩn đoán: truy cập được Sheet/Drive riêng của tính
+        // năng nghỉ phép không, sheet "Văn phòng" có bao nhiêu nhân sự đang hoạt động/có Email.
+        // Giúp xác định nhanh lý do lỗi thay vì phải đoán.
+        async function runLeaveDiag() {
+            let box = document.getElementById("np-diag-result");
+            if (!box) return;
+            box.style.display = "block";
+            box.innerText = "Đang kiểm tra...";
+            let data = await callLeaveApi({ action: "diagLeaveStorage" });
+            if (!data) { box.innerText = "Không nhận được phản hồi."; return; }
+            box.innerText = JSON.stringify(data, null, 2);
+        }
+
 
         // [MỚI - TỔNG QUAN] Khối "Chúc mừng sinh nhật": tính nhân viên (Văn phòng + Đội tàu)
         // ĐANG LÀM VIỆC có sinh nhật HÔM NAY hoặc trong vòng 7 ngày tới ("Tuần này"), dựa trên
