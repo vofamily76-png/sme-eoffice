@@ -6326,6 +6326,12 @@
         }
 
         function updateSystemData() {
+            // [CÔ LẬP LỖI GIỮA CÁC PHẦN] Bọc luôn cả khối cập nhật số liệu Dashboard/các ô lọc ở
+            // ĐẦU hàm — nếu KHÔNG bọc, 1 lỗi nhỏ ở đây (VD thiếu 1 phần tử DOM) sẽ chặn đứng toàn
+            // bộ phần safeRenderStep() phía dưới (kể cả chưa kịp chạy tới), gây đúng hiện tượng
+            // nhiều tab "không hoạt động" cùng lúc dù không liên quan tới nhau. Xem thêm giải
+            // thích chi tiết ở safeRenderStep() bên dưới.
+            try {
             document.getElementById("dash-dept-count").innerText = depts.length;
             document.getElementById("dash-vessel-count").innerText = vessels.length;
             document.getElementById("dash-staff-count").innerText = staffData.length;
@@ -6386,23 +6392,41 @@
             let vesselOptions = '<option value="Tất cả">-- Tất cả tàu --</option>' + vessels.map(v => `<option value="${v}">${v}</option>`).join('');
             document.getElementById("filter-vessel").innerHTML = vesselOptions;
             document.getElementById("inp-vessel").innerHTML = vessels.map(v => `<option value="${v}">${v}</option>`).join('');
+            } catch (err) {
+                console.error("[updateSystemData] Lỗi ở khối cập nhật Dashboard/ô lọc đầu hàm:", err);
+            }
 
-            renderStaffGrid();
-            renderHRTable();
-            renderCrewTable();
-            populateEquipmentFormOptions();
-            populateGiaoViecFormOptions();
-            renderEquipmentTable();
-            renderTaskAssignTable();
-            renderMyTaskTable();
-            updateNhanViecBadge();
-            renderOtherAppsGrid();
-            renderOtherAppsAdminList();
-            renderDeptVesselLists();
-            renderMailGroupsAdminList();
-            renderProfileDocDeptTabs();
-            renderProfileDocStaffSelect();
-            renderInternalDocsTable();
+            // [CÔ LẬP LỖI GIỮA CÁC PHẦN] TRƯỚC ĐÂY các hàm renderXxx() bên dưới được gọi NỐI TIẾP
+            // nhau KHÔNG có try/catch: nếu 1 hàm bị lỗi (throw) — VD do dữ liệu 1 tài khoản/1 bản
+            // ghi nào đó không đúng định dạng mong đợi — thì TOÀN BỘ các hàm render CÒN LẠI phía
+            // sau nó (kể cả những tab hoàn toàn không liên quan, VD "Danh bạ CBCNV" bị lỗi sẽ kéo
+            // theo "Giao Việc"/"Nhận Việc" phía sau KHÔNG được vẽ lại, trông như "không hoạt
+            // động") sẽ bị dừng theo, dù bản thân chúng không hề có lỗi gì. Bọc riêng từng bước
+            // bằng safeRenderStep() để 1 phần bị lỗi CHỈ dừng lại đúng phần đó — các tab khác vẫn
+            // hoạt động bình thường — đồng thời in lỗi ra Console (F12) để dễ xác định đúng chỗ
+            // cần sửa. KHÔNG đổi bất kỳ logic hiển thị/quyền hạn nào bên trong từng hàm.
+            function safeRenderStep(label, fn) {
+                try { fn(); } catch (err) {
+                    console.error("[updateSystemData] Lỗi khi vẽ lại \"" + label + "\":", err);
+                }
+            }
+
+            safeRenderStep("renderStaffGrid", renderStaffGrid);
+            safeRenderStep("renderHRTable", renderHRTable);
+            safeRenderStep("renderCrewTable", renderCrewTable);
+            safeRenderStep("populateEquipmentFormOptions", populateEquipmentFormOptions);
+            safeRenderStep("populateGiaoViecFormOptions", populateGiaoViecFormOptions);
+            safeRenderStep("renderEquipmentTable", renderEquipmentTable);
+            safeRenderStep("renderTaskAssignTable", renderTaskAssignTable);
+            safeRenderStep("renderMyTaskTable", renderMyTaskTable);
+            safeRenderStep("updateNhanViecBadge", updateNhanViecBadge);
+            safeRenderStep("renderOtherAppsGrid", renderOtherAppsGrid);
+            safeRenderStep("renderOtherAppsAdminList", renderOtherAppsAdminList);
+            safeRenderStep("renderDeptVesselLists", renderDeptVesselLists);
+            safeRenderStep("renderMailGroupsAdminList", renderMailGroupsAdminList);
+            safeRenderStep("renderProfileDocDeptTabs", renderProfileDocDeptTabs);
+            safeRenderStep("renderProfileDocStaffSelect", renderProfileDocStaffSelect);
+            safeRenderStep("renderInternalDocsTable", renderInternalDocsTable);
         }
 
         function renderDeptVesselLists() {
