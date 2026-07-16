@@ -1710,7 +1710,15 @@
                     <option value="Đang thực hiện">Đang thực hiện</option>
                     <option value="Hoàn thành">Hoàn thành</option>
                     <option value="Trễ hạn">Trễ hạn</option>
+                    <!-- [MỤC "KHÔNG HOÀN THÀNH" - ĐÓNG CÔNG VIỆC] Đây là 1 trạng thái ĐÓNG công
+                         việc, xử lý giống hệt "Hoàn thành": khi chọn mục này rồi bấm "Cập nhật",
+                         hệ thống LƯU trạng thái này lên server rồi ĐÓNG lại (khóa hẳn, không còn
+                         cập nhật Trạng thái/Tiến độ/File báo cáo thêm được nữa) — xem điều kiện
+                         khóa ở hàm openNvDetailModal() (isDone) và ở SERVER trong Code.gs, action
+                         "updateMyTaskStatus". -->
+                    <option value="Không hoàn thành">Không hoàn thành</option>
                 </select>
+                <small style="color:#888;">Chọn "Không hoàn thành" rồi bấm "Cập nhật" sẽ ĐÓNG công việc lại (giống như khi chọn "Hoàn thành") — sau đó không thể cập nhật thêm.</small>
             </div>
 
             <!-- [MỤC "MÔ TẢ" - NỘI DUNG BÁO CÁO CỦA NGƯỜI NHẬN] Người nhận việc gõ nhận xét/nội
@@ -4759,15 +4767,17 @@
             if (trangThai === "Đang thực hiện") return "#1976d2";
             if (trangThai === "Trễ hạn") return "#c62828";
             if (trangThai === "Đã thu hồi") return "#6a1b9a";
+            if (trangThai === "Không hoàn thành") return "#ef6c00";
             return "#8e8e8e"; // Mới giao
         }
 
         // [MỤC "CẢNH BÁO THỜI HẠN"] Tính trạng thái ĐỐI CHIẾU THỜI HẠN của 1 công việc (dùng
         // CHUNG cho cả tab "Giao Việc" và tab "Nhận Việc", để 2 bên luôn nhìn thấy CÙNG 1 màu
         // cảnh báo cho CÙNG 1 công việc — đúng mục đích "đối chiếu công việc hai bên"):
-        //   - "done"    : Trạng thái đã là "Hoàn thành" -> màu XANH (hiển thị hoàn thành).
-        //   - "overdue" : Chưa hoàn thành và ĐÃ QUA Thời hạn xử lý -> màu ĐỎ (cảnh báo quá hạn).
-        //   - "soon"    : Chưa hoàn thành và còn <= 3 ngày nữa là tới Thời hạn -> màu CAM (cảnh
+        //   - "done"    : Trạng thái đã là "Hoàn thành"/"Không hoàn thành" (công việc đã ĐÓNG,
+        //                 không còn cập nhật thêm) -> không còn cảnh báo quá hạn/sắp đến hạn nữa.
+        //   - "overdue" : Chưa đóng và ĐÃ QUA Thời hạn xử lý -> màu ĐỎ (cảnh báo quá hạn).
+        //   - "soon"    : Chưa đóng và còn <= 3 ngày nữa là tới Thời hạn -> màu CAM (cảnh
         //                 báo sắp đến hạn).
         //   - "normal"  : Còn nhiều thời gian / chưa có Thời hạn -> màu mặc định, không cảnh báo.
         // CHỈ tính toán để TÔ MÀU hiển thị — không đụng tới/không ghi đè bất kỳ dữ liệu nào đã
@@ -4775,7 +4785,7 @@
         var GV_SAP_HET_HAN_SO_NGAY = 3; // Ngưỡng "sắp đến hạn": còn từ 0-3 ngày nữa tới Thời hạn.
         function gvDueStatus(t) {
             if (!t) return "normal";
-            if (t.trangThai === "Hoàn thành") return "done";
+            if (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành") return "done";
             if (!t.thoiHan) return "normal";
             let due = new Date(t.thoiHan + "T23:59:59");
             if (isNaN(due.getTime())) return "normal";
@@ -5060,6 +5070,8 @@
                     <td onclick="event.stopPropagation()">
                         ${t.trangThai === "Hoàn thành"
                             ? `<span style="background:#2e7d32; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
+                            : t.trangThai === "Không hoàn thành"
+                            ? `<span style="background:#ef6c00; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Công việc đã đóng"><i class="fa-solid fa-xmark"></i> Không hoàn thành</span>`
                             : t.trangThai === "Đã thu hồi"
                             ? `<span style="background:#6a1b9a; color:#fff; padding:3px 10px; border-radius:10px; font-size:12px;" title="Người giao đã thu hồi công việc này"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
                             : `<select style="padding:4px 6px;" onchange="updateMyTaskStatus('${t.id}', this.value, undefined)">
@@ -5067,6 +5079,7 @@
                             <option value="Đang thực hiện" ${t.trangThai === "Đang thực hiện" ? "selected" : ""}>Đang thực hiện</option>
                             <option value="Hoàn thành" ${t.trangThai === "Hoàn thành" ? "selected" : ""}>Hoàn thành</option>
                             <option value="Trễ hạn" ${t.trangThai === "Trễ hạn" ? "selected" : ""}>Trễ hạn</option>
+                            <option value="Không hoàn thành">Không hoàn thành</option>
                         </select>`}
                     </td>
                     <td style="white-space:nowrap;" onclick="event.stopPropagation()" title="Bấm vào công việc để mở chi tiết & xem tiến độ">
@@ -5165,17 +5178,22 @@
             document.getElementById("nvd-file").value = "";
             document.getElementById("nvd-error").style.display = "none";
 
-            // [MỤC "HOÀN THÀNH - KHÓA CẬP NHẬT"] Công việc ĐÃ Hoàn thành thì không còn tính năng
-            // cập nhật tiến độ nữa: khóa hẳn Trạng thái/Mô tả báo cáo/Tiến độ/File đính kèm mới +
-            // ẩn nút "Cập nhật". Vẫn xem được đầy đủ thông tin và Lịch sử tiến độ như bình thường.
-            let isDone = (t.trangThai === "Hoàn thành");
+            // [MỤC "HOÀN THÀNH / KHÔNG HOÀN THÀNH - KHÓA CẬP NHẬT"] Công việc ĐÃ ở 1 trong 2
+            // trạng thái ĐÓNG này thì không còn tính năng cập nhật tiến độ nữa: khóa hẳn Trạng
+            // thái/Mô tả báo cáo/Tiến độ/File đính kèm mới + ẩn nút "Cập nhật". Vẫn xem được đầy
+            // đủ thông tin và Lịch sử tiến độ như bình thường.
+            let isDone = (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành");
             let isRecalled = (t.trangThai === "Đã thu hồi");
             let isLocked = isDone || isRecalled;
             document.getElementById("nvd-trangthai").disabled = isLocked;
             document.getElementById("nvd-noidung").disabled = isLocked;
             document.getElementById("nvd-file").disabled = isLocked;
             document.getElementById("nvd-submit-btn").style.display = isLocked ? "none" : "";
-            document.getElementById("nvd-done-hint").style.display = isDone ? "block" : "none";
+            let doneHint = document.getElementById("nvd-done-hint");
+            doneHint.style.display = isDone ? "block" : "none";
+            if (isDone) {
+                doneHint.innerHTML = `<i class="fa-solid fa-circle-check"></i> Công việc đã <b>${escapeHtml(t.trangThai)}</b> — không còn tính năng cập nhật tiến độ nữa.`;
+            }
             let recallHint = document.getElementById("nvd-recall-hint");
             if (recallHint) {
                 recallHint.style.display = isRecalled ? "block" : "none";
@@ -5307,16 +5325,17 @@
                 // "Sửa" nữa — thay bằng nút "Thu hồi" (yêu cầu nhập lý do, xem openRecallTaskModal).
                 // Công việc ĐÃ thu hồi rồi thì không hiện lại nút "Thu hồi" nữa (tránh thu hồi 2
                 // lần chồng lý do), chỉ còn xem được lý do đã thu hồi qua "Xem lịch sử tiến độ".
-                // Công việc ĐÃ "Hoàn thành" thì cũng KHÔNG còn nút "Thu hồi" nữa (việc đã xong,
-                // xem thêm điều kiện chặn ở recallTaskAssignItem() phía Code.gs — server chặn
-                // luôn, không chỉ ẩn/hiện ở giao diện).
+                // Công việc ĐÃ ĐÓNG (trạng thái "Hoàn thành" HOẶC "Không hoàn thành") thì cũng
+                // KHÔNG còn nút "Thu hồi" nữa (việc đã xong) — xem thêm điều kiện chặn ở
+                // recallTaskAssignItem() phía Code.gs — server chặn luôn, không chỉ ẩn/hiện ở
+                // giao diện.
                 let staIsRecalled = (t.trangThai === "Đã thu hồi");
-                let staIsDone = (t.trangThai === "Hoàn thành");
+                let staIsDone = (t.trangThai === "Hoàn thành" || t.trangThai === "Không hoàn thành");
                 let actionsHtml = (currentUserCanAssignTask
                     ? (staIsRecalled
                         ? `<span style="display:inline-block; padding:6px 10px; color:#c62828; font-size:12px;" title="Công việc đã thu hồi"><i class="fa-solid fa-rotate-left"></i> Đã thu hồi</span>`
                         : staIsDone
-                        ? `<span style="display:inline-block; padding:6px 10px; color:#2e7d32; font-size:12px;" title="Công việc đã hoàn thành, không thể thu hồi"><i class="fa-solid fa-check"></i> Hoàn thành</span>`
+                        ? `<span style="display:inline-block; padding:6px 10px; color:${t.trangThai === "Hoàn thành" ? "#2e7d32" : "#ef6c00"}; font-size:12px;" title="Công việc đã đóng, không thể thu hồi"><i class="fa-solid fa-check"></i> ${escapeHtml(t.trangThai)}</span>`
                         : `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="openRecallTaskModal('${t.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i></button>`)
                        + `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteTaskAssignRow('${t.id}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
                     : '')
