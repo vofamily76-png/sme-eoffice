@@ -14,6 +14,14 @@
          server nào khác ngoài Apps Script) — dùng để hiển thị mã QR cho app Google
          Authenticator quét khi người dùng bật xác thực 2 lớp. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- [TAB "ĐĂNG KÝ NGHỈ PHÉP" - "XUẤT PDF"] Thư viện jsPDF dùng để xuất Đơn xin nghỉ phép ra
+         file PDF NGAY TẠI TRÌNH DUYỆT (client-side), dữ liệu lấy từ leaveRequestsData đã tải sẵn
+         (đúng phạm vi/quyền người dùng đang có) — KHÔNG gọi thêm API nào tới server, không ảnh
+         hưởng dữ liệu gốc, không đổi cơ chế bảo mật. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas: BẮT BUỘC cho jsPDF.html() để chụp lại đúng font chữ tiếng Việt có dấu
+         (font hệ thống mặc định của jsPDF không hỗ trợ dấu tiếng Việt). -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
             --primary-color: #0b3c5d;
@@ -1218,13 +1226,20 @@
                             <input type="date" id="inp-np-denngay" onchange="npTinhTongSoNgay()">
                         </div>
                         <div class="input-group">
+                            <label>&nbsp;</label>
+                            <label class="checkbox-item" style="justify-content:flex-start; gap:8px; padding:12px 0;">
+                                <input type="checkbox" id="inp-np-nuangay" onchange="npToggleHalfDay()">
+                                Nghỉ 1/2 ngày <small style="font-weight:normal; color:#888;">(chỉ áp dụng khi Từ ngày = Đến ngày)</small>
+                            </label>
+                        </div>
+                        <div class="input-group">
                             <label>Tổng số ngày nghỉ phép</label>
                             <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày, có thể sửa lại">
                             <small id="np-quota-hint" style="color:#888; margin-top:4px; display:block;"></small>
                         </div>
                         <div class="input-group">
                             <label>Loại nghỉ phép *</label>
-                            <select id="inp-np-loai">
+                            <select id="inp-np-loai" onchange="npCapNhatGhiChuLoai()">
                                 <option value="AL - Nghỉ phép">AL - Nghỉ phép</option>
                                 <option value="PH - Nghỉ lễ">PH - Nghỉ lễ</option>
                                 <option value="ML - Kết hôn">ML - Kết hôn</option>
@@ -1234,6 +1249,7 @@
                                 <option value="MT - Nghỉ thai sản">MT - Nghỉ thai sản</option>
                                 <option value="CL - Nghỉ tang lễ">CL - Nghỉ tang lễ</option>
                             </select>
+                            <small id="np-loai-note" style="color:#c0392b; margin-top:4px; display:none;">* ML - Kết hôn: 3 ngày đầu KHÔNG trừ vào phép năm; nếu nghỉ quá 3 ngày, số ngày dư ra (tính từ ngày nghỉ thứ 4 trở đi) mới bị trừ vào phép năm.</small>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Lý do nghỉ phép</label>
@@ -5200,10 +5216,51 @@
             let tuNgay = document.getElementById("inp-np-tungay").value;
             let denNgay = document.getElementById("inp-np-denngay").value;
             if (!tuNgay || !denNgay) return;
+            // [NGHỈ 1/2 NGÀY] Nếu đang chọn nghỉ nửa ngày nhưng Từ ngày/Đến ngày không còn trùng
+            // nhau nữa (VD người dùng vừa đổi Đến ngày sang ngày khác) -> tự bỏ chọn, vì nửa
+            // ngày chỉ có ý nghĩa với đúng 1 ngày cụ thể.
+            if (tuNgay !== denNgay) {
+                let cb = document.getElementById("inp-np-nuangay");
+                if (cb && cb.checked) cb.checked = false;
+            }
+            if (document.getElementById("inp-np-nuangay").checked) {
+                document.getElementById("inp-np-tongsongay").value = 0.5;
+                return;
+            }
             let d1 = new Date(tuNgay + "T00:00:00");
             let d2 = new Date(denNgay + "T00:00:00");
             let soNgay = Math.round((d2 - d1) / 86400000) + 1;
             if (soNgay > 0) document.getElementById("inp-np-tongsongay").value = soNgay;
+        }
+
+        // [NGHỈ 1/2 NGÀY] Bấm chọn -> ép "Đến ngày" = "Từ ngày" (nếu đã có Từ ngày) và Tổng số
+        // ngày = 0.5; bỏ chọn -> tính lại Tổng số ngày bình thường theo khoảng Từ ngày/Đến ngày.
+        function npToggleHalfDay() {
+            let cb = document.getElementById("inp-np-nuangay");
+            let tuNgayEl = document.getElementById("inp-np-tungay");
+            let denNgayEl = document.getElementById("inp-np-denngay");
+            if (cb.checked) {
+                if (tuNgayEl.value) denNgayEl.value = tuNgayEl.value;
+                document.getElementById("inp-np-tongsongay").value = 0.5;
+            } else {
+                npTinhTongSoNgay();
+            }
+        }
+
+        // Hiện/ẩn ghi chú riêng cho "ML - Kết hôn" (3 ngày đầu không trừ phép).
+        function npCapNhatGhiChuLoai() {
+            let loai = document.getElementById("inp-np-loai").value;
+            document.getElementById("np-loai-note").style.display = loai.indexOf("ML") === 0 ? "block" : "none";
+        }
+
+        // [DÙNG CHUNG VỚI SERVER] Tính số ngày THỰC SỰ bị trừ vào phép năm theo Loại nghỉ phép —
+        // PHẢI khớp đúng logic ở hàm capNhatSoNgayNghiPhepDaDung/code.gs. Hiện tại chỉ "ML - Kết
+        // hôn" có quy tắc riêng: 3 ngày đầu không trừ phép, phần dư (tính từ ngày thứ 4 trở đi)
+        // mới bị trừ; các loại khác trừ đủ 100% số ngày đã đăng ký.
+        function npTinhSoNgayTruPhep(loaiNghiPhep, tongSoNgay) {
+            let soNgay = parseFloat(tongSoNgay) || 0;
+            if ((loaiNghiPhep || "").indexOf("ML") === 0) return Math.max(0, soNgay - 3);
+            return soNgay;
         }
 
         // Tải danh sách username để chọn "Người phê duyệt" và vẽ thành checkbox nhiều lựa chọn
@@ -5235,6 +5292,8 @@
                 let el = document.getElementById(id);
                 if (el) el.value = "";
             });
+            document.getElementById("inp-np-nuangay").checked = false;
+            document.getElementById("np-loai-note").style.display = "none";
             document.querySelectorAll("#np-approver-list input:checked").forEach(i => i.checked = false);
             cancelEditLeaveRequest();
         }
@@ -5257,8 +5316,10 @@
             document.getElementById("inp-np-tungay").value = r.tuNgay || "";
             document.getElementById("inp-np-denngay").value = r.denNgay || "";
             document.getElementById("inp-np-tongsongay").value = r.tongSoNgay || "";
+            document.getElementById("inp-np-nuangay").checked = (r.tuNgay && r.tuNgay === r.denNgay && parseFloat(r.tongSoNgay) === 0.5);
             document.getElementById("inp-np-loai").value = r.loaiNghiPhep || "";
             document.getElementById("inp-np-lydo").value = r.lyDoNghiPhep || "";
+            npCapNhatGhiChuLoai();
             document.querySelectorAll("#np-approver-list input").forEach(i => {
                 i.checked = (r.nguoiPheDuyet || []).includes(i.value);
             });
@@ -5380,6 +5441,40 @@
             }
         }
 
+        // [TAB "ĐĂNG KÝ NGHỈ PHÉP" - HIỂN THỊ NGÀY] Đổi cách HIỂN THỊ ngày tháng sang dạng
+        // "ngày D tháng M năm YYYY" cho dễ đọc hơn (KHÔNG đổi dữ liệu gốc lưu trên Sheet — dữ liệu
+        // vẫn được lưu/gửi lên server ở đúng định dạng cũ, hàm này CHỈ dùng để hiển thị lại trên
+        // giao diện/PDF). Nhận vào chuỗi ISO "yyyy-MM-dd" (server trả về) hoặc "dd/mm/yyyy" (dữ
+        // liệu cũ nếu có) — nếu không nhận diện được định dạng thì trả về nguyên văn để không mất
+        // thông tin.
+        function formatNgayThangNam(str) {
+            if (!str) return "";
+            let s = String(str).trim();
+            let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return `ngày ${parseInt(m[3], 10)} tháng ${parseInt(m[2], 10)} năm ${m[1]}`;
+            m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return `ngày ${parseInt(m[1], 10)} tháng ${parseInt(m[2], 10)} năm ${m[3]}`;
+            return s;
+        }
+
+        // [XUẤT PDF / HIỂN THỊ - "XÁC NHẬN CỦA NGƯỜI PHÊ DUYỆT"] Ưu tiên Họ tên đã được server
+        // tra sẵn theo MSNV liên kết (danh bạ CBCNV - sheet "Văn phòng"). Nếu vì lý do nào đó tài
+        // khoản đó CHƯA được server tra ra tên (VD account chưa liên kết hồ sơ nhân sự), thử đối
+        // chiếu thêm 1 lần theo Email với staffData (danh bạ CBCNV) ĐÃ TẢI SẴN ở trình duyệt —
+        // CHỈ dùng để hiển thị đúng tên thay vì tên đăng nhập, KHÔNG gọi thêm API, KHÔNG đổi dữ
+        // liệu/quyền hạn gì khác. Chỉ khi không tra được ở đâu mới hiện lại tên đăng nhập (username)
+        // như phương án cuối cùng để không mất thông tin hiển thị.
+        function resolveApproverDisplayName(a) {
+            if (!a) return "";
+            if (a.hoTen) return a.hoTen;
+            if (a.email) {
+                let normalized = a.email.trim().toLowerCase();
+                let match = (staffData || []).find(s => (s.email || "").trim().toLowerCase() === normalized);
+                if (match && match.name) return match.name;
+            }
+            return a.username || "";
+        }
+
         // Bảng "Đơn nghỉ phép của tôi" (tab "Đăng ký nghỉ phép") — chỉ những đơn do CHÍNH tài
         // khoản đang đăng nhập tạo ra. Cột "Thao tác": "Thu hồi"/"Sửa" chỉ hiện khi đơn đang
         // "Chờ duyệt"; "Xóa" hiện với mọi trạng thái TRỪ "Đã duyệt" (đơn đã dùng để trừ ngày
@@ -5394,11 +5489,18 @@
             }
             tbody.innerHTML = list.slice().reverse().map(r => {
                 let statusColor = r.trangThaiChung === "Đã duyệt" ? "#27ae60" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : (r.trangThaiChung === "Đã thu hồi" ? "#888" : "#f0ad4e"));
-                let approverStatusHtml = (r.nguoiPheDuyet || []).map(u => {
+                // [HIỂN THỊ TÊN NGƯỜI PHÊ DUYỆT] Ưu tiên dùng r.nguoiPheDuyetInfo (đã có sẵn Họ
+                // tên/Email tra theo danh bạ CBCNV do server trả về ở action "getLeaveRequests")
+                // thay vì hiện thẳng tên đăng nhập (username) như trước đây.
+                let approverInfoList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
+                    ? r.nguoiPheDuyetInfo
+                    : (r.nguoiPheDuyet || []).map(u => ({ username: u, hoTen: "", email: "" }));
+                let approverStatusHtml = approverInfoList.map(a => {
+                    let u = a.username;
                     let st = (r.trangThaiTungNguoi || {})[u] || { status: "cho_duyet" };
                     let icon = st.status === "dong_y" ? "✅" : (st.status === "tu_choi" ? "❌" : "⏳");
                     let title = st.status === "tu_choi" && st.lyDo ? ` title="Lý do từ chối: ${escapeHtml(st.lyDo)}"` : "";
-                    return `<span${title} style="display:inline-block; margin-right:6px;">${icon} ${escapeHtml(u)}</span>`;
+                    return `<span${title} style="display:inline-block; margin-right:6px;">${icon} ${escapeHtml(resolveApproverDisplayName(a))}</span>`;
                 }).join("");
                 let isPending = r.trangThaiChung === "Chờ duyệt";
                 let isApproved = r.trangThaiChung === "Đã duyệt";
@@ -5408,17 +5510,165 @@
                     actionsHtml += `<button class="btn btn-secondary btn-sm" onclick="recallLeaveRequestUI('${r.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i> Thu hồi</button> `;
                 }
                 if (!isApproved) {
-                    actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequestUI('${r.id}')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+                    actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequestUI('${r.id}')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button> `;
                 }
-                if (!actionsHtml) actionsHtml = '<span style="color:#aaa; font-size:12px;">—</span>';
+                actionsHtml += `<button class="btn btn-primary btn-sm" onclick="xuatPdfDonNghiPhep('${r.id}')" title="Xuất PDF"><i class="fa-solid fa-file-pdf"></i> Xuất PDF</button>`;
+                // [ML - KẾT HÔN] Hiện thêm số ngày THỰC SỰ bị trừ vào phép năm (3 ngày đầu miễn
+                // trừ) để người đăng ký biết trước, khớp đúng công thức server dùng khi duyệt.
+                let loaiHtml = escapeHtml(r.loaiNghiPhep || "");
+                if ((r.loaiNghiPhep || "").indexOf("ML") === 0) {
+                    let soNgayTru = npTinhSoNgayTruPhep(r.loaiNghiPhep, r.tongSoNgay);
+                    loaiHtml += `<br><small style="color:#c0392b;">(trừ phép: ${soNgayTru} ngày)</small>`;
+                }
+                let soNgayHtml = escapeHtml(String(r.tongSoNgay || "")) + (parseFloat(r.tongSoNgay) === 0.5 ? ' <small style="color:#888;">(1/2 ngày)</small>' : "");
                 return `<tr>
-                    <td>${escapeHtml(r.ngayDangKy || "")}</td><td>${escapeHtml(r.tuNgay || "")}</td><td>${escapeHtml(r.denNgay || "")}</td>
-                    <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
+                    <td>${escapeHtml(formatNgayThangNam(r.ngayDangKy))}</td><td>${escapeHtml(formatNgayThangNam(r.tuNgay))}</td><td>${escapeHtml(formatNgayThangNam(r.denNgay))}</td>
+                    <td>${soNgayHtml}</td><td>${loaiHtml}</td>
                     <td>${escapeHtml(r.lyDoNghiPhep || "")}</td><td>${approverStatusHtml}</td>
                     <td><b style="color:${statusColor};">${escapeHtml(r.trangThaiChung || "")}</b></td>
                     <td style="white-space:nowrap;">${actionsHtml}</td>
                 </tr>`;
             }).join("");
+        }
+
+        // [XUẤT PDF - TRÁNH LỖI FONT] Bỏ dấu tiếng Việt (chuyển "Đăng ký" -> "Dang ky") trước khi
+        // đưa vào PDF, vì font mặc định máy người dùng có thể không hiển thị đúng dấu tiếng Việt
+        // khi PDF được chụp lại qua html2canvas -> dùng chữ KHÔNG DẤU để đảm bảo hiển thị đúng
+        // trên MỌI máy, MỌI font, không phụ thuộc font hệ thống có hỗ trợ tiếng Việt hay không.
+        function boDauTiengViet(str) {
+            str = String(str == null ? "" : str);
+            str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            str = str.replace(/đ/g, "d").replace(/Đ/g, "D");
+            return str;
+        }
+        // Gộp bỏ dấu + escape HTML (tránh lỗi hiển thị và tránh lỗi chèn HTML ngoài ý muốn).
+        function pdfText(str) {
+            return escapeHtml(boDauTiengViet(str));
+        }
+
+        // [MỤC "ĐƠN NGHỈ PHÉP CỦA TÔI" - "XUẤT PDF"] Dựng 1 mẫu "ĐƠN XIN NGHỈ PHÉP" (chữ KHÔNG
+        // DẤU để tránh lỗi font khi xuất) gồm thông tin người làm đơn và bảng xác nhận của TỪNG
+        // người phê duyệt kèm Họ tên/Email/Thời gian xác nhận, NGAY TẠI TRÌNH DUYỆT rồi xuất
+        // thành file .pdf tải về máy — dùng jsPDF + html2canvas (đã nạp sẵn ở đầu trang). KHÔNG
+        // gọi thêm API nào tới server, KHÔNG đổi dữ liệu/cơ chế bảo mật.
+        async function xuatPdfDonNghiPhep(id) {
+            let r = (leaveRequestsData || []).find(x => x.id === id);
+            if (!r) { alert("Không tìm thấy đơn nghỉ phép."); return; }
+            if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
+                alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
+            }
+
+            let soNgayTru = npTinhSoNgayTruPhep(r.loaiNghiPhep, r.tongSoNgay);
+            let ghiChuSoNgay = "";
+            if (parseFloat(r.tongSoNgay) === 0.5) {
+                ghiChuSoNgay = " (nghi 1/2 ngay)";
+            } else if ((r.loaiNghiPhep || "").indexOf("ML") === 0 && soNgayTru !== (parseFloat(r.tongSoNgay) || 0)) {
+                ghiChuSoNgay = " (3 ngay dau khong tru phep, chi tru " + soNgayTru + " ngay vao phep nam)";
+            }
+
+            let approverList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
+                ? r.nguoiPheDuyetInfo
+                : (r.nguoiPheDuyet || []).map(u => ({ username: u, hoTen: "", email: "" }));
+            let approverRows = approverList.map((a, idx) => {
+                let st = (r.trangThaiTungNguoi || {})[a.username] || { status: "cho_duyet" };
+                let trangThaiText = st.status === "dong_y" ? "Dong y" : (st.status === "tu_choi" ? "Khong dong y" : "Chua xu ly");
+                return `<tr>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${idx + 1}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(resolveApproverDisplayName(a))}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(a.email || "")}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${trangThaiText}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(st.thoiGian || "")}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(st.lyDo || "")}</td>
+                </tr>`;
+            }).join("");
+
+            let statusColor = r.trangThaiChung === "Đã duyệt" ? "#27ae60" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : (r.trangThaiChung === "Đã thu hồi" ? "#888" : "#f0ad4e"));
+
+            // [LOGO CÔNG TY] Tái sử dụng lại đúng ảnh logo đã nhúng sẵn (base64) ở màn hình đăng
+            // nhập/sidebar (KHÔNG nhúng thêm 1 bản base64 mới nào khác) — nếu vì lý do gì đó
+            // không tìm thấy phần tử logo trên trang thì bỏ qua, không làm hỏng việc xuất PDF.
+            let pdfLogoSrc = (document.querySelector(".sidebar-logo") || document.querySelector(".login-logo") || {}).src || "";
+            let pdfLogoHtml = pdfLogoSrc ? `<img src="${pdfLogoSrc}" style="height:60px; width:auto; object-fit:contain;">` : "<div></div>";
+
+            let html = `
+            <div style="width:750px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
+                <div style="display:flex; align-items:center; margin-bottom:10px;">
+                    <div style="width:120px;">${pdfLogoHtml}</div>
+                    <div style="flex:1; text-align:center; font-size:20px; font-weight:bold; margin-right:120px;">DON XIN NGHI PHEP</div>
+                </div>
+                <p>Toi ten la: <b>${pdfText(r.hoTen || "")}</b></p>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                    <tr>
+                        <td style="padding:2px 0; width:50%;">Phong ban: <b>${pdfText(r.phongBan || "")}</b></td>
+                        <td style="padding:2px 0;">Chuc danh: <b>${pdfText(r.chucDanh || "")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:2px 0;">Ma so nhan vien: <b>${pdfText(r.maSoNhanVien || "")}</b></td>
+                        <td style="padding:2px 0;">Email: <b>${pdfText(r.email || "")}</b></td>
+                    </tr>
+                    <tr><td style="padding:2px 0;" colspan="2">Ngay dang ky: <b>${pdfText(formatNgayThangNam(r.ngayDangKy))}</b></td></tr>
+                </table>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                    <tr>
+                        <td style="padding:2px 0; width:50%;">Loai nghi phep: <b>${pdfText(r.loaiNghiPhep || "")}</b></td>
+                        <td style="padding:2px 0;">Tong so ngay nghi: <b>${pdfText(String(r.tongSoNgay || ""))}</b>${pdfText(ghiChuSoNgay)}</td>
+                    </tr>
+                    <tr><td style="padding:2px 0;" colspan="2">Thoi gian nghi: <b>Tu ${pdfText(formatNgayThangNam(r.tuNgay))} den ${pdfText(formatNgayThangNam(r.denNgay))}</b></td></tr>
+                </table>
+                <p>Ly do nghi phep: <b>${pdfText(r.lyDoNghiPhep || "(khong ghi)")}</b></p>
+                <p style="margin-top:6px;">Trang thai chung cua don: <b style="color:${statusColor};">${pdfText(r.trangThaiChung || "")}</b></p>
+
+                <p style="margin-top:18px; font-weight:bold;">Xac nhan cua nguoi phe duyet:</p>
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th style="border:1px solid #333; padding:6px;">STT</th>
+                            <th style="border:1px solid #333; padding:6px;">Ho ten</th>
+                            <th style="border:1px solid #333; padding:6px;">Email</th>
+                            <th style="border:1px solid #333; padding:6px;">Xac nhan</th>
+                            <th style="border:1px solid #333; padding:6px;">Thoi gian xac nhan</th>
+                            <th style="border:1px solid #333; padding:6px;">Ghi chu/Ly do</th>
+                        </tr>
+                    </thead>
+                    <tbody>${approverRows}</tbody>
+                </table>
+
+                <table style="width:100%; margin-top:40px;">
+                    <tr>
+                        <td style="width:50%;"></td>
+                        <td style="width:50%; text-align:center;">
+                            <div>Nguoi lam don</div>
+                            <div style="height:70px;"></div>
+                            <div style="font-weight:bold;">${pdfText(r.hoTen || "")}</div>
+                        </td>
+                    </tr>
+                </table>
+                <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Don duoc xuat tu dong tu He thong quan ly nhan su - Ma don: ${pdfText(r.id || "")}</p>
+            </div>`;
+
+            let container = document.createElement("div");
+            container.style.position = "fixed";
+            container.style.left = "-10000px";
+            container.style.top = "0";
+            container.innerHTML = html;
+            document.body.appendChild(container);
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF("p", "pt", "a4");
+                await doc.html(container.firstElementChild, {
+                    x: 20, y: 20, width: 555, windowWidth: 800,
+                    callback: function (docInner) {
+                        let fileName = "DonNghiPhep_" + boDauTiengViet(r.hoTen || "").trim().replace(/\s+/g, "_") + "_" + r.id + ".pdf";
+                        docInner.save(fileName);
+                        if (container.parentNode) document.body.removeChild(container);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi khi xuất PDF!");
+                if (container.parentNode) document.body.removeChild(container);
+            }
         }
 
         // Đếm số đơn nghỉ phép đang thực sự CHỜ tài khoản đang đăng nhập bấm Đồng ý/Không đồng ý
@@ -5450,7 +5700,7 @@
             section.style.display = "block";
             tbody.innerHTML = list.map(r => `<tr>
                 <td>${escapeHtml(r.hoTen || "")}</td><td>${escapeHtml(r.phongBan || "")}</td>
-                <td>${escapeHtml(r.tuNgay || "")}</td><td>${escapeHtml(r.denNgay || "")}</td>
+                <td>${escapeHtml(formatNgayThangNam(r.tuNgay))}</td><td>${escapeHtml(formatNgayThangNam(r.denNgay))}</td>
                 <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
                 <td>${escapeHtml(r.lyDoNghiPhep || "")}</td>
                 <td><b style="color:#f0ad4e;">${escapeHtml(r.trangThaiChung || "")}</b></td>
