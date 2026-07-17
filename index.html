@@ -767,6 +767,23 @@
                     </div>
                     <div class="form-row contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
+                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-plane-departure"></i> Nghỉ phép (liên kết tự động với tab "Đăng ký nghỉ phép")</label>
+                        </div>
+                        <div class="input-group">
+                            <label>Tổng số ngày nghỉ phép</label>
+                            <input type="number" id="inp-tong-ngay-nghiphep" min="0" step="0.5" placeholder="Ví dụ: 12" oninput="npCapNhatSoNgayConLaiForm()">
+                        </div>
+                        <div class="input-group">
+                            <label>Số ngày đã nghỉ <small style="font-weight:normal; color:#888;">(hệ thống tự cộng khi đơn được duyệt, có thể tự sửa)</small></label>
+                            <input type="number" id="inp-so-ngay-da-nghi" min="0" step="0.5" placeholder="0" oninput="npCapNhatSoNgayConLaiForm()">
+                        </div>
+                        <div class="input-group">
+                            <label>Số ngày còn lại <small style="font-weight:normal; color:#888;">(tự tính)</small></label>
+                            <input type="number" id="inp-so-ngay-con-lai" step="0.5" readonly disabled style="background:#f5f5f5;">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group" style="grid-column: 1 / -1;">
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-phone-volume"></i> Thông tin liên hệ khẩn cấp</label>
                         </div>
                         <div class="input-group">
@@ -1202,6 +1219,7 @@
                         <div class="input-group">
                             <label>Tổng số ngày nghỉ phép</label>
                             <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày, có thể sửa lại">
+                            <small id="np-quota-hint" style="color:#888; margin-top:4px; display:block;"></small>
                         </div>
                         <div class="input-group">
                             <label>Loại nghỉ phép *</label>
@@ -5161,6 +5179,16 @@
             if (chucDanhEl && !chucDanhEl.value) chucDanhEl.value = staff.position || "";
             if (msnvEl && !msnvEl.value) msnvEl.value = staff.msnv || "";
             if (emailEl && !emailEl.value) emailEl.value = staff.email || "";
+
+            // [LIÊN KẾT TAB "THÊM NHÂN SỰ MỚI"] Hiển thị nhanh số ngày phép còn lại (chỉ mang
+            // tính tham khảo cho người đăng ký, KHÔNG chặn việc gửi đơn nếu vượt số ngày còn
+            // lại — quyết định phê duyệt vẫn hoàn toàn do người phê duyệt xem xét).
+            let quotaHint = document.getElementById("np-quota-hint");
+            if (quotaHint) {
+                let conLai = (staff.soNgayConLai || staff.soNgayConLai === 0) ? staff.soNgayConLai : null;
+                let tong = (staff.tongSoNgayNghiPhep || staff.tongSoNgayNghiPhep === 0) ? staff.tongSoNgayNghiPhep : null;
+                quotaHint.innerText = (conLai !== null) ? `Số ngày phép còn lại hiện tại: ${conLai}${tong !== null ? " / " + tong : ""}` : "";
+            }
         }
 
         // Tự tính "Tổng số ngày nghỉ phép" theo Từ ngày/Đến ngày (tính cả 2 đầu mút) — người
@@ -6638,6 +6666,12 @@
                     <p><span class="label">Trường:</span>${escapeHtml(s.educationSchool) || 'Chưa cập nhật'}</p>
                     <p><span class="label">Ngành:</span>${escapeHtml(s.educationMajor) || 'Chưa cập nhật'}</p>
                 </div>
+                <h5><i class="fa-solid fa-plane-departure"></i> Nghỉ phép</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Tổng số ngày phép:</span>${(s.tongSoNgayNghiPhep || s.tongSoNgayNghiPhep === 0) ? s.tongSoNgayNghiPhep : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Đã nghỉ:</span>${(s.soNgayDaNghi || s.soNgayDaNghi === 0) ? s.soNgayDaNghi : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Còn lại:</span>${(s.soNgayConLai || s.soNgayConLai === 0) ? s.soNgayConLai : 'Chưa cập nhật'}</p>
+                </div>
                 <h5><i class="fa-solid fa-phone-volume"></i> Liên hệ khẩn cấp</h5>
                 <div class="detail-fields">
                     <p><span class="label">Họ tên:</span>${escapeHtml(s.emergencyContactName) || 'Chưa cập nhật'}</p>
@@ -8084,7 +8118,13 @@
                     educationMajor: document.getElementById("inp-education-major").value.trim(),
                     gender: document.getElementById("inp-gender").value,
                     permanentAddress: document.getElementById("inp-permanent-address").value.trim(),
-                    socialInsuranceNumber: document.getElementById("inp-social-insurance").value.trim()
+                    socialInsuranceNumber: document.getElementById("inp-social-insurance").value.trim(),
+                    // [BỔ SUNG MỚI - LIÊN KẾT TAB "ĐĂNG KÝ NGHỈ PHÉP"] Tổng số ngày nghỉ phép /
+                    // Số ngày đã nghỉ (server sẽ GIỮ NGUYÊN giá trị đã tích lũy nếu không đổi ở
+                    // đây, KHÔNG bị reset chỉ vì lưu lại 1 trường khác của nhân sự) / Số ngày còn
+                    // lại (server tự tính lại, không cần gửi lên).
+                    tongSoNgayNghiPhep: parseFloat(document.getElementById("inp-tong-ngay-nghiphep").value) || 0,
+                    soNgayDaNghi: parseFloat(document.getElementById("inp-so-ngay-da-nghi").value) || 0
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -8201,6 +8241,12 @@
                 document.getElementById("inp-permanent-address").value = d.permanentAddress || "";
                 document.getElementById("inp-social-insurance").value = d.socialInsuranceNumber || "";
 
+                // [BỔ SUNG MỚI - LIÊN KẾT TAB "ĐĂNG KÝ NGHỈ PHÉP"] Đổ lại Tổng số ngày nghỉ
+                // phép / Số ngày đã nghỉ vào form khi sửa, rồi tự tính lại "Số ngày còn lại".
+                document.getElementById("inp-tong-ngay-nghiphep").value = (d.tongSoNgayNghiPhep || d.tongSoNgayNghiPhep === 0) ? d.tongSoNgayNghiPhep : "";
+                document.getElementById("inp-so-ngay-da-nghi").value = (d.soNgayDaNghi || d.soNgayDaNghi === 0) ? d.soNgayDaNghi : "";
+                npCapNhatSoNgayConLaiForm();
+
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
                 });
@@ -8253,6 +8299,16 @@
             document.getElementById("btn-cancel-edit").style.display = "inline-block";
         }
 
+        // [TAB "THÊM NHÂN SỰ MỚI" - LIÊN KẾT TAB "ĐĂNG KÝ NGHỈ PHÉP"] Tự tính lại "Số ngày còn
+        // lại" ngay trên form mỗi khi Admin/HR sửa "Tổng số ngày nghỉ phép" hoặc "Số ngày đã
+        // nghỉ" — CHỈ để hiển thị tức thời cho dễ nhìn, giá trị THẬT SỰ lưu vào hệ thống vẫn do
+        // server tự tính lại khi lưu (xem action "saveStaff"/code.gs).
+        function npCapNhatSoNgayConLaiForm() {
+            let tong = parseFloat(document.getElementById("inp-tong-ngay-nghiphep").value) || 0;
+            let daNghi = parseFloat(document.getElementById("inp-so-ngay-da-nghi").value) || 0;
+            document.getElementById("inp-so-ngay-con-lai").value = (tong - daNghi);
+        }
+
         function resetForm() {
             document.getElementById("edit-index-global").value = "";
             document.querySelectorAll("#page-add-person input").forEach(el => {
@@ -8276,6 +8332,7 @@
             // nhắm input) nên cần đưa về mặc định rỗng riêng.
             document.getElementById("inp-id-expiry-date").value = "";
             document.getElementById("inp-gender").value = "";
+            npCapNhatSoNgayConLaiForm();
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
         }
