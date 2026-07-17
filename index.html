@@ -1256,6 +1256,11 @@
                             <textarea id="inp-np-lydo" rows="3" placeholder="Nêu rõ lý do xin nghỉ phép..."></textarea>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>File đính kèm (tùy chọn) <small style="font-weight:normal; color:#888;">(VD: giấy khám bệnh, giấy tờ minh chứng...)</small></label>
+                            <input type="file" id="inp-np-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                            <span id="np-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Người phê duyệt * <small style="font-weight:normal; color:#888;">(có thể chọn cùng lúc nhiều người)</small></label>
                             <div class="checkbox-dropdown-list" id="np-approver-list"></div>
                         </div>
@@ -1273,7 +1278,7 @@
                 <table id="tbl-nghiphep-cuatoi">
                     <thead><tr>
                         <th>Ngày đăng ký</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
-                        <th>Loại nghỉ phép</th><th>Lý do</th><th>Người phê duyệt</th><th>Trạng thái</th>
+                        <th>Loại nghỉ phép</th><th>Lý do</th><th>File đính kèm</th><th>Người phê duyệt</th><th>Trạng thái</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -1411,7 +1416,7 @@
                     <table id="tbl-nhanviec-nghiphep">
                         <thead><tr>
                             <th>Người xin nghỉ</th><th>Phòng ban</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
-                            <th>Loại nghỉ phép</th><th>Lý do</th><th>Trạng thái chung</th><th class="admin-action-header">Thao tác</th>
+                            <th>Loại nghỉ phép</th><th>Lý do</th><th>File đính kèm</th><th>Trạng thái chung</th><th class="admin-action-header">Thao tác</th>
                         </tr></thead>
                         <tbody></tbody>
                     </table>
@@ -2091,7 +2096,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-11.giaoviec-v9-baocao-2chieu";
+        const FRONTEND_BUILD_VERSION = "2026-07-17.nghiphep-dinhkemfile-xoadaduyet-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -5295,6 +5300,10 @@
             document.getElementById("inp-np-nuangay").checked = false;
             document.getElementById("np-loai-note").style.display = "none";
             document.querySelectorAll("#np-approver-list input:checked").forEach(i => i.checked = false);
+            let npFileInput = document.getElementById("inp-np-file");
+            if (npFileInput) npFileInput.value = "";
+            let npFileHint = document.getElementById("np-current-file-hint");
+            if (npFileHint) npFileHint.innerHTML = "";
             cancelEditLeaveRequest();
         }
 
@@ -5320,6 +5329,14 @@
             document.getElementById("inp-np-loai").value = r.loaiNghiPhep || "";
             document.getElementById("inp-np-lydo").value = r.lyDoNghiPhep || "";
             npCapNhatGhiChuLoai();
+            let npFileInputEdit = document.getElementById("inp-np-file");
+            if (npFileInputEdit) npFileInputEdit.value = "";
+            let npFileHintEdit = document.getElementById("np-current-file-hint");
+            if (npFileHintEdit) {
+                npFileHintEdit.innerHTML = r.fileId
+                    ? ('📎 File hiện có: <a href="javascript:void(0)" onclick="viewSecureFile(\'' + r.fileId + '\', \'' + escapeHtml(r.fileName) + '\', \'leaveRequest\')">' + escapeHtml(r.fileName) + '</a> (chọn file mới để thay thế)')
+                    : "";
+            }
             document.querySelectorAll("#np-approver-list input").forEach(i => {
                 i.checked = (r.nguoiPheDuyet || []).includes(i.value);
             });
@@ -5369,6 +5386,25 @@
             };
             if (editingId) payload.id = editingId;
 
+            // [ĐÍNH KÈM FILE] Tùy chọn — nếu người dùng có chọn file, đọc thành base64 và gửi kèm
+            // (CÙNG kỹ thuật/giới hạn dung lượng đang dùng cho file đính kèm "Lịch làm việc công
+            // ty"). Không chọn file mới thì giữ nguyên file cũ (nếu đang sửa đơn đã có sẵn file).
+            let npFileInputSubmit = document.getElementById("inp-np-file");
+            let npFile = npFileInputSubmit ? npFileInputSubmit.files[0] : null;
+            if (npFile) {
+                if (npFile.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+                let npBase64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(npFile);
+                }).catch(err => { alert(err.message); return null; });
+                if (npBase64Data === null) return;
+                payload.fileName = npFile.name;
+                payload.mimeType = npFile.type || "application/octet-stream";
+                payload.fileData = npBase64Data;
+            }
+
             try {
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -5402,9 +5438,15 @@
             }
         }
 
-        // [MỤC "THAO TÁC" > "XÓA"] Không cho xóa đơn đã "Đã duyệt" (server tự kiểm tra lại).
-        async function deleteLeaveRequestUI(id) {
-            if (!confirm("Xác nhận XÓA VĨNH VIỄN đơn xin nghỉ phép này? Thao tác này không thể hoàn tác.")) return;
+        // [MỤC "THAO TÁC" > "XÓA"] Nay cho phép xóa MỌI trạng thái (kể cả "Đã duyệt") để giảm tải
+        // dữ liệu về lâu dài — riêng đơn "Đã duyệt" hiện thêm cảnh báo rõ ràng vì số ngày phép đã
+        // trừ vào hồ sơ nhân sự sẽ KHÔNG được hoàn lại khi xóa (server chỉ xóa đúng dòng đơn này,
+        // không đụng tới cột "SoNgayDaNghi"/"SoNgayConLai" đã cập nhật trước đó ở sheet "Văn phòng").
+        async function deleteLeaveRequestUI(id, isApproved) {
+            let msg = isApproved
+                ? "Đơn này ĐÃ ĐƯỢC DUYỆT (đã trừ vào số ngày phép còn lại). Xóa CHỈ xóa bản ghi đơn này để giảm dữ liệu lưu trữ — số ngày phép ĐÃ trừ sẽ KHÔNG được hoàn lại. Bạn có chắc chắn muốn xóa vĩnh viễn?"
+                : "Xác nhận XÓA VĨNH VIỄN đơn xin nghỉ phép này? Thao tác này không thể hoàn tác.";
+            if (!confirm(msg)) return;
             try {
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -5484,7 +5526,7 @@
             if (!tbody) return;
             let list = (leaveRequestsData || []).filter(r => r.nguoiTao === currentUsername);
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#aaa;">Chưa có đơn nghỉ phép nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#aaa;">Chưa có đơn nghỉ phép nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = list.slice().reverse().map(r => {
@@ -5509,9 +5551,12 @@
                     actionsHtml += `<button class="btn btn-warning btn-sm" onclick="editLeaveRequestUI('${r.id}')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button> `;
                     actionsHtml += `<button class="btn btn-secondary btn-sm" onclick="recallLeaveRequestUI('${r.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i> Thu hồi</button> `;
                 }
-                if (!isApproved) {
-                    actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequestUI('${r.id}')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button> `;
-                }
+                // [XÓA - KỂ CẢ ĐƠN "ĐÃ DUYỆT"] Trước đây đơn "Đã duyệt" không cho xóa (để giữ dấu
+                // vết đối chiếu số ngày phép đã trừ). Nay cho phép xóa MỌI trạng thái để người
+                // dùng tự dọn bớt dữ liệu cũ về lâu dài (giảm tải dữ liệu khi nhiều người dùng) —
+                // số ngày phép ĐÃ trừ vào hồ sơ nhân sự KHÔNG bị hoàn lại/thay đổi khi xóa đơn.
+                let delTitle = isApproved ? "Xóa (đơn đã duyệt — số ngày phép đã trừ sẽ KHÔNG được hoàn lại)" : "Xóa";
+                actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequestUI('${r.id}', ${isApproved ? "true" : "false"})" title="${delTitle}"><i class="fa-solid fa-trash"></i> Xóa</button> `;
                 actionsHtml += `<button class="btn btn-primary btn-sm" onclick="xuatPdfDonNghiPhep('${r.id}')" title="Xuất PDF"><i class="fa-solid fa-file-pdf"></i> Xuất PDF</button>`;
                 // [ML - KẾT HÔN] Hiện thêm số ngày THỰC SỰ bị trừ vào phép năm (3 ngày đầu miễn
                 // trừ) để người đăng ký biết trước, khớp đúng công thức server dùng khi duyệt.
@@ -5521,10 +5566,13 @@
                     loaiHtml += `<br><small style="color:#c0392b;">(trừ phép: ${soNgayTru} ngày)</small>`;
                 }
                 let soNgayHtml = escapeHtml(String(r.tongSoNgay || "")) + (parseFloat(r.tongSoNgay) === 0.5 ? ' <small style="color:#888;">(1/2 ngày)</small>' : "");
+                let fileHtml = r.fileId
+                    ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName)}', 'leaveRequest')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>`
+                    : '<span style="color:#ccc;">—</span>';
                 return `<tr>
                     <td>${escapeHtml(formatNgayThangNam(r.ngayDangKy))}</td><td>${escapeHtml(formatNgayThangNam(r.tuNgay))}</td><td>${escapeHtml(formatNgayThangNam(r.denNgay))}</td>
                     <td>${soNgayHtml}</td><td>${loaiHtml}</td>
-                    <td>${escapeHtml(r.lyDoNghiPhep || "")}</td><td>${approverStatusHtml}</td>
+                    <td>${escapeHtml(r.lyDoNghiPhep || "")}</td><td>${fileHtml}</td><td>${approverStatusHtml}</td>
                     <td><b style="color:${statusColor};">${escapeHtml(r.trangThaiChung || "")}</b></td>
                     <td style="white-space:nowrap;">${actionsHtml}</td>
                 </tr>`;
@@ -5616,6 +5664,7 @@
                     <tr><td style="padding:2px 0;" colspan="2">Thoi gian nghi: <b>Tu ${pdfText(formatNgayThangNam(r.tuNgay))} den ${pdfText(formatNgayThangNam(r.denNgay))}</b></td></tr>
                 </table>
                 <p>Ly do nghi phep: <b>${pdfText(r.lyDoNghiPhep || "(khong ghi)")}</b></p>
+                ${r.fileName ? `<p>File dinh kem: <b>${pdfText(r.fileName)}</b></p>` : ""}
                 <p style="margin-top:6px;">Trang thai chung cua don: <b style="color:${statusColor};">${pdfText(r.trangThaiChung || "")}</b></p>
 
                 <p style="margin-top:18px; font-weight:bold;">Xac nhan cua nguoi phe duyet:</p>
@@ -5703,6 +5752,7 @@
                 <td>${escapeHtml(formatNgayThangNam(r.tuNgay))}</td><td>${escapeHtml(formatNgayThangNam(r.denNgay))}</td>
                 <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
                 <td>${escapeHtml(r.lyDoNghiPhep || "")}</td>
+                <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName)}', 'leaveRequest')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
                 <td><b style="color:#f0ad4e;">${escapeHtml(r.trangThaiChung || "")}</b></td>
                 <td>
                     <button class="btn btn-success btn-sm" onclick="decideLeaveRequestUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
