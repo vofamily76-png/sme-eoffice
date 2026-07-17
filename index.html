@@ -1182,7 +1182,8 @@
                 </p>
 
                 <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
-                    <h3><i class="fa-solid fa-square-plus"></i> Đơn xin nghỉ phép mới</h3>
+                    <h3 id="np-form-title"><i class="fa-solid fa-square-plus"></i> Đơn xin nghỉ phép mới</h3>
+                    <input type="hidden" id="edit-id-nghiphep" value="">
                     <div class="form-row">
                         <div class="input-group">
                             <label>Ngày đăng ký</label>
@@ -1246,6 +1247,7 @@
                     <div class="form-row" style="margin-top:10px">
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
                             <button class="btn btn-success" style="width:auto;" onclick="submitLeaveRequest()">Gửi đơn ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-nghiphep" onclick="cancelEditLeaveRequest()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
                     </div>
                 </div>
@@ -1256,6 +1258,7 @@
                     <thead><tr>
                         <th>Ngày đăng ký</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
                         <th>Loại nghỉ phép</th><th>Lý do</th><th>Người phê duyệt</th><th>Trạng thái</th>
+                        <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
                 </table>
@@ -5233,13 +5236,50 @@
                 if (el) el.value = "";
             });
             document.querySelectorAll("#np-approver-list input:checked").forEach(i => i.checked = false);
+            cancelEditLeaveRequest();
         }
 
-        // Gửi đơn xin nghỉ phép mới (action "saveLeaveRequest").
+        // [MỤC "THAO TÁC" > "CHỈNH SỬA"] Đổ dữ liệu 1 đơn nghỉ phép ĐANG "Chờ duyệt" (do chính
+        // mình tạo) vào lại form phía trên để sửa, thay vì tạo đơn mới — bấm "Gửi đơn" lúc này
+        // sẽ CẬP NHẬT đúng đơn đang sửa (server tự reset lại trạng thái "Chờ duyệt" cho toàn bộ
+        // người phê duyệt vì nội dung đơn đã thay đổi).
+        function editLeaveRequestUI(id) {
+            let r = (leaveRequestsData || []).find(x => x.id === id);
+            if (!r) return;
+            if (r.trangThaiChung !== "Chờ duyệt") { alert("Đơn đã \"" + r.trangThaiChung + "\" nên không thể sửa nữa."); return; }
+            document.getElementById("edit-id-nghiphep").value = r.id;
+            document.getElementById("inp-np-ngaydangky").value = r.ngayDangKy || "";
+            document.getElementById("inp-np-hoten").value = r.hoTen || "";
+            document.getElementById("inp-np-phongban").value = r.phongBan || "";
+            document.getElementById("inp-np-chucdanh").value = r.chucDanh || "";
+            document.getElementById("inp-np-msnv").value = r.maSoNhanVien || "";
+            document.getElementById("inp-np-email").value = r.email || "";
+            document.getElementById("inp-np-tungay").value = r.tuNgay || "";
+            document.getElementById("inp-np-denngay").value = r.denNgay || "";
+            document.getElementById("inp-np-tongsongay").value = r.tongSoNgay || "";
+            document.getElementById("inp-np-loai").value = r.loaiNghiPhep || "";
+            document.getElementById("inp-np-lydo").value = r.lyDoNghiPhep || "";
+            document.querySelectorAll("#np-approver-list input").forEach(i => {
+                i.checked = (r.nguoiPheDuyet || []).includes(i.value);
+            });
+            document.getElementById("np-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Đang sửa đơn nghỉ phép';
+            document.getElementById("btn-cancel-edit-nghiphep").style.display = "inline-block";
+            document.querySelector('#page-leave .admin-box').scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function cancelEditLeaveRequest() {
+            document.getElementById("edit-id-nghiphep").value = "";
+            document.getElementById("np-form-title").innerHTML = '<i class="fa-solid fa-square-plus"></i> Đơn xin nghỉ phép mới';
+            document.getElementById("btn-cancel-edit-nghiphep").style.display = "none";
+        }
+
+        // Gửi đơn xin nghỉ phép mới, HOẶC cập nhật lại đơn đang sửa nếu có "edit-id-nghiphep"
+        // (action "saveLeaveRequest" dùng chung cho cả 2 trường hợp, server tự phân biệt qua id).
         async function submitLeaveRequest() {
             if (!currentUsername) { alert("Vui lòng đăng nhập lại!"); return; }
             if (!isScriptUrlConfigured()) { alert("Cần kết nối Google Sheet để đăng ký nghỉ phép!"); return; }
 
+            let editingId = document.getElementById("edit-id-nghiphep").value.trim();
             let hoTen = document.getElementById("inp-np-hoten").value.trim();
             let tuNgay = document.getElementById("inp-np-tungay").value;
             let denNgay = document.getElementById("inp-np-denngay").value;
@@ -5266,6 +5306,7 @@
                 lyDoNghiPhep: document.getElementById("inp-np-lydo").value.trim(),
                 nguoiPheDuyet: nguoiPheDuyet
             };
+            if (editingId) payload.id = editingId;
 
             try {
                 let res = await fetch(SCRIPT_URL, {
@@ -5274,12 +5315,47 @@
                 });
                 let data = await res.json();
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
-                alert("✅ Đã gửi đơn xin nghỉ phép! Đơn sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
+                alert(editingId ? "✅ Đã cập nhật lại đơn xin nghỉ phép!" : "✅ Đã gửi đơn xin nghỉ phép! Đơn sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
                 resetLeaveRequestForm();
                 await loadLeaveRequests();
             } catch (err) {
                 console.error(err);
                 alert("Có lỗi xảy ra khi gửi đơn nghỉ phép!");
+            }
+        }
+
+        // [MỤC "THAO TÁC" > "THU HỒI"] Chỉ áp dụng cho đơn CỦA CHÍNH MÌNH và ĐANG "Chờ duyệt".
+        async function recallLeaveRequestUI(id) {
+            if (!confirm("Xác nhận THU HỒI đơn xin nghỉ phép này? Những người phê duyệt sẽ không còn thấy đơn này ở mục cần xử lý nữa.")) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "recallLeaveRequest", authToken: authToken, id: id })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                await loadLeaveRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi thu hồi đơn nghỉ phép!");
+            }
+        }
+
+        // [MỤC "THAO TÁC" > "XÓA"] Không cho xóa đơn đã "Đã duyệt" (server tự kiểm tra lại).
+        async function deleteLeaveRequestUI(id) {
+            if (!confirm("Xác nhận XÓA VĨNH VIỄN đơn xin nghỉ phép này? Thao tác này không thể hoàn tác.")) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "deleteLeaveRequest", authToken: authToken, id: id })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                if (document.getElementById("edit-id-nghiphep").value.trim() === id) resetLeaveRequestForm();
+                await loadLeaveRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi xóa đơn nghỉ phép!");
             }
         }
 
@@ -5305,43 +5381,59 @@
         }
 
         // Bảng "Đơn nghỉ phép của tôi" (tab "Đăng ký nghỉ phép") — chỉ những đơn do CHÍNH tài
-        // khoản đang đăng nhập tạo ra.
+        // khoản đang đăng nhập tạo ra. Cột "Thao tác": "Thu hồi"/"Sửa" chỉ hiện khi đơn đang
+        // "Chờ duyệt"; "Xóa" hiện với mọi trạng thái TRỪ "Đã duyệt" (đơn đã dùng để trừ ngày
+        // phép — xem capNhatSoNgayNghiPhepDaDung/code.gs — nên giữ lại để đối chiếu).
         function renderMyLeaveTable() {
             let tbody = document.querySelector("#tbl-nghiphep-cuatoi tbody");
             if (!tbody) return;
             let list = (leaveRequestsData || []).filter(r => r.nguoiTao === currentUsername);
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#aaa;">Chưa có đơn nghỉ phép nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#aaa;">Chưa có đơn nghỉ phép nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = list.slice().reverse().map(r => {
-                let statusColor = r.trangThaiChung === "Đã duyệt" ? "#27ae60" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let statusColor = r.trangThaiChung === "Đã duyệt" ? "#27ae60" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : (r.trangThaiChung === "Đã thu hồi" ? "#888" : "#f0ad4e"));
                 let approverStatusHtml = (r.nguoiPheDuyet || []).map(u => {
                     let st = (r.trangThaiTungNguoi || {})[u] || { status: "cho_duyet" };
                     let icon = st.status === "dong_y" ? "✅" : (st.status === "tu_choi" ? "❌" : "⏳");
                     let title = st.status === "tu_choi" && st.lyDo ? ` title="Lý do từ chối: ${escapeHtml(st.lyDo)}"` : "";
                     return `<span${title} style="display:inline-block; margin-right:6px;">${icon} ${escapeHtml(u)}</span>`;
                 }).join("");
+                let isPending = r.trangThaiChung === "Chờ duyệt";
+                let isApproved = r.trangThaiChung === "Đã duyệt";
+                let actionsHtml = "";
+                if (isPending) {
+                    actionsHtml += `<button class="btn btn-warning btn-sm" onclick="editLeaveRequestUI('${r.id}')" title="Sửa"><i class="fa-solid fa-pen"></i> Sửa</button> `;
+                    actionsHtml += `<button class="btn btn-secondary btn-sm" onclick="recallLeaveRequestUI('${r.id}')" title="Thu hồi"><i class="fa-solid fa-rotate-left"></i> Thu hồi</button> `;
+                }
+                if (!isApproved) {
+                    actionsHtml += `<button class="btn btn-danger btn-sm" onclick="deleteLeaveRequestUI('${r.id}')" title="Xóa"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+                }
+                if (!actionsHtml) actionsHtml = '<span style="color:#aaa; font-size:12px;">—</span>';
                 return `<tr>
                     <td>${escapeHtml(r.ngayDangKy || "")}</td><td>${escapeHtml(r.tuNgay || "")}</td><td>${escapeHtml(r.denNgay || "")}</td>
                     <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
                     <td>${escapeHtml(r.lyDoNghiPhep || "")}</td><td>${approverStatusHtml}</td>
                     <td><b style="color:${statusColor};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                    <td style="white-space:nowrap;">${actionsHtml}</td>
                 </tr>`;
             }).join("");
         }
 
         // Đếm số đơn nghỉ phép đang thực sự CHỜ tài khoản đang đăng nhập bấm Đồng ý/Không đồng ý
-        // (bỏ qua đơn mình đã xử lý rồi hoặc đơn đã chốt Từ chối bởi người khác).
+        // (bỏ qua đơn mình đã xử lý rồi, đơn đã chốt Từ chối/Đã duyệt, hoặc đơn đã bị người tạo
+        // THU HỒI).
         function getPendingLeaveApprovalsForMe() {
             if (!currentUsername) return [];
             return (leaveRequestsData || []).filter(r => {
                 if (!(r.nguoiPheDuyet || []).includes(currentUsername)) return false;
-                if (r.trangThaiChung === "Từ chối" || r.trangThaiChung === "Đã duyệt") return false;
+                if (r.trangThaiChung !== "Chờ duyệt") return false;
                 let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
                 return !myStatus || myStatus.status === "cho_duyet";
             });
         }
+
 
         function countPendingLeaveApprovals() {
             return getPendingLeaveApprovalsForMe().length;
