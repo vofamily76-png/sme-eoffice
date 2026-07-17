@@ -7594,7 +7594,13 @@
                     "Ngân hàng/Chi nhánh": s.bankNameBranch || "",
                     "Người liên hệ khẩn cấp": s.emergencyContactName || "",
                     "Quan hệ với người liên hệ khẩn cấp": s.emergencyContactRelation || "",
-                    "SĐT liên hệ khẩn cấp": s.emergencyContactPhone || ""
+                    "SĐT liên hệ khẩn cấp": s.emergencyContactPhone || "",
+                    // [BỔ SUNG - ĐẦY ĐỦ TRƯỜNG THÔNG TIN] Bổ sung 3 trường Nghỉ phép (đang có sẵn
+                    // trong staffData đã tải về theo đúng quyền hiện có, KHÔNG gọi thêm API, KHÔNG
+                    // đổi cơ chế bảo mật) để khớp đầy đủ với toàn bộ hồ sơ nhân sự hiện có.
+                    "Tổng số ngày nghỉ phép": (s.tongSoNgayNghiPhep || s.tongSoNgayNghiPhep === 0) ? s.tongSoNgayNghiPhep : "",
+                    "Số ngày đã nghỉ": (s.soNgayDaNghi || s.soNgayDaNghi === 0) ? s.soNgayDaNghi : "",
+                    "Số ngày còn lại": (s.soNgayConLai || s.soNgayConLai === 0) ? s.soNgayConLai : ""
                 };
             });
 
@@ -7605,7 +7611,7 @@
                 { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
                 { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
                 { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
-                { wch: 22 }, { wch: 18 }
+                { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 }
             ];
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
