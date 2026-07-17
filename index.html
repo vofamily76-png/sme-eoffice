@@ -430,6 +430,7 @@
                         <i class="fa-solid fa-inbox"></i> Nhận Việc
                         <span id="nv-badge-count" style="display:none; background:#e53935; color:#fff; font-size:11px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">0</span>
                     </li>
+                    <li class="menu-item" id="menu-leave" onclick="switchPage('leave')"><i class="fa-solid fa-plane-departure"></i> Đăng ký nghỉ phép</li>
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
@@ -1153,6 +1154,96 @@
                 <div id="llv-week-grid" class="llv-week-grid"></div>
             </div>
 
+            <div id="page-leave" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-plane-departure"></i> Đăng ký nghỉ phép</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Điền đầy đủ thông tin bên dưới rồi bấm "Gửi đơn". Đơn sẽ được gửi tới tất cả những người
+                    bạn chọn ở mục "Người phê duyệt" — mỗi người sẽ nhận đơn ở tab <b>"Nhận Việc"</b> của họ để
+                    bấm "Đồng ý" hoặc "Không đồng ý" (bắt buộc nêu lý do nếu từ chối). Đơn chỉ được <b>Đã duyệt</b>
+                    khi <b>TẤT CẢ</b> người phê duyệt đều đồng ý; chỉ cần 1 người từ chối là đơn chuyển ngay sang
+                    <b>Từ chối</b>.
+                </p>
+
+                <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
+                    <h3><i class="fa-solid fa-square-plus"></i> Đơn xin nghỉ phép mới</h3>
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Ngày đăng ký</label>
+                            <input type="date" id="inp-np-ngaydangky">
+                        </div>
+                        <div class="input-group">
+                            <label>Họ tên *</label>
+                            <input type="text" id="inp-np-hoten" placeholder="Họ và tên người xin nghỉ">
+                        </div>
+                        <div class="input-group">
+                            <label>Phòng ban</label>
+                            <input type="text" id="inp-np-phongban" placeholder="Phòng ban">
+                        </div>
+                        <div class="input-group">
+                            <label>Chức danh</label>
+                            <input type="text" id="inp-np-chucdanh" placeholder="Chức danh">
+                        </div>
+                        <div class="input-group">
+                            <label>Mã số nhân viên</label>
+                            <input type="text" id="inp-np-msnv" placeholder="MSNV">
+                        </div>
+                        <div class="input-group">
+                            <label>Địa chỉ email</label>
+                            <input type="email" id="inp-np-email" placeholder="email@seahorse.com.vn">
+                        </div>
+                        <div class="input-group">
+                            <label>Thời gian nghỉ phép - Từ ngày *</label>
+                            <input type="date" id="inp-np-tungay" onchange="npTinhTongSoNgay()">
+                        </div>
+                        <div class="input-group">
+                            <label>Đến ngày *</label>
+                            <input type="date" id="inp-np-denngay" onchange="npTinhTongSoNgay()">
+                        </div>
+                        <div class="input-group">
+                            <label>Tổng số ngày nghỉ phép</label>
+                            <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày, có thể sửa lại">
+                        </div>
+                        <div class="input-group">
+                            <label>Loại nghỉ phép *</label>
+                            <select id="inp-np-loai">
+                                <option value="AL - Nghỉ phép">AL - Nghỉ phép</option>
+                                <option value="PH - Nghỉ lễ">PH - Nghỉ lễ</option>
+                                <option value="ML - Kết hôn">ML - Kết hôn</option>
+                                <option value="SL - Nghỉ bệnh">SL - Nghỉ bệnh</option>
+                                <option value="OIL - Nghỉ bù ngày">OIL - Nghỉ bù ngày</option>
+                                <option value="UL - Việc riêng không lương">UL - Việc riêng không lương</option>
+                                <option value="MT - Nghỉ thai sản">MT - Nghỉ thai sản</option>
+                                <option value="CL - Nghỉ tang lễ">CL - Nghỉ tang lễ</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Lý do nghỉ phép</label>
+                            <textarea id="inp-np-lydo" rows="3" placeholder="Nêu rõ lý do xin nghỉ phép..."></textarea>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Người phê duyệt * <small style="font-weight:normal; color:#888;">(có thể chọn cùng lúc nhiều người)</small></label>
+                            <div class="checkbox-dropdown-list" id="np-approver-list"></div>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="submitLeaveRequest()">Gửi đơn ✔️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 20px 0 10px; color: var(--primary-color);"><i class="fa-solid fa-list"></i> Đơn nghỉ phép của tôi</h3>
+                <div style="overflow-x:auto;">
+                <table id="tbl-nghiphep-cuatoi">
+                    <thead><tr>
+                        <th>Ngày đăng ký</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
+                        <th>Loại nghỉ phép</th><th>Lý do</th><th>Người phê duyệt</th><th>Trạng thái</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-giaoviec" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-list-check"></i> Giao Việc</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
@@ -1274,6 +1365,22 @@
                     tài khoản có khớp với Email trong hồ sơ nhân sự không, hoặc liên kết thủ công (tab Admin →
                     Cài đặt hệ thống → thẻ "Phân quyền chi tiết" → "Liên kết nhân sự").
                 </div>
+                <!-- [TAB "ĐĂNG KÝ NGHỈ PHÉP" - PHÊ DUYỆT] Chỉ hiện khi có ít nhất 1 đơn nghỉ phép đang
+                     chờ CHÍNH tài khoản này duyệt. Server đã tự lọc đúng đơn có mình trong danh sách
+                     "Người phê duyệt" — không hiện đơn của người khác không liên quan tới mình. -->
+                <div id="nv-leave-section" style="display:none; margin-bottom:24px;">
+                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-plane-departure"></i> Đơn xin nghỉ phép chờ bạn duyệt</h3>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-nhanviec-nghiphep">
+                        <thead><tr>
+                            <th>Người xin nghỉ</th><th>Phòng ban</th><th>Từ ngày</th><th>Đến ngày</th><th>Số ngày</th>
+                            <th>Loại nghỉ phép</th><th>Lý do</th><th>Trạng thái chung</th><th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
                 </div>
@@ -1984,6 +2091,15 @@
         // qua action "setTaskAssignLinks").
         let myAssignableStaffNames = null;
         let currentUserCanAssignTask = false;
+        // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Danh sách đơn nghỉ phép LIÊN QUAN tới tài khoản đang đăng
+        // nhập — server đã tự lọc sẵn (đơn do chính mình tạo, HOẶC đơn có mình trong danh sách
+        // "Người phê duyệt"). Mỗi phần tử: {id, ngayDangKy, hoTen, phongBan, chucDanh,
+        // maSoNhanVien, email, tuNgay, denNgay, tongSoNgay, loaiNghiPhep, lyDoNghiPhep,
+        // nguoiPheDuyet: [username...], trangThaiTungNguoi: {username:{status,lyDo,thoiGian}},
+        // trangThaiChung, nguoiTao, ngayTao}.
+        let leaveRequestsData = [];
+        // Danh sách username (trừ chính mình) để chọn làm "Người phê duyệt" khi đăng ký nghỉ phép.
+        let leaveApproverUsernames = [];
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
@@ -3696,6 +3812,8 @@
             taskAssignData = [];
             myReceivedTasks = [];
             myAssignableStaffNames = null;
+            leaveRequestsData = [];
+            leaveApproverUsernames = [];
             documentsData = [];
             mailGroups = [];
             
@@ -3797,6 +3915,14 @@
             document.getElementById("menu-nhanviec").style.display = "flex";
             renderMyTaskTable();
             updateNhanViecBadge();
+
+            // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mọi tài khoản đã đăng nhập đều được tự đăng ký nghỉ
+            // phép cho chính mình. Tự điền sẵn Họ tên/Email từ hồ sơ nhân sự đã liên kết (nếu
+            // có) để giảm thao tác nhập lại. ====
+            document.getElementById("menu-leave").style.display = "flex";
+            prefillLeaveRequestForm();
+            populateLeaveApproverList();
+            loadLeaveRequests();
 
             // [ẨN MÃ PHIÊN BẢN VỚI TÀI KHOẢN USER] Dòng "Build: ..." dưới nút "Đăng xuất" (mục
             // chẩn đoán kỹ thuật, chỉ hữu ích khi đối chiếu bản index.html/code.gs đang chạy) nay
@@ -3989,6 +4115,14 @@
                 renderMyTaskTable();
                 let nvUnseenIds = getMyTasks().filter(t => !t.daXem).map(t => t.id);
                 if (nvUnseenIds.length) markMyTasksSeen(nvUnseenIds);
+                // [ĐƠN NGHỈ PHÉP CHỜ DUYỆT] Tải lại dữ liệu mới nhất mỗi lần mở tab, để không bỏ
+                // sót đơn vừa được người khác gửi trong lúc mình chưa mở trang này.
+                loadLeaveRequests();
+            }
+            if (pageId === "leave") {
+                // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mở tab -> tải lại danh sách approver + đơn của mình.
+                populateLeaveApproverList();
+                loadLeaveRequests();
             }
             if (pageId === "contacts") {
                 // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
@@ -4980,12 +5114,256 @@
         function updateNhanViecBadge() {
             let badge = document.getElementById("nv-badge-count");
             if (!badge) return;
-            let n = countUnseenMyTasks();
+            // [ĐƠN NGHỈ PHÉP] Badge "Nhận Việc" nay tính GỘP cả công việc chưa xem lẫn đơn nghỉ
+            // phép đang chờ CHÍNH tài khoản này duyệt, để không ai bỏ sót đơn cần xử lý.
+            let n = countUnseenMyTasks() + countPendingLeaveApprovals();
             if (n > 0) {
                 badge.style.display = "inline-block";
                 badge.innerText = n > 99 ? "99+" : String(n);
             } else {
                 badge.style.display = "none";
+            }
+        }
+
+        // ============================================================================
+        // [TAB "ĐĂNG KÝ NGHỈ PHÉP" / MỤC "PHÊ DUYỆT" Ở TAB "NHẬN VIỆC"]
+        // Toàn bộ hàm bên dưới CHỈ đọc/ghi qua các action riêng "saveLeaveRequest",
+        // "decideLeaveRequest", "getLeaveApprovers", "getLeaveRequests" (đã thêm ở Code.gs, đều
+        // đi qua đúng cơ chế xác thực authToken/requireAuth hiện có) — KHÔNG đụng chạm gì tới dữ
+        // liệu hay cơ chế bảo mật của các tab khác trong hệ thống.
+        // ============================================================================
+
+        // Nhãn hiển thị đầy đủ cho từng mã Loại nghỉ phép (dùng khi hiển thị bảng).
+        const LEAVE_TYPE_LABELS = {
+            "AL": "AL - Nghỉ phép", "PH": "PH - Nghỉ lễ", "ML": "ML - Kết hôn", "SL": "SL - Nghỉ bệnh",
+            "OIL": "OIL - Nghỉ bù ngày", "UL": "UL - Việc riêng không lương",
+            "MT": "MT - Nghỉ thai sản", "CL": "CL - Nghỉ tang lễ"
+        };
+
+        // Tự điền sẵn Ngày đăng ký (hôm nay) + Họ tên/Phòng ban/Chức danh/MSNV/Email lấy từ hồ
+        // sơ nhân sự đã liên kết với tài khoản đang đăng nhập (nếu có) — người dùng vẫn có thể
+        // tự sửa lại mọi trường, đây chỉ là gợi ý giúp đỡ thao tác nhập liệu.
+        function prefillLeaveRequestForm() {
+            let ngayDangKyEl = document.getElementById("inp-np-ngaydangky");
+            if (ngayDangKyEl && !ngayDangKyEl.value) {
+                ngayDangKyEl.value = new Date().toISOString().slice(0, 10);
+            }
+            if (!currentUser || !currentUser.msnv) return;
+            let staff = (staffData || []).find(s => String(s.msnv) === String(currentUser.msnv));
+            if (!staff) return;
+            let hoTenEl = document.getElementById("inp-np-hoten");
+            let phongBanEl = document.getElementById("inp-np-phongban");
+            let chucDanhEl = document.getElementById("inp-np-chucdanh");
+            let msnvEl = document.getElementById("inp-np-msnv");
+            let emailEl = document.getElementById("inp-np-email");
+            if (hoTenEl && !hoTenEl.value) hoTenEl.value = staff.name || "";
+            if (phongBanEl && !phongBanEl.value) phongBanEl.value = staff.dept || "";
+            if (chucDanhEl && !chucDanhEl.value) chucDanhEl.value = staff.position || "";
+            if (msnvEl && !msnvEl.value) msnvEl.value = staff.msnv || "";
+            if (emailEl && !emailEl.value) emailEl.value = staff.email || "";
+        }
+
+        // Tự tính "Tổng số ngày nghỉ phép" theo Từ ngày/Đến ngày (tính cả 2 đầu mút) — người
+        // dùng vẫn có thể tự sửa lại số này (VD chỉ nghỉ nửa ngày, hoặc trừ ngày nghỉ cuối tuần).
+        function npTinhTongSoNgay() {
+            let tuNgay = document.getElementById("inp-np-tungay").value;
+            let denNgay = document.getElementById("inp-np-denngay").value;
+            if (!tuNgay || !denNgay) return;
+            let d1 = new Date(tuNgay + "T00:00:00");
+            let d2 = new Date(denNgay + "T00:00:00");
+            let soNgay = Math.round((d2 - d1) / 86400000) + 1;
+            if (soNgay > 0) document.getElementById("inp-np-tongsongay").value = soNgay;
+        }
+
+        // Tải danh sách username để chọn "Người phê duyệt" và vẽ thành checkbox nhiều lựa chọn
+        // (dùng lại đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ
+        // thống, giống khung chọn nhiều Phòng ban ở màn hình Đăng nhập).
+        async function populateLeaveApproverList() {
+            let box = document.getElementById("np-approver-list");
+            if (!box || !currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getLeaveApprovers", authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status !== "SUCCESS") return;
+                leaveApproverUsernames = data.usernames || [];
+                let checked = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+                box.innerHTML = leaveApproverUsernames.map(u =>
+                    `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${checked.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+                ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
+            } catch (err) {
+                console.error("Lỗi tải danh sách người phê duyệt:", err);
+            }
+        }
+
+        function resetLeaveRequestForm() {
+            ["inp-np-tungay", "inp-np-denngay", "inp-np-tongsongay", "inp-np-lydo"].forEach(id => {
+                let el = document.getElementById(id);
+                if (el) el.value = "";
+            });
+            document.querySelectorAll("#np-approver-list input:checked").forEach(i => i.checked = false);
+        }
+
+        // Gửi đơn xin nghỉ phép mới (action "saveLeaveRequest").
+        async function submitLeaveRequest() {
+            if (!currentUsername) { alert("Vui lòng đăng nhập lại!"); return; }
+            if (!isScriptUrlConfigured()) { alert("Cần kết nối Google Sheet để đăng ký nghỉ phép!"); return; }
+
+            let hoTen = document.getElementById("inp-np-hoten").value.trim();
+            let tuNgay = document.getElementById("inp-np-tungay").value;
+            let denNgay = document.getElementById("inp-np-denngay").value;
+            let loaiNghiPhep = document.getElementById("inp-np-loai").value;
+            let nguoiPheDuyet = Array.from(document.querySelectorAll("#np-approver-list input:checked")).map(i => i.value);
+
+            if (!hoTen) { alert("Vui lòng nhập Họ tên."); return; }
+            if (!tuNgay || !denNgay) { alert("Vui lòng chọn đầy đủ Từ ngày và Đến ngày."); return; }
+            if (denNgay < tuNgay) { alert("\"Đến ngày\" phải sau hoặc bằng \"Từ ngày\"."); return; }
+            if (!loaiNghiPhep) { alert("Vui lòng chọn Loại nghỉ phép."); return; }
+            if (!nguoiPheDuyet.length) { alert("Vui lòng chọn ít nhất 1 Người phê duyệt."); return; }
+
+            let payload = {
+                action: "saveLeaveRequest", authToken: authToken,
+                ngayDangKy: document.getElementById("inp-np-ngaydangky").value || new Date().toISOString().slice(0, 10),
+                hoTen: hoTen,
+                phongBan: document.getElementById("inp-np-phongban").value.trim(),
+                chucDanh: document.getElementById("inp-np-chucdanh").value.trim(),
+                maSoNhanVien: document.getElementById("inp-np-msnv").value.trim(),
+                email: document.getElementById("inp-np-email").value.trim(),
+                tuNgay: tuNgay, denNgay: denNgay,
+                tongSoNgay: document.getElementById("inp-np-tongsongay").value || "",
+                loaiNghiPhep: loaiNghiPhep,
+                lyDoNghiPhep: document.getElementById("inp-np-lydo").value.trim(),
+                nguoiPheDuyet: nguoiPheDuyet
+            };
+
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                alert("✅ Đã gửi đơn xin nghỉ phép! Đơn sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
+                resetLeaveRequestForm();
+                await loadLeaveRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi gửi đơn nghỉ phép!");
+            }
+        }
+
+        // Tải danh sách đơn nghỉ phép liên quan tới tài khoản đang đăng nhập (đơn của mình +
+        // đơn cần mình duyệt), rồi vẽ lại cả 2 bảng liên quan ("Đơn nghỉ phép của tôi" ở tab
+        // "Đăng ký nghỉ phép" và "Đơn xin nghỉ phép chờ bạn duyệt" ở tab "Nhận Việc").
+        async function loadLeaveRequests() {
+            if (!currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getLeaveRequests", authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status !== "SUCCESS") return;
+                leaveRequestsData = data.list || [];
+                renderMyLeaveTable();
+                renderLeaveApprovalSection();
+                updateNhanViecBadge();
+            } catch (err) {
+                console.error("Lỗi tải danh sách đơn nghỉ phép:", err);
+            }
+        }
+
+        // Bảng "Đơn nghỉ phép của tôi" (tab "Đăng ký nghỉ phép") — chỉ những đơn do CHÍNH tài
+        // khoản đang đăng nhập tạo ra.
+        function renderMyLeaveTable() {
+            let tbody = document.querySelector("#tbl-nghiphep-cuatoi tbody");
+            if (!tbody) return;
+            let list = (leaveRequestsData || []).filter(r => r.nguoiTao === currentUsername);
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#aaa;">Chưa có đơn nghỉ phép nào.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.slice().reverse().map(r => {
+                let statusColor = r.trangThaiChung === "Đã duyệt" ? "#27ae60" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let approverStatusHtml = (r.nguoiPheDuyet || []).map(u => {
+                    let st = (r.trangThaiTungNguoi || {})[u] || { status: "cho_duyet" };
+                    let icon = st.status === "dong_y" ? "✅" : (st.status === "tu_choi" ? "❌" : "⏳");
+                    let title = st.status === "tu_choi" && st.lyDo ? ` title="Lý do từ chối: ${escapeHtml(st.lyDo)}"` : "";
+                    return `<span${title} style="display:inline-block; margin-right:6px;">${icon} ${escapeHtml(u)}</span>`;
+                }).join("");
+                return `<tr>
+                    <td>${escapeHtml(r.ngayDangKy || "")}</td><td>${escapeHtml(r.tuNgay || "")}</td><td>${escapeHtml(r.denNgay || "")}</td>
+                    <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
+                    <td>${escapeHtml(r.lyDoNghiPhep || "")}</td><td>${approverStatusHtml}</td>
+                    <td><b style="color:${statusColor};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                </tr>`;
+            }).join("");
+        }
+
+        // Đếm số đơn nghỉ phép đang thực sự CHỜ tài khoản đang đăng nhập bấm Đồng ý/Không đồng ý
+        // (bỏ qua đơn mình đã xử lý rồi hoặc đơn đã chốt Từ chối bởi người khác).
+        function getPendingLeaveApprovalsForMe() {
+            if (!currentUsername) return [];
+            return (leaveRequestsData || []).filter(r => {
+                if (!(r.nguoiPheDuyet || []).includes(currentUsername)) return false;
+                if (r.trangThaiChung === "Từ chối" || r.trangThaiChung === "Đã duyệt") return false;
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                return !myStatus || myStatus.status === "cho_duyet";
+            });
+        }
+
+        function countPendingLeaveApprovals() {
+            return getPendingLeaveApprovalsForMe().length;
+        }
+
+        // Mục "Đơn xin nghỉ phép chờ bạn duyệt" ở tab "Nhận Việc" — chỉ hiện khối này khi có ít
+        // nhất 1 đơn đang thực sự chờ CHÍNH tài khoản đang đăng nhập xử lý.
+        function renderLeaveApprovalSection() {
+            let section = document.getElementById("nv-leave-section");
+            let tbody = document.querySelector("#tbl-nhanviec-nghiphep tbody");
+            if (!section || !tbody) return;
+            let list = getPendingLeaveApprovalsForMe();
+            if (!list.length) { section.style.display = "none"; tbody.innerHTML = ""; return; }
+            section.style.display = "block";
+            tbody.innerHTML = list.map(r => `<tr>
+                <td>${escapeHtml(r.hoTen || "")}</td><td>${escapeHtml(r.phongBan || "")}</td>
+                <td>${escapeHtml(r.tuNgay || "")}</td><td>${escapeHtml(r.denNgay || "")}</td>
+                <td>${escapeHtml(String(r.tongSoNgay || ""))}</td><td>${escapeHtml(r.loaiNghiPhep || "")}</td>
+                <td>${escapeHtml(r.lyDoNghiPhep || "")}</td>
+                <td><b style="color:#f0ad4e;">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="decideLeaveRequestUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                    <button class="btn btn-danger btn-sm" onclick="decideLeaveRequestUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+                </td>
+            </tr>`).join("");
+        }
+
+        // Xử lý bấm "Đồng ý" / "Không đồng ý" trên 1 đơn nghỉ phép — "Không đồng ý" BẮT BUỘC
+        // phải nhập lý do (server cũng tự kiểm tra lại, không thể bỏ qua dù gọi thẳng API).
+        async function decideLeaveRequestUI(id, decision) {
+            let lyDo = "";
+            if (decision === "reject") {
+                lyDo = prompt("Vui lòng nhập lý do KHÔNG đồng ý đơn nghỉ phép này:", "");
+                if (lyDo === null) return; // người dùng bấm Hủy
+                lyDo = lyDo.trim();
+                if (!lyDo) { alert("Bạn cần nhập lý do khi chọn \"Không đồng ý\"."); return; }
+            } else {
+                if (!confirm("Xác nhận ĐỒNG Ý đơn xin nghỉ phép này?")) return;
+            }
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "decideLeaveRequest", authToken: authToken, id: id, decision: decision, lyDo: lyDo })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                await loadLeaveRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi xử lý đơn nghỉ phép!");
             }
         }
 
