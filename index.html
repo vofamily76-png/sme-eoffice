@@ -96,7 +96,26 @@
         .sidebar-menu { list-style: none; margin-top: 15px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
         .sidebar-menu li { padding: 15px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; white-space: nowrap; }
         .sidebar-menu li:hover, .sidebar-menu li.active { background-color: var(--secondary-color); }
-        .sidebar-footer { padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 14px; flex-shrink: 0; }
+        .sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 10px; color:#5b7ba3; opacity:0.7; flex-shrink: 0; }
+
+        /* [DI CHUYỂN TAP TÊN USER] Khối hiển thị tên user + menu (Đổi mật khẩu / 2FA / Đăng
+           xuất) trước đây nằm ở "sidebar-footer" (góc dưới-trái), nay được chuyển lên góc
+           TRÊN-PHẢI của giao diện (đối diện với tên công ty + logo ở góc trên-trái của
+           sidebar). Dùng position:fixed để khối này luôn nổi cố định ở góc trên-phải màn
+           hình, không phụ thuộc việc content-area cuộn lên/xuống. Toàn bộ ID, hàm gọi
+           (openChangePasswordModal, open2FAModal, handleLogout) và dữ liệu liên quan được
+           GIỮ NGUYÊN 100% — chỉ thay đổi vị trí/hiển thị, KHÔNG đổi cơ chế bảo mật. */
+        .user-topbar { position: fixed; top: 14px; right: 20px; z-index: 500; font-size: 14px; }
+        .user-topbar-btn { display: flex; align-items: center; gap: 8px; background-color: var(--primary-color); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); user-select: none; transition: 0.2s; }
+        .user-topbar-btn:hover { background-color: var(--secondary-color); }
+        .user-topbar-btn i.fa-chevron-down { font-size: 11px; transition: transform 0.2s; }
+        .user-topbar.open .user-topbar-btn i.fa-chevron-down { transform: rotate(180deg); }
+        .user-topbar-menu { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; color: var(--text-color); min-width: 220px; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.2); overflow: hidden; border: 1px solid #e2e2e2; }
+        .user-topbar.open .user-topbar-menu { display: block; }
+        .user-topbar-menu a { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--text-color); text-decoration: none; font-weight: bold; font-size: 13.5px; transition: 0.15s; }
+        .user-topbar-menu a:hover { background-color: #f0f2f5; }
+        .user-topbar-menu a.logout-link { color: #d9534f; border-top: 1px solid #eee; }
+        .user-topbar-menu a.logout-link:hover { background-color: #fdecea; }
         .content-area { flex: 1 1 auto; min-width: 0; padding: 30px; overflow-y: auto; overflow-x: auto; }
         .page-content { display: none; }
         .page-content.active { display: block; }
@@ -413,6 +432,23 @@
     </div>
 
     <div id="main-system">
+        <!-- [TAP TÊN USER - GÓC TRÊN-PHẢI] Khối mới: hiển thị tên user đối diện với tên công
+             ty/logo (đang ở góc trên-trái của sidebar). Bấm vào tên sẽ mở/đóng menu sổ xuống
+             gồm: Đổi mật khẩu, Bảo mật 2 lớp (2FA), Đăng xuất — dùng lại nguyên các hàm xử lý
+             cũ (openChangePasswordModal, open2FAModal, handleLogout) nên KHÔNG đổi cơ chế bảo
+             mật, KHÔNG mất dữ liệu. -->
+        <div class="user-topbar" id="user-topbar">
+            <div class="user-topbar-btn" id="user-topbar-btn" onclick="toggleUserTopbarMenu(event)">
+                <i class="fa-solid fa-circle-user"></i>
+                <span id="user-display">User</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+            <div class="user-topbar-menu" id="user-topbar-menu">
+                <a href="#" onclick="closeUserTopbarMenu(); openChangePasswordModal(); return false;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
+                <a href="#" onclick="closeUserTopbarMenu(); open2FAModal(); return false;"><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</a>
+                <a href="#" class="logout-link" onclick="closeUserTopbarMenu(); handleLogout(); return false;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+            </div>
+        </div>
         <div class="sidebar">
             <div>
                 <div class="sidebar-brand" style="display: flex; align-items: center; padding: 15px; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); background-color: #0b3a60;">
@@ -449,17 +485,15 @@
                 </ul>
             </div>
             <div class="sidebar-footer">
-                <p><i class="fa-solid fa-user"></i> <span id="user-display">User</span></p>
-                <a href="#" onclick="openChangePasswordModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
-                <br>
-                <a href="#" onclick="open2FAModal()" style="color: #cfe8ff; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;"><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</a>
-                <br>
-                <a href="#" onclick="handleLogout()" style="color: #ff8888; text-decoration: none; font-weight: bold; display: inline-block; margin-top: 10px;">Đăng xuất 🚪</a>
+                <!-- [DI CHUYỂN] Tên user + Đổi mật khẩu/2FA/Đăng xuất đã được chuyển lên khối
+                     "user-topbar" ở góc trên-phải giao diện (xem ngay đầu #main-system). ID
+                     "user-display" hiện nằm trong khối đó — KHÔNG bị trùng/mất, mọi đoạn JS
+                     dùng document.getElementById("user-display") vẫn hoạt động bình thường. -->
                 <!-- [CHẨN ĐOÁN] Mã phiên bản FRONTEND đang chạy — dùng để xác nhận file index.html
                      đang mở THỰC SỰ là bản mới nhất (đã có tính năng lưu ảnh lên Google Drive),
                      tránh nhầm lẫn với 1 bản index.html cũ hơn còn sót lại trên máy chủ web/trình
                      duyệt. So sánh chuỗi này với FRONTEND_BUILD_VERSION trong file index.html. -->
-                <p id="frontend-build-version-line" style="margin-top:14px; font-size:10px; color:#5b7ba3; opacity:0.7;">Build: <span id="frontend-build-version"></span></p>
+                <p id="frontend-build-version-line">Build: <span id="frontend-build-version"></span></p>
             </div>
         </div>
 
@@ -2549,6 +2583,26 @@
             document.getElementById("sub-login-box").style.display = show ? "none" : "block";
             document.getElementById("sub-forgot-box").style.display = show ? "block" : "none";
         }
+
+        // [TAP TÊN USER - GÓC TRÊN-PHẢI] Mở/đóng menu sổ xuống (Đổi mật khẩu / 2FA / Đăng
+        // xuất) khi bấm vào tên user ở góc trên-phải giao diện. Chỉ xử lý hiển thị/ẩn giao
+        // diện (thêm/gỡ class "open"), KHÔNG động chạm tới authToken/dữ liệu/luồng bảo mật.
+        function toggleUserTopbarMenu(evt) {
+            if (evt) evt.stopPropagation();
+            const el = document.getElementById("user-topbar");
+            if (el) el.classList.toggle("open");
+        }
+        function closeUserTopbarMenu() {
+            const el = document.getElementById("user-topbar");
+            if (el) el.classList.remove("open");
+        }
+        // Bấm ra ngoài khối user-topbar thì tự đóng menu lại.
+        document.addEventListener("click", function (evt) {
+            const el = document.getElementById("user-topbar");
+            if (el && el.classList.contains("open") && !el.contains(evt.target)) {
+                el.classList.remove("open");
+            }
+        });
 
         function openChangePasswordModal() {
             document.getElementById("cpw-current").value = "";
