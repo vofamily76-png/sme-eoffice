@@ -511,6 +511,12 @@
                          diễn ra HÔM NAY, hiện với MỌI tài khoản đã đăng nhập (mặc định ai cũng
                          xem được Lịch làm việc công ty) — bấm vào để mở thẳng Tab đầy đủ. -->
                     <div class="card" id="dash-schedule-card" style="cursor:pointer;" onclick="switchPage('lichlamviec')"><div class="card-info"><p>Công việc hôm nay</p><h3 id="dash-schedule-today-count">0</h3></div><i class="fa-solid fa-calendar-week card-icon" style="color:#2980b9;"></i></div>
+                    <!-- [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Thẻ đếm số nhân sự
+                         ĐANG/SẼ nghỉ phép trong TUẦN NÀY (đơn đã được duyệt) — hiện với MỌI tài
+                         khoản đã đăng nhập, giống hệt các thẻ "Công việc hôm nay"/"Chúc mừng sinh
+                         nhật" đã có sẵn. Bấm vào thẻ để mở bảng chi tiết Tuần trước/Tuần này/Tuần
+                         sau (xem hàm openLeaveNotificationModal()). -->
+                    <div class="card" id="dash-leave-card" style="cursor:pointer;" onclick="openLeaveNotificationModal()"><div class="card-info"><p>Nhân sự nghỉ phép (tuần này)</p><h3 id="dash-leave-count">0</h3></div><i class="fa-solid fa-plane-departure card-icon" style="color:#8e44ad;"></i></div>
                 </div>
 
                 <!-- [MỚI] Khối "Chúc mừng sinh nhật" ở Tab Tổng quan: liệt kê nhân viên (Văn phòng
@@ -1941,6 +1947,34 @@
             <div style="display:flex; gap:10px;">
                 <button id="nvd-submit-btn" class="btn btn-success" style="width:auto; flex-grow:1;" onclick="submitNvDetailUpdate()"><i class="fa-solid fa-check"></i> Cập nhật</button>
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeNvDetailModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Modal hiện chi tiết nhân sự đã được
+         DUYỆT nghỉ phép, chia 3 mốc: Tuần trước / Tuần này / Tuần sau. Dữ liệu lấy từ action
+         "getLeaveNotifications" (xem loadLeaveNotificationData() bên dưới) — mở khi bấm vào thẻ
+         "Nhân sự nghỉ phép" ở Bảng điều khiển tổng quan. -->
+    <div id="leave-notification-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 680px; max-height: 88vh; overflow-y: auto;">
+            <h2><i class="fa-solid fa-plane-departure"></i> Thông báo: Nhân sự nghỉ phép</h2>
+            <p style="color:#666; font-size:13px; margin-top:-8px; margin-bottom:14px;">Danh sách nhân sự có đơn nghỉ phép <b>đã được duyệt</b>, tính theo tuần (Thứ 2 → Chủ nhật).</p>
+
+            <div id="ln-section-tuanTruoc" class="ln-week-section" style="margin-bottom:16px;">
+                <div style="font-weight:600; color:#0b3c5d; margin-bottom:8px;"><i class="fa-solid fa-angles-left"></i> Tuần trước <span id="ln-range-tuanTruoc" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
+                <div id="ln-list-tuanTruoc"></div>
+            </div>
+            <div id="ln-section-tuanNay" class="ln-week-section" style="margin-bottom:16px;">
+                <div style="font-weight:600; color:#8e44ad; margin-bottom:8px;"><i class="fa-solid fa-calendar-check"></i> Tuần này <span id="ln-range-tuanNay" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
+                <div id="ln-list-tuanNay"></div>
+            </div>
+            <div id="ln-section-tuanSau" class="ln-week-section" style="margin-bottom:16px;">
+                <div style="font-weight:600; color:#0b3c5d; margin-bottom:8px;"><i class="fa-solid fa-angles-right"></i> Tuần sau <span id="ln-range-tuanSau" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
+                <div id="ln-list-tuanSau"></div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:6px;">
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeLeaveNotificationModal()">Đóng</button>
             </div>
         </div>
     </div>
@@ -4019,6 +4053,9 @@
             prefillLeaveRequestForm();
             populateLeaveApproverList();
             loadLeaveRequests();
+            // [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Tải sẵn số đếm/dữ liệu ngay
+            // sau khi đăng nhập, để thẻ ở Bảng điều khiển tổng quan hiện đúng số ngay lần đầu.
+            loadLeaveNotificationData();
 
             // [ẨN MÃ PHIÊN BẢN VỚI TÀI KHOẢN USER] Dòng "Build: ..." dưới nút "Đăng xuất" (mục
             // chẩn đoán kỹ thuật, chỉ hữu ích khi đối chiếu bản index.html/code.gs đang chạy) nay
@@ -5537,6 +5574,73 @@
             }
         }
 
+        // [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Dữ liệu trả về từ action
+        // "getLeaveNotifications": chỉ gồm đơn nghỉ phép ĐÃ ĐƯỢC DUYỆT, chia sẵn 3 mốc tuần
+        // trước/tuần này/tuần sau — MỌI tài khoản đã đăng nhập đều gọi được (giống hệt cơ chế
+        // của khối "Lịch làm việc công ty"/"Chúc mừng sinh nhật" đã có sẵn ở Tab Tổng quan).
+        let leaveNotificationData = { tuanTruoc: [], tuanNay: [], tuanSau: [], ranges: null };
+
+        async function loadLeaveNotificationData() {
+            if (!currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getLeaveNotifications", authToken: authToken })
+                });
+                let data = await res.json();
+                if (data.status !== "SUCCESS") return;
+                leaveNotificationData = {
+                    tuanTruoc: data.tuanTruoc || [], tuanNay: data.tuanNay || [],
+                    tuanSau: data.tuanSau || [], ranges: data.ranges || null
+                };
+                let countEl = document.getElementById("dash-leave-count");
+                if (countEl) countEl.innerText = leaveNotificationData.tuanNay.length;
+                renderLeaveNotificationModal();
+            } catch (err) {
+                console.error("Lỗi tải thông báo nhân sự nghỉ phép:", err);
+            }
+        }
+
+        // Vẽ lại nội dung 3 khối Tuần trước/Tuần này/Tuần sau trong modal thông báo nghỉ phép.
+        // Mỗi nhân sự hiện: Họ tên, Mã thẻ (MSNV), Chức vụ, Phòng/ban, Thời gian nghỉ phép.
+        function renderLeaveNotificationRow(item) {
+            let thoiGian = formatDateDisplay(item.tuNgay) + " → " + formatDateDisplay(item.denNgay) +
+                (item.tongSoNgay ? ` (${escapeHtml(String(item.tongSoNgay))} ngày)` : "");
+            return `
+                <div style="background:#f7f8fa; border:1px solid #e5e9f0; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.7;">
+                    <div><b>${escapeHtml(item.hoTen || "(Chưa rõ họ tên)")}</b>${item.maSoNhanVien ? ` — Mã thẻ: <b>${escapeHtml(item.maSoNhanVien)}</b>` : ""}</div>
+                    <div>${item.chucDanh ? escapeHtml(item.chucDanh) : "<i style='color:#999;'>Chưa rõ chức vụ</i>"}${item.phongBan ? " • " + escapeHtml(item.phongBan) : ""}</div>
+                    <div><i class="fa-solid fa-calendar-days" style="color:#8e44ad;"></i> ${thoiGian}${item.loaiNghiPhep ? " — " + escapeHtml(item.loaiNghiPhep) : ""}</div>
+                </div>`;
+        }
+
+        function renderLeaveNotificationModal() {
+            ["tuanTruoc", "tuanNay", "tuanSau"].forEach(function (key) {
+                let listEl = document.getElementById("ln-list-" + key);
+                let rangeEl = document.getElementById("ln-range-" + key);
+                if (!listEl) return;
+                let list = leaveNotificationData[key] || [];
+                if (rangeEl && leaveNotificationData.ranges && leaveNotificationData.ranges[key]) {
+                    let r = leaveNotificationData.ranges[key];
+                    rangeEl.innerText = "(" + formatDateDisplay(r.start) + " → " + formatDateDisplay(r.end) + ")";
+                }
+                listEl.innerHTML = list.length
+                    ? list.map(renderLeaveNotificationRow).join("")
+                    : `<div style="color:#999; font-size:13px; padding:6px 0;">Không có nhân sự nghỉ phép.</div>`;
+            });
+        }
+
+        function openLeaveNotificationModal() {
+            renderLeaveNotificationModal();
+            document.getElementById("leave-notification-modal").style.display = "flex";
+            // Tải lại dữ liệu mới nhất mỗi lần mở, phòng khi có đơn vừa được duyệt sau lần tải đầu.
+            loadLeaveNotificationData();
+        }
+
+        function closeLeaveNotificationModal() {
+            document.getElementById("leave-notification-modal").style.display = "none";
+        }
+
         // [TAB "ĐĂNG KÝ NGHỈ PHÉP" - HIỂN THỊ NGÀY] Đổi cách HIỂN THỊ ngày tháng sang dạng
         // "ngày D tháng M năm YYYY" cho dễ đọc hơn (KHÔNG đổi dữ liệu gốc lưu trên Sheet — dữ liệu
         // vẫn được lưu/gửi lên server ở đúng định dạng cũ, hàm này CHỈ dùng để hiển thị lại trên
@@ -6831,6 +6935,7 @@
             document.getElementById("dash-groupmail-count").innerText = mailGroups.length;
             renderBirthdaySection();
             renderDashboardScheduleWidget();
+            loadLeaveNotificationData();
 
             let typeSelect = document.getElementById("inp-type");
             let currentTypeValue = typeSelect.value;
