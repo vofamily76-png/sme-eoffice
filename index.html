@@ -139,6 +139,26 @@
         .birthday-card .bday-badges { display: flex; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
         .birthday-card .badge-when { background: #ff6b6b; color: #fff; font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
         .birthday-card .badge-date { background: #eef2ff; color: #3b5bdb; font-size: 12px; font-weight: bold; padding: 3px 10px; border-radius: 12px; border: 1px solid #c7d5fb; white-space: nowrap; }
+
+        /* [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Tab chọn Tuần trước/Tuần này/Tuần
+           sau + lưới hiển thị TỪNG THỨ TRONG TUẦN kèm ngày cụ thể, giúp người dùng thấy ngay
+           hôm nào có ai nghỉ mà không cần đọc hết 1 danh sách dài. */
+        .ln-week-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .ln-week-tab { flex: 1; min-width: 110px; text-align: center; padding: 8px 10px; border-radius: 8px; border: 1px solid #d7dee8; background: #f7f8fa; color: #444; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .ln-week-tab:hover { background: #eef2f7; }
+        .ln-week-tab.active { background: #8e44ad; border-color: #8e44ad; color: #fff; }
+        .ln-week-tab .ln-tab-range { display: block; font-weight: 400; font-size: 11px; opacity: .85; margin-top: 2px; }
+        .ln-day-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+        .ln-day-card { background: #f7f8fa; border: 1px solid #e5e9f0; border-radius: 10px; padding: 10px 12px; min-height: 70px; }
+        .ln-day-card.ln-day-today { background: #f3e8fb; border-color: #c9a3e0; }
+        .ln-day-card.ln-day-has-people { border-color: #d8c2e8; }
+        .ln-day-header { font-weight: 700; font-size: 13px; color: #0b3c5d; margin-bottom: 2px; }
+        .ln-day-date { font-size: 11.5px; color: #888; margin-bottom: 8px; }
+        .ln-day-empty { font-size: 12px; color: #aaa; font-style: italic; }
+        .ln-emp-chip { background: #fff; border: 1px solid #e5d4f0; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 12.5px; line-height: 1.5; }
+        .ln-emp-chip:last-child { margin-bottom: 0; }
+        .ln-emp-chip .ln-emp-name { font-weight: 700; color: #333; display: block; }
+        .ln-emp-chip .ln-emp-meta { color: #777; }
         .birthday-card .bday-role { font-size: 13px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .birthday-empty-text { color: #888; font-size: 14px; padding: 6px 2px; }
         
@@ -1958,22 +1978,20 @@
     <div id="leave-notification-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
         <div class="login-box" style="max-width: 680px; max-height: 88vh; overflow-y: auto;">
             <h2><i class="fa-solid fa-plane-departure"></i> Thông báo: Nhân sự nghỉ phép</h2>
-            <p style="color:#666; font-size:13px; margin-top:-8px; margin-bottom:14px;">Danh sách nhân sự có đơn nghỉ phép <b>đã được duyệt</b>, tính theo tuần (Thứ 2 → Chủ nhật).</p>
+            <p style="color:#666; font-size:13px; margin-top:-8px; margin-bottom:14px;">Danh sách nhân sự có đơn nghỉ phép <b>đã được duyệt</b>, chia theo từng Thứ trong tuần để dễ theo dõi.</p>
 
-            <div id="ln-section-tuanTruoc" class="ln-week-section" style="margin-bottom:16px;">
-                <div style="font-weight:600; color:#0b3c5d; margin-bottom:8px;"><i class="fa-solid fa-angles-left"></i> Tuần trước <span id="ln-range-tuanTruoc" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
-                <div id="ln-list-tuanTruoc"></div>
-            </div>
-            <div id="ln-section-tuanNay" class="ln-week-section" style="margin-bottom:16px;">
-                <div style="font-weight:600; color:#8e44ad; margin-bottom:8px;"><i class="fa-solid fa-calendar-check"></i> Tuần này <span id="ln-range-tuanNay" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
-                <div id="ln-list-tuanNay"></div>
-            </div>
-            <div id="ln-section-tuanSau" class="ln-week-section" style="margin-bottom:16px;">
-                <div style="font-weight:600; color:#0b3c5d; margin-bottom:8px;"><i class="fa-solid fa-angles-right"></i> Tuần sau <span id="ln-range-tuanSau" style="font-weight:400; color:#888; font-size:12.5px;"></span></div>
-                <div id="ln-list-tuanSau"></div>
+            <!-- Tab chọn tuần: bấm để chuyển lưới ngày bên dưới, KHÔNG tải lại trang/gọi thêm server -->
+            <div class="ln-week-tabs" id="ln-week-tabs">
+                <div class="ln-week-tab" data-week="tuanTruoc" onclick="switchLeaveNotificationWeek('tuanTruoc')">Tuần trước<span class="ln-tab-range" id="ln-tabrange-tuanTruoc"></span></div>
+                <div class="ln-week-tab" data-week="tuanNay" onclick="switchLeaveNotificationWeek('tuanNay')">Tuần này<span class="ln-tab-range" id="ln-tabrange-tuanNay"></span></div>
+                <div class="ln-week-tab" data-week="tuanSau" onclick="switchLeaveNotificationWeek('tuanSau')">Tuần sau<span class="ln-tab-range" id="ln-tabrange-tuanSau"></span></div>
             </div>
 
-            <div style="display:flex; gap:10px; margin-top:6px;">
+            <!-- Lưới 7 ngày (Thứ 2 -> Chủ nhật) của tuần đang chọn, mỗi ô là 1 ngày kèm danh sách
+                 nhân sự nghỉ phép đúng ngày đó (xem renderLeaveNotificationModal()). -->
+            <div class="ln-day-grid" id="ln-day-grid"></div>
+
+            <div style="display:flex; gap:10px; margin-top:16px;">
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeLeaveNotificationModal()">Đóng</button>
             </div>
         </div>
@@ -5601,36 +5619,96 @@
             }
         }
 
-        // Vẽ lại nội dung 3 khối Tuần trước/Tuần này/Tuần sau trong modal thông báo nghỉ phép.
-        // Mỗi nhân sự hiện: Họ tên, Mã thẻ (MSNV), Chức vụ, Phòng/ban, Thời gian nghỉ phép.
-        function renderLeaveNotificationRow(item) {
-            let thoiGian = formatDateDisplay(item.tuNgay) + " → " + formatDateDisplay(item.denNgay) +
-                (item.tongSoNgay ? ` (${escapeHtml(String(item.tongSoNgay))} ngày)` : "");
+        // Tuần đang được chọn để xem trong modal thông báo nghỉ phép ("tuanTruoc"/"tuanNay"/
+        // "tuanSau") — mặc định "tuanNay" mỗi khi mở modal.
+        let currentLeaveNotificationWeek = "tuanNay";
+        var LN_WEEKDAY_LABELS = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"];
+
+        // Trả về chuỗi "yyyy-MM-dd" của NGÀY HÔM NAY theo giờ trình duyệt, dùng để tô sáng ô
+        // "hôm nay" trong lưới 7 ngày (chỉ phục vụ hiển thị, không ảnh hưởng dữ liệu/logic khác).
+        function lnTodayStr() {
+            let d = new Date();
+            return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        }
+
+        // Cộng thêm n ngày vào 1 chuỗi "yyyy-MM-dd", trả về chuỗi "yyyy-MM-dd" mới.
+        function lnAddDaysStr(dateStr, n) {
+            let d = new Date(dateStr + "T00:00:00");
+            d.setDate(d.getDate() + n);
+            return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        }
+
+        // Vẽ 1 "chip" thông tin nhân sự bên trong ô ngày: Họ tên, Mã thẻ, Chức vụ, Phòng/ban.
+        function renderLeaveNotificationChip(item) {
+            let metaParts = [];
+            if (item.maSoNhanVien) metaParts.push("Mã thẻ: " + escapeHtml(item.maSoNhanVien));
+            if (item.chucDanh) metaParts.push(escapeHtml(item.chucDanh));
+            if (item.phongBan) metaParts.push(escapeHtml(item.phongBan));
             return `
-                <div style="background:#f7f8fa; border:1px solid #e5e9f0; border-radius:8px; padding:10px 12px; margin-bottom:8px; font-size:13.5px; line-height:1.7;">
-                    <div><b>${escapeHtml(item.hoTen || "(Chưa rõ họ tên)")}</b>${item.maSoNhanVien ? ` — Mã thẻ: <b>${escapeHtml(item.maSoNhanVien)}</b>` : ""}</div>
-                    <div>${item.chucDanh ? escapeHtml(item.chucDanh) : "<i style='color:#999;'>Chưa rõ chức vụ</i>"}${item.phongBan ? " • " + escapeHtml(item.phongBan) : ""}</div>
-                    <div><i class="fa-solid fa-calendar-days" style="color:#8e44ad;"></i> ${thoiGian}${item.loaiNghiPhep ? " — " + escapeHtml(item.loaiNghiPhep) : ""}</div>
+                <div class="ln-emp-chip" title="${escapeHtml(formatDateDisplay(item.tuNgay) + ' → ' + formatDateDisplay(item.denNgay) + (item.loaiNghiPhep ? ' — ' + item.loaiNghiPhep : ''))}">
+                    <span class="ln-emp-name">${escapeHtml(item.hoTen || "(Chưa rõ họ tên)")}</span>
+                    <span class="ln-emp-meta">${metaParts.join(" • ")}</span>
                 </div>`;
         }
 
+        // Vẽ lưới 7 ô (Thứ 2 -> Chủ nhật) của tuần đang chọn (currentLeaveNotificationWeek).
+        // Mỗi ô liệt kê ĐÚNG những nhân sự có khoảng nghỉ phép [tuNgay, denNgay] bao trùm ngày đó
+        // — giúp người dùng nhìn 1 lần là biết thứ nào/ngày nào có ai nghỉ, thay vì phải đọc hết
+        // 1 danh sách dài không phân theo ngày.
+        function renderLeaveNotificationDayGrid() {
+            let gridEl = document.getElementById("ln-day-grid");
+            if (!gridEl) return;
+            let range = leaveNotificationData.ranges ? leaveNotificationData.ranges[currentLeaveNotificationWeek] : null;
+            let list = leaveNotificationData[currentLeaveNotificationWeek] || [];
+            if (!range) { gridEl.innerHTML = `<div class="ln-day-empty">Đang tải...</div>`; return; }
+
+            let today = lnTodayStr();
+            let html = "";
+            for (let i = 0; i < 7; i++) {
+                let dayStr = lnAddDaysStr(range.start, i);
+                let peopleOfDay = list.filter(function (item) {
+                    return item.tuNgay && item.denNgay && item.tuNgay <= dayStr && item.denNgay >= dayStr;
+                });
+                let isToday = dayStr === today;
+                let cls = "ln-day-card" + (isToday ? " ln-day-today" : "") + (peopleOfDay.length ? " ln-day-has-people" : "");
+                html += `
+                    <div class="${cls}">
+                        <div class="ln-day-header">${LN_WEEKDAY_LABELS[i]}${isToday ? " • Hôm nay" : ""}</div>
+                        <div class="ln-day-date">${formatDateDisplay(dayStr)}</div>
+                        ${peopleOfDay.length ? peopleOfDay.map(renderLeaveNotificationChip).join("") : `<div class="ln-day-empty">Không có ai nghỉ</div>`}
+                    </div>`;
+            }
+            gridEl.innerHTML = html;
+        }
+
+        // Chuyển tab tuần (Tuần trước/Tuần này/Tuần sau) trong modal, KHÔNG gọi lại server —
+        // chỉ vẽ lại lưới 7 ngày từ dữ liệu đã tải sẵn trong leaveNotificationData.
+        function switchLeaveNotificationWeek(weekKey) {
+            currentLeaveNotificationWeek = weekKey;
+            document.querySelectorAll("#ln-week-tabs .ln-week-tab").forEach(function (tabEl) {
+                tabEl.classList.toggle("active", tabEl.getAttribute("data-week") === weekKey);
+            });
+            renderLeaveNotificationDayGrid();
+        }
+
+        // Vẽ lại toàn bộ modal: cập nhật nhãn khoảng ngày trên từng tab tuần, đảm bảo tab đang
+        // chọn vẫn đúng, rồi vẽ lưới 7 ngày tương ứng.
         function renderLeaveNotificationModal() {
             ["tuanTruoc", "tuanNay", "tuanSau"].forEach(function (key) {
-                let listEl = document.getElementById("ln-list-" + key);
-                let rangeEl = document.getElementById("ln-range-" + key);
-                if (!listEl) return;
-                let list = leaveNotificationData[key] || [];
+                let rangeEl = document.getElementById("ln-tabrange-" + key);
                 if (rangeEl && leaveNotificationData.ranges && leaveNotificationData.ranges[key]) {
                     let r = leaveNotificationData.ranges[key];
-                    rangeEl.innerText = "(" + formatDateDisplay(r.start) + " → " + formatDateDisplay(r.end) + ")";
+                    rangeEl.innerText = formatDateDisplay(r.start) + " - " + formatDateDisplay(r.end);
                 }
-                listEl.innerHTML = list.length
-                    ? list.map(renderLeaveNotificationRow).join("")
-                    : `<div style="color:#999; font-size:13px; padding:6px 0;">Không có nhân sự nghỉ phép.</div>`;
             });
+            document.querySelectorAll("#ln-week-tabs .ln-week-tab").forEach(function (tabEl) {
+                tabEl.classList.toggle("active", tabEl.getAttribute("data-week") === currentLeaveNotificationWeek);
+            });
+            renderLeaveNotificationDayGrid();
         }
 
         function openLeaveNotificationModal() {
+            currentLeaveNotificationWeek = "tuanNay"; // luôn mở mặc định ở "Tuần này" cho dễ theo dõi
             renderLeaveNotificationModal();
             document.getElementById("leave-notification-modal").style.display = "flex";
             // Tải lại dữ liệu mới nhất mỗi lần mở, phòng khi có đơn vừa được duyệt sau lần tải đầu.
