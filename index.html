@@ -578,7 +578,7 @@
             <div id="page-contacts" class="page-content">
                 <h2 class="page-title">Danh bạ Cán bộ Công nhân viên Văn phòng</h2>
                 <div class="table-controls" id="contact-list-controls">
-                    <input type="text" id="search-contacts" class="search-box" oninput="filterStaffGrid()" placeholder="Tìm theo tên, MSNV, chức vụ...">
+                    <input type="text" id="search-contacts" class="search-box" oninput="debouncedFilterStaffGrid()" placeholder="Tìm theo tên, MSNV, chức vụ...">
                     <select id="filter-dept" class="search-box" onchange="filterStaffGrid()" style="max-width: 250px;"></select>
                 </div>
                 <div class="contact-grid" id="contact-grid"></div>
@@ -617,7 +617,7 @@
                             <option value="expiring">Nhân sự sắp đến hạn gia hạn hợp đồng (≤30 ngày)</option>
                         </select>
                         <select id="hr-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
-                        <input type="text" id="hr-export-staff-search" class="search-box" style="max-width: 200px; display:none;" placeholder="🔎 Tìm theo tên/MSNV..." oninput="filterHRExportStaffOptions()">
+                        <input type="text" id="hr-export-staff-search" class="search-box" style="max-width: 200px; display:none;" placeholder="🔎 Tìm theo tên/MSNV..." oninput="debouncedFilterHRExportStaffOptions()">
                         <select id="hr-export-staff" class="search-box" style="max-width: 220px; display:none;"></select>
                         <button type="button" class="btn btn-success" onclick="exportHRToExcel()">
                             <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
@@ -626,7 +626,7 @@
                 </div>
 
                 <div class="table-controls">
-                    <input type="text" id="search-hr" class="search-box" oninput="filterHRTable()" placeholder="Tìm nhân viên theo tên hoặc mã số (MSNV)...">
+                    <input type="text" id="search-hr" class="search-box" oninput="debouncedFilterHRTable()" placeholder="Tìm nhân viên theo tên hoặc mã số (MSNV)...">
                     <select id="filter-hr-dept" class="search-box" onchange="filterHRTable()" style="max-width: 220px;"></select>
                     <select id="filter-hr-contract" class="search-box" onchange="filterHRTable()" style="max-width: 220px;">
                         <option value="Tất cả">-- Tất cả loại hợp đồng --</option>
@@ -655,7 +655,7 @@
             <div id="page-crew" class="page-content">
                 <h2 class="page-title">Theo dõi thông tin Đội tàu</h2>
                 <div class="table-controls">
-                    <input type="text" id="search-crew" class="search-box" oninput="filterCrewTable()" placeholder="Tìm theo tên, chức danh...">
+                    <input type="text" id="search-crew" class="search-box" oninput="debouncedFilterCrewTable()" placeholder="Tìm theo tên, chức danh...">
                     <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="max-width: 250px;"></select>
                 </div>
                 <table id="tbl-crew">
@@ -1028,7 +1028,7 @@
                 </div>
 
                 <div class="table-controls">
-                    <input type="text" id="search-equipment" class="search-box" oninput="filterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
+                    <input type="text" id="search-equipment" class="search-box" oninput="debouncedFilterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
                     <select id="filter-eq-dept" class="search-box" onchange="onFilterEqDeptChange()" style="max-width: 220px;"></select>
                     <select id="filter-eq-staff" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
                     <select id="filter-eq-type" class="search-box" onchange="filterEquipmentTable()" style="max-width: 220px;"></select>
@@ -1133,7 +1133,7 @@
                 </div>
 
                 <div class="table-controls">
-                    <input type="text" id="search-internal-docs" class="search-box" oninput="filterInternalDocsTable()" placeholder="Tìm theo mã, tên tài liệu, đơn vị chủ biên, người phê duyệt...">
+                    <input type="text" id="search-internal-docs" class="search-box" oninput="debouncedFilterInternalDocsTable()" placeholder="Tìm theo mã, tên tài liệu, đơn vị chủ biên, người phê duyệt...">
                 </div>
                 <div style="overflow-x:auto;">
                 <table id="tbl-internal-docs">
@@ -1732,7 +1732,7 @@
                         <div id="admusr-subtab-perms" class="admusr-subtab-panel">
                             <p style="font-size:12px; color:#888; margin-bottom:8px;">Toàn bộ quyền chức năng chi tiết theo từng tab hệ thống (Hồ sơ NV, Thiết bị, Nhân sự, Cảnh báo HĐ, Danh bạ, Chữ ký số, Lịch làm việc) cho từng tài khoản. Mỗi tài khoản là 1 thẻ có thể thu gọn/mở rộng — bấm vào tiêu đề để xem chi tiết, hoặc dùng ô tìm kiếm/nút bên dưới khi danh sách tài khoản nhiều.</p>
                             <div class="admusr-perm-toolbar">
-                                <input type="text" id="admusr-perm-search" class="search-box" placeholder="🔍 Tìm theo tên tài khoản..." oninput="filterAdminPermCards(this.value)">
+                                <input type="text" id="admusr-perm-search" class="search-box" placeholder="🔍 Tìm theo tên tài khoản..." oninput="debouncedFilterAdminPermCards(this.value)">
                                 <div class="admusr-perm-toolbar-actions">
                                     <button type="button" class="btn btn-sm" onclick="setAllAdminPermCards(true)"><i class="fa-solid fa-angles-down"></i> Mở rộng tất cả</button>
                                     <button type="button" class="btn btn-sm" onclick="setAllAdminPermCards(false)"><i class="fa-solid fa-angles-up"></i> Thu gọn tất cả</button>
@@ -2247,6 +2247,33 @@
         function isDriveAvatarId(v) {
             return !!v && typeof v === "string" && v.indexOf("data:") !== 0 && v.indexOf("http") === -1;
         }
+
+        // [HIỆU NĂNG] Trì hoãn việc gọi 1 hàm cho tới khi người dùng NGỪNG gõ trong "delay" ms —
+        // dùng cho các ô tìm kiếm lọc bảng/lưới lớn (Danh bạ, Nhân sự, Thiết bị...) để tránh vẽ
+        // lại TOÀN BỘ bảng ở MỖI phím gõ (gây giật/lag khi gõ nhanh trên danh sách nhiều dòng).
+        // CHỈ trì hoãn thời điểm vẽ lại — không đổi bất kỳ dữ liệu/kết quả lọc nào, gõ xong vẫn
+        // ra đúng kết quả như cũ, chỉ mượt hơn trong lúc gõ.
+        function debounce(fn, delay) {
+            let timer = null;
+            return function () {
+                let args = arguments, ctx = this;
+                clearTimeout(timer);
+                timer = setTimeout(function () { fn.apply(ctx, args); }, delay);
+            };
+        }
+
+        // [HIỆU NĂNG] Bản "trì hoãn 200ms" của các hàm lọc bảng/lưới lớn hay được gõ tìm kiếm
+        // liên tục (Danh bạ, Quản lý nhân sự, Đội tàu, Thiết bị, Văn bản nội bộ, Phân quyền) —
+        // gán cho thuộc tính "oninput" của ô tìm kiếm THAY VÌ gọi thẳng hàm gốc, để không vẽ lại
+        // toàn bộ danh sách ở MỖI phím gõ. Bản thân các hàm filter... vẫn giữ NGUYÊN, có thể vẫn
+        // được gọi trực tiếp ở nơi khác trong mã (VD: sau khi tải lại dữ liệu) như trước.
+        let debouncedFilterStaffGrid = debounce(function () { filterStaffGrid(); }, 200);
+        let debouncedFilterHRTable = debounce(function () { filterHRTable(); }, 200);
+        let debouncedFilterHRExportStaffOptions = debounce(function () { filterHRExportStaffOptions(); }, 200);
+        let debouncedFilterCrewTable = debounce(function () { filterCrewTable(); }, 200);
+        let debouncedFilterEquipmentTable = debounce(function () { filterEquipmentTable(); }, 200);
+        let debouncedFilterInternalDocsTable = debounce(function () { filterInternalDocsTable(); }, 200);
+        let debouncedFilterAdminPermCards = debounce(function (kw) { filterAdminPermCards(kw); }, 200);
 
         // Chống XSS: chuyển ký tự đặc biệt HTML (<, >, &, ", ') thành dạng an toàn trước khi
         // chèn dữ liệu do người dùng nhập (tên, chức vụ, tên file...) vào innerHTML.
