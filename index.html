@@ -1363,6 +1363,21 @@
                             <label>Người phê duyệt * <small style="font-weight:normal; color:#888;">(có thể chọn cùng lúc nhiều người)</small></label>
                             <div class="checkbox-dropdown-list" id="np-approver-list"></div>
                         </div>
+                        <!-- [MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT" - CHỈ HIỆN VỚI TÀI KHOẢN ADMIN] Admin chọn 1
+                             danh sách CON trong TẤT CẢ tài khoản -> danh sách này sẽ là DUY NHẤT được
+                             phép hiện ra ở khung "Người phê duyệt" phía trên (áp dụng cho MỌI tài
+                             khoản khi đăng ký nghỉ phép, không riêng gì Admin). Để TRỐNG (không chọn
+                             ai) = KHÔNG giới hạn, giữ nguyên hành vi CŨ (cho chọn TẤT CẢ tài khoản
+                             khác) — không mất/không đổi dữ liệu đã có nếu Admin chưa dùng tới mục
+                             này. Dữ liệu lưu ở sheet RIÊNG "CaiDatPheDuyet" (xem saveApprovalSettings
+                             ở Code.gs), KHÔNG đụng tới sheet "TaiKhoan"/"DanhMuc" hay bất kỳ quyền
+                             hạn/dữ liệu nào khác. -->
+                        <div class="input-group" id="np-admin-approver-settings-box" style="grid-column: 1 / -1; display:none; border-top: 1px dashed #ddd; padding-top: 14px; margin-top: 4px;">
+                            <label><i class="fa-solid fa-user-shield"></i> Người được phê duyệt <small style="font-weight:normal; color:#888;">(chỉ Admin thấy mục này — chọn ai sẽ hiện ra ở khung "Người phê duyệt" phía trên, cho TẤT CẢ tài khoản. Để trống = không giới hạn, cho chọn tất cả tài khoản như cũ)</small></label>
+                            <div class="checkbox-dropdown-list" id="np-admin-approver-settings-list"></div>
+                            <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveApprovalSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người được phê duyệt"</button>
+                            <span id="np-admin-approver-settings-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
+                        </div>
                     </div>
                     <div class="form-row" style="margin-top:10px">
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
@@ -2267,6 +2282,10 @@
         let leaveRequestsData = [];
         // Danh sách username (trừ chính mình) để chọn làm "Người phê duyệt" khi đăng ký nghỉ phép.
         let leaveApproverUsernames = [];
+        // [TAB "ĐĂNG KÝ NGHỈ PHÉP" - MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT", CHỈ ADMIN THẤY/SỬA] Danh sách
+        // username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = CHƯA cấu hình gì,
+        // mọi tài khoản vẫn được chọn TẤT CẢ tài khoản khác như trước — xem populateLeaveApproverList()).
+        let approvedApproversList = [];
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
@@ -2567,6 +2586,12 @@
                 if (data.vessels && data.vessels.length) vessels = data.vessels;
                 if (data.apps && data.apps.length) otherApps = data.apps;
                 if (data.mailGroups) mailGroups = data.mailGroups;
+                // [TAB "ĐĂNG KÝ NGHỈ PHÉP" - MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT", CHỈ ADMIN THẤY] Danh
+                // sách username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = Admin
+                // chưa cấu hình gì). Dùng "!== undefined" (không phải "if (data.approvedApprovers)")
+                // để vẫn nhận đúng mảng RỖNG khi Admin vừa bỏ chọn hết (xóa cấu hình), giống cách
+                // xử lý "myAssignableStaffNames" ở trên.
+                if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
@@ -4268,6 +4293,12 @@
             prefillLeaveRequestForm();
             populateLeaveApproverList();
             loadLeaveRequests();
+            // [MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT" - CHỈ ADMIN] Chỉ Admin mới thấy khối cấu hình này.
+            let npAdminApproverBox = document.getElementById("np-admin-approver-settings-box");
+            if (npAdminApproverBox) {
+                npAdminApproverBox.style.display = (currentUser.role === "Admin") ? "block" : "none";
+                if (currentUser.role === "Admin") populateAdminApprovalSettingsList();
+            }
             // [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Tải sẵn số đếm/dữ liệu ngay
             // sau khi đăng nhập, để thẻ ở Bảng điều khiển tổng quan hiện đúng số ngay lần đầu.
             loadLeaveNotificationData();
@@ -4471,6 +4502,7 @@
                 // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mở tab -> tải lại danh sách approver + đơn của mình.
                 populateLeaveApproverList();
                 loadLeaveRequests();
+                if (currentUser && currentUser.role === "Admin") populateAdminApprovalSettingsList();
             }
             if (pageId === "contacts") {
                 // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
@@ -5600,6 +5632,50 @@
                 ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
             } catch (err) {
                 console.error("Lỗi tải danh sách người phê duyệt:", err);
+            }
+        }
+
+        // [MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT" - CHỈ HIỆN VỚI ADMIN] Vẽ checkbox cho TẤT CẢ tài khoản
+        // hiện có (lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin — không gọi thêm action mới),
+        // tick sẵn đúng những tài khoản đang nằm trong "approvedApproversList" (cũng đã tải sẵn
+        // qua loadFromCloud/getData, xem action "getLeaveApprovers"/buildSystemData ở Code.gs).
+        function populateAdminApprovalSettingsList() {
+            let box = document.getElementById("np-admin-approver-settings-list");
+            if (!box || !currentUser || currentUser.role !== "Admin") return;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${(approvedApproversList || []).includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("");
+        }
+
+        // Lưu lại danh sách "Người được phê duyệt" mà Admin vừa chọn (action RIÊNG "saveApprovalSettings",
+        // chỉ Admin gọi được — server đã tự kiểm tra qua requireAuth(data, isAdmin), xem Code.gs).
+        // Gửi mảng RỖNG (bỏ chọn hết) = Admin chủ động xóa cấu hình, quay lại cho chọn TẤT CẢ như cũ.
+        async function saveApprovalSettings() {
+            let box = document.getElementById("np-admin-approver-settings-list");
+            if (!box) return;
+            let statusEl = document.getElementById("np-admin-approver-settings-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let ok = await pushToCloud({ action: "saveApprovalSettings", usernames: usernames });
+            if (ok) {
+                approvedApproversList = usernames;
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người phê duyệt\").")
+                        : "✅ Đã lưu (KHÔNG giới hạn — cho chọn tất cả tài khoản như cũ).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                }
+                // Tải lại ngay khung "Người phê duyệt" phía trên để Admin thấy đúng kết quả sau
+                // khi lưu, không cần tải lại cả trang.
+                populateLeaveApproverList();
+            } else if (statusEl) {
+                statusEl.style.color = "#c62828";
+                statusEl.innerText = "❌ Lưu thất bại, vui lòng thử lại.";
             }
         }
 
