@@ -105,7 +105,30 @@
            hình, không phụ thuộc việc content-area cuộn lên/xuống. Toàn bộ ID, hàm gọi
            (openChangePasswordModal, open2FAModal, handleLogout) và dữ liệu liên quan được
            GIỮ NGUYÊN 100% — chỉ thay đổi vị trí/hiển thị, KHÔNG đổi cơ chế bảo mật. */
-        .user-topbar { position: fixed; top: 14px; right: 20px; z-index: 500; font-size: 14px; }
+        /* [CHUÔNG THÔNG BÁO - GÓC TRÊN-PHẢI] Đặt NGAY BÊN TRÁI khối "user-topbar" (tên user),
+           dùng CHUNG cơ chế mở/đóng (class "open") + CHUNG dữ liệu ĐÃ TẢI SẴN ở client (không
+           gọi thêm action mới ở Code.gs, không đụng authToken/bảo mật) — chỉ TỔNG HỢP lại 3
+           nguồn thông báo đã có sẵn: (1) Công việc chưa xem ở tab "Nhận Việc", (2) Đơn nghỉ
+           phép đang chờ mình duyệt (cũng ở tab "Nhận Việc"), (3) Yêu cầu cập nhật tiến độ đang
+           chờ mình duyệt ở tab "Giao Việc" (t.choDuyet). Bấm 1 thông báo -> điều hướng đúng
+           tab tương ứng bằng switchPage() có sẵn. */
+        .topbar-right-group { position: fixed; top: 14px; right: 20px; z-index: 500; display: flex; align-items: center; gap: 12px; }
+        .notif-bell { position: relative; font-size: 14px; }
+        .notif-bell-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background-color: var(--primary-color); color: #fff; border: 1px solid rgba(255,255,255,0.25); border-radius: 50%; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: 0.2s; }
+        .notif-bell-btn:hover { background-color: var(--secondary-color); }
+        .notif-bell-btn i { font-size: 16px; }
+        .notif-bell-count { position: absolute; top: -4px; right: -4px; background: #e53935; color: #fff; font-size: 10.5px; font-weight: 700; border-radius: 10px; padding: 1px 6px; min-width: 16px; text-align: center; line-height: 1.5; border: 2px solid #fff; display: none; }
+        .notif-bell-menu { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; color: var(--text-color); width: 340px; max-width: 90vw; max-height: 420px; overflow-y: auto; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,0.2); border: 1px solid #e2e2e2; }
+        .notif-bell.open .notif-bell-menu { display: block; }
+        .notif-bell-menu-header { padding: 10px 14px; font-weight: bold; font-size: 13.5px; border-bottom: 1px solid #eee; background: #f7f9fb; position: sticky; top: 0; }
+        .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; text-decoration: none; color: var(--text-color); border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: 0.15s; }
+        .notif-item:hover { background-color: #f0f2f5; }
+        .notif-item .notif-icon { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; }
+        .notif-item .notif-body { flex: 1; min-width: 0; }
+        .notif-item .notif-title { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+        .notif-item .notif-desc { font-size: 12px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notif-empty { padding: 22px 14px; text-align: center; color: #999; font-size: 13px; }
+        .user-topbar { position: relative; font-size: 14px; }
         .user-topbar-btn { display: flex; align-items: center; gap: 8px; background-color: var(--primary-color); color: #fff; border: 1px solid rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 20px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); user-select: none; transition: 0.2s; }
         .user-topbar-btn:hover { background-color: var(--secondary-color); }
         .user-topbar-btn i.fa-chevron-down { font-size: 11px; transition: transform 0.2s; }
@@ -457,16 +480,32 @@
              gồm: Đổi mật khẩu, Bảo mật 2 lớp (2FA), Đăng xuất — dùng lại nguyên các hàm xử lý
              cũ (openChangePasswordModal, open2FAModal, handleLogout) nên KHÔNG đổi cơ chế bảo
              mật, KHÔNG mất dữ liệu. -->
-        <div class="user-topbar" id="user-topbar">
-            <div class="user-topbar-btn" id="user-topbar-btn" onclick="toggleUserTopbarMenu(event)">
-                <i class="fa-solid fa-circle-user"></i>
-                <span id="user-display">User</span>
-                <i class="fa-solid fa-chevron-down"></i>
+        <div class="topbar-right-group" id="topbar-right-group">
+            <!-- [CHUÔNG THÔNG BÁO] Gộp thông báo từ tab "Nhận Việc" (công việc chưa xem, đơn
+                 nghỉ phép chờ duyệt) và tab "Giao Việc" (yêu cầu cập nhật tiến độ chờ duyệt).
+                 Toàn bộ dữ liệu lấy lại từ các biến/hàm ĐÃ CÓ SẴN ở client, KHÔNG gọi thêm
+                 action mới, KHÔNG đụng authToken/cơ chế bảo mật hiện có. -->
+            <div class="notif-bell" id="notif-bell">
+                <div class="notif-bell-btn" id="notif-bell-btn" onclick="toggleNotificationBell(event)" title="Thông báo">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notif-bell-count" id="notif-bell-count">0</span>
+                </div>
+                <div class="notif-bell-menu" id="notif-bell-menu">
+                    <div class="notif-bell-menu-header"><i class="fa-solid fa-bell"></i> Thông báo</div>
+                    <div id="notif-bell-list"></div>
+                </div>
             </div>
-            <div class="user-topbar-menu" id="user-topbar-menu">
-                <a href="#" onclick="closeUserTopbarMenu(); openChangePasswordModal(); return false;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
-                <a href="#" onclick="closeUserTopbarMenu(); open2FAModal(); return false;"><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</a>
-                <a href="#" class="logout-link" onclick="closeUserTopbarMenu(); handleLogout(); return false;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+            <div class="user-topbar" id="user-topbar">
+                <div class="user-topbar-btn" id="user-topbar-btn" onclick="toggleUserTopbarMenu(event)">
+                    <i class="fa-solid fa-circle-user"></i>
+                    <span id="user-display">User</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </div>
+                <div class="user-topbar-menu" id="user-topbar-menu">
+                    <a href="#" onclick="closeUserTopbarMenu(); openChangePasswordModal(); return false;"><i class="fa-solid fa-key"></i> Đổi mật khẩu</a>
+                    <a href="#" onclick="closeUserTopbarMenu(); open2FAModal(); return false;"><i class="fa-solid fa-shield-halved"></i> Bảo mật 2 lớp (2FA)</a>
+                    <a href="#" class="logout-link" onclick="closeUserTopbarMenu(); handleLogout(); return false;"><i class="fa-solid fa-right-from-bracket"></i> Đăng xuất</a>
+                </div>
             </div>
         </div>
         <div class="sidebar">
@@ -2668,6 +2707,7 @@
         // diện (thêm/gỡ class "open"), KHÔNG động chạm tới authToken/dữ liệu/luồng bảo mật.
         function toggleUserTopbarMenu(evt) {
             if (evt) evt.stopPropagation();
+            closeNotificationBell(); // đang mở chuông thông báo thì đóng lại, tránh chồng 2 menu
             const el = document.getElementById("user-topbar");
             if (el) el.classList.toggle("open");
         }
@@ -2678,6 +2718,134 @@
         // Bấm ra ngoài khối user-topbar thì tự đóng menu lại.
         document.addEventListener("click", function (evt) {
             const el = document.getElementById("user-topbar");
+            if (el && el.classList.contains("open") && !el.contains(evt.target)) {
+                el.classList.remove("open");
+            }
+        });
+
+        // [CHUÔNG THÔNG BÁO - GÓC TRÊN-PHẢI] TỔNG HỢP LẠI (không tải thêm dữ liệu mới từ
+        // server, không gọi action mới) 3 nguồn thông báo ĐÃ CÓ SẴN trong hệ thống:
+        //   1) Công việc mới CHƯA XEM ở tab "Nhận Việc" (myReceivedTasks, cột "DaXem").
+        //   2) Đơn xin nghỉ phép đang CHỜ chính tài khoản này duyệt (cũng hiện ở tab "Nhận
+        //      Việc" — xem getPendingLeaveApprovalsForMe()).
+        //   3) Yêu cầu cập nhật tiến độ đang CHỜ mình duyệt ở tab "Giao Việc" (t.choDuyet —
+        //      CHỈ tài khoản có quyền "DuocGiaoViec"/Admin mới thấy, giống hệt nút "Chờ duyệt"
+        //      đã có sẵn ở bảng "Giao Việc").
+        // Bấm vào 1 thông báo -> điều hướng đúng tab bằng switchPage() có sẵn (tab "Nhận Việc"
+        // tự động đánh dấu Đã xem, giống hành vi cũ). Hàm này CHỈ đọc lại các biến/hàm client
+        // đã tồn tại (getMyTasks, getPendingLeaveApprovalsForMe, taskAssignData) — KHÔNG đụng
+        // authToken, KHÔNG đổi bất kỳ action/quyền nào ở Code.gs.
+        function getNotificationItems() {
+            let items = [];
+            if (!currentUser) return items;
+
+            // 1) Công việc chưa xem (tab "Nhận Việc")
+            (typeof getMyTasks === "function" ? getMyTasks() : []).forEach(t => {
+                if (!t.daXem) {
+                    items.push({
+                        tab: "nhanviec",
+                        sortKey: t.ngayGiao || "",
+                        icon: "fa-inbox",
+                        color: "#2e7d32",
+                        title: "Công việc mới: " + (t.tenCongViec || ""),
+                        desc: t.nguoiGiao ? ("Người giao: " + t.nguoiGiao) : "",
+                        onClick: function () { switchPage("nhanviec"); }
+                    });
+                }
+            });
+
+            // 2) Đơn nghỉ phép đang chờ mình duyệt (cũng hiện ở tab "Nhận Việc")
+            if (typeof getPendingLeaveApprovalsForMe === "function") {
+                getPendingLeaveApprovalsForMe().forEach(r => {
+                    items.push({
+                        tab: "nhanviec",
+                        sortKey: r.tuNgay || "",
+                        icon: "fa-plane-departure",
+                        color: "#ef6c00",
+                        title: "Đơn nghỉ phép chờ duyệt: " + (r.hoTen || r.nguoiTao || ""),
+                        desc: (r.tuNgay ? ("Từ " + gvFormatDateVN(r.tuNgay) + " đến " + gvFormatDateVN(r.denNgay || r.tuNgay)) : ""),
+                        onClick: function () { switchPage("nhanviec"); }
+                    });
+                });
+            }
+
+            // 3) Yêu cầu cập nhật tiến độ chờ mình duyệt (tab "Giao Việc" — chỉ tài khoản có
+            //    quyền Giao việc mới thấy, giống hệt nút "Chờ duyệt" đã có sẵn trên bảng).
+            if (currentUserCanAssignTask) {
+                (taskAssignData || []).forEach(t => {
+                    if (t.choDuyet) {
+                        items.push({
+                            tab: "giaoviec",
+                            sortKey: (t.choDuyet && t.choDuyet.thoiGian) || "",
+                            icon: "fa-clipboard-check",
+                            color: "#1565c0",
+                            title: "Yêu cầu duyệt tiến độ: " + (t.tenCongViec || ""),
+                            desc: t.nguoiNhan ? ("Người nhận: " + t.nguoiNhan) : "",
+                            onClick: function () {
+                                switchPage("giaoviec");
+                                if (typeof openApproveUpdateModal === "function") openApproveUpdateModal(t.id);
+                            }
+                        });
+                    }
+                });
+            }
+
+            items.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
+            return items;
+        }
+
+        // Vẽ lại số đếm (badge đỏ) + danh sách trong chuông thông báo. Gọi lại mỗi khi dữ liệu
+        // liên quan thay đổi — dùng CHUNG các điểm gọi đã có sẵn của updateNhanViecBadge() (tab
+        // "Nhận Việc") và renderTaskAssignTable() (tab "Giao Việc"), nên KHÔNG cần thêm bất kỳ
+        // lời gọi mạng mới nào.
+        function updateNotificationBell() {
+            let countEl = document.getElementById("notif-bell-count");
+            let listEl = document.getElementById("notif-bell-list");
+            if (!countEl || !listEl) return;
+            let items = getNotificationItems();
+            window._notifBellItems = items;
+            if (items.length > 0) {
+                countEl.style.display = "inline-block";
+                countEl.innerText = items.length > 99 ? "99+" : String(items.length);
+            } else {
+                countEl.style.display = "none";
+            }
+            listEl.innerHTML = items.length === 0
+                ? '<div class="notif-empty"><i class="fa-solid fa-circle-check"></i><br>Không có thông báo mới</div>'
+                : items.map((n, idx) => `
+                    <div class="notif-item" onclick="handleNotificationClick(${idx})">
+                        <div class="notif-icon" style="background:${n.color};"><i class="fa-solid ${n.icon}"></i></div>
+                        <div class="notif-body">
+                            <div class="notif-title">${escapeHtml(n.title)}</div>
+                            <div class="notif-desc">${escapeHtml(n.desc || "")}</div>
+                        </div>
+                    </div>
+                `).join("");
+        }
+
+        function handleNotificationClick(idx) {
+            closeNotificationBell();
+            let items = window._notifBellItems || [];
+            let n = items[idx];
+            if (n && typeof n.onClick === "function") n.onClick();
+        }
+
+        function toggleNotificationBell(evt) {
+            if (evt) evt.stopPropagation();
+            closeUserTopbarMenu(); // đang mở menu user thì đóng lại, tránh chồng 2 menu
+            const el = document.getElementById("notif-bell");
+            if (!el) return;
+            let willOpen = !el.classList.contains("open");
+            el.classList.toggle("open");
+            if (willOpen) updateNotificationBell();
+        }
+        function closeNotificationBell() {
+            const el = document.getElementById("notif-bell");
+            if (el) el.classList.remove("open");
+        }
+        // Bấm ra ngoài khối chuông thông báo thì tự đóng lại.
+        document.addEventListener("click", function (evt) {
+            const el = document.getElementById("notif-bell");
             if (el && el.classList.contains("open") && !el.contains(evt.target)) {
                 el.classList.remove("open");
             }
@@ -3991,7 +4159,9 @@
             leaveApproverUsernames = [];
             documentsData = [];
             mailGroups = [];
-            
+            closeNotificationBell();
+            if (typeof updateNotificationBell === "function") updateNotificationBell();
+
             // --- THÊM MỚI: Xóa sạch bộ nhớ đệm của trình duyệt (Local Storage) ---
             localStorage.removeItem("sme_local_cache");
             clearSessionStorageSession(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] xóa luôn phiên đã lưu khi đăng xuất chủ động
@@ -5291,6 +5461,11 @@
         // việc thay đổi (đăng nhập, đồng bộ lại, mở tab, giao/sửa/xóa việc, tự cập nhật trạng thái).
         function updateNhanViecBadge() {
             let badge = document.getElementById("nv-badge-count");
+            // [CHUÔNG THÔNG BÁO] Gọi lại CHUNG 1 chỗ với badge "Nhận Việc" (cùng thời điểm dữ
+            // liệu công việc/đơn nghỉ phép được làm mới), để số trên chuông luôn khớp với số ở
+            // menu "Nhận Việc". Đặt TRƯỚC "if (!badge) return;" để vẫn chạy dù menu sidebar
+            // (badge nv-badge-count) đang bị ẩn vì lý do khác.
+            updateNotificationBell();
             if (!badge) return;
             // [ĐƠN NGHỈ PHÉP] Badge "Nhận Việc" nay tính GỘP cả công việc chưa xem lẫn đơn nghỉ
             // phép đang chờ CHÍNH tài khoản này duyệt, để không ai bỏ sót đơn cần xử lý.
@@ -6419,6 +6594,10 @@
         }
 
         function renderTaskAssignTable() {
+            // [CHUÔNG THÔNG BÁO] taskAssignData (chứa cờ "choDuyet") vừa được nạp/cập nhật ngay
+            // trước khi hàm này chạy — cập nhật lại chuông thông báo CHUNG 1 chỗ ở đây, đặt
+            // TRƯỚC mọi "return" sớm bên dưới để không bỏ sót trường hợp bảng rỗng.
+            updateNotificationBell();
             let tbody = document.querySelector("#tbl-giaoviec tbody");
             if (!tbody) return;
             let kw = (document.getElementById("search-gv")?.value || "").trim().toLowerCase();
