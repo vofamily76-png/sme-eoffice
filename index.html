@@ -528,6 +528,11 @@
                          <li class="menu-item" id="menu-chukyso" style="display:none;" onclick="switchPage('chukyso')"><i class="fa-solid fa-signature"></i> Chữ Ký Số</li>
                     -->
                     <li class="menu-item" id="menu-groupmail" onclick="switchPage('groupmail')"><i class="fa-solid fa-envelope-open-text"></i> Group Mail</li>
+                    <!-- [TAB "CHAT NỘI BỘ"] Lối tắt mở Google Chat (tài khoản Google Workspace nội
+                         bộ @seahorse.com.vn) NGAY BÊN TRONG giao diện phần mềm (nhúng qua iframe ở
+                         trang #page-chatnoibo bên dưới) — không mở tab trình duyệt mới, trừ khi
+                         Google chặn nhúng (xem nút "Mở trong tab mới" dự phòng ở trang đó). -->
+                    <li class="menu-item" id="menu-chatnoibo" onclick="switchPage('chatnoibo')"><i class="fa-solid fa-comments"></i> Chat Nội Bộ</li>
                     <li class="menu-item" id="menu-giaoviec" onclick="switchPage('giaoviec')"><i class="fa-solid fa-list-check"></i> Giao Việc</li>
                     <li class="menu-item" id="menu-nhanviec" onclick="switchPage('nhanviec')">
                         <i class="fa-solid fa-inbox"></i> Nhận Việc
@@ -1624,6 +1629,31 @@
                 </div>
 
                 <div id="list-mail-groups-view"></div>
+            </div>
+
+            <!-- [TAB "CHAT NỘI BỘ"] Nhúng Google Chat (https://chat.google.com/app/home) NGAY
+                 TRONG giao diện phần mềm bằng iframe — mọi tài khoản đã đăng nhập đều xem được
+                 (giống "Group Mail"/"Các phần mềm khác"), KHÔNG lưu/gửi bất kỳ dữ liệu nào lên
+                 server, KHÔNG đụng tới authToken/quyền hạn hệ thống -> KHÔNG ảnh hưởng bảo mật
+                 hiện có. Chat sẽ tự vào ĐÚNG tài khoản Google Chat mà trình duyệt đang đăng nhập
+                 sẵn (tài khoản Google Workspace nội bộ @seahorse.com.vn của người dùng). Nếu
+                 Google chặn nhúng trong iframe (giới hạn bảo mật phía Google, ngoài khả năng
+                 kiểm soát của hệ thống này), người dùng bấm nút "Mở trong tab mới" bên dưới. -->
+            <div id="page-chatnoibo" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-comments"></i> Chat Nội Bộ</h2>
+                <p style="margin-bottom: 12px; color: #666; font-size: 14px;">
+                    Trò chuyện nội bộ qua <b>Google Chat</b>, dùng đúng tài khoản Google Workspace nội bộ
+                    (<b>@seahorse.com.vn</b>) mà trình duyệt của bạn đang đăng nhập.
+                </p>
+                <div style="background:#fff8e1; color:#856404; font-size:12.5px; padding:8px 14px; border-radius:6px; margin-bottom:10px;">
+                    ⚠️ Nếu khung chat bên dưới không hiển thị (do giới hạn bảo mật phía Google), vui lòng bấm
+                    <b>"Mở trong tab mới"</b>.
+                </div>
+                <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn" style="width:auto; padding:8px 14px; background:#1a73e8;" onclick="window.open('https://chat.google.com/app/home', '_blank', 'noopener')"><i class="fa-solid fa-up-right-from-square"></i> Mở trong tab mới</button>
+                    <button class="btn" style="width:auto; padding:8px 14px; background:#607d8b;" onclick="reloadChatNoiBoIframe()"><i class="fa-solid fa-rotate"></i> Tải lại</button>
+                </div>
+                <iframe id="chatnoibo-iframe" src="" title="Google Chat - Chat Nội Bộ" style="width:100%; height:72vh; min-height:480px; border:1px solid #ddd; border-radius:8px; background:#fff;"></iframe>
             </div>
 
             <div id="page-admin" class="page-content">
@@ -4186,6 +4216,11 @@
             mailGroups = [];
             closeNotificationBell();
             if (typeof updateNotificationBell === "function") updateNotificationBell();
+            // [TAB "CHAT NỘI BỘ"] Gỡ iframe Google Chat khỏi DOM khi đăng xuất — vệ sinh cơ bản
+            // cho máy dùng chung (KHÔNG đụng tới authToken/dữ liệu hệ thống, Google Chat quản lý
+            // phiên đăng nhập của chính nó qua cookie riêng, độc lập hoàn toàn với hệ thống này).
+            let cnbIframeOut = document.getElementById("chatnoibo-iframe");
+            if (cnbIframeOut) { cnbIframeOut.src = "about:blank"; delete cnbIframeOut.dataset.loaded; }
 
             // --- THÊM MỚI: Xóa sạch bộ nhớ đệm của trình duyệt (Local Storage) ---
             localStorage.removeItem("sme_local_cache");
@@ -4203,6 +4238,11 @@
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("menu-internal-docs").style.display = "flex";
+            // [TAB "CHAT NỘI BỘ"] Giống "Group Mail"/"Các phần mềm khác" — mọi tài khoản đã
+            // đăng nhập đều thấy được, chỉ là 1 lối tắt mở Google Chat, không phải dữ liệu
+            // nhạy cảm cần phân quyền riêng.
+            let menuChatNoiBoEl = document.getElementById("menu-chatnoibo");
+            if (menuChatNoiBoEl) menuChatNoiBoEl.style.display = "flex";
             document.getElementById("groupmail-create-box").style.display = (currentUser.role === "Admin") ? "block" : "none";
 
             // ==== Quyền riêng cho tab "Quản lý Thiết bị" ====
@@ -4509,6 +4549,17 @@
                 // (không giữ lại trạng thái "đang xem hồ sơ đầy đủ của chính mình" từ lần trước),
                 // tránh gây nhầm lẫn khi dữ liệu đã được đồng bộ/tải lại từ Google Sheet.
                 closeMyFullContactDetail();
+            }
+            if (pageId === "chatnoibo") {
+                // [TAB "CHAT NỘI BỘ"] CHỈ nạp Google Chat vào iframe ở LẦN ĐẦU mở tab (không nạp
+                // sẵn ngay lúc đăng nhập, tránh tốn kết nối/tài nguyên nếu người dùng không dùng
+                // tới) — những lần mở lại SAU đó KHÔNG nạp lại nữa, giữ nguyên phiên chat đang mở
+                // (tránh mất nội dung đang gõ dở khi chuyển qua lại giữa các tab).
+                let cnbIframe = document.getElementById("chatnoibo-iframe");
+                if (cnbIframe && !cnbIframe.dataset.loaded) {
+                    cnbIframe.src = "https://chat.google.com/app/home";
+                    cnbIframe.dataset.loaded = "1";
+                }
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -9808,6 +9859,16 @@
         function closeExternalApp() {
             document.getElementById("app-launcher-wrap").style.display = "none";
             document.getElementById("app-launcher-iframe").src = "about:blank";
+        }
+
+        // [TAB "CHAT NỘI BỘ"] Nạp lại (F5) đúng khung iframe Google Chat, dùng khi người dùng
+        // muốn làm mới lại phiên chat (VD: sau khi đăng nhập lại tài khoản Google trong 1 tab
+        // khác) mà không cần tải lại (F5) toàn bộ phần mềm.
+        function reloadChatNoiBoIframe() {
+            let cnbIframe = document.getElementById("chatnoibo-iframe");
+            if (!cnbIframe) return;
+            cnbIframe.dataset.loaded = "1";
+            cnbIframe.src = "https://chat.google.com/app/home";
         }
 
         async function changeAdminPassword(){
