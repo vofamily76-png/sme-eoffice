@@ -415,6 +415,12 @@
         .llv-session-label.llv-session-afternoon i { color: #2980b9; }
         .llv-session-empty { color: #ccc; font-size: 11.5px; text-align: center; padding: 6px 0; font-style: italic; }
     </style>
+    <!-- [TAB "CHAT NỘI BỘ" - PHIÊN BẢN NHÚNG THẬT] Thư viện chính thức "Google Identity
+         Services" của Google, dùng để người dùng cấp quyền (OAuth) cho CHÍNH TRÌNH DUYỆT của
+         họ gọi thẳng tới Google Chat API (chat.googleapis.com) — KHÔNG đi qua server Apps
+         Script, KHÔNG lưu access token ở đâu ngoài bộ nhớ trình duyệt (biến JS, mất khi tải lại
+         trang), KHÔNG liên quan/ảnh hưởng gì tới authToken đăng nhập hệ thống hiện có. -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <div id="sync-banner"><span id="sync-text">Đang đồng bộ với Google Sheet...</span></div>
@@ -1631,29 +1637,83 @@
                 <div id="list-mail-groups-view"></div>
             </div>
 
-            <!-- [TAB "CHAT NỘI BỘ"] Nhúng Google Chat (https://chat.google.com/app/home) NGAY
-                 TRONG giao diện phần mềm bằng iframe — mọi tài khoản đã đăng nhập đều xem được
-                 (giống "Group Mail"/"Các phần mềm khác"), KHÔNG lưu/gửi bất kỳ dữ liệu nào lên
-                 server, KHÔNG đụng tới authToken/quyền hạn hệ thống -> KHÔNG ảnh hưởng bảo mật
-                 hiện có. Chat sẽ tự vào ĐÚNG tài khoản Google Chat mà trình duyệt đang đăng nhập
-                 sẵn (tài khoản Google Workspace nội bộ @seahorse.com.vn của người dùng). Nếu
-                 Google chặn nhúng trong iframe (giới hạn bảo mật phía Google, ngoài khả năng
-                 kiểm soát của hệ thống này), người dùng bấm nút "Mở trong tab mới" bên dưới. -->
+            <!-- [TAB "CHAT NỘI BỘ" - PHIÊN BẢN NHÚNG THẬT QUA GOOGLE CHAT API]
+                 KHÔNG còn dùng iframe trỏ tới chat.google.com (Google chặn nhúng ở tầng trình
+                 duyệt, không có cách nào vượt qua bằng code). Thay vào đó, giao diện chat
+                 (danh sách cuộc trò chuyện + khung tin nhắn + ô nhập) được TỰ VẼ HOÀN TOÀN
+                 bằng HTML/CSS/JS ngay trong trang này, và dữ liệu (danh sách phòng chat, tin
+                 nhắn, gửi tin) được lấy trực tiếp bằng cách trình duyệt của người dùng gọi
+                 thẳng tới Google Chat API (chat.googleapis.com) sau khi người dùng bấm "Kết nối
+                 Google Chat" và cấp quyền (OAuth) — CHỈ 1 lần, dùng đúng tài khoản Google
+                 Workspace nội bộ (@seahorse.com.vn) đang đăng nhập trên trình duyệt.
+
+                 BẢO MẬT / DỮ LIỆU (không đổi so với hệ thống hiện có):
+                   - Access token OAuth do Google cấp CHỈ lưu tạm trong biến JavaScript (bộ nhớ
+                     trình duyệt), KHÔNG lưu localStorage/cookie, KHÔNG gửi lên server Apps
+                     Script, tự mất khi tải lại trang hoặc đóng tab -> không đụng gì tới
+                     authToken/CacheService của hệ thống chính.
+                   - KHÔNG thêm action mới nào trong Code.gs, KHÔNG đọc/ghi thêm gì trên Google
+                     Sheet -> không ảnh hưởng dữ liệu/logic backend hiện có.
+                   - Người dùng chỉ xem/gửi được đúng những phòng chat mà TÀI KHOẢN GOOGLE CỦA
+                     CHÍNH HỌ đã là thành viên (Google Chat API tự giới hạn theo access token,
+                     phần mềm không thể và không có quyền truy cập chat của người khác).
+
+                 YÊU CẦU CẤU HÌNH 1 LẦN (bắt buộc, làm ở Google Cloud Console, xem hướng dẫn
+                 kèm theo): cần 1 "OAuth Client ID" (loại Web application) đã bật "Google Chat
+                 API", điền vào biến CHAT_API_CLIENT_ID trong file JS bên dưới thì chat mới hoạt
+                 động được. Trước khi điền, Tab này sẽ hiện thông báo hướng dẫn thay vì lỗi khó
+                 hiểu. -->
             <div id="page-chatnoibo" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-comments"></i> Chat Nội Bộ</h2>
                 <p style="margin-bottom: 12px; color: #666; font-size: 14px;">
                     Trò chuyện nội bộ qua <b>Google Chat</b>, dùng đúng tài khoản Google Workspace nội bộ
-                    (<b>@seahorse.com.vn</b>) mà trình duyệt của bạn đang đăng nhập.
+                    (<b>@seahorse.com.vn</b>) — hiển thị trực tiếp ngay trong phần mềm.
                 </p>
-                <div style="background:#fff8e1; color:#856404; font-size:12.5px; padding:8px 14px; border-radius:6px; margin-bottom:10px;">
-                    ⚠️ Nếu khung chat bên dưới không hiển thị (do giới hạn bảo mật phía Google), vui lòng bấm
-                    <b>"Mở trong tab mới"</b>.
+
+                <div id="chatnoibo-config-warning" style="display:none; background:#fdecea; color:#a33; font-size:13px; padding:10px 14px; border-radius:6px; margin-bottom:12px;">
+                    ⚠️ Chưa cấu hình <b>CHAT_API_CLIENT_ID</b> trong file JS. Vui lòng làm theo hướng dẫn cấu hình
+                    OAuth Client ID (Google Cloud Console → bật "Google Chat API" → tạo OAuth Client ID loại
+                    "Web application") rồi điền vào biến <code>CHAT_API_CLIENT_ID</code> ở đầu khối script Chat Nội Bộ.
                 </div>
-                <div style="margin-bottom:10px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn" style="width:auto; padding:8px 14px; background:#1a73e8;" onclick="window.open('https://chat.google.com/app/home', '_blank', 'noopener')"><i class="fa-solid fa-up-right-from-square"></i> Mở trong tab mới</button>
-                    <button class="btn" style="width:auto; padding:8px 14px; background:#607d8b;" onclick="reloadChatNoiBoIframe()"><i class="fa-solid fa-rotate"></i> Tải lại</button>
+
+                <div id="chatnoibo-signin-box" style="display:none; text-align:center; padding:40px 20px; border:1px dashed #ccc; border-radius:8px; background:#fafafa;">
+                    <i class="fa-solid fa-comments" style="font-size:36px; color:#1a73e8; margin-bottom:10px;"></i>
+                    <p style="color:#555; margin-bottom:16px;">Bấm nút bên dưới để kết nối với Google Chat bằng đúng tài khoản
+                        Google Workspace nội bộ (@seahorse.com.vn) bạn đang dùng trên trình duyệt này.</p>
+                    <button class="btn" style="width:auto; padding:10px 20px; background:#1a73e8;" onclick="chatNoiBoSignIn()">
+                        <i class="fa-solid fa-right-to-bracket"></i> Kết nối Google Chat
+                    </button>
+                    <div id="chatnoibo-signin-error" style="color:#c0392b; font-size:12.5px; margin-top:12px;"></div>
                 </div>
-                <iframe id="chatnoibo-iframe" src="" title="Google Chat - Chat Nội Bộ" style="width:100%; height:72vh; min-height:480px; border:1px solid #ddd; border-radius:8px; background:#fff;"></iframe>
+
+                <div id="chatnoibo-app" style="display:none; border:1px solid #ddd; border-radius:8px; overflow:hidden; height:72vh; min-height:480px; display:none;">
+                    <div style="display:flex; height:100%;">
+                        <!-- Danh sách cuộc trò chuyện -->
+                        <div style="width:260px; min-width:220px; border-right:1px solid #eee; background:#fafafa; display:flex; flex-direction:column;">
+                            <div style="padding:10px 12px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+                                <b style="font-size:13.5px; color:#444;">Cuộc trò chuyện</b>
+                                <button title="Tải lại danh sách" onclick="chatNoiBoLoadSpaces()" style="border:none; background:none; cursor:pointer; color:#1a73e8;"><i class="fa-solid fa-rotate"></i></button>
+                            </div>
+                            <div id="chatnoibo-space-list" style="flex:1; overflow-y:auto;"></div>
+                        </div>
+                        <!-- Khung tin nhắn -->
+                        <div style="flex:1; display:flex; flex-direction:column; background:#fff;">
+                            <div id="chatnoibo-thread-title" style="padding:10px 14px; border-bottom:1px solid #eee; font-weight:600; color:#333; font-size:14px;">
+                                Chọn 1 cuộc trò chuyện bên trái
+                            </div>
+                            <div id="chatnoibo-messages" style="flex:1; overflow-y:auto; padding:14px; background:#fdfdfd;"></div>
+                            <div style="display:flex; gap:8px; padding:10px; border-top:1px solid #eee;">
+                                <input id="chatnoibo-input" type="text" placeholder="Nhập tin nhắn..." style="flex:1; padding:9px 12px; border:1px solid #ddd; border-radius:20px; font-size:14px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); chatNoiBoSendMessage();}">
+                                <button class="btn" style="width:auto; padding:9px 16px; border-radius:20px;" onclick="chatNoiBoSendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p style="margin-top:10px; font-size:12px; color:#999;">
+                    Cần đầy đủ tính năng hơn (thả cảm xúc, thread, chia sẻ file lớn...)? Mở
+                    <a href="https://chat.google.com/app/home" target="_blank" rel="noopener">Google Chat đầy đủ ở tab riêng</a>.
+                </p>
             </div>
 
             <div id="page-admin" class="page-content">
@@ -4216,11 +4276,11 @@
             mailGroups = [];
             closeNotificationBell();
             if (typeof updateNotificationBell === "function") updateNotificationBell();
-            // [TAB "CHAT NỘI BỘ"] Gỡ iframe Google Chat khỏi DOM khi đăng xuất — vệ sinh cơ bản
-            // cho máy dùng chung (KHÔNG đụng tới authToken/dữ liệu hệ thống, Google Chat quản lý
-            // phiên đăng nhập của chính nó qua cookie riêng, độc lập hoàn toàn với hệ thống này).
-            let cnbIframeOut = document.getElementById("chatnoibo-iframe");
-            if (cnbIframeOut) { cnbIframeOut.src = "about:blank"; delete cnbIframeOut.dataset.loaded; }
+            // [TAB "CHAT NỘI BỘ"] Xoá access token OAuth (chỉ tồn tại trong biến JS) và reset
+            // giao diện Chat về màn hình "Kết nối" khi đăng xuất — vệ sinh cơ bản cho máy dùng
+            // chung. KHÔNG đụng tới authToken/dữ liệu hệ thống chính; token Google Chat vốn dĩ
+            // độc lập hoàn toàn, và ở đây chỉ đơn thuần bị xoá khỏi bộ nhớ trình duyệt.
+            if (typeof chatNoiBoResetOnLogout === "function") chatNoiBoResetOnLogout();
 
             // --- THÊM MỚI: Xóa sạch bộ nhớ đệm của trình duyệt (Local Storage) ---
             localStorage.removeItem("sme_local_cache");
@@ -4551,15 +4611,10 @@
                 closeMyFullContactDetail();
             }
             if (pageId === "chatnoibo") {
-                // [TAB "CHAT NỘI BỘ"] CHỈ nạp Google Chat vào iframe ở LẦN ĐẦU mở tab (không nạp
-                // sẵn ngay lúc đăng nhập, tránh tốn kết nối/tài nguyên nếu người dùng không dùng
-                // tới) — những lần mở lại SAU đó KHÔNG nạp lại nữa, giữ nguyên phiên chat đang mở
-                // (tránh mất nội dung đang gõ dở khi chuyển qua lại giữa các tab).
-                let cnbIframe = document.getElementById("chatnoibo-iframe");
-                if (cnbIframe && !cnbIframe.dataset.loaded) {
-                    cnbIframe.src = "https://chat.google.com/app/home";
-                    cnbIframe.dataset.loaded = "1";
-                }
+                // [TAB "CHAT NỘI BỘ"] Khởi tạo giao diện chat tự xây (không còn dùng iframe).
+                // Chỉ chạy phần khởi tạo 1 lần; những lần mở lại sau đó giữ nguyên phiên đang
+                // kết nối (không mất tin nhắn đang gõ dở khi chuyển qua lại giữa các tab).
+                if (typeof chatNoiBoInit === "function") chatNoiBoInit();
             }
             document.querySelectorAll(".page-content").forEach(p => p.classList.remove("active"));
             document.querySelectorAll(".menu-item").forEach(m => m.classList.remove("active"));
@@ -9861,14 +9916,220 @@
             document.getElementById("app-launcher-iframe").src = "about:blank";
         }
 
-        // [TAB "CHAT NỘI BỘ"] Nạp lại (F5) đúng khung iframe Google Chat, dùng khi người dùng
-        // muốn làm mới lại phiên chat (VD: sau khi đăng nhập lại tài khoản Google trong 1 tab
-        // khác) mà không cần tải lại (F5) toàn bộ phần mềm.
-        function reloadChatNoiBoIframe() {
-            let cnbIframe = document.getElementById("chatnoibo-iframe");
-            if (!cnbIframe) return;
-            cnbIframe.dataset.loaded = "1";
-            cnbIframe.src = "https://chat.google.com/app/home";
+        // =====================================================================================
+        // [TAB "CHAT NỘI BỘ" - PHIÊN BẢN NHÚNG THẬT] Toàn bộ khối hàm bên dưới thay thế hoàn
+        // toàn cách nhúng iframe cũ (đã bị Google chặn ở tầng trình duyệt, không thể vượt qua).
+        // Giao diện chat được tự vẽ trong trang này; dữ liệu lấy trực tiếp từ Google Chat API
+        // (chat.googleapis.com) bằng access token OAuth do CHÍNH trình duyệt người dùng xin từ
+        // Google — KHÔNG đi qua server Apps Script, KHÔNG lưu token ngoài biến JS (mất khi tải
+        // lại trang), KHÔNG liên quan gì tới authToken đăng nhập hệ thống hiện có.
+        //
+        // *** CẤU HÌNH BẮT BUỘC (làm 1 LẦN, ở Google Cloud Console) ***
+        //   1. Vào https://console.cloud.google.com -> chọn đúng project của Workspace nội bộ.
+        //   2. "APIs & Services" -> "Library" -> tìm "Google Chat API" -> bấm Enable.
+        //   3. "APIs & Services" -> "OAuth consent screen": chọn User type = "Internal" (chỉ
+        //      người trong domain @seahorse.com.vn dùng được, không cần Google duyệt/verify).
+        //   4. "APIs & Services" -> "Credentials" -> "Create Credentials" -> "OAuth Client ID"
+        //      -> Application type = "Web application". Ở mục "Authorized JavaScript origins",
+        //      thêm ĐÚNG domain đang chạy phần mềm này (VD: https://script.google.com hoặc
+        //      domain tùy chỉnh đang deploy Web App).
+        //   5. Copy "Client ID" vừa tạo (dạng ...apps.googleusercontent.com), dán vào biến
+        //      CHAT_API_CLIENT_ID ngay bên dưới.
+        // Nếu chưa điền CHAT_API_CLIENT_ID, Tab "Chat Nội Bộ" sẽ tự hiện thông báo hướng dẫn
+        // thay vì báo lỗi khó hiểu.
+        // =====================================================================================
+        const CHAT_API_CLIENT_ID = "DÁN_OAUTH_CLIENT_ID_CỦA_BẠN_VÀO_ĐÂY.apps.googleusercontent.com";
+        // Quyền cần xin: đọc/gửi tin nhắn + xem danh sách phòng chat mà chính người dùng là
+        // thành viên. Google Chat API tự giới hạn phạm vi theo đúng tài khoản đang cấp quyền,
+        // phần mềm không có (và không thể có) quyền xem chat của người khác.
+        const CHAT_API_SCOPES = "https://www.googleapis.com/auth/chat.messages " +
+                                 "https://www.googleapis.com/auth/chat.spaces.readonly";
+
+        let chatNoiBoAccessToken = null;   // Chỉ tồn tại trong bộ nhớ trình duyệt, mất khi F5/đăng xuất.
+        let chatNoiBoTokenClient = null;
+        let chatNoiBoSelectedSpace = null; // ID phòng chat đang mở (VD: "spaces/AAAAxxxx")
+        let chatNoiBoPollTimer = null;
+        let chatNoiBoInited = false;
+
+        // Khởi tạo khi mở Tab lần đầu: kiểm tra đã điền Client ID chưa, dựng sẵn tokenClient.
+        function chatNoiBoInit() {
+            let warnBox = document.getElementById("chatnoibo-config-warning");
+            if (!CHAT_API_CLIENT_ID || CHAT_API_CLIENT_ID.indexOf("DÁN_OAUTH_CLIENT_ID") === 0) {
+                if (warnBox) warnBox.style.display = "block";
+                return;
+            }
+            if (warnBox) warnBox.style.display = "none";
+
+            if (chatNoiBoAccessToken) {
+                // Đã kết nối từ trước trong phiên này -> hiện thẳng giao diện chat.
+                chatNoiBoShowApp();
+                return;
+            }
+            if (!chatNoiBoInited) {
+                chatNoiBoInited = true;
+                document.getElementById("chatnoibo-signin-box").style.display = "block";
+            }
+        }
+
+        // Bấm nút "Kết nối Google Chat" -> mở khung cấp quyền chuẩn của Google (Google tự hiển
+        // thị đúng tài khoản @seahorse.com.vn đang đăng nhập trên trình duyệt để chọn/xác nhận).
+        function chatNoiBoSignIn() {
+            let errBox = document.getElementById("chatnoibo-signin-error");
+            if (errBox) errBox.textContent = "";
+            if (typeof google === "undefined" || !google.accounts || !google.accounts.oauth2) {
+                if (errBox) errBox.textContent = "Chưa tải được thư viện đăng nhập Google. Vui lòng tải lại trang (F5) và thử lại.";
+                return;
+            }
+            if (!chatNoiBoTokenClient) {
+                chatNoiBoTokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CHAT_API_CLIENT_ID,
+                    scope: CHAT_API_SCOPES,
+                    callback: function (resp) {
+                        if (resp && resp.access_token) {
+                            chatNoiBoAccessToken = resp.access_token;
+                            chatNoiBoShowApp();
+                        } else if (errBox) {
+                            errBox.textContent = "Không nhận được quyền truy cập Google Chat. Vui lòng thử lại.";
+                        }
+                    },
+                    error_callback: function (err) {
+                        if (errBox) errBox.textContent = "Kết nối bị hủy hoặc bị lỗi: " + (err && err.type ? err.type : "không rõ nguyên nhân");
+                    }
+                });
+            }
+            chatNoiBoTokenClient.requestAccessToken({ prompt: "" });
+        }
+
+        function chatNoiBoShowApp() {
+            document.getElementById("chatnoibo-signin-box").style.display = "none";
+            let appBox = document.getElementById("chatnoibo-app");
+            appBox.style.display = "block";
+            chatNoiBoLoadSpaces();
+        }
+
+        // Gọi Google Chat API lấy danh sách cuộc trò chuyện (phòng nhóm + nhắn tin trực tiếp)
+        // mà tài khoản đang đăng nhập là thành viên.
+        async function chatNoiBoLoadSpaces() {
+            let listBox = document.getElementById("chatnoibo-space-list");
+            if (!listBox) return;
+            listBox.innerHTML = '<div style="padding:14px; color:#999; font-size:13px;">Đang tải...</div>';
+            try {
+                let res = await fetch("https://chat.googleapis.com/v1/spaces?pageSize=100", {
+                    headers: { "Authorization": "Bearer " + chatNoiBoAccessToken }
+                });
+                if (res.status === 401) { chatNoiBoHandleTokenExpired(); return; }
+                let data = await res.json();
+                let spaces = data.spaces || [];
+                if (spaces.length === 0) {
+                    listBox.innerHTML = '<div style="padding:14px; color:#999; font-size:13px;">Chưa có cuộc trò chuyện nào.</div>';
+                    return;
+                }
+                listBox.innerHTML = "";
+                spaces.forEach(function (sp) {
+                    let name = sp.displayName || (sp.spaceType === "DIRECT_MESSAGE" ? "Nhắn tin trực tiếp" : "Phòng chat");
+                    let item = document.createElement("div");
+                    item.textContent = name;
+                    item.style.cssText = "padding:10px 14px; cursor:pointer; font-size:13.5px; border-bottom:1px solid #f0f0f0; color:#333;";
+                    item.onmouseenter = function () { item.style.background = "#eef3fc"; };
+                    item.onmouseleave = function () { item.style.background = (chatNoiBoSelectedSpace === sp.name) ? "#e0eaf9" : ""; };
+                    item.onclick = function () { chatNoiBoSelectSpace(sp.name, name); };
+                    if (chatNoiBoSelectedSpace === sp.name) item.style.background = "#e0eaf9";
+                    listBox.appendChild(item);
+                });
+            } catch (e) {
+                listBox.innerHTML = '<div style="padding:14px; color:#c0392b; font-size:13px;">Lỗi tải danh sách: ' + e.message + '</div>';
+            }
+        }
+
+        function chatNoiBoSelectSpace(spaceName, displayName) {
+            chatNoiBoSelectedSpace = spaceName;
+            document.getElementById("chatnoibo-thread-title").textContent = displayName;
+            chatNoiBoLoadSpaces(); // vẽ lại để highlight đúng mục đang chọn
+            chatNoiBoLoadMessages();
+            if (chatNoiBoPollTimer) clearInterval(chatNoiBoPollTimer);
+            chatNoiBoPollTimer = setInterval(chatNoiBoLoadMessages, 8000); // tự làm mới mỗi 8 giây
+        }
+
+        async function chatNoiBoLoadMessages() {
+            if (!chatNoiBoSelectedSpace) return;
+            let msgBox = document.getElementById("chatnoibo-messages");
+            try {
+                let res = await fetch(
+                    "https://chat.googleapis.com/v1/" + chatNoiBoSelectedSpace + "/messages?pageSize=50&orderBy=createTime desc",
+                    { headers: { "Authorization": "Bearer " + chatNoiBoAccessToken } }
+                );
+                if (res.status === 401) { chatNoiBoHandleTokenExpired(); return; }
+                let data = await res.json();
+                let messages = (data.messages || []).slice().reverse();
+                msgBox.innerHTML = "";
+                messages.forEach(function (m) {
+                    let sender = (m.sender && m.sender.displayName) || "Ẩn danh";
+                    let time = m.createTime ? new Date(m.createTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+                    let row = document.createElement("div");
+                    row.style.marginBottom = "10px";
+                    row.innerHTML = '<div style="font-size:12px; color:#888; margin-bottom:2px;"><b>' +
+                        chatNoiBoEscapeHtml(sender) + '</b> · ' + time + '</div>' +
+                        '<div style="font-size:14px; color:#222; white-space:pre-wrap;">' +
+                        chatNoiBoEscapeHtml(m.text || "") + '</div>';
+                    msgBox.appendChild(row);
+                });
+                msgBox.scrollTop = msgBox.scrollHeight;
+            } catch (e) {
+                msgBox.innerHTML = '<div style="color:#c0392b; font-size:13px;">Lỗi tải tin nhắn: ' + e.message + '</div>';
+            }
+        }
+
+        async function chatNoiBoSendMessage() {
+            let input = document.getElementById("chatnoibo-input");
+            let text = (input.value || "").trim();
+            if (!text || !chatNoiBoSelectedSpace) return;
+            input.value = "";
+            try {
+                let res = await fetch(
+                    "https://chat.googleapis.com/v1/" + chatNoiBoSelectedSpace + "/messages",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": "Bearer " + chatNoiBoAccessToken,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ text: text })
+                    }
+                );
+                if (res.status === 401) { chatNoiBoHandleTokenExpired(); return; }
+                chatNoiBoLoadMessages();
+            } catch (e) {
+                alert("Không gửi được tin nhắn: " + e.message);
+            }
+        }
+
+        function chatNoiBoHandleTokenExpired() {
+            // Access token OAuth hết hạn (thường sau ~1 giờ) -> yêu cầu kết nối lại. KHÔNG ảnh
+            // hưởng gì tới phiên đăng nhập chính (authToken) của hệ thống.
+            chatNoiBoAccessToken = null;
+            if (chatNoiBoPollTimer) clearInterval(chatNoiBoPollTimer);
+            document.getElementById("chatnoibo-app").style.display = "none";
+            document.getElementById("chatnoibo-signin-box").style.display = "block";
+            let errBox = document.getElementById("chatnoibo-signin-error");
+            if (errBox) errBox.textContent = "Phiên kết nối Google Chat đã hết hạn, vui lòng bấm kết nối lại.";
+        }
+
+        function chatNoiBoEscapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, function (c) {
+                return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+            });
+        }
+
+        // Gọi khi đăng xuất khỏi hệ thống chính: xoá token khỏi bộ nhớ, dừng polling, reset UI.
+        function chatNoiBoResetOnLogout() {
+            chatNoiBoAccessToken = null;
+            chatNoiBoSelectedSpace = null;
+            chatNoiBoInited = false;
+            if (chatNoiBoPollTimer) clearInterval(chatNoiBoPollTimer);
+            let appBox = document.getElementById("chatnoibo-app");
+            let signinBox = document.getElementById("chatnoibo-signin-box");
+            if (appBox) appBox.style.display = "none";
+            if (signinBox) signinBox.style.display = "none";
         }
 
         async function changeAdminPassword(){
