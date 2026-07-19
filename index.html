@@ -19,8 +19,10 @@
          (đúng phạm vi/quyền người dùng đang có) — KHÔNG gọi thêm API nào tới server, không ảnh
          hưởng dữ liệu gốc, không đổi cơ chế bảo mật. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- html2canvas: BẮT BUỘC cho jsPDF.html() để chụp lại đúng font chữ tiếng Việt có dấu
-         (font hệ thống mặc định của jsPDF không hỗ trợ dấu tiếng Việt). -->
+    <!-- html2canvas: chụp lại mẫu Đơn xin nghỉ phép thành ẢNH đúng y hệt những gì trình duyệt
+         hiển thị (kể cả dấu tiếng Việt), rồi nhúng ảnh đó vào PDF bằng doc.addImage() — cách này
+         không qua bước "vẽ lại từng ký tự" bằng font nội bộ của jsPDF nên không còn bị lỗi lệch/
+         mất dấu tiếng Việt như trước. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
@@ -6099,26 +6101,30 @@
             }).join("");
         }
 
-        // [XUẤT PDF - TRÁNH LỖI FONT] Bỏ dấu tiếng Việt (chuyển "Đăng ký" -> "Dang ky") trước khi
-        // đưa vào PDF, vì font mặc định máy người dùng có thể không hiển thị đúng dấu tiếng Việt
-        // khi PDF được chụp lại qua html2canvas -> dùng chữ KHÔNG DẤU để đảm bảo hiển thị đúng
-        // trên MỌI máy, MỌI font, không phụ thuộc font hệ thống có hỗ trợ tiếng Việt hay không.
+        // [XUẤT PDF - GIỮ ĐÚNG DẤU TIẾNG VIỆT] Trước đây hệ thống tự động bỏ dấu tiếng Việt
+        // ("Đăng ký" -> "Dang ky") trước khi đưa vào PDF để đề phòng lỗi font. Tuy nhiên PDF được
+        // xuất bằng jsPDF + html2canvas, tức là "CHỤP ẢNH" lại đúng phần HTML hiển thị trên trình
+        // duyệt (dùng font 'Times New Roman'/Arial của hệ điều hành, vốn đã hỗ trợ đầy đủ tiếng
+        // Việt có dấu) rồi nhúng ảnh đó vào PDF — nên KHÔNG cần bỏ dấu nữa. Hàm "boDauTiengViet"
+        // bên dưới vẫn được giữ lại nhưng CHỈ dùng để đặt TÊN FILE .pdf (không dùng dấu trong tên
+        // file để tránh lỗi tên file trên một số hệ điều hành/trình duyệt cũ).
         function boDauTiengViet(str) {
             str = String(str == null ? "" : str);
             str = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             str = str.replace(/đ/g, "d").replace(/Đ/g, "D");
             return str;
         }
-        // Gộp bỏ dấu + escape HTML (tránh lỗi hiển thị và tránh lỗi chèn HTML ngoài ý muốn).
+        // Chỉ escape HTML (tránh lỗi chèn HTML ngoài ý muốn) — KHÔNG còn bỏ dấu tiếng Việt, để nội
+        // dung trong file PDF xuất ra hiển thị đúng tiếng Việt có dấu.
         function pdfText(str) {
-            return escapeHtml(boDauTiengViet(str));
+            return escapeHtml(String(str == null ? "" : str));
         }
 
-        // [MỤC "ĐƠN NGHỈ PHÉP CỦA TÔI" - "XUẤT PDF"] Dựng 1 mẫu "ĐƠN XIN NGHỈ PHÉP" (chữ KHÔNG
-        // DẤU để tránh lỗi font khi xuất) gồm thông tin người làm đơn và bảng xác nhận của TỪNG
-        // người phê duyệt kèm Họ tên/Email/Thời gian xác nhận, NGAY TẠI TRÌNH DUYỆT rồi xuất
-        // thành file .pdf tải về máy — dùng jsPDF + html2canvas (đã nạp sẵn ở đầu trang). KHÔNG
-        // gọi thêm API nào tới server, KHÔNG đổi dữ liệu/cơ chế bảo mật.
+        // [MỤC "ĐƠN NGHỈ PHÉP CỦA TÔI" - "XUẤT PDF"] Dựng 1 mẫu "ĐƠN XIN NGHỈ PHÉP" (giữ NGUYÊN
+        // dấu tiếng Việt) gồm thông tin người làm đơn và bảng xác nhận của TỪNG người phê duyệt
+        // kèm Họ tên/Email/Thời gian xác nhận, NGAY TẠI TRÌNH DUYỆT rồi xuất thành file .pdf tải
+        // về máy — dùng jsPDF + html2canvas (đã nạp sẵn ở đầu trang). KHÔNG gọi thêm API nào tới
+        // server, KHÔNG đổi dữ liệu/cơ chế bảo mật.
         async function xuatPdfDonNghiPhep(id) {
             let r = (leaveRequestsData || []).find(x => x.id === id);
             if (!r) { alert("Không tìm thấy đơn nghỉ phép."); return; }
@@ -6129,9 +6135,9 @@
             let soNgayTru = npTinhSoNgayTruPhep(r.loaiNghiPhep, r.tongSoNgay);
             let ghiChuSoNgay = "";
             if (parseFloat(r.tongSoNgay) === 0.5) {
-                ghiChuSoNgay = " (nghi 1/2 ngay)";
+                ghiChuSoNgay = " (nghỉ 1/2 ngày)";
             } else if ((r.loaiNghiPhep || "").indexOf("ML") === 0 && soNgayTru !== (parseFloat(r.tongSoNgay) || 0)) {
-                ghiChuSoNgay = " (3 ngay dau khong tru phep, chi tru " + soNgayTru + " ngay vao phep nam)";
+                ghiChuSoNgay = " (3 ngày đầu không trừ phép, chỉ trừ " + soNgayTru + " ngày vào phép năm)";
             }
 
             let approverList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
@@ -6139,7 +6145,7 @@
                 : (r.nguoiPheDuyet || []).map(u => ({ username: u, hoTen: "", email: "" }));
             let approverRows = approverList.map((a, idx) => {
                 let st = (r.trangThaiTungNguoi || {})[a.username] || { status: "cho_duyet" };
-                let trangThaiText = st.status === "dong_y" ? "Dong y" : (st.status === "tu_choi" ? "Khong dong y" : "Chua xu ly");
+                let trangThaiText = st.status === "dong_y" ? "Đồng ý" : (st.status === "tu_choi" ? "Không đồng ý" : "Chưa xử lý");
                 return `<tr>
                     <td style="border:1px solid #333; padding:6px; text-align:center;">${idx + 1}</td>
                     <td style="border:1px solid #333; padding:6px;">${pdfText(resolveApproverDisplayName(a))}</td>
@@ -6162,41 +6168,41 @@
             <div style="width:750px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
                 <div style="display:flex; align-items:center; margin-bottom:10px;">
                     <div style="width:120px;">${pdfLogoHtml}</div>
-                    <div style="flex:1; text-align:center; font-size:20px; font-weight:bold; margin-right:120px;">DON XIN NGHI PHEP</div>
+                    <div style="flex:1; text-align:center; font-size:20px; font-weight:bold; margin-right:120px;">ĐƠN XIN NGHỈ PHÉP</div>
                 </div>
-                <p>Toi ten la: <b>${pdfText(r.hoTen || "")}</b></p>
+                <p>Tôi tên là: <b>${pdfText(r.hoTen || "")}</b></p>
                 <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                     <tr>
-                        <td style="padding:2px 0; width:50%;">Phong ban: <b>${pdfText(r.phongBan || "")}</b></td>
-                        <td style="padding:2px 0;">Chuc danh: <b>${pdfText(r.chucDanh || "")}</b></td>
+                        <td style="padding:2px 0; width:50%;">Phòng ban: <b>${pdfText(r.phongBan || "")}</b></td>
+                        <td style="padding:2px 0;">Chức danh: <b>${pdfText(r.chucDanh || "")}</b></td>
                     </tr>
                     <tr>
-                        <td style="padding:2px 0;">Ma so nhan vien: <b>${pdfText(r.maSoNhanVien || "")}</b></td>
+                        <td style="padding:2px 0;">Mã số nhân viên: <b>${pdfText(r.maSoNhanVien || "")}</b></td>
                         <td style="padding:2px 0;">Email: <b>${pdfText(r.email || "")}</b></td>
                     </tr>
-                    <tr><td style="padding:2px 0;" colspan="2">Ngay dang ky: <b>${pdfText(formatNgayThangNam(r.ngayDangKy))}</b></td></tr>
+                    <tr><td style="padding:2px 0;" colspan="2">Ngày đăng ký: <b>${pdfText(formatNgayThangNam(r.ngayDangKy))}</b></td></tr>
                 </table>
                 <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                     <tr>
-                        <td style="padding:2px 0; width:50%;">Loai nghi phep: <b>${pdfText(r.loaiNghiPhep || "")}</b></td>
-                        <td style="padding:2px 0;">Tong so ngay nghi: <b>${pdfText(String(r.tongSoNgay || ""))}</b>${pdfText(ghiChuSoNgay)}</td>
+                        <td style="padding:2px 0; width:50%;">Loại nghỉ phép: <b>${pdfText(r.loaiNghiPhep || "")}</b></td>
+                        <td style="padding:2px 0;">Tổng số ngày nghỉ: <b>${pdfText(String(r.tongSoNgay || ""))}</b>${pdfText(ghiChuSoNgay)}</td>
                     </tr>
-                    <tr><td style="padding:2px 0;" colspan="2">Thoi gian nghi: <b>Tu ${pdfText(formatNgayThangNam(r.tuNgay))} den ${pdfText(formatNgayThangNam(r.denNgay))}</b></td></tr>
+                    <tr><td style="padding:2px 0;" colspan="2">Thời gian nghỉ: <b>Từ ${pdfText(formatNgayThangNam(r.tuNgay))} đến ${pdfText(formatNgayThangNam(r.denNgay))}</b></td></tr>
                 </table>
-                <p>Ly do nghi phep: <b>${pdfText(r.lyDoNghiPhep || "(khong ghi)")}</b></p>
-                ${r.fileName ? `<p>File dinh kem: <b>${pdfText(r.fileName)}</b></p>` : ""}
-                <p style="margin-top:6px;">Trang thai chung cua don: <b style="color:${statusColor};">${pdfText(r.trangThaiChung || "")}</b></p>
+                <p>Lý do nghỉ phép: <b>${pdfText(r.lyDoNghiPhep || "(không ghi)")}</b></p>
+                ${r.fileName ? `<p>File đính kèm: <b>${pdfText(r.fileName)}</b></p>` : ""}
+                <p style="margin-top:6px;">Trạng thái chung của đơn: <b style="color:${statusColor};">${pdfText(r.trangThaiChung || "")}</b></p>
 
-                <p style="margin-top:18px; font-weight:bold;">Xac nhan cua nguoi phe duyet:</p>
+                <p style="margin-top:18px; font-weight:bold;">Xác nhận của người phê duyệt:</p>
                 <table style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
                         <tr style="background:#f0f0f0;">
                             <th style="border:1px solid #333; padding:6px;">STT</th>
-                            <th style="border:1px solid #333; padding:6px;">Ho ten</th>
+                            <th style="border:1px solid #333; padding:6px;">Họ tên</th>
                             <th style="border:1px solid #333; padding:6px;">Email</th>
-                            <th style="border:1px solid #333; padding:6px;">Xac nhan</th>
-                            <th style="border:1px solid #333; padding:6px;">Thoi gian xac nhan</th>
-                            <th style="border:1px solid #333; padding:6px;">Ghi chu/Ly do</th>
+                            <th style="border:1px solid #333; padding:6px;">Xác nhận</th>
+                            <th style="border:1px solid #333; padding:6px;">Thời gian xác nhận</th>
+                            <th style="border:1px solid #333; padding:6px;">Ghi chú/Lý do</th>
                         </tr>
                     </thead>
                     <tbody>${approverRows}</tbody>
@@ -6206,13 +6212,13 @@
                     <tr>
                         <td style="width:50%;"></td>
                         <td style="width:50%; text-align:center;">
-                            <div>Nguoi lam don</div>
+                            <div>Người làm đơn</div>
                             <div style="height:70px;"></div>
                             <div style="font-weight:bold;">${pdfText(r.hoTen || "")}</div>
                         </td>
                     </tr>
                 </table>
-                <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Don duoc xuat tu dong tu He thong quan ly nhan su - Ma don: ${pdfText(r.id || "")}</p>
+                <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Đơn được xuất tự động từ Hệ thống quản lý nhân sự - Mã đơn: ${pdfText(r.id || "")}</p>
             </div>`;
 
             let container = document.createElement("div");
@@ -6224,18 +6230,53 @@
 
             try {
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF("p", "pt", "a4");
-                await doc.html(container.firstElementChild, {
-                    x: 20, y: 20, width: 555, windowWidth: 800,
-                    callback: function (docInner) {
-                        let fileName = "DonNghiPhep_" + boDauTiengViet(r.hoTen || "").trim().replace(/\s+/g, "_") + "_" + r.id + ".pdf";
-                        docInner.save(fileName);
-                        if (container.parentNode) document.body.removeChild(container);
-                    }
+
+                // [SỬA LỖI FONT TIẾNG VIỆT CÓ DẤU] Trước đây dùng doc.html(...) — dù đã nạp
+                // html2canvas nhưng jsPDF vẫn tự tính lại vị trí TỪNG KÝ TỰ bằng font nội bộ mặc
+                // định (Helvetica, không có bảng chữ tiếng Việt), khiến dấu bị lệch/chồng lên chữ
+                // cái ("Thích" -> "T h í c h" lệch dấu, "QUẢNG NGÃI" -> "QU Đ NGÃI"...).
+                // Nay đổi cách làm: DÙNG html2canvas CHỤP LẠI TOÀN BỘ mẫu đơn thành 1 ẢNH (đúng y
+                // hệt những gì trình duyệt hiển thị, kể cả dấu tiếng Việt), rồi nhúng ảnh đó thẳng
+                // vào PDF bằng doc.addImage(...) — không còn qua bước "vẽ lại chữ" của jsPDF nữa
+                // nên không thể lỗi font. Nếu nội dung dài hơn 1 trang A4 thì tự tách ảnh sang
+                // trang kế tiếp.
+                const canvas = await html2canvas(container.firstElementChild, {
+                    scale: 2, useCORS: true, backgroundColor: "#ffffff"
                 });
+                const imgData = canvas.toDataURL("image/png");
+
+                const doc = new jsPDF("p", "pt", "a4");
+                const margin = 20;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const usableWidth = pageWidth - margin * 2;
+                const usableHeight = pageHeight - margin * 2;
+                const imgWidth = usableWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                if (imgHeight <= usableHeight) {
+                    doc.addImage(imgData, "PNG", margin, margin, imgWidth, imgHeight);
+                } else {
+                    // Nội dung dài hơn 1 trang: cắt ảnh sang nhiều trang, mỗi trang lùi ảnh lên
+                    // đúng phần đã hiển thị ở (các) trang trước.
+                    let heightLeft = imgHeight;
+                    let renderedHeight = 0;
+                    let isFirstPage = true;
+                    while (heightLeft > 0) {
+                        if (!isFirstPage) doc.addPage();
+                        doc.addImage(imgData, "PNG", margin, margin - renderedHeight, imgWidth, imgHeight);
+                        renderedHeight += usableHeight;
+                        heightLeft -= usableHeight;
+                        isFirstPage = false;
+                    }
+                }
+
+                let fileName = "DonNghiPhep_" + boDauTiengViet(r.hoTen || "").trim().replace(/\s+/g, "_") + "_" + r.id + ".pdf";
+                doc.save(fileName);
             } catch (err) {
                 console.error(err);
                 alert("Có lỗi khi xuất PDF!");
+            } finally {
                 if (container.parentNode) document.body.removeChild(container);
             }
         }
