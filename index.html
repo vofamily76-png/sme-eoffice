@@ -1989,7 +1989,7 @@
                          "updateMyTaskStatus". -->
                     <option value="Không hoàn thành">Không hoàn thành</option>
                 </select>
-                <small style="color:#888;">Chọn "Không hoàn thành" rồi bấm "Cập nhật" sẽ ĐÓNG công việc lại (giống như khi chọn "Hoàn thành") — sau đó không thể cập nhật thêm.</small>
+                <small style="color:#888;">Chọn "Không hoàn thành" rồi bấm "Cập nhật" sẽ ĐÓNG công việc lại (giống như khi chọn "Hoàn thành") — sau đó không thể cập nhật thêm. Đổi Trạng thái cần nhập kèm "Mô tả / Nội dung báo cáo" bên dưới.</small>
             </div>
 
             <!-- [MỤC "MÔ TẢ" - NỘI DUNG BÁO CÁO CỦA NGƯỜI NHẬN] Người nhận việc gõ nhận xét/nội
@@ -2002,21 +2002,24 @@
             <div class="input-group">
                 <label>Mô tả / Nội dung báo cáo <span style="color:#d9534f;">*</span></label>
                 <textarea id="nvd-noidung" rows="3" placeholder="Nhập nội dung báo cáo, nhận xét về tiến độ công việc..." oninput="nvdUpdateProgressLockState()" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-family:inherit; resize:vertical;"></textarea>
-                <small style="color:#888;">Bắt buộc nhập nội dung ở đây <b>và</b> đính kèm ít nhất 1 file báo cáo bên dưới thì mới được phép điều chỉnh ô "Tiến độ (%)".</small>
+                <!-- [CẬP NHẬT] Trước đây bắt buộc nhập nội dung VÀ đính kèm file mới được đổi Tiến
+                     độ. Nay CHỈ còn bắt buộc nhập nội dung ở đây; đính kèm file là TÙY CHỌN (xem
+                     nvdUpdateProgressLockState() và server: action "updateMyTaskStatus"). -->
+                <small style="color:#888;">Bắt buộc nhập nội dung ở đây khi bạn đổi Trạng thái hoặc điều chỉnh ô "Tiến độ (%)". Đính kèm file báo cáo là tùy chọn (không bắt buộc).</small>
             </div>
             <div class="input-group">
                 <label>Cập nhật tiến độ (%)</label>
                 <input type="number" id="nvd-tiendo" min="0" max="100" placeholder="0 - 100" disabled>
-                <small id="nvd-tiendo-lock-hint" style="color:#d9534f;"><i class="fa-solid fa-lock"></i> Nhập nội dung báo cáo và đính kèm file để mở khóa chỉnh tiến độ.</small>
+                <small id="nvd-tiendo-lock-hint" style="color:#d9534f;"><i class="fa-solid fa-lock"></i> Nhập nội dung báo cáo để mở khóa chỉnh tiến độ.</small>
             </div>
             <div class="input-group">
                 <label>File đính kèm hiện có</label>
                 <div id="nvd-current-files" style="font-size:13px;"></div>
             </div>
             <div class="input-group">
-                <label>Đính kèm thêm file báo cáo (có thể chọn nhiều)</label>
+                <label>Đính kèm thêm file báo cáo (có thể chọn nhiều, không bắt buộc)</label>
                 <input type="file" id="nvd-file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip,.rar" onchange="nvdUpdateProgressLockState()">
-                <small style="color:#888;">Giới hạn 15MB/file. File cũ của người giao việc KHÔNG bị mất, file mới chỉ được thêm vào.</small>
+                <small style="color:#888;">Giới hạn 15MB/file. File cũ của người giao việc KHÔNG bị mất, file mới chỉ được thêm vào. Không bắt buộc phải đính kèm file.</small>
             </div>
             <div id="nvd-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
             <div id="nvd-done-hint" style="display:none; color:#2e7d32; background:#eaf5ea; border-radius:8px; padding:8px 12px; font-size:13px; margin-bottom:10px;">
@@ -6515,10 +6518,26 @@
         // giao việc phê duyệt (xem updateMyTaskStatus() bên dưới, action "updateMyTaskStatus" ở
         // Code.gs) — KHÔNG có hiệu lực ngay. Hiện rõ thông báo để người dùng không nhầm tưởng đã
         // đổi trạng thái thành công ngay lập tức.
+        // [CẬP NHẬT] Đổi Trạng thái (kể cả ở ô chọn nhanh này) BẮT BUỘC phải có Nội dung báo cáo
+        // đi kèm (KHÔNG bắt buộc file) — xem điều kiện tương ứng ở server, action
+        // "updateMyTaskStatus" trong Code.gs. Vì ô chọn nhanh này không có sẵn khung nhập nội
+        // dung như trong modal chi tiết, dùng prompt() để hỏi ngay tại chỗ (giống cơ chế "Không
+        // đồng ý" ở nghỉ phép). Nếu người dùng bấm Hủy hoặc để trống, HỦY yêu cầu và khôi phục lại
+        // giá trị Trạng thái cũ trên dropdown (không gửi gì lên server).
         async function handleQuickNvStatusChange(id, newVal) {
-            let ok = await updateMyTaskStatus(id, newVal, undefined);
+            let noiDung = prompt("Nhập Nội dung báo cáo cho lần cập nhật Trạng thái này (bắt buộc):", "");
+            if (noiDung === null) { renderMyTaskTable(); return; } // người dùng bấm Hủy -> khôi phục dropdown
+            noiDung = noiDung.trim();
+            if (!noiDung) {
+                alert("Bạn cần nhập Nội dung báo cáo trước khi đổi Trạng thái.");
+                renderMyTaskTable(); // khôi phục dropdown về giá trị cũ
+                return;
+            }
+            let ok = await updateMyTaskStatus(id, newVal, undefined, undefined, noiDung);
             if (ok) {
                 alert("✔️ Đã gửi yêu cầu đổi trạng thái, đang chờ người giao việc phê duyệt.");
+            } else {
+                renderMyTaskTable(); // thất bại -> khôi phục dropdown về giá trị cũ
             }
         }
 
@@ -6635,18 +6654,18 @@
         }
 
         // [MỤC "MÔ TẢ" - KHÓA/MỞ KHÓA Ô TIẾN ĐỘ] Người nhận việc chỉ được sửa ô "Tiến độ (%)"
-        // khi ĐÃ nhập nội dung vào "Mô tả / Nội dung báo cáo" VÀ đã chọn ít nhất 1 file đính kèm.
-        // Đây là ràng buộc ở GIAO DIỆN để hướng dẫn người dùng; ràng buộc THẬT SỰ (không thể bị
-        // vượt qua) nằm ở SERVER, xem action "updateMyTaskStatus" trong Code.gs.
+        // khi ĐÃ nhập nội dung vào "Mô tả / Nội dung báo cáo". [CẬP NHẬT] Trước đây còn bắt buộc
+        // phải chọn thêm ít nhất 1 file đính kèm mới mở khóa được; nay đã BỎ điều kiện file — chỉ
+        // còn cần nội dung báo cáo, file đính kèm là tùy chọn. Đây là ràng buộc ở GIAO DIỆN để
+        // hướng dẫn người dùng; ràng buộc THẬT SỰ (không thể bị vượt qua) nằm ở SERVER, xem action
+        // "updateMyTaskStatus" trong Code.gs.
         let nvdOriginalTienDo = 0;
         let nvdOriginalTrangThai = "";
         function nvdUpdateProgressLockState() {
             let noidung = (document.getElementById("nvd-noidung")?.value || "").trim();
-            let fileInput = document.getElementById("nvd-file");
-            let hasFile = !!(fileInput && fileInput.files && fileInput.files.length);
             let tienDoInput = document.getElementById("nvd-tiendo");
             let lockHint = document.getElementById("nvd-tiendo-lock-hint");
-            let unlocked = !!noidung && hasFile;
+            let unlocked = !!noidung;
             tienDoInput.disabled = !unlocked;
             if (!unlocked) tienDoInput.value = nvdOriginalTienDo; // chưa đủ điều kiện -> giữ nguyên giá trị cũ
             if (lockHint) lockHint.style.display = unlocked ? "none" : "block";
@@ -6689,9 +6708,10 @@
             }
 
             // [MỤC "MÔ TẢ" - ĐIỀU KIỆN BẮT BUỘC ĐỂ ĐỔI TIẾN ĐỘ] Chỉ gửi kèm giá trị Tiến độ mới
-            // khi ô đó đang MỞ KHÓA (đã nhập nội dung báo cáo + đính kèm file) VÀ giá trị thực sự
-            // thay đổi so với ban đầu; nếu không, KHÔNG gửi tienDo lên server (tránh việc gửi giá
-            // trị cũ giữ nguyên nhưng vẫn bị hiểu nhầm là "yêu cầu đổi tiến độ").
+            // khi ô đó đang MỞ KHÓA (đã nhập nội dung báo cáo — [CẬP NHẬT] không còn bắt buộc phải
+            // đính kèm file nữa) VÀ giá trị thực sự thay đổi so với ban đầu; nếu không, KHÔNG gửi
+            // tienDo lên server (tránh việc gửi giá trị cũ giữ nguyên nhưng vẫn bị hiểu nhầm là
+            // "yêu cầu đổi tiến độ").
             let tienDoInput = document.getElementById("nvd-tiendo");
             let tienDo = undefined;
             if (!tienDoInput.disabled) {
@@ -6700,8 +6720,19 @@
                 if (candidate !== nvdOriginalTienDo) tienDo = candidate;
             }
 
-            if (tienDo === undefined && !noiDungBaoCao && trangThai === nvdOriginalTrangThai) {
+            let trangThaiChanged = trangThai !== nvdOriginalTrangThai;
+
+            if (tienDo === undefined && !noiDungBaoCao && !trangThaiChanged) {
                 errEl.textContent = "Chưa có thay đổi nào để cập nhật.";
+                errEl.style.display = "block";
+                return;
+            }
+
+            // [CẬP NHẬT] Đổi Trạng thái HOẶC đổi Tiến độ đều bắt buộc phải có Nội dung báo cáo đi
+            // kèm (KHÔNG còn bắt buộc file) — kiểm tra này chỉ để báo lỗi sớm, thân thiện ở GIAO
+            // DIỆN; ràng buộc THẬT SỰ nằm ở SERVER, xem action "updateMyTaskStatus" trong Code.gs.
+            if ((trangThaiChanged || tienDo !== undefined) && !noiDungBaoCao) {
+                errEl.textContent = "Bạn cần nhập Nội dung báo cáo trước khi đổi Trạng thái hoặc Tiến độ.";
                 errEl.style.display = "block";
                 return;
             }
@@ -6711,7 +6742,7 @@
                 alert("✔️ Đã gửi yêu cầu cập nhật, đang chờ người giao việc phê duyệt (bấm \"Đồng ý\"/\"Không đồng ý\").");
                 closeNvDetailModal();
             } else {
-                errEl.textContent = "Không thể cập nhật (kiểm tra kết nối mạng, hoặc bạn chưa nhập nội dung báo cáo + đính kèm file khi muốn đổi Tiến độ).";
+                errEl.textContent = "Không thể cập nhật (kiểm tra kết nối mạng, hoặc bạn chưa nhập Nội dung báo cáo khi muốn đổi Trạng thái/Tiến độ).";
                 errEl.style.display = "block";
             }
         }
