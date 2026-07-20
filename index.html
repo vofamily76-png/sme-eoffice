@@ -7412,6 +7412,25 @@
             }
 
             let deptOptions = '<option value="Tất cả">-- Tất cả phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+            // [DANH BẠ CBCNV - SỐ LƯỢNG NHÂN VIÊN THEO PHÒNG BAN] Đếm số nhân viên ĐANG LÀM VIỆC
+            // của từng phòng ban (dùng đúng quy tắc khớp phòng ban giống hệt filterStaffGrid():
+            // s.dept có thể là mảng (nhiều phòng ban) hoặc chuỗi (1 phòng ban), và luôn loại trừ
+            // nhân viên đã nghỉ việc workStatus === "OFF"). Chỉ dùng để HIỂN THỊ số lượng bên cạnh
+            // tên phòng ban trong ô lọc — không đọc/ghi/thay đổi bất kỳ dữ liệu nào của staffData.
+            let activeStaffCountByDept = {};
+            staffData.forEach(s => {
+                if (s.workStatus === "OFF") return;
+                let sDepts = Array.isArray(s.dept) ? s.dept : [s.dept];
+                sDepts.forEach(sd => {
+                    if (!sd) return;
+                    activeStaffCountByDept[sd] = (activeStaffCountByDept[sd] || 0) + 1;
+                });
+            });
+            let activeStaffTotalCount = staffData.filter(s => s.workStatus !== "OFF").length;
+            let deptOptionsWithCount = '<option value="Tất cả">-- Tất cả phòng ban -- (' + activeStaffTotalCount + ')</option>' +
+                depts.map(d => `<option value="${d}">${d} (${activeStaffCountByDept[d] || 0})</option>`).join('');
+
             // [DANH BẠ CBCNV] Thêm mục riêng "Nhân viên nghỉ việc" vào ô lọc phòng ban của tab
             // Danh bạ CBCNV — chỉ áp dụng cho ô lọc này (filter-dept), KHÔNG áp dụng cho ô lọc
             // phòng ban của Tab "Quản Lý Nhân Sự" (filter-hr-dept) vì tab đó đã có sẵn ô lọc
@@ -7422,7 +7441,14 @@
             let resignedFilterOption = currentUserCanViewResignedContacts
                 ? '<option value="__RESIGNED__">-- Nhân viên nghỉ việc --</option>'
                 : '';
-            document.getElementById("filter-dept").innerHTML = deptOptions + resignedFilterOption;
+            // [CHỈ ÁP DỤNG CHO TAB DANH BẠ CBCNV] Dùng deptOptionsWithCount (có kèm số lượng nhân
+            // viên) riêng cho ô lọc filter-dept. Ô lọc filter-hr-dept ở tab Quản Lý Nhân Sự vẫn
+            // dùng deptOptions (không đổi) để giữ nguyên giao diện/hành vi cũ của tab đó.
+            let keepFilterDeptValue = document.getElementById("filter-dept").value;
+            document.getElementById("filter-dept").innerHTML = deptOptionsWithCount + resignedFilterOption;
+            if (keepFilterDeptValue && document.getElementById("filter-dept").querySelector(`option[value="${CSS.escape(keepFilterDeptValue)}"]`)) {
+                document.getElementById("filter-dept").value = keepFilterDeptValue;
+            }
             let hrDeptSel = document.getElementById("filter-hr-dept");
             if (hrDeptSel) hrDeptSel.innerHTML = deptOptions;
             // [XUẤT EXCEL] Select chọn phòng ban cụ thể khi xuất (chỉ hiện khi phạm vi = "dept").
