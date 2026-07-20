@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+a<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -288,6 +288,11 @@
         .chip-removable { display: inline-flex; align-items: center; gap: 8px; background: #e2e8f0; padding: 5px 8px 5px 12px; border-radius: 20px; margin-right: 6px; margin-bottom: 8px; font-size: 13px; color: #333; }
         .chip-removable .chip-remove-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #d9534f; color: #fff; font-size: 11px; cursor: pointer; line-height: 1; transition: 0.2s; flex-shrink: 0; }
         .chip-removable .chip-remove-btn:hover { background: #a83a37; transform: scale(1.1); }
+        /* [SỬA (ĐỔI TÊN) DANH MỤC PHÒNG BAN/ĐỘI TÀU] Nút bút chì, cùng kích thước/phong cách
+           với nút xóa (chip-remove-btn) ở trên nhưng dùng màu xanh dương để phân biệt hành động
+           SỬA (không phá hủy dữ liệu) với hành động XÓA (màu đỏ). */
+        .chip-removable .chip-edit-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #337ab7; color: #fff; font-size: 10px; cursor: pointer; line-height: 1; transition: 0.2s; flex-shrink: 0; }
+        .chip-removable .chip-edit-btn:hover { background: #285a8f; transform: scale(1.1); }
         .chip-empty-text { color: #999; font-size: 13px; padding: 6px 0; display: block; }
         .chip-dept { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; font-size: 11px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; display: inline-block; margin-top: 4px;}
 
@@ -7505,7 +7510,8 @@
                 deptListEl.innerHTML = depts.length
                     ? depts.map((d, i) => `
                         <span class="chip-removable">
-                            ${d}
+                            ${escapeHtml(d)}
+                            <span class="chip-edit-btn" onclick="renameDept(${i})" title="Sửa tên phòng ban này"><i class="fa-solid fa-pen"></i></span>
                             <span class="chip-remove-btn" onclick="deleteDept(${i})" title="Xóa phòng ban này"><i class="fa-solid fa-xmark"></i></span>
                         </span>
                     `).join('')
@@ -7517,7 +7523,8 @@
                 vesselListEl.innerHTML = vessels.length
                     ? vessels.map((v, i) => `
                         <span class="chip-removable">
-                            ${v}
+                            ${escapeHtml(v)}
+                            <span class="chip-edit-btn" onclick="renameVessel(${i})" title="Sửa tên tàu này"><i class="fa-solid fa-pen"></i></span>
                             <span class="chip-remove-btn" onclick="deleteVessel(${i})" title="Xóa tàu này"><i class="fa-solid fa-xmark"></i></span>
                         </span>
                     `).join('')
@@ -9471,6 +9478,46 @@
             }
         }
 
+        // [CÀI ĐẶT HỆ THỐNG - SỬA (ĐỔI TÊN) PHÒNG BAN] Cho phép Admin đổi tên 1 phòng ban đã có
+        // sẵn mà KHÔNG làm mất dữ liệu: gọi action riêng "renameDept" ở server — server sẽ tự
+        // cập nhật tên mới trong danh mục VÀ cascade sang mọi nhân sự/thiết bị đang gắn với tên
+        // cũ (xem chi tiết trong Code.gs, action "renameDept"). Sau khi server xác nhận thành
+        // công, cập nhật lại NGAY dữ liệu đang có sẵn trên trình duyệt (depts, staffData,
+        // equipmentData) để giao diện phản ánh đúng tên mới mà không cần tải lại trang.
+        async function renameDept(index) {
+            let oldName = depts[index];
+            let newName = prompt("Sửa tên phòng ban:", oldName);
+            if (newName === null) return; // Bấm Hủy -> không làm gì cả.
+            newName = newName.trim();
+            if (!newName || newName === oldName) return;
+            if (depts.some((d, i) => i !== index && d === newName)) {
+                alert("Đã có phòng ban khác trùng tên này. Vui lòng chọn tên khác.");
+                return;
+            }
+            let ok = await pushToCloud({ action: "renameDept", oldName: oldName, newName: newName });
+            if (!ok) return;
+
+            // Cập nhật danh mục phòng ban.
+            depts[index] = newName;
+
+            // Cascade cập nhật NGAY trên dữ liệu đang có sẵn ở trình duyệt, đúng như server vừa
+            // cascade trên Google Sheet — để tên phòng ban của nhân sự/thiết bị hiện có không bị
+            // "lệch" với tên mới cho tới lần đồng bộ lại kế tiếp.
+            staffData.forEach(s => {
+                if (Array.isArray(s.dept)) {
+                    s.dept = s.dept.map(d => d === oldName ? newName : d);
+                } else if (s.dept === oldName) {
+                    s.dept = newName;
+                }
+            });
+            equipmentData.forEach(e => {
+                if (e.dept === oldName) e.dept = newName;
+            });
+
+            saveLocalCache();
+            updateSystemData();
+        }
+
         async function addVessel() {
             let val = document.getElementById("inp-new-vessel").value.trim();
             if (val && !vessels.includes(val)) {
@@ -9489,6 +9536,32 @@
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
                 updateSystemData();
             }
+        }
+
+        // [CÀI ĐẶT HỆ THỐNG - SỬA (ĐỔI TÊN) ĐỘI TÀU] Y hệt renameDept() ở trên nhưng áp dụng
+        // cho danh mục Đội tàu SME: gọi action riêng "renameVessel" ở server (đổi tên trong danh
+        // mục + cascade sang thuyền viên đang gắn với tàu đó), rồi cập nhật lại NGAY crewData
+        // đang có sẵn trên trình duyệt để giao diện phản ánh đúng tên mới.
+        async function renameVessel(index) {
+            let oldName = vessels[index];
+            let newName = prompt("Sửa tên tàu:", oldName);
+            if (newName === null) return; // Bấm Hủy -> không làm gì cả.
+            newName = newName.trim();
+            if (!newName || newName === oldName) return;
+            if (vessels.some((v, i) => i !== index && v === newName)) {
+                alert("Đã có tàu khác trùng tên này. Vui lòng chọn tên khác.");
+                return;
+            }
+            let ok = await pushToCloud({ action: "renameVessel", oldName: oldName, newName: newName });
+            if (!ok) return;
+
+            vessels[index] = newName;
+            crewData.forEach(c => {
+                if (c.vessel === oldName) c.vessel = newName;
+            });
+
+            saveLocalCache();
+            updateSystemData();
         }
 
         function normalizeAppUrl(url) {
