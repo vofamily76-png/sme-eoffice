@@ -1390,26 +1390,42 @@
                             <small style="color:#888; margin-top:4px; display:block;">* Thứ 7 và Chủ nhật không được tự động tính vào ngày nghỉ phép; hệ thống chỉ tính các ngày Thứ 2 đến Thứ 6 trong khoảng đã chọn.</small>
                             <small id="np-quota-hint" style="color:#888; margin-top:4px; display:block;"></small>
                         </div>
-                        <div class="input-group">
+                        <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Loại nghỉ phép *</label>
+                            <!-- [DANH MỤC LOẠI NGHỈ PHÉP] Cập nhật theo Bảng 1 "Danh mục loại công/nghỉ" (file mẫu)
+                                 — CHỈ giữ lại 2 nhóm "Nghỉ phép" và "Nghỉ chế độ" (đúng bản chất của "Đơn xin
+                                 nghỉ phép"); các nhóm "Công tác", "Làm ngoài giờ (OT)", "Làm việc từ xa" đã được
+                                 BỎ khỏi danh sách chọn theo yêu cầu — những loại đó có tính chất khác (đi công
+                                 tác/OT/WFH) nên không thuộc phạm vi đơn xin NGHỈ PHÉP này. Giá trị lưu vẫn giữ
+                                 đúng định dạng cũ "Mã - Tên" nên KHÔNG ảnh hưởng gì tới dữ liệu/đơn đã lưu trước
+                                 đây; đơn cũ (kể cả những đơn từng chọn N1-N7/WFH trước đó, nếu có) vẫn hiển thị
+                                 bình thường ở bảng bên dưới, chỉ là các lựa chọn đó không còn xuất hiện trong
+                                 danh sách chọn cho đơn MỚI. Mã "ML" (Kết hôn) vẫn giữ riêng biệt (tách khỏi "Tang
+                                 chế") để không phá vỡ đúng quy tắc tính công "3 ngày đầu không trừ phép" đã có
+                                 sẵn ở server (xem npTinhSoNgayTruPhep()/Code.gs). -->
                             <select id="inp-np-loai" onchange="npCapNhatGhiChuLoai()">
-                                <option value="AL - Nghỉ phép">AL - Nghỉ phép</option>
-                                <option value="PH - Nghỉ lễ">PH - Nghỉ lễ</option>
-                                <option value="ML - Kết hôn">ML - Kết hôn</option>
-                                <option value="SL - Nghỉ bệnh">SL - Nghỉ bệnh</option>
-                                <option value="OIL - Nghỉ bù ngày">OIL - Nghỉ bù ngày</option>
-                                <option value="UL - Việc riêng không lương">UL - Việc riêng không lương</option>
-                                <option value="MT - Nghỉ thai sản">MT - Nghỉ thai sản</option>
-                                <option value="CL - Nghỉ tang lễ">CL - Nghỉ tang lễ</option>
+                                <optgroup label="Nghỉ phép">
+                                    <option value="AL - Nghỉ phép năm">AL - Nghỉ phép năm</option>
+                                    <option value="CL - Nghỉ bù">CL - Nghỉ bù</option>
+                                    <option value="UL - Nghỉ không lương / việc riêng">UL - Nghỉ không lương / việc riêng</option>
+                                </optgroup>
+                                <optgroup label="Nghỉ chế độ">
+                                    <option value="ML - Nghỉ kết hôn">ML - Nghỉ kết hôn</option>
+                                    <option value="TC - Nghỉ tang chế (hiếu sự)">TC - Nghỉ tang chế (hiếu sự)</option>
+                                    <option value="SI - Nghỉ thai sản/ nghỉ vợ sinh/ nghỉ ốm/ nghỉ con ốm (nghỉ hưởng BHXH)">SI - Nghỉ thai sản/ nghỉ vợ sinh/ nghỉ ốm/ nghỉ con ốm (nghỉ hưởng BHXH)</option>
+                                </optgroup>
                             </select>
-                            <small id="np-loai-note" style="color:#c0392b; margin-top:4px; display:none;">* ML - Kết hôn: 3 ngày đầu KHÔNG trừ vào phép năm; nếu nghỉ quá 3 ngày, số ngày dư ra (tính từ ngày nghỉ thứ 4 trở đi) mới bị trừ vào phép năm.</small>
+                            <!-- [THÔNG TIN NHANH THEO LOẠI ĐÃ CHỌN] 1 dòng gợi ý duy nhất, đủ 3 thông tin chính
+                                 (Lương / Trừ phép năm / File đính kèm) — không phát sinh thêm ô nhập liệu nào
+                                 khác, giữ giao diện gọn nhưng đầy đủ thông tin để người dùng chọn đúng. -->
+                            <small id="np-loai-note" style="margin-top:6px; display:block; line-height:1.5;"></small>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Lý do nghỉ phép</label>
                             <textarea id="inp-np-lydo" rows="3" placeholder="Nêu rõ lý do xin nghỉ phép..."></textarea>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>File đính kèm (tùy chọn) <small style="font-weight:normal; color:#888;">(VD: giấy khám bệnh, giấy tờ minh chứng...)</small></label>
+                            <label id="np-file-label">File đính kèm (tùy chọn) <small style="font-weight:normal; color:#888;">(VD: giấy khám bệnh, giấy tờ minh chứng...)</small></label>
                             <input type="file" id="inp-np-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
                             <span id="np-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
                         </div>
@@ -5580,17 +5596,39 @@
         // liệu hay cơ chế bảo mật của các tab khác trong hệ thống.
         // ============================================================================
 
-        // Nhãn hiển thị đầy đủ cho từng mã Loại nghỉ phép (dùng khi hiển thị bảng).
+        // Nhãn hiển thị đầy đủ cho từng mã Loại nghỉ phép (dùng khi hiển thị bảng). Giữ lại cả
+        // các mã CŨ (PH/SL/OIL/MT/CL-cũ...) để những đơn đã lưu TRƯỚC ĐÂY vẫn tra cứu/hiển thị
+        // đúng nhãn — KHÔNG xóa dữ liệu hay đổi mã của đơn cũ, chỉ danh sách chọn cho đơn MỚI
+        // (xem <select id="inp-np-loai">) là đã cập nhật theo Bảng 1 "Danh mục loại công/nghỉ".
         const LEAVE_TYPE_LABELS = {
-            "AL": "AL - Nghỉ phép", "PH": "PH - Nghỉ lễ", "ML": "ML - Kết hôn", "SL": "SL - Nghỉ bệnh",
-            "OIL": "OIL - Nghỉ bù ngày", "UL": "UL - Việc riêng không lương",
-            "MT": "MT - Nghỉ thai sản", "CL": "CL - Nghỉ tang lễ"
+            "AL": "AL - Nghỉ phép năm", "UL": "UL - Nghỉ không lương / việc riêng", "CL": "CL - Nghỉ bù",
+            "ML": "ML - Nghỉ kết hôn", "TC": "TC - Nghỉ tang chế (hiếu sự)", "SI": "SI - Nghỉ thai sản/ nghỉ vợ sinh/ nghỉ ốm/ nghỉ con ốm (nghỉ hưởng BHXH)",
+            "N1": "N1 - Công tác trong nước", "N2": "N2 - Công tác nước ngoài", "N3": "N3 - Đi biển theo tàu (BP Kỹ thuật)",
+            "N4": "N4 - OT ngày cuối tuần", "N5": "N5 - OT ngày lễ",
+            "N6": "N6 - Công tác trong nước ngày nghỉ/lễ (OT)", "N7": "N7 - Công tác nước ngoài ngày nghỉ/lễ (OT)",
+            "WFH": "WFH - Làm việc từ xa (Work from home)",
+            // Mã CŨ (giữ lại chỉ để hiển thị đúng nhãn cho đơn đã lưu trước khi cập nhật danh mục)
+            "PH": "PH - Nghỉ lễ", "SL": "SL - Nghỉ bệnh", "OIL": "OIL - Nghỉ bù ngày", "MT": "MT - Nghỉ thai sản"
+        };
+
+        // [DANH MỤC LOẠI NGHỈ PHÉP] Thông tin nghiệp vụ cho từng mã, lấy từ Bảng 1 "Danh mục loại
+        // công/nghỉ" (file Excel mẫu): Có lương hay không, có trừ vào phép năm hay không, có bắt
+        // buộc đính kèm file hay không. Dùng để hiển thị 1 dòng gợi ý gọn ở dưới ô chọn "Loại nghỉ
+        // phép" (npCapNhatGhiChuLoai) — KHÔNG tạo thêm ô nhập liệu nào khác trên form.
+        const LEAVE_TYPE_CATALOG = {
+            "AL": { paid: true,  deduct: "full",    file: false, note: "Trừ vào quỹ phép năm còn lại." },
+            "CL": { paid: true,  deduct: "none",    file: false, note: "Chỉ được duyệt nếu còn dư quỹ giờ làm OT để đổi thành nghỉ bù." },
+            "UL": { paid: false, deduct: "none",    file: false, note: "Không trừ phép năm nhưng sẽ bị trừ lương tương ứng số ngày nghỉ." },
+            "ML": { paid: true,  deduct: "partial3",file: true,  note: "3 ngày đầu KHÔNG trừ phép năm; từ ngày nghỉ thứ 4 trở đi mới bị trừ. Đính kèm giấy đăng ký kết hôn/thiệp cưới." },
+            "TC": { paid: true,  deduct: "none",    file: true,  note: "Đính kèm giấy chứng tử hoặc giấy tờ liên quan." },
+            "SI": { paid: false, deduct: "none",    file: true,  note: "Áp dụng cho nghỉ thai sản, nghỉ vợ sinh, nghỉ ốm, nghỉ con ốm. Công ty không trả lương (BHXH chi trả). Bắt buộc đính kèm giấy viện phí/giấy chứng sinh/giấy ra viện..." }
         };
 
         // Tự điền sẵn Ngày đăng ký (hôm nay) + Họ tên/Phòng ban/Chức danh/MSNV/Email lấy từ hồ
         // sơ nhân sự đã liên kết với tài khoản đang đăng nhập (nếu có) — người dùng vẫn có thể
         // tự sửa lại mọi trường, đây chỉ là gợi ý giúp đỡ thao tác nhập liệu.
         function prefillLeaveRequestForm() {
+            npCapNhatGhiChuLoai();
             let ngayDangKyEl = document.getElementById("inp-np-ngaydangky");
             if (ngayDangKyEl && !ngayDangKyEl.value) {
                 ngayDangKyEl.value = new Date().toISOString().slice(0, 10);
@@ -5674,10 +5712,47 @@
             }
         }
 
-        // Hiện/ẩn ghi chú riêng cho "ML - Kết hôn" (3 ngày đầu không trừ phép).
+        // Hiện 1 dòng gợi ý gọn ngay dưới ô "Loại nghỉ phép" cho biết: có lương hay không, có
+        // trừ vào phép năm hay không, có cần đính kèm file hay không — giúp người dùng chọn
+        // đúng loại mà không cần thêm ô nhập liệu nào khác trên form. Đồng thời cập nhật nhãn
+        // ô "File đính kèm" thành "Bắt buộc" (chỉ đổi CHỮ hiển thị, KHÔNG chặn gửi đơn — người
+        // duyệt vẫn là người quyết định cuối cùng có chấp nhận đơn thiếu file hay không).
         function npCapNhatGhiChuLoai() {
             let loai = document.getElementById("inp-np-loai").value;
-            document.getElementById("np-loai-note").style.display = loai.indexOf("ML") === 0 ? "block" : "none";
+            let ma = (loai.split(" - ")[0] || "").trim();
+            let info = LEAVE_TYPE_CATALOG[ma];
+            let noteEl = document.getElementById("np-loai-note");
+            let fileLabelEl = document.getElementById("np-file-label");
+
+            if (!info) { noteEl.innerHTML = ""; return; }
+
+            let parts = [];
+            parts.push(info.paid
+                ? '<span style="color:#2e7d32;">💰 Có lương</span>'
+                : '<span style="color:#c62828;">🚫 Không lương (công ty không trả lương ngày nghỉ này)</span>');
+
+            if (info.deduct === "full") {
+                parts.push('<span style="color:#c62828;">📉 Trừ vào phép năm</span>');
+            } else if (info.deduct === "partial3") {
+                parts.push('<span style="color:#e65100;">📉 Trừ phép năm (3 ngày đầu được miễn, từ ngày thứ 4 mới trừ)</span>');
+            } else {
+                parts.push('<span style="color:#2e7d32;">✅ Không trừ phép năm</span>');
+            }
+
+            parts.push(info.file
+                ? '<span style="color:#c62828;">📎 Bắt buộc đính kèm file minh chứng</span>'
+                : '<span style="color:#888;">📎 Không cần đính kèm file</span>');
+
+            let html = parts.join(' &nbsp;•&nbsp; ');
+            if (info.note) html += `<br><span style="color:#888;">${info.note}</span>`;
+            noteEl.innerHTML = html;
+
+            if (fileLabelEl) {
+                let baseLabel = info.file
+                    ? 'File đính kèm <b style="color:#c62828;">*</b> '
+                    : 'File đính kèm (tùy chọn) ';
+                fileLabelEl.innerHTML = baseLabel + '<small style="font-weight:normal; color:#888;">(VD: giấy khám bệnh, giấy tờ minh chứng...)</small>';
+            }
         }
 
         // [DÙNG CHUNG VỚI SERVER] Tính số ngày THỰC SỰ bị trừ vào phép năm theo Loại nghỉ phép —
@@ -5764,7 +5839,9 @@
                 if (el) el.value = "";
             });
             document.getElementById("inp-np-nuangay").checked = false;
-            document.getElementById("np-loai-note").style.display = "none";
+            let npLoaiSelect = document.getElementById("inp-np-loai");
+            if (npLoaiSelect) npLoaiSelect.selectedIndex = 0;
+            npCapNhatGhiChuLoai();
             document.querySelectorAll("#np-approver-list input:checked").forEach(i => i.checked = false);
             let npFileInput = document.getElementById("inp-np-file");
             if (npFileInput) npFileInput.value = "";
@@ -5835,6 +5912,20 @@
             if (denNgay < tuNgay) { alert("\"Đến ngày\" phải sau hoặc bằng \"Từ ngày\"."); return; }
             if (!loaiNghiPhep) { alert("Vui lòng chọn Loại nghỉ phép."); return; }
             if (!nguoiPheDuyet.length) { alert("Vui lòng chọn ít nhất 1 Người phê duyệt."); return; }
+
+            // [NHẮC ĐÍNH KÈM FILE - KHÔNG CHẶN GỬI ĐƠN] Chỉ nhắc nhở (confirm) khi loại nghỉ phép
+            // thường yêu cầu đính kèm file mà người dùng chưa chọn file mới VÀ đơn (nếu đang sửa)
+            // cũng chưa có sẵn file cũ — người dùng vẫn có thể chọn "Đồng ý" để gửi tiếp nếu thực
+            // sự không có file, quyết định cuối cùng vẫn do người phê duyệt xem xét.
+            let npMaLoai = (loaiNghiPhep.split(" - ")[0] || "").trim();
+            let npInfoLoai = LEAVE_TYPE_CATALOG[npMaLoai];
+            let npFileInputCheck = document.getElementById("inp-np-file");
+            let npDaCoFileMoi = npFileInputCheck && npFileInputCheck.files && npFileInputCheck.files[0];
+            let npDaCoFileCu = editingId && document.getElementById("np-current-file-hint") &&
+                document.getElementById("np-current-file-hint").innerHTML.trim() !== "";
+            if (npInfoLoai && npInfoLoai.file && !npDaCoFileMoi && !npDaCoFileCu) {
+                if (!confirm("Loại nghỉ phép này thường CẦN đính kèm file minh chứng nhưng bạn chưa chọn file.\nBạn có muốn tiếp tục gửi đơn (không có file đính kèm)?")) return;
+            }
 
             let payload = {
                 action: "saveLeaveRequest", authToken: authToken,
