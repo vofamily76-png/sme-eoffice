@@ -887,6 +887,46 @@
                     </div>
                     <div class="form-row contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
+                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-sack-dollar"></i> Lương & Bảo hiểm xã hội</label>
+                        </div>
+                        <div class="input-group">
+                            <label>Mức lương cơ bản</label>
+                            <input type="number" id="inp-luong-co-ban" min="0" step="1000" placeholder="Ví dụ: 8000000">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày đóng BHXH</label>
+                            <input type="date" id="inp-ngay-dong-bhxh">
+                        </div>
+                        <div class="input-group">
+                            <label>Mức lương đóng BHXH</label>
+                            <input type="number" id="inp-luong-dong-bhxh" min="0" step="1000" placeholder="Ví dụ: 8000000">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group">
+                            <label>Tình trạng hôn nhân</label>
+                            <select id="inp-tinh-trang-hon-nhan">
+                                <option value="">-- Chọn --</option>
+                                <option value="Độc thân">Độc thân</option>
+                                <option value="Đã kết hôn">Đã kết hôn</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Trạng thái làm việc</label>
+                            <select id="inp-trang-thai-lam-viec-chi-tiet">
+                                <option value="Đang làm việc">Đang làm việc</option>
+                                <option value="Nghỉ thai sản">Nghỉ thai sản</option>
+                                <option value="Tạm hoãn hợp đồng">Tạm hoãn hợp đồng</option>
+                                <option value="Đã nghỉ việc">Đã nghỉ việc</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Thông tin giảm trừ gia cảnh</label>
+                            <input type="text" id="inp-giam-tru-gia-canh" placeholder="Ví dụ: 1 người phụ thuộc - Con: Nguyễn Văn A (sinh 2020)">
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group" style="grid-column: 1 / -1;">
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-plane-departure"></i> Nghỉ phép (liên kết tự động với tab "Đăng ký nghỉ phép")</label>
                         </div>
                         <div class="input-group">
@@ -7722,6 +7762,15 @@
                     ${fld('', s.nationality, 'fa-flag')}
                     ${fld('', s.permanentAddress, 'fa-house')}
                 </div>
+                <h5><i class="fa-solid fa-sack-dollar"></i> Lương & Bảo hiểm xã hội</h5>
+                <div class="detail-fields">
+                    <p><span class="label">Mức lương cơ bản:</span>${(s.mucLuongCoBan || s.mucLuongCoBan === 0) ? Number(s.mucLuongCoBan).toLocaleString('vi-VN') : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Ngày đóng BHXH:</span>${s.ngayDongBHXH ? formatDateDisplay(s.ngayDongBHXH) : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Mức lương đóng BHXH:</span>${(s.mucLuongDongBHXH || s.mucLuongDongBHXH === 0) ? Number(s.mucLuongDongBHXH).toLocaleString('vi-VN') : 'Chưa cập nhật'}</p>
+                    <p><span class="label">Tình trạng hôn nhân:</span>${escapeHtml(s.tinhTrangHonNhan) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Trạng thái làm việc:</span>${escapeHtml(s.trangThaiLamViecChiTiet) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Giảm trừ gia cảnh:</span>${escapeHtml(s.thongTinGiamTruGiaCanh) || 'Chưa cập nhật'}</p>
+                </div>
                 <h5><i class="fa-solid fa-file-signature"></i> Hợp đồng lao động</h5>
                 <div class="detail-fields">
                     <p><span class="label">Loại HĐ:</span>${escapeHtml(s.contractType) || 'Chưa cập nhật'}</p>
@@ -8224,6 +8273,14 @@
                     "Ngày hết hạn CCCD/Passport": s.idExpiryDate ? formatDateDisplay(s.idExpiryDate) : "",
                     "Số giấy phép lao động": s.workPermitNumber || "",
                     "Mã số BHXH": s.socialInsuranceNumber || "",
+                    // [BỔ SUNG MỚI] Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH, Tình
+                    // trạng hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
+                    "Mức lương cơ bản": (s.mucLuongCoBan || s.mucLuongCoBan === 0) ? s.mucLuongCoBan : "",
+                    "Ngày đóng BHXH": s.ngayDongBHXH ? formatDateDisplay(s.ngayDongBHXH) : "",
+                    "Mức lương đóng BHXH": (s.mucLuongDongBHXH || s.mucLuongDongBHXH === 0) ? s.mucLuongDongBHXH : "",
+                    "Tình trạng hôn nhân": s.tinhTrangHonNhan || "",
+                    "Trạng thái làm việc (chi tiết)": s.trangThaiLamViecChiTiet || "",
+                    "Thông tin giảm trừ gia cảnh": s.thongTinGiamTruGiaCanh || "",
                     "Trình độ": s.educationLevel || "",
                     "Trường đào tạo": s.educationSchool || "",
                     "Ngành đào tạo": s.educationMajor || "",
@@ -8242,11 +8299,17 @@
             });
 
             let ws = XLSX.utils.json_to_sheet(exportRows);
+            // [ĐỘ RỘNG CỘT] Danh sách độ rộng PHẢI khớp đúng thứ tự 41 cột dữ liệu ở trên (24 cột
+            // gốc + 6 cột mới "Lương & BHXH/Hôn nhân/Giảm trừ gia cảnh" chèn ngay sau "Mã số BHXH"
+            // + 11 cột còn lại giữ nguyên) để mỗi cột hiển thị đủ rộng, không bị cắt chữ.
             ws['!cols'] = [
                 { wch: 12 }, { wch: 26 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 30 },
                 { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 30 }, { wch: 16 },
                 { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
                 { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
+                // [BỔ SUNG MỚI] Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH, Tình trạng
+                // hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
+                { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 30 },
                 { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
                 { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 }
             ];
@@ -9208,6 +9271,14 @@
                     gender: document.getElementById("inp-gender").value,
                     permanentAddress: document.getElementById("inp-permanent-address").value.trim(),
                     socialInsuranceNumber: document.getElementById("inp-social-insurance").value.trim(),
+                    // [BỔ SUNG MỚI] Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH, Tình
+                    // trạng hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
+                    mucLuongCoBan: parseFloat(document.getElementById("inp-luong-co-ban").value) || 0,
+                    ngayDongBHXH: document.getElementById("inp-ngay-dong-bhxh").value,
+                    mucLuongDongBHXH: parseFloat(document.getElementById("inp-luong-dong-bhxh").value) || 0,
+                    tinhTrangHonNhan: document.getElementById("inp-tinh-trang-hon-nhan").value,
+                    trangThaiLamViecChiTiet: document.getElementById("inp-trang-thai-lam-viec-chi-tiet").value || "Đang làm việc",
+                    thongTinGiamTruGiaCanh: document.getElementById("inp-giam-tru-gia-canh").value.trim(),
                     // [BỔ SUNG MỚI - LIÊN KẾT TAB "ĐĂNG KÝ NGHỈ PHÉP"] Tổng số ngày nghỉ phép /
                     // Số ngày đã nghỉ (server sẽ GIỮ NGUYÊN giá trị đã tích lũy nếu không đổi ở
                     // đây, KHÔNG bị reset chỉ vì lưu lại 1 trường khác của nhân sự) / Số ngày còn
@@ -9330,6 +9401,16 @@
                 document.getElementById("inp-permanent-address").value = d.permanentAddress || "";
                 document.getElementById("inp-social-insurance").value = d.socialInsuranceNumber || "";
 
+                // [BỔ SUNG MỚI] Đổ lại Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH,
+                // Tình trạng hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia
+                // cảnh vào form khi sửa.
+                document.getElementById("inp-luong-co-ban").value = (d.mucLuongCoBan || d.mucLuongCoBan === 0) ? d.mucLuongCoBan : "";
+                document.getElementById("inp-ngay-dong-bhxh").value = d.ngayDongBHXH || "";
+                document.getElementById("inp-luong-dong-bhxh").value = (d.mucLuongDongBHXH || d.mucLuongDongBHXH === 0) ? d.mucLuongDongBHXH : "";
+                document.getElementById("inp-tinh-trang-hon-nhan").value = d.tinhTrangHonNhan || "";
+                document.getElementById("inp-trang-thai-lam-viec-chi-tiet").value = d.trangThaiLamViecChiTiet || "Đang làm việc";
+                document.getElementById("inp-giam-tru-gia-canh").value = d.thongTinGiamTruGiaCanh || "";
+
                 // [BỔ SUNG MỚI - LIÊN KẾT TAB "ĐĂNG KÝ NGHỈ PHÉP"] Đổ lại Tổng số ngày nghỉ
                 // phép / Số ngày đã nghỉ vào form khi sửa, rồi tự tính lại "Số ngày còn lại".
                 document.getElementById("inp-tong-ngay-nghiphep").value = (d.tongSoNgayNghiPhep || d.tongSoNgayNghiPhep === 0) ? d.tongSoNgayNghiPhep : "";
@@ -9421,6 +9502,12 @@
             // nhắm input) nên cần đưa về mặc định rỗng riêng.
             document.getElementById("inp-id-expiry-date").value = "";
             document.getElementById("inp-gender").value = "";
+            // [BỔ SUNG MỚI] Ô "Ngày đóng BHXH" (type="date") không nằm trong vòng lặp input phía
+            // trên nên cần xóa riêng; các ô <select> "Tình trạng hôn nhân"/"Trạng thái làm việc"
+            // cũng không nằm trong vòng lặp (chỉ nhắm input) nên cần đưa về mặc định riêng.
+            document.getElementById("inp-ngay-dong-bhxh").value = "";
+            document.getElementById("inp-tinh-trang-hon-nhan").value = "";
+            document.getElementById("inp-trang-thai-lam-viec-chi-tiet").value = "Đang làm việc";
             npCapNhatSoNgayConLaiForm();
             clearImageInput();
             document.getElementById("btn-cancel-edit").style.display = "none";
