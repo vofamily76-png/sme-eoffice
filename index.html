@@ -6271,10 +6271,26 @@
                 // vào PDF bằng doc.addImage(...) — không còn qua bước "vẽ lại chữ" của jsPDF nữa
                 // nên không thể lỗi font. Nếu nội dung dài hơn 1 trang A4 thì tự tách ảnh sang
                 // trang kế tiếp.
+                // [GIẢM DUNG LƯỢNG FILE PDF - VẪN GIỮ ĐÚNG DẤU TIẾNG VIỆT] Trước đây nhúng ảnh
+                // dạng PNG (không nén mất dữ liệu) nên file PDF xuất ra khá nặng, nhất là khi có
+                // logo/nhiều trang. Nay đổi sang nén ảnh dạng JPEG (nén lặp lại, giảm dần chất
+                // lượng) trước khi nhúng vào PDF — nội dung đơn nghỉ phép chủ yếu là nền trắng +
+                // chữ đen nên JPEG vẫn hiển thị rõ nét, sắc chữ/dấu tiếng Việt không đổi, chỉ giảm
+                // dung lượng file. Mục tiêu: file PDF cuối cùng luôn dưới 1MB — nén lặp tới khi
+                // ảnh đủ nhỏ hoặc chạm sàn chất lượng tối thiểu (0.5) để tránh ảnh bị vỡ hạt quá
+                // mức. KHÔNG đổi cách dựng mẫu đơn/nội dung/dữ liệu, chỉ đổi cách nén ảnh khi xuất.
                 const canvas = await html2canvas(container.firstElementChild, {
                     scale: 2, useCORS: true, backgroundColor: "#ffffff"
                 });
-                const imgData = canvas.toDataURL("image/png");
+                let pdfImgQuality = 0.92;
+                let imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                // Mục tiêu ảnh nén dưới ~900KB (chừa khoảng dư cho phần khung PDF) — nếu văn bản
+                // dài nhiều trang, ảnh gốc lớn hơn nên sẽ tự giảm chất lượng thêm cho tới sàn 0.5.
+                const PDF_TARGET_BYTES = 900 * 1024;
+                while (imgData.length * 0.75 > PDF_TARGET_BYTES && pdfImgQuality > 0.5) {
+                    pdfImgQuality -= 0.05;
+                    imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                }
 
                 const doc = new jsPDF("p", "pt", "a4");
                 const margin = 20;
@@ -6286,7 +6302,7 @@
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
                 if (imgHeight <= usableHeight) {
-                    doc.addImage(imgData, "PNG", margin, margin, imgWidth, imgHeight);
+                    doc.addImage(imgData, "JPEG", margin, margin, imgWidth, imgHeight);
                 } else {
                     // Nội dung dài hơn 1 trang: cắt ảnh sang nhiều trang, mỗi trang lùi ảnh lên
                     // đúng phần đã hiển thị ở (các) trang trước.
@@ -6295,7 +6311,7 @@
                     let isFirstPage = true;
                     while (heightLeft > 0) {
                         if (!isFirstPage) doc.addPage();
-                        doc.addImage(imgData, "PNG", margin, margin - renderedHeight, imgWidth, imgHeight);
+                        doc.addImage(imgData, "JPEG", margin, margin - renderedHeight, imgWidth, imgHeight);
                         renderedHeight += usableHeight;
                         heightLeft -= usableHeight;
                         isFirstPage = false;
