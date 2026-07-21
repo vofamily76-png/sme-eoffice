@@ -1,4 +1,4 @@
-a<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -1346,7 +1346,8 @@ a<!DOCTYPE html>
                         </div>
                         <div class="input-group">
                             <label>Tổng số ngày nghỉ phép</label>
-                            <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày, có thể sửa lại">
+                            <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày (chỉ tính Thứ 2-Thứ 6), có thể sửa lại">
+                            <small style="color:#888; margin-top:4px; display:block;">* Thứ 7 và Chủ nhật không được tự động tính vào ngày nghỉ phép; hệ thống chỉ tính các ngày Thứ 2 đến Thứ 6 trong khoảng đã chọn.</small>
                             <small id="np-quota-hint" style="color:#888; margin-top:4px; display:block;"></small>
                         </div>
                         <div class="input-group">
@@ -5579,8 +5580,27 @@ a<!DOCTYPE html>
             }
         }
 
-        // Tự tính "Tổng số ngày nghỉ phép" theo Từ ngày/Đến ngày (tính cả 2 đầu mút) — người
-        // dùng vẫn có thể tự sửa lại số này (VD chỉ nghỉ nửa ngày, hoặc trừ ngày nghỉ cuối tuần).
+        // [CHỈ TÍNH THỨ 2 - THỨ 6] Đếm số ngày làm việc (Thứ 2 -> Thứ 6) trong khoảng
+        // [tuNgay, denNgay] (tính cả 2 đầu mút) — Thứ 7 và Chủ nhật KHÔNG được tính vào
+        // ngày nghỉ phép, áp dụng CHUNG cho MỌI loại nghỉ phép (kể cả "MT - Nghỉ thai sản").
+        // Dùng chung cho cả phần tự tính trên form lẫn phần hiển thị lại số ngày.
+        function npDemNgayLamViec(tuNgay, denNgay) {
+            let d1 = new Date(tuNgay + "T00:00:00");
+            let d2 = new Date(denNgay + "T00:00:00");
+            if (isNaN(d1.getTime()) || isNaN(d2.getTime()) || d2 < d1) return 0;
+            let soNgay = 0;
+            let cur = new Date(d1);
+            while (cur.getTime() <= d2.getTime()) {
+                let thu = cur.getDay(); // 0 = Chủ nhật, 6 = Thứ 7
+                if (thu !== 0 && thu !== 6) soNgay++;
+                cur.setDate(cur.getDate() + 1);
+            }
+            return soNgay;
+        }
+
+        // Tự tính "Tổng số ngày nghỉ phép" theo Từ ngày/Đến ngày — CHỈ tính các ngày rơi vào
+        // Thứ 2 đến Thứ 6 (Thứ 7/Chủ nhật không tính vào ngày nghỉ phép) — người dùng vẫn có
+        // thể tự sửa lại số này nếu cần (VD chỉ nghỉ nửa ngày).
         function npTinhTongSoNgay() {
             let tuNgay = document.getElementById("inp-np-tungay").value;
             let denNgay = document.getElementById("inp-np-denngay").value;
@@ -5596,10 +5616,8 @@ a<!DOCTYPE html>
                 document.getElementById("inp-np-tongsongay").value = 0.5;
                 return;
             }
-            let d1 = new Date(tuNgay + "T00:00:00");
-            let d2 = new Date(denNgay + "T00:00:00");
-            let soNgay = Math.round((d2 - d1) / 86400000) + 1;
-            if (soNgay > 0) document.getElementById("inp-np-tongsongay").value = soNgay;
+            let soNgay = npDemNgayLamViec(tuNgay, denNgay);
+            document.getElementById("inp-np-tongsongay").value = soNgay;
         }
 
         // [NGHỈ 1/2 NGÀY] Bấm chọn -> ép "Đến ngày" = "Từ ngày" (nếu đã có Từ ngày) và Tổng số
