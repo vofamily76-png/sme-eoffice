@@ -901,6 +901,14 @@
                             <label>Mức lương đóng BHXH</label>
                             <input type="number" id="inp-luong-dong-bhxh" min="0" step="1000" placeholder="Ví dụ: 8000000">
                         </div>
+                        <div class="input-group">
+                            <label>Số ngày làm việc trong tháng</label>
+                            <input type="number" id="inp-so-ngay-lam-viec-thang" min="0" max="31" step="0.5" placeholder="Ví dụ: 26">
+                        </div>
+                        <div class="input-group">
+                            <label>Lương thực nhận trong tháng</label>
+                            <input type="number" id="inp-luong-thuc-nhan-thang" min="0" step="1000" placeholder="Ví dụ: 8500000">
+                        </div>
                     </div>
                     <div class="form-row contract-group">
                         <div class="input-group">
@@ -8385,14 +8393,18 @@
                     // đổi cơ chế bảo mật) để khớp đầy đủ với toàn bộ hồ sơ nhân sự hiện có.
                     "Tổng số ngày nghỉ phép": (s.tongSoNgayNghiPhep || s.tongSoNgayNghiPhep === 0) ? s.tongSoNgayNghiPhep : "",
                     "Số ngày đã nghỉ": (s.soNgayDaNghi || s.soNgayDaNghi === 0) ? s.soNgayDaNghi : "",
-                    "Số ngày còn lại": (s.soNgayConLai || s.soNgayConLai === 0) ? s.soNgayConLai : ""
+                    "Số ngày còn lại": (s.soNgayConLai || s.soNgayConLai === 0) ? s.soNgayConLai : "",
+                    // [BỔ SUNG MỚI] Số ngày làm việc trong tháng, Lương thực nhận trong tháng.
+                    "Số ngày làm việc trong tháng": (s.soNgayLamViecThang || s.soNgayLamViecThang === 0) ? s.soNgayLamViecThang : "",
+                    "Lương thực nhận trong tháng": (s.luongThucNhanThang || s.luongThucNhanThang === 0) ? s.luongThucNhanThang : ""
                 };
             });
 
             let ws = XLSX.utils.json_to_sheet(exportRows);
-            // [ĐỘ RỘNG CỘT] Danh sách độ rộng PHẢI khớp đúng thứ tự 41 cột dữ liệu ở trên (24 cột
-            // gốc + 6 cột mới "Lương & BHXH/Hôn nhân/Giảm trừ gia cảnh" chèn ngay sau "Mã số BHXH"
-            // + 11 cột còn lại giữ nguyên) để mỗi cột hiển thị đủ rộng, không bị cắt chữ.
+            // [ĐỘ RỘNG CỘT] Danh sách độ rộng PHẢI khớp đúng thứ tự 43 cột dữ liệu ở trên (24 cột
+            // gốc + 6 cột "Lương & BHXH/Hôn nhân/Giảm trừ gia cảnh" chèn ngay sau "Mã số BHXH" +
+            // 11 cột giữ nguyên + 2 cột mới "Số ngày làm việc trong tháng"/"Lương thực nhận trong
+            // tháng" thêm ở CUỐI) để mỗi cột hiển thị đủ rộng, không bị cắt chữ.
             ws['!cols'] = [
                 { wch: 12 }, { wch: 26 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 30 },
                 { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 30 }, { wch: 16 },
@@ -8402,7 +8414,9 @@
                 // hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
                 { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 30 },
                 { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
-                { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 }
+                { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
+                // [BỔ SUNG MỚI] Số ngày làm việc trong tháng, Lương thực nhận trong tháng.
+                { wch: 22 }, { wch: 24 }
             ];
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
@@ -9375,7 +9389,12 @@
                     // đây, KHÔNG bị reset chỉ vì lưu lại 1 trường khác của nhân sự) / Số ngày còn
                     // lại (server tự tính lại, không cần gửi lên).
                     tongSoNgayNghiPhep: parseFloat(document.getElementById("inp-tong-ngay-nghiphep").value) || 0,
-                    soNgayDaNghi: parseFloat(document.getElementById("inp-so-ngay-da-nghi").value) || 0
+                    soNgayDaNghi: parseFloat(document.getElementById("inp-so-ngay-da-nghi").value) || 0,
+                    // [BỔ SUNG MỚI] Số ngày làm việc trong tháng / Lương thực nhận trong tháng —
+                    // 2 trường THÔNG TIN THAM KHẢO (Admin/HR tự nhập lại theo từng tháng), KHÔNG
+                    // liên kết tự động với bất kỳ tính toán nào khác trong hệ thống.
+                    soNgayLamViecThang: parseFloat(document.getElementById("inp-so-ngay-lam-viec-thang").value) || 0,
+                    luongThucNhanThang: parseFloat(document.getElementById("inp-luong-thuc-nhan-thang").value) || 0
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -9507,6 +9526,11 @@
                 document.getElementById("inp-tong-ngay-nghiphep").value = (d.tongSoNgayNghiPhep || d.tongSoNgayNghiPhep === 0) ? d.tongSoNgayNghiPhep : "";
                 document.getElementById("inp-so-ngay-da-nghi").value = (d.soNgayDaNghi || d.soNgayDaNghi === 0) ? d.soNgayDaNghi : "";
                 npCapNhatSoNgayConLaiForm();
+
+                // [BỔ SUNG MỚI] Đổ lại Số ngày làm việc trong tháng / Lương thực nhận trong
+                // tháng vào form khi sửa.
+                document.getElementById("inp-so-ngay-lam-viec-thang").value = (d.soNgayLamViecThang || d.soNgayLamViecThang === 0) ? d.soNgayLamViecThang : "";
+                document.getElementById("inp-luong-thuc-nhan-thang").value = (d.luongThucNhanThang || d.luongThucNhanThang === 0) ? d.luongThucNhanThang : "";
 
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
