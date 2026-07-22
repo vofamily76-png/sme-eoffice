@@ -525,6 +525,7 @@
                     <li class="menu-item active" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-pie"></i> Tổng quan</li>
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
+                    <li class="menu-item" id="menu-chamcong" style="display:none;" onclick="switchPage('chamcong')"><i class="fa-solid fa-clipboard-check"></i> Bảng Chấm Công</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
                          chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
@@ -1244,6 +1245,50 @@
                     </tr></thead>
                     <tbody></tbody>
                 </table>
+                </div>
+            </div>
+
+            <div id="page-chamcong" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-clipboard-check"></i> Bảng Chấm Công</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Chọn kỳ chấm công (tháng/năm) để xem bảng chấm công của toàn bộ nhân sự đang làm việc. Khi kỳ
+                    <b>chưa chốt</b>, hệ thống tự tính lại theo dữ liệu mới nhất (đơn nghỉ phép đã duyệt) mỗi lần bạn
+                    mở tab này. Sau khi <b>chốt</b>, dữ liệu được lưu cố định và không tự tính lại nữa.
+                </p>
+
+                <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Kỳ chấm công (tháng/năm)</label>
+                            <input type="month" id="cc-period-input" style="padding:6px 8px;">
+                        </div>
+                        <button class="btn btn-primary" onclick="loadChamCongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
+                        <button class="btn btn-success" id="cc-btn-chot" style="display:none;" onclick="chotBangChamCong()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
+                        <button class="btn btn-warning" id="cc-btn-mo-lai" style="display:none;" onclick="moLaiBangChamCong()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
+                        <span id="cc-status-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600;"></span>
+                    </div>
+                </div>
+
+                <div class="admin-box" style="margin-top:16px; overflow-x:auto;">
+                    <table class="data-table" id="cc-table" style="min-width:1100px;">
+                        <thead>
+                            <tr>
+                                <th>MSNV</th>
+                                <th>Họ và tên</th>
+                                <th>Phòng ban</th>
+                                <th>Ngày công chuẩn</th>
+                                <th>Ngày công thực tế</th>
+                                <th>Nghỉ phép hưởng lương<br>(AL/CL)</th>
+                                <th>Nghỉ chế độ Cty<br>(ML/TC)</th>
+                                <th>Nghỉ không lương<br>(UL)</th>
+                                <th>Nghỉ hưởng BHXH<br>(SI)</th>
+                                <th>Tổng ngày công tính lương</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cc-table-body">
+                            <tr><td colspan="10" style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -2381,6 +2426,11 @@
         let currentUserCanViewChuKySo = false;
         let currentUserCanViewLichLamViec = false;
         let currentUserCanEditLichLamViec = false;
+        // [TAB "BẢNG CHẤM CÔNG"]
+        let currentUserCanViewChamCong = false;
+        let currentUserCanEditChamCong = false;
+        let chamCongRows = [];
+        let chamCongDaChot = false;
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
 
@@ -2516,7 +2566,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -3601,7 +3651,30 @@
             renderUserListViewForAdmin();
         }
 
-        // [TAB "GIAO VIỆC" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Được giao việc" (tạo/sửa/xóa công
+        // [TAB "BẢNG CHẤM CÔNG" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Xem"/"Tính lại-Chốt-Mở lại"
+        // của Tab "Bảng Chấm Công" cho 1 tài khoản. Khác với "Lịch Làm Việc Công Ty" (quyền
+        // Xem mặc định bật cho mọi tài khoản), Tab này quyền Xem PHẢI được Admin cấp riêng
+        // (dữ liệu chấm công/nghỉ phép nhạy cảm hơn) — dùng action riêng "setChamCongPermission"
+        // (chỉ ghi đúng cột 24-25 của sheet "TaiKhoan", không đụng các cột/quyền khác).
+        async function toggleUserChamCongPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newXem = (field === "xemChamCong") ? checked : !!userDatabase[username].xemChamCong;
+            let newSua = (field === "suaChamCong") ? checked : !!userDatabase[username].suaChamCong;
+            // Bật quyền Sửa thì tự động bật kèm quyền Xem (không thể sửa nếu không xem được).
+            if (field === "suaChamCong" && checked) newXem = true;
+
+            let ok = await pushToCloud({ action: "setChamCongPermission", username: username, xemChamCong: newXem, suaChamCong: newSua });
+            if (ok) {
+                userDatabase[username].xemChamCong = newXem;
+                userDatabase[username].suaChamCong = newSua;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+
         // việc giao cho người khác) của 1 tài khoản. Xem danh sách công việc MẶC ĐỊNH BẬT cho
         // mọi tài khoản (không điều khiển được ở đây). Dùng action RIÊNG
         // "setTaskAssignPermission" (chỉ ghi đúng cột 20 của sheet "TaiKhoan", không đụng các
@@ -3944,6 +4017,26 @@
                     </span>`;
                 }
 
+                // [TAB "BẢNG CHẤM CÔNG" - PHÂN QUYỀN RIÊNG] Khác với "Lịch Làm Việc Công Ty",
+                // quyền XEM ở đây KHÔNG mặc định bật — Admin phải cấp riêng cho từng tài khoản
+                // (dữ liệu chấm công/nghỉ phép nhạy cảm hơn).
+                let ccControl = "";
+                if (u === "admin") {
+                    ccControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-clipboard-check"></i> Toàn quyền Bảng Chấm Công</span>';
+                } else {
+                    let ccXChecked = userDatabase[u].xemChamCong ? "checked" : "";
+                    let ccEChecked = userDatabase[u].suaChamCong ? "checked" : "";
+                    ccControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-clipboard-check" title="Bảng Chấm Công"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${ccXChecked} onchange="toggleUserChamCongPermission('${safeU}', 'xemChamCong', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${ccEChecked} onchange="toggleUserChamCongPermission('${safeU}', 'suaChamCong', this.checked)"> Tính lại/Chốt/Mở lại
+                        </label>
+                    </span>`;
+                }
+
                 // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 usersHtml += `<div class="admusr-row">
@@ -3986,6 +4079,7 @@
                         ${cksoControl}
                         ${llvControl}
                         ${gvControl}
+                        ${ccControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
                         <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -4103,7 +4197,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -4225,7 +4319,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -4355,6 +4449,17 @@
             if (llvFormBox) llvFormBox.style.display = canEditLichLamViec ? "block" : "none";
             renderWorkScheduleWeek();
             renderDashboardScheduleWidget();
+
+            // ==== [TAB "BẢNG CHẤM CÔNG"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role
+            // chung) — giống hệt cách làm với "Lịch Làm Việc Công Ty"/"Chữ Ký Số": Xem tab cần
+            // quyền "XemChamCong" (hoặc Admin); Tính lại/Chốt/Mở lại cần thêm quyền
+            // "SuaChamCong" (hoặc Admin). ====
+            let canViewChamCong = (currentUser.role === "Admin") || !!currentUser.xemChamCong;
+            let canEditChamCong = (currentUser.role === "Admin") || !!currentUser.suaChamCong;
+            currentUserCanViewChamCong = canViewChamCong;
+            currentUserCanEditChamCong = canEditChamCong;
+            let elMenuChamCong = document.getElementById("menu-chamcong");
+            if (elMenuChamCong) elMenuChamCong.style.display = canViewChamCong ? "flex" : "none";
 
             // ==== [TAB "GIAO VIỆC"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được danh sách
             // công việc. Giao việc (tạo/sửa/xóa): CHỈ tài khoản có quyền riêng "DuocGiaoViec"
@@ -4566,6 +4671,12 @@
                 // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Không còn kiểm tra quyền
                 // "XemLichLamViec" ở đây — chỉ cần đã đăng nhập (currentUser tồn tại) là đủ.
                 renderWorkScheduleWeek();
+            }
+            if (pageId === "chamcong") {
+                let canViewChamCong = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemChamCong);
+                if (!canViewChamCong) { alert("⚠️ Bạn không có quyền xem Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+                initChamCongPeriodPicker();
+                loadChamCongData();
             }
             if (pageId === "giaoviec") {
                 // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Giống hệt "Lịch làm việc
@@ -5178,6 +5289,130 @@
                 </div>`;
             }).join("");
         }
+
+        /* ========== [TAB "BẢNG CHẤM CÔNG"] ========== */
+
+        // Hàm dùng chung để gọi 1 action bất kỳ lên server và nhận về NGUYÊN VẸN object JSON
+        // server trả về (khác với pushToCloud() chỉ trả về true/false) — dùng cho các action
+        // cần đọc lại dữ liệu chi tiết trong response (VD "getChamCongData" cần "rows"/"daChot").
+        async function callServerAction(payload) {
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Sheet (chưa cấu hình URL Web App)."); return null; }
+            try {
+                if (authToken && !payload.authToken) payload.authToken = authToken;
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") return { status: "ERROR", message: data.message };
+                return data;
+            } catch (err) {
+                console.error(err);
+                return { status: "ERROR", message: err.message };
+            }
+        }
+
+        // Khởi tạo ô chọn kỳ (tháng/năm) với giá trị mặc định = tháng hiện tại, chỉ khi ô
+        // đang trống (không ghi đè lựa chọn người dùng đã chọn từ trước trong phiên này).
+        function initChamCongPeriodPicker() {
+            let inp = document.getElementById("cc-period-input");
+            if (!inp) return;
+            if (!inp.value) {
+                let now = new Date();
+                let y = now.getFullYear();
+                let m = String(now.getMonth() + 1).padStart(2, "0");
+                inp.value = y + "-" + m;
+            }
+        }
+
+        // Tải (và với kỳ chưa chốt, server tự TÍNH LẠI) dữ liệu bảng chấm công của đúng kỳ
+        // đang chọn. Dùng action "getChamCongData" (chỉ đọc, không khóa ghi).
+        async function loadChamCongData() {
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) { alert("Vui lòng chọn kỳ chấm công (tháng/năm)."); return; }
+
+            let tbody = document.getElementById("cc-table-body");
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+
+            let result = await callServerAction({ action: "getChamCongData", maKy: maKy });
+            if (!result || result.status !== "SUCCESS") {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được dữ liệu.") + '</td></tr>';
+                return;
+            }
+            chamCongRows = result.rows || [];
+            chamCongDaChot = !!result.daChot;
+            renderChamCongTable();
+        }
+
+        function renderChamCongTable() {
+            let tbody = document.getElementById("cc-table-body");
+            let badge = document.getElementById("cc-status-badge");
+            let btnChot = document.getElementById("cc-btn-chot");
+            let btnMoLai = document.getElementById("cc-btn-mo-lai");
+            if (!tbody) return;
+
+            if (badge) {
+                if (chamCongDaChot) {
+                    badge.innerText = "Đã chốt";
+                    badge.style.background = "#e6f4ea"; badge.style.color = "#1a7f37";
+                } else {
+                    badge.innerText = "Đang tính (tự động cập nhật)";
+                    badge.style.background = "#fff4e5"; badge.style.color = "#b26a00";
+                }
+            }
+            if (btnChot) btnChot.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
+            if (btnMoLai) btnMoLai.style.display = (currentUserCanEditChamCong && chamCongDaChot) ? "inline-flex" : "none";
+
+            if (!chamCongRows.length) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = chamCongRows.map(r => `<tr>
+                <td>${escapeHtml(r.msnv || "")}</td>
+                <td>${escapeHtml(r.hoTen || "")}</td>
+                <td>${escapeHtml(r.phongBan || "")}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.ngayCongChuan ?? ""))}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.ngayCongThucTe ?? ""))}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.nghiPhepLuong ?? 0))}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.nghiCheDoCty ?? 0))}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.nghiKhongLuong ?? 0))}</td>
+                <td style="text-align:center;">${escapeHtml(String(r.nghiBHXH ?? 0))}</td>
+                <td style="text-align:center; font-weight:600;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? ""))}</td>
+            </tr>`).join("");
+        }
+
+        async function chotBangChamCong() {
+            if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền chốt Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) { alert("Vui lòng chọn kỳ chấm công (tháng/năm)."); return; }
+            if (!confirm("Chốt bảng chấm công kỳ \"" + maKy + "\"?\n\nSau khi chốt, dữ liệu sẽ được lưu cố định và KHÔNG tự động tính lại nữa (kể cả khi có đơn nghỉ phép cũ được duyệt thêm), cho tới khi bạn bấm \"Mở lại\".")) return;
+
+            let result = await callServerAction({ action: "chotBangChamCong", maKy: maKy });
+            if (result && result.status === "SUCCESS") {
+                alert("Đã chốt bảng chấm công kỳ \"" + maKy + "\".");
+                loadChamCongData();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể chốt bảng chấm công."));
+            }
+        }
+
+        async function moLaiBangChamCong() {
+            if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền mở lại Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) return;
+            if (!confirm("Mở lại kỳ chấm công \"" + maKy + "\" để tính lại theo dữ liệu mới nhất?")) return;
+
+            let result = await callServerAction({ action: "moLaiBangChamCong", maKy: maKy });
+            if (result && result.status === "SUCCESS") {
+                loadChamCongData();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể mở lại bảng chấm công."));
+            }
+        }
+
 
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY" - Giờ bắt đầu/kết thúc] Khởi tạo option cho 4 dropdown
            Giờ/Phút (bắt đầu + kết thúc). Phút: 00–59. Giờ: 00–23 nhưng được NHÓM RÕ RÀNG thành
