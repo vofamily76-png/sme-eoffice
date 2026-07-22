@@ -195,6 +195,23 @@
         th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background-color: #f2f2f2; color: #333; }
         tr:hover { background-color: #f9f9f9; }
+
+        /* [MỚI - TAB "BẢNG CHẤM CÔNG"] Khung cuộn riêng cho bảng Chấm Công: cuộn được CẢ dọc LẪN
+           ngang trong 1 khung có chiều cao giới hạn; dòng tiêu đề (thead) và 3 cột đầu (MSNV/Họ
+           và tên/Phòng ban) luôn CỐ ĐỊNH (position: sticky) khi cuộn, để dù cuộn ngang xem các
+           cột ngày phía sau hoặc cuộn dọc xem nhiều nhân sự, vẫn luôn biết rõ đang xem đúng
+           dòng/nhân viên nào. CHỈ áp dụng cho #cc-table — không ảnh hưởng các bảng khác. */
+        #cc-table-wrap { overflow: auto; max-height: 70vh; position: relative; border: 1px solid #ddd; }
+        #cc-table { border-collapse: separate; border-spacing: 0; margin-bottom: 0; box-shadow: none; }
+        #cc-table thead th { position: sticky; top: 0; z-index: 3; background-color: #f2f2f2; }
+        #cc-table th.cc-col-sticky, #cc-table td.cc-col-sticky {
+            position: sticky; z-index: 2; background-color: #fff;
+        }
+        #cc-table thead th.cc-col-sticky { z-index: 4; background-color: #f2f2f2; }
+        #cc-table tr:hover td.cc-col-sticky { background-color: #f9f9f9; }
+        #cc-table .cc-col-1 { left: 0; width: 70px; min-width: 70px; max-width: 70px; }
+        #cc-table .cc-col-2 { left: 70px; width: 150px; min-width: 150px; max-width: 150px; }
+        #cc-table .cc-col-3 { left: 220px; width: 110px; min-width: 110px; max-width: 110px; }
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
@@ -1312,13 +1329,39 @@
                     </div>
                 </div>
 
-                <div class="admin-box" style="margin-top:16px; overflow-x:auto;">
-                    <table class="data-table" id="cc-table" style="min-width:1100px;">
-                        <thead id="cc-table-thead"></thead>
-                        <tbody id="cc-table-body">
-                            <tr><td style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
-                        </tbody>
-                    </table>
+                <!-- [MỚI] Danh mục loại công (theo file Excel người dùng cung cấp) — chỉ mang tính
+                     CHÚ THÍCH/tham khảo (chỉ đọc), không phải nơi nhập liệu. -->
+                <div class="admin-box" style="border-left: 5px solid #2f6fed; background:#f5f8ff; margin-top:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" id="dmlc-table" style="min-width:900px; margin-bottom:0;">
+                            <thead>
+                                <tr>
+                                    <th>Mã</th><th>Tên loại công / nghỉ</th><th>Nhóm hiển thị</th>
+                                    <th>Có lương</th><th>Là OT</th><th>Trừ phép năm</th>
+                                    <th>Cần nộp đơn/Duyệt</th><th>Cần đính kèm</th><th>Ghi chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dmlc-table-body">
+                                <tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- [THANH TRƯỢT] Bọc bảng trong 1 khung cuộn riêng (dọc LẪN ngang) — dòng tiêu đề
+                     và 3 cột đầu (MSNV/Họ và tên/Phòng ban) được cố định (sticky) để khi cuộn
+                     ngang xem các cột ngày phía sau, hoặc cuộn dọc xem nhiều nhân sự, vẫn luôn
+                     biết rõ đang xem đúng dòng/nhân viên nào. -->
+                <div class="admin-box" style="margin-top:16px;">
+                    <div id="cc-table-wrap">
+                        <table class="data-table" id="cc-table" style="min-width:1100px;">
+                            <thead id="cc-table-thead"></thead>
+                            <tbody id="cc-table-body">
+                                <tr><td style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -4840,6 +4883,7 @@
                 let canViewChamCong = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemChamCong);
                 if (!canViewChamCong) { alert("⚠️ Bạn không có quyền xem Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
                 initChamCongPeriodPicker();
+                loadDanhMucLoaiCong();
                 loadChamCongData();
             }
             if (pageId === "luong") {
@@ -5545,13 +5589,52 @@
 
         // Mã trạng thái ngày -> nhãn hiển thị ngắn gọn trong ô + màu nền (dùng chung cho bảng
         // trên giao diện lẫn khi xuất Excel).
+        // [CẬP NHẬT] Ngày làm việc bình thường vẫn hiện "X" (như cũ). MỌI loại ngày nghỉ (dù là
+        // Nghỉ phép lương/Chế độ Cty/Không lương/BHXH) nay hiện THỐNG NHẤT "O" thay vì từng chữ
+        // viết tắt riêng (trước đây: P/CĐ/KL/BH) — vẫn giữ nguyên màu nền + chú thích (title,
+        // hiện khi rê chuột) khác nhau theo từng loại để không mất thông tin phân biệt.
         function chamCongMaNgayInfo(ma, isWeekend) {
             if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
-            if (ma === "P") return { label: "P", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
-            if (ma === "CD") return { label: "CĐ", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
-            if (ma === "KL") return { label: "KL", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
-            if (ma === "BHXH") return { label: "BH", bg: "#f3e8fd", title: "Nghỉ hưởng BHXH (SI)" };
+            if (ma === "P") return { label: "O", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
+            if (ma === "CD") return { label: "O", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
+            if (ma === "KL") return { label: "O", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
+            if (ma === "BHXH") return { label: "O", bg: "#f3e8fd", title: "Nghỉ hưởng BHXH (SI)" };
             return { label: "X", bg: "", title: "Ngày làm việc" };
+        }
+
+        // [MỚI] Danh mục loại công (theo file Excel người dùng cung cấp) — tải 1 lần khi mở Tab
+        // "Bảng Chấm Công", hiển thị thành khối chú thích (chỉ đọc). Dùng chung quyền "XemChamCong".
+        let danhMucLoaiCongRows = [];
+        async function loadDanhMucLoaiCong() {
+            let tbody = document.getElementById("dmlc-table-body");
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            let result = await callServerAction({ action: "getDanhMucLoaiCong" });
+            if (!result || result.status !== "SUCCESS") {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được danh mục loại công.") + '</td></tr>';
+                return;
+            }
+            danhMucLoaiCongRows = result.rows || [];
+            renderDanhMucLoaiCongTable();
+        }
+
+        function renderDanhMucLoaiCongTable() {
+            let tbody = document.getElementById("dmlc-table-body");
+            if (!tbody) return;
+            if (!danhMucLoaiCongRows.length) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có dữ liệu danh mục loại công.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = danhMucLoaiCongRows.map(r => `<tr>
+                <td style="font-weight:600;">${escapeHtml(r.ma || "")}</td>
+                <td>${escapeHtml(r.ten || "")}</td>
+                <td>${escapeHtml(r.nhomHienThi || "")}</td>
+                <td style="text-align:center;">${escapeHtml(r.coLuong || "")}</td>
+                <td style="text-align:center;">${escapeHtml(r.laOT || "")}</td>
+                <td style="text-align:center;">${escapeHtml(r.truPhepNam || "")}</td>
+                <td style="text-align:center;">${escapeHtml(r.canDuyet || "")}</td>
+                <td style="text-align:center;">${escapeHtml(r.canDinhKem || "")}</td>
+                <td style="font-size:12.5px; color:#555;">${escapeHtml(r.ghiChu || "")}</td>
+            </tr>`).join("");
         }
 
         // Dựng phần <thead> động: 3 cột cố định (MSNV/Họ tên/Phòng ban) + 1 cột cho MỖI ngày
@@ -5564,9 +5647,9 @@
                 `<th style="min-width:34px; padding:4px 2px; ${d.isWeekend ? 'background:#f1f2f4;' : ''}" title="${d.isWeekend ? 'Cuối tuần' : 'Ngày làm việc'}">${d.ngay}<br><span style="font-weight:400; font-size:10px;">${escapeHtml(d.thu)}</span></th>`
             ).join("");
             thead.innerHTML = `<tr>
-                <th>MSNV</th>
-                <th>Họ và tên</th>
-                <th>Phòng ban</th>
+                <th class="cc-col-sticky cc-col-1">MSNV</th>
+                <th class="cc-col-sticky cc-col-2">Họ và tên</th>
+                <th class="cc-col-sticky cc-col-3">Phòng ban</th>
                 ${dayThs}
                 <th>Ngày công chuẩn</th>
                 <th>Ngày công thực tế</th>
@@ -5597,9 +5680,9 @@
                     return `<td style="text-align:center; ${info.bg ? 'background:' + info.bg + ';' : ''}" title="${escapeHtml(info.title)}">${info.label}</td>`;
                 }).join("");
                 return `<tr>
-                <td>${escapeHtml(r.msnv || "")}</td>
-                <td>${escapeHtml(r.hoTen || "")}</td>
-                <td>${escapeHtml(r.phongBan || "")}</td>
+                <td class="cc-col-sticky cc-col-1">${escapeHtml(r.msnv || "")}</td>
+                <td class="cc-col-sticky cc-col-2">${escapeHtml(r.hoTen || "")}</td>
+                <td class="cc-col-sticky cc-col-3">${escapeHtml(r.phongBan || "")}</td>
                 ${dayTds}
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongChuan ?? ""))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongThucTe ?? ""))}</td>
