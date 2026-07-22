@@ -1251,9 +1251,10 @@
             <div id="page-chamcong" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-clipboard-check"></i> Bảng Chấm Công</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
-                    Chọn kỳ chấm công (tháng/năm) để xem bảng chấm công của toàn bộ nhân sự đang làm việc. Khi kỳ
-                    <b>chưa chốt</b>, hệ thống tự tính lại theo dữ liệu mới nhất (đơn nghỉ phép đã duyệt) mỗi lần bạn
-                    mở tab này. Sau khi <b>chốt</b>, dữ liệu được lưu cố định và không tự tính lại nữa.
+                    Chọn kỳ chấm công (tháng/năm) để xem bảng chấm công của toàn bộ nhân sự đang làm việc, kèm bảng
+                    chi tiết theo từng Thứ/Ngày trong tháng. Khi kỳ <b>chưa chốt</b>, hệ thống tự tính lại theo dữ
+                    liệu mới nhất (đơn nghỉ phép đã duyệt) mỗi lần bạn mở tab này. Sau khi <b>chốt</b>, dữ liệu được
+                    lưu cố định và không tự tính lại nữa.
                 </p>
 
                 <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
@@ -1269,24 +1270,30 @@
                     </div>
                 </div>
 
+                <!-- [XUẤT EXCEL] Xuất tất cả / theo phòng ban / theo từng cá nhân — chỉ dùng lại
+                     dữ liệu chamCongRows đã tải theo đúng quyền hiện có (không gọi thêm API,
+                     không đổi/xóa dữ liệu gốc), giống hệt cách làm ở Tab "Quản Lý Nhân Sự". -->
+                <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-top:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-file-excel" style="color:#1e7e34;"></i> Xuất bảng chấm công ra Excel</h4>
+                    <div class="table-controls" style="margin:0;">
+                        <select id="cc-export-scope" class="search-box" style="max-width: 240px;" onchange="onChamCongExportScopeChange()">
+                            <option value="all">Xuất tất cả nhân sự</option>
+                            <option value="dept">Theo phòng ban cụ thể...</option>
+                            <option value="staff">Theo từng cá nhân...</option>
+                        </select>
+                        <select id="cc-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <select id="cc-export-staff" class="search-box" style="max-width: 240px; display:none;"></select>
+                        <button type="button" class="btn btn-success" onclick="exportChamCongToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
                 <div class="admin-box" style="margin-top:16px; overflow-x:auto;">
                     <table class="data-table" id="cc-table" style="min-width:1100px;">
-                        <thead>
-                            <tr>
-                                <th>MSNV</th>
-                                <th>Họ và tên</th>
-                                <th>Phòng ban</th>
-                                <th>Ngày công chuẩn</th>
-                                <th>Ngày công thực tế</th>
-                                <th>Nghỉ phép hưởng lương<br>(AL/CL)</th>
-                                <th>Nghỉ chế độ Cty<br>(ML/TC)</th>
-                                <th>Nghỉ không lương<br>(UL)</th>
-                                <th>Nghỉ hưởng BHXH<br>(SI)</th>
-                                <th>Tổng ngày công tính lương</th>
-                            </tr>
-                        </thead>
+                        <thead id="cc-table-thead"></thead>
                         <tbody id="cc-table-body">
-                            <tr><td colspan="10" style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
+                            <tr><td style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2431,6 +2438,9 @@
         let currentUserCanEditChamCong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
+        // [BẢNG THEO THỨ/NGÀY TRONG THÁNG] Danh sách {ngay, thu, isWeekend} của kỳ đang xem,
+        // do server trả về (field "danhSachNgay") — dùng để dựng cột theo từng ngày + xuất Excel.
+        let chamCongDanhSachNgay = [];
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
 
@@ -5325,6 +5335,12 @@
             }
         }
 
+        // Tổng số cột hiện tại của bảng (3 cột cố định + N cột theo ngày + 6 cột tổng hợp) —
+        // dùng để colspan dòng thông báo/đang tải cho khớp độ rộng bảng.
+        function chamCongTongSoCot() {
+            return 3 + (chamCongDanhSachNgay || []).length + 6;
+        }
+
         // Tải (và với kỳ chưa chốt, server tự TÍNH LẠI) dữ liệu bảng chấm công của đúng kỳ
         // đang chọn. Dùng action "getChamCongData" (chỉ đọc, không khóa ghi).
         async function loadChamCongData() {
@@ -5333,25 +5349,27 @@
             if (!maKy) { alert("Vui lòng chọn kỳ chấm công (tháng/năm)."); return; }
 
             let tbody = document.getElementById("cc-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">Đang tải...</td></tr>';
 
             let result = await callServerAction({ action: "getChamCongData", maKy: maKy });
             if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được dữ liệu.") + '</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được dữ liệu.") + '</td></tr>';
                 return;
             }
             chamCongRows = result.rows || [];
             chamCongDaChot = !!result.daChot;
+            chamCongDanhSachNgay = result.danhSachNgay || [];
             renderChamCongTable();
+            populateChamCongExportSelects();
         }
 
-        function renderChamCongTable() {
-            let tbody = document.getElementById("cc-table-body");
+        // Cập nhật badge + hiện/ẩn đúng nút Chốt/Mở lại theo trạng thái hiện tại (chamCongDaChot).
+        // Tách riêng thành hàm này để có thể gọi NGAY LẬP TỨC sau khi Chốt/Mở lại thành công
+        // (không cần chờ tải lại dữ liệu từ server), giúp giao diện phản hồi trực quan, tức thì.
+        function updateChamCongStatusUI() {
             let badge = document.getElementById("cc-status-badge");
             let btnChot = document.getElementById("cc-btn-chot");
             let btnMoLai = document.getElementById("cc-btn-mo-lai");
-            if (!tbody) return;
-
             if (badge) {
                 if (chamCongDaChot) {
                     badge.innerText = "Đã chốt";
@@ -5363,15 +5381,66 @@
             }
             if (btnChot) btnChot.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
             if (btnMoLai) btnMoLai.style.display = (currentUserCanEditChamCong && chamCongDaChot) ? "inline-flex" : "none";
+        }
+
+        // Mã trạng thái ngày -> nhãn hiển thị ngắn gọn trong ô + màu nền (dùng chung cho bảng
+        // trên giao diện lẫn khi xuất Excel).
+        function chamCongMaNgayInfo(ma, isWeekend) {
+            if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
+            if (ma === "P") return { label: "P", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
+            if (ma === "CD") return { label: "CĐ", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
+            if (ma === "KL") return { label: "KL", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
+            if (ma === "BHXH") return { label: "BH", bg: "#f3e8fd", title: "Nghỉ hưởng BHXH (SI)" };
+            return { label: "X", bg: "", title: "Ngày làm việc" };
+        }
+
+        // Dựng phần <thead> động: 3 cột cố định (MSNV/Họ tên/Phòng ban) + 1 cột cho MỖI ngày
+        // trong tháng của kỳ đang xem (hiện số ngày + Thứ, VD "5\nT4") + 6 cột tổng hợp cuối
+        // bảng — vì số ngày trong tháng thay đổi (28-31) nên không thể viết cố định trong HTML.
+        function buildChamCongTableHead() {
+            let thead = document.getElementById("cc-table-thead");
+            if (!thead) return;
+            let dayThs = (chamCongDanhSachNgay || []).map(d =>
+                `<th style="min-width:34px; padding:4px 2px; ${d.isWeekend ? 'background:#f1f2f4;' : ''}" title="${d.isWeekend ? 'Cuối tuần' : 'Ngày làm việc'}">${d.ngay}<br><span style="font-weight:400; font-size:10px;">${escapeHtml(d.thu)}</span></th>`
+            ).join("");
+            thead.innerHTML = `<tr>
+                <th>MSNV</th>
+                <th>Họ và tên</th>
+                <th>Phòng ban</th>
+                ${dayThs}
+                <th>Ngày công chuẩn</th>
+                <th>Ngày công thực tế</th>
+                <th>Nghỉ phép hưởng lương<br>(AL/CL)</th>
+                <th>Nghỉ chế độ Cty<br>(ML/TC)</th>
+                <th>Nghỉ không lương<br>(UL)</th>
+                <th>Nghỉ hưởng BHXH<br>(SI)</th>
+                <th>Tổng ngày công tính lương</th>
+            </tr>`;
+        }
+
+        function renderChamCongTable() {
+            let tbody = document.getElementById("cc-table-body");
+            if (!tbody) return;
+
+            updateChamCongStatusUI();
+            buildChamCongTableHead();
 
             if (!chamCongRows.length) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
                 return;
             }
-            tbody.innerHTML = chamCongRows.map(r => `<tr>
+            tbody.innerHTML = chamCongRows.map(r => {
+                let chiTiet = r.chiTietNgay || {};
+                let dayTds = (chamCongDanhSachNgay || []).map(d => {
+                    let ma = chiTiet[String(d.ngay)] || "";
+                    let info = chamCongMaNgayInfo(ma, d.isWeekend);
+                    return `<td style="text-align:center; ${info.bg ? 'background:' + info.bg + ';' : ''}" title="${escapeHtml(info.title)}">${info.label}</td>`;
+                }).join("");
+                return `<tr>
                 <td>${escapeHtml(r.msnv || "")}</td>
                 <td>${escapeHtml(r.hoTen || "")}</td>
                 <td>${escapeHtml(r.phongBan || "")}</td>
+                ${dayTds}
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongChuan ?? ""))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongThucTe ?? ""))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.nghiPhepLuong ?? 0))}</td>
@@ -5379,7 +5448,8 @@
                 <td style="text-align:center;">${escapeHtml(String(r.nghiKhongLuong ?? 0))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.nghiBHXH ?? 0))}</td>
                 <td style="text-align:center; font-weight:600;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? ""))}</td>
-            </tr>`).join("");
+            </tr>`;
+            }).join("");
         }
 
         async function chotBangChamCong() {
@@ -5391,6 +5461,10 @@
 
             let result = await callServerAction({ action: "chotBangChamCong", maKy: maKy });
             if (result && result.status === "SUCCESS") {
+                // [TRỰC QUAN NGAY LẬP TỨC] Đổi trạng thái + đảo nút Chốt/Mở lại NGAY, không chờ
+                // tải lại dữ liệu — rồi mới tải lại ở nền để đồng bộ đúng số liệu đã lưu.
+                chamCongDaChot = true;
+                updateChamCongStatusUI();
                 alert("Đã chốt bảng chấm công kỳ \"" + maKy + "\".");
                 loadChamCongData();
             } else {
@@ -5407,10 +5481,101 @@
 
             let result = await callServerAction({ action: "moLaiBangChamCong", maKy: maKy });
             if (result && result.status === "SUCCESS") {
+                // [TRỰC QUAN NGAY LẬP TỨC] Giống chotBangChamCong() ở trên.
+                chamCongDaChot = false;
+                updateChamCongStatusUI();
                 loadChamCongData();
             } else {
                 alert("⚠️ " + ((result && result.message) || "Không thể mở lại bảng chấm công."));
             }
+        }
+
+        /* ---------- [XUẤT EXCEL] Tất cả / Theo phòng ban / Theo từng cá nhân ---------- */
+
+        // Đổ danh sách phòng ban + nhân sự (theo đúng dữ liệu chamCongRows vừa tải) vào 2 ô
+        // chọn của khối "Xuất Excel" — gọi lại mỗi khi tải dữ liệu mới (đổi kỳ) để danh sách
+        // luôn khớp đúng nhân sự đang có trong bảng.
+        function populateChamCongExportSelects() {
+            let deptSel = document.getElementById("cc-export-dept");
+            let staffSel = document.getElementById("cc-export-staff");
+            if (deptSel) {
+                let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
+                deptSel.innerHTML = depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+            }
+            if (staffSel) {
+                let sorted = chamCongRows.slice().sort((a, b) => String(a.hoTen).localeCompare(String(b.hoTen), "vi"));
+                staffSel.innerHTML = sorted.map(r => `<option value="${escapeHtml(r.msnv)}">${escapeHtml(r.msnv)} - ${escapeHtml(r.hoTen)}</option>`).join("");
+            }
+        }
+
+        function onChamCongExportScopeChange() {
+            let scopeEl = document.getElementById("cc-export-scope");
+            let deptEl = document.getElementById("cc-export-dept");
+            let staffEl = document.getElementById("cc-export-staff");
+            if (!scopeEl || !deptEl || !staffEl) return;
+            deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
+            staffEl.style.display = (scopeEl.value === "staff") ? "" : "none";
+        }
+
+        // Xuất bảng chấm công (kèm đầy đủ cột theo từng ngày trong tháng) ra file .xlsx —
+        // chạy hoàn toàn ở trình duyệt (thư viện SheetJS/XLSX đã có sẵn trong trang, không gọi
+        // thêm API nào), CHỈ dùng dữ liệu chamCongRows đã tải theo đúng quyền hiện có.
+        function exportChamCongToExcel() {
+            if (!currentUserCanViewChamCong) { alert("⚠️ Bạn không có quyền xem/xuất Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            if (typeof XLSX === "undefined") { alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại."); return; }
+            if (!chamCongRows.length) { alert("Chưa có dữ liệu để xuất. Vui lòng chọn kỳ và bấm \"Tải / Tính lại\" trước."); return; }
+
+            let scopeEl = document.getElementById("cc-export-scope");
+            let deptEl = document.getElementById("cc-export-dept");
+            let staffEl = document.getElementById("cc-export-staff");
+            let scope = scopeEl ? scopeEl.value : "all";
+            let deptValue = deptEl ? deptEl.value : "";
+            let staffValue = staffEl ? staffEl.value : "";
+
+            if (scope === "dept" && !deptValue) { alert("⚠️ Vui lòng chọn phòng ban cần xuất."); return; }
+            if (scope === "staff" && !staffValue) { alert("⚠️ Vui lòng chọn nhân viên cần xuất."); return; }
+
+            let rowsToExport = chamCongRows;
+            if (scope === "dept") rowsToExport = chamCongRows.filter(r => (r.phongBan || "(Chưa rõ)") === deptValue);
+            else if (scope === "staff") rowsToExport = chamCongRows.filter(r => r.msnv === staffValue);
+            if (!rowsToExport.length) { alert("Không có dữ liệu phù hợp để xuất."); return; }
+
+            let maKy = document.getElementById("cc-period-input") ? document.getElementById("cc-period-input").value : "";
+
+            let headerRow = ["MSNV", "Họ và tên", "Phòng ban"];
+            (chamCongDanhSachNgay || []).forEach(d => headerRow.push("Ngày " + d.ngay + " (" + d.thu + ")"));
+            headerRow.push("Ngày công chuẩn", "Ngày công thực tế", "Nghỉ phép lương (AL/CL)", "Nghỉ chế độ Cty (ML/TC)", "Nghỉ không lương (UL)", "Nghỉ hưởng BHXH (SI)", "Tổng ngày công tính lương");
+
+            let aoa = [headerRow];
+            rowsToExport.forEach(r => {
+                let chiTiet = r.chiTietNgay || {};
+                let row = [r.msnv || "", r.hoTen || "", r.phongBan || ""];
+                (chamCongDanhSachNgay || []).forEach(d => {
+                    let ma = chiTiet[String(d.ngay)] || "";
+                    let info = chamCongMaNgayInfo(ma, d.isWeekend);
+                    row.push(d.isWeekend ? "Nghỉ" : (info.label || "X"));
+                });
+                row.push(r.ngayCongChuan ?? "", r.ngayCongThucTe ?? "", r.nghiPhepLuong ?? 0, r.nghiCheDoCty ?? 0, r.nghiKhongLuong ?? 0, r.nghiBHXH ?? 0, r.tongNgayCongTinhLuong ?? "");
+                aoa.push(row);
+            });
+
+            let ws = XLSX.utils.aoa_to_sheet(aoa);
+            // Độ rộng cột: 3 cột cố định (MSNV/Họ tên/Phòng ban) + N cột theo ngày (hẹp) + 6 cột tổng hợp.
+            let cols = [{ wch: 12 }, { wch: 24 }, { wch: 18 }];
+            (chamCongDanhSachNgay || []).forEach(() => cols.push({ wch: 6 }));
+            cols.push({ wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 });
+            ws['!cols'] = cols;
+
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ChamCong");
+
+            let scopeLabelMap = {
+                all: "TatCa",
+                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_")
+            };
+            let fileName = "BangChamCong_" + (maKy || "KyChamCong") + "_" + (scopeLabelMap[scope] || "Export") + ".xlsx";
+            XLSX.writeFile(wb, fileName);
         }
 
 
