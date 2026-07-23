@@ -209,9 +209,18 @@
         }
         #cc-table thead th.cc-col-sticky { z-index: 4; background-color: #f2f2f2; }
         #cc-table tr:hover td.cc-col-sticky { background-color: #f9f9f9; }
-        #cc-table .cc-col-1 { left: 0; width: 70px; min-width: 70px; max-width: 70px; }
-        #cc-table .cc-col-2 { left: 70px; width: 150px; min-width: 150px; max-width: 150px; }
-        #cc-table .cc-col-3 { left: 220px; width: 110px; min-width: 110px; max-width: 110px; }
+        /* [SỬA LỖI HIỂN THỊ] Cột MSNV trước đây chỉ rộng 70px (trừ padding 12px 15px chỉ còn ~40px
+           chữ) nên mã nhân viên dài bị TRÀN ra ngoài và bị cột "Họ và tên" (nằm đè lên trên, cùng
+           nền trắng đục) CHE MẤT phần tràn đó. Nay: (1) tăng đủ rộng cho cả 3 cột cố định (và dời
+           lại đúng "left" của cột 2/3 cho khớp độ rộng mới của cột 1), (2) giảm padding riêng cho
+           3 cột này để có thêm chỗ hiển thị chữ, (3) thêm white-space:nowrap + overflow:hidden +
+           text-overflow:ellipsis để nếu vẫn còn dư ký tự thì hiện dấu "..." NGAY TRONG ô đó (đè
+           lên chính ô, không tràn/bị che nữa) kèm thuộc tính "title" (xem renderChamCongTable) để
+           rê chuột vào là thấy đầy đủ MSNV/Họ tên. */
+        #cc-table th.cc-col-sticky, #cc-table td.cc-col-sticky { padding: 8px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #cc-table .cc-col-1 { left: 0; width: 110px; min-width: 110px; max-width: 110px; }
+        #cc-table .cc-col-2 { left: 110px; width: 170px; min-width: 170px; max-width: 170px; }
+        #cc-table .cc-col-3 { left: 280px; width: 120px; min-width: 120px; max-width: 120px; }
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
@@ -1306,6 +1315,13 @@
                         <button class="btn btn-primary" onclick="loadChamCongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
                         <button class="btn btn-success" id="cc-btn-chot" style="display:none;" onclick="chotBangChamCong()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
                         <button class="btn btn-warning" id="cc-btn-mo-lai" style="display:none;" onclick="moLaiBangChamCong()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
+                        <!-- [MỚI - NÚT "ĐIỀU CHỈNH"] Chỉ hiện khi có quyền sửa Bảng Chấm Công và kỳ CHƯA
+                             chốt (giống điều kiện nút "Chốt bảng chấm công"). Bấm để bật/tắt cho phép
+                             click vào từng ô ngày (X/O) nhằm đổi sang bất kỳ loại công nào (VD "N1",
+                             "WFH"...) — dùng cho các ngày công đặc biệt. -->
+                        <button class="btn" id="cc-btn-dieuchinh" style="display:none;" onclick="toggleChamCongDieuChinh()" title="Bật/tắt cho phép click vào từng ô ngày để đổi sang bất kỳ loại công nào">
+                            <i class="fa-solid fa-sliders"></i> Điều chỉnh
+                        </button>
                         <span id="cc-status-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600;"></span>
                     </div>
                 </div>
@@ -1361,6 +1377,25 @@
                                 <tr><td style="text-align:center; color:#999;">Chọn kỳ chấm công rồi bấm "Tải / Tính lại".</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [MỚI - NÚT "ĐIỀU CHỈNH"] Hộp thoại chọn loại công cần đổi sang cho 1 ô ngày cụ thể.
+                 Chỉ mở được khi đã bật nút "Điều chỉnh" và click vào 1 ô còn mở khóa sửa (xem
+                 renderChamCongTable/openChamCongAdjustModal/submitChamCongAdjust bên dưới). -->
+            <div id="cc-adjust-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+                <div class="login-box" style="max-width:420px;">
+                    <h2><i class="fa-solid fa-sliders"></i> Điều chỉnh ngày công</h2>
+                    <p id="cc-adjust-info" style="color:#555; font-size:14px;"></p>
+                    <div class="input-group">
+                        <label>Chọn loại ngày công mới</label>
+                        <select id="cc-adjust-select"></select>
+                    </div>
+                    <div id="cc-adjust-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn" style="width:auto; flex-grow:1;" onclick="submitChamCongAdjust()">Xác nhận ✔️</button>
+                        <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeChamCongAdjustModal()">Hủy</button>
                     </div>
                 </div>
             </div>
@@ -2625,6 +2660,10 @@
         let currentUserCanDeleteLuong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
+        // [MỚI - NÚT "ĐIỀU CHỈNH"] true = đang bật chế độ cho phép click vào từng ô ngày để đổi
+        // sang bất kỳ loại công nào (xem renderChamCongTable/openChamCongAdjustModal). Mặc định
+        // TẮT mỗi khi đổi kỳ/tải lại trang, tránh sửa nhầm ngoài ý muốn.
+        let ccDieuChinhMode = false;
         // [BẢNG THEO THỨ/NGÀY TRONG THÁNG] Danh sách {ngay, thu, isWeekend} của kỳ đang xem,
         // do server trả về (field "danhSachNgay") — dùng để dựng cột theo từng ngày + xuất Excel.
         let chamCongDanhSachNgay = [];
@@ -5626,6 +5665,7 @@
             let badge = document.getElementById("cc-status-badge");
             let btnChot = document.getElementById("cc-btn-chot");
             let btnMoLai = document.getElementById("cc-btn-mo-lai");
+            let btnDieuChinh = document.getElementById("cc-btn-dieuchinh");
             if (badge) {
                 if (chamCongDaChot) {
                     badge.innerText = "Đã chốt";
@@ -5637,6 +5677,38 @@
             }
             if (btnChot) btnChot.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
             if (btnMoLai) btnMoLai.style.display = (currentUserCanEditChamCong && chamCongDaChot) ? "inline-flex" : "none";
+            // [MỚI - NÚT "ĐIỀU CHỈNH"] Cùng điều kiện hiện với nút "Chốt bảng chấm công" (cần
+            // quyền sửa + kỳ chưa chốt). Nếu kỳ đã chốt (hoặc mất quyền) mà chế độ đang bật thì
+            // tự tắt luôn, tránh còn sót trạng thái "đang điều chỉnh" không dùng được nữa.
+            if (btnDieuChinh) {
+                btnDieuChinh.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
+                if (!currentUserCanEditChamCong || chamCongDaChot) ccDieuChinhMode = false;
+                capNhatGiaoDienNutDieuChinh_();
+            }
+        }
+
+        // [MỚI - NÚT "ĐIỀU CHỈNH"] Cập nhật riêng phần hiển thị (màu/chữ) của nút "Điều chỉnh"
+        // theo đúng biến ccDieuChinhMode hiện tại — tách riêng để gọi lại được từ nhiều nơi
+        // (bật/tắt, tải lại dữ liệu, đổi kỳ...) mà không lặp code.
+        function capNhatGiaoDienNutDieuChinh_() {
+            let btn = document.getElementById("cc-btn-dieuchinh");
+            if (!btn) return;
+            btn.classList.toggle("btn-warning", ccDieuChinhMode);
+            btn.innerHTML = ccDieuChinhMode
+                ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
+                : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
+        }
+
+        // [MỚI - NÚT "ĐIỀU CHỈNH"] Bật/tắt cho phép click vào từng ô ngày (X/O) trong bảng để mở
+        // hộp thoại đổi sang bất kỳ loại công nào — xem renderChamCongTable() (thuộc tính
+        // "editable" của từng ô chỉ true khi ccDieuChinhMode = true) và openChamCongAdjustModal().
+        // KHÔNG gọi thêm action nào tới server (chỉ đổi giao diện) — dữ liệu chỉ thật sự được ghi
+        // khi người dùng bấm "Xác nhận" trong hộp thoại điều chỉnh (xem submitChamCongAdjust()).
+        function toggleChamCongDieuChinh() {
+            if (!currentUserCanEditChamCong || chamCongDaChot) return;
+            ccDieuChinhMode = !ccDieuChinhMode;
+            capNhatGiaoDienNutDieuChinh_();
+            renderChamCongTable();
         }
 
         // Mã trạng thái ngày -> nhãn hiển thị ngắn gọn trong ô + màu nền (dùng chung cho bảng
@@ -5645,6 +5717,26 @@
         // Nghỉ phép lương/Chế độ Cty/Không lương/BHXH) nay hiện THỐNG NHẤT "O" thay vì từng chữ
         // viết tắt riêng (trước đây: P/CĐ/KL/BH) — vẫn giữ nguyên màu nền + chú thích (title,
         // hiện khi rê chuột) khác nhau theo từng loại để không mất thông tin phân biệt.
+        // [MỚI - NÚT "ĐIỀU CHỈNH"] Tra thông tin hiển thị (nhãn/màu/chú thích) cho 1 mã "gốc"
+        // (KHÔNG kèm tiền tố "M:" thủ công) — dùng chung cho cả mã tự động tính (P/CD/KL/BHXH)
+        // LẪN mã do người dùng chọn tay qua nút "Điều chỉnh" (có thể là "X"/"O" hoặc bất kỳ mã
+        // nào trong Danh mục loại công như "N1"/"WFH"/"N4"...). Với mã trong Danh mục loại công,
+        // hiện ĐÚNG mã đó (không ép về "X") để phân biệt rõ loại công đặc biệt, kèm tên đầy đủ
+        // trong phần chú thích (rê chuột) lấy từ chính Danh mục.
+        function chamCongMaGocInfo_(maGoc) {
+            if (maGoc === "X") return { label: "X", bg: "", title: "Ngày làm việc" };
+            if (maGoc === "O") return { label: "O", bg: "#fbe4e6", title: "Ngày không làm việc" };
+            if (maGoc === "P") return { label: "O", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
+            if (maGoc === "CD") return { label: "O", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
+            if (maGoc === "KL") return { label: "O", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
+            if (maGoc === "BHXH") return { label: "O", bg: "#f3e8fd", title: "Nghỉ hưởng BHXH (SI)" };
+            // Mã khác X/O/P/CD/KL/BHXH -> tìm trong Danh mục loại công (N/D/WFH/N1..N7...) đã
+            // tải sẵn (xem loadDanhMucLoaiCong) để lấy tên đầy đủ làm chú thích.
+            let dm = (danhMucLoaiCongRows || []).find(r => String(r.ma || "").toUpperCase() === maGoc);
+            if (dm) return { label: maGoc, bg: "#eaf3ff", title: maGoc + " - " + (dm.ten || "") };
+            return { label: maGoc, bg: "#eaf3ff", title: "Mã loại công: " + maGoc };
+        }
+
         function chamCongMaNgayInfo(ma, isWeekend) {
             if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
             // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] "OX"/"OO" là mã do người có quyền "Sửa" bảng
@@ -5652,6 +5744,13 @@
             // thường nhưng có viền đậm + chú thích riêng để phân biệt với dữ liệu tự tính.
             if (ma === "OX") return { label: "X", bg: "#e6f4ea", title: "Đã sửa thủ công: Ngày làm việc", manual: true };
             if (ma === "OO") return { label: "O", bg: "#fbe4e6", title: "Đã sửa thủ công: Ngày không làm việc", manual: true };
+            // [MỚI - NÚT "ĐIỀU CHỈNH"] Mã dạng "M:<mã>" = đã điều chỉnh thủ công sang 1 loại
+            // công/nghỉ CỤ THỂ (không chỉ đảo X<->O) — bóc tách mã gốc để hiển thị đúng nhãn/màu,
+            // rồi đánh dấu "manual" (viền đậm riêng) + ghi rõ trong chú thích là đã điều chỉnh.
+            if (typeof ma === "string" && ma.indexOf("M:") === 0) {
+                let goc = chamCongMaGocInfo_(ma.substring(2));
+                return { label: goc.label, bg: goc.bg, title: "Đã điều chỉnh thủ công: " + goc.title, manual: true };
+            }
             if (ma === "P") return { label: "O", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
             if (ma === "CD") return { label: "O", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
             if (ma === "KL") return { label: "O", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
@@ -5738,21 +5837,24 @@
                     // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] Chỉ mở khóa click sửa cho: (1) người có
                     // quyền "SuaChamCong" (hoặc Admin), (2) kỳ CHƯA chốt (dùng cho trường hợp
                     // đặc biệt trước khi chốt bảng), (3) ngày trong tuần (không sửa Thứ 7/CN vì
-                    // không nằm trong "Ngày công chuẩn"). Click sẽ ĐẢO ngược X<->O cho đúng ngày/
-                    // nhân sự đó.
-                    let editable = currentUserCanEditChamCong && !chamCongDaChot && !d.isWeekend;
-                    let target = (info.label === "X") ? "O" : "X";
+                    // không nằm trong "Ngày công chuẩn"). [MỚI - NÚT "ĐIỀU CHỈNH"] Ngoài ra CHỈ
+                    // cho click khi đã bật chế độ "Điều chỉnh" (ccDieuChinhMode) — tránh sửa
+                    // nhầm ngoài ý muốn khi chỉ đang xem bảng bình thường. Bấm nút "Điều chỉnh"
+                    // ở đầu Tab để bật/tắt. Khi bật, click vào 1 ô sẽ mở hộp thoại cho chọn ĐÚNG
+                    // loại công cần đổi sang (không chỉ đảo ngược X<->O như trước — có thể đổi
+                    // sang bất kỳ mã nào trong Danh mục loại công, VD "N1"/"WFH"...).
+                    let editable = currentUserCanEditChamCong && !chamCongDaChot && !d.isWeekend && ccDieuChinhMode;
                     let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
                         (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
-                        (editable ? 'cursor:pointer;' : '');
-                    let fullTitle = info.title + (editable ? " — Bấm để đổi thành \"" + target + "\"" : "");
-                    let clickAttr = editable ? ` onclick="suaNgayChamCongClick('${safeMsnv}', ${d.ngay}, '${target}')"` : '';
+                        (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
+                    let fullTitle = info.title + (editable ? " — Bấm để điều chỉnh loại ngày công" : "");
+                    let clickAttr = editable ? ` onclick="openChamCongAdjustModal('${safeMsnv}', ${d.ngay})"` : '';
                     return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${info.label}</td>`;
                 }).join("");
                 return `<tr>
-                <td class="cc-col-sticky cc-col-1">${escapeHtml(r.msnv || "")}</td>
-                <td class="cc-col-sticky cc-col-2">${escapeHtml(r.hoTen || "")}</td>
-                <td class="cc-col-sticky cc-col-3">${escapeHtml(r.phongBan || "")}</td>
+                <td class="cc-col-sticky cc-col-1" title="${escapeHtml(r.msnv || "")}">${escapeHtml(r.msnv || "")}</td>
+                <td class="cc-col-sticky cc-col-2" title="${escapeHtml(r.hoTen || "")}">${escapeHtml(r.hoTen || "")}</td>
+                <td class="cc-col-sticky cc-col-3" title="${escapeHtml(r.phongBan || "")}">${escapeHtml(r.phongBan || "")}</td>
                 ${dayTds}
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongChuan ?? ""))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.ngayCongThucTe ?? ""))}</td>
@@ -5784,6 +5886,80 @@
                 loadChamCongData();
             } else {
                 alert("⚠️ " + ((result && result.message) || "Không thể sửa ngày chấm công."));
+            }
+        }
+
+        // [MỚI - NÚT "ĐIỀU CHỈNH"] Mở hộp thoại chọn loại công cần đổi sang cho 1 ô (msnv, ngay)
+        // cụ thể — chỉ gọi được khi nút "Điều chỉnh" đang bật (xem renderChamCongTable()). Danh
+        // sách lựa chọn gồm: "X"/"O" (giữ như cũ), 4 nhóm nghỉ P/CD/KL/BHXH, và toàn bộ mã trong
+        // Danh mục loại công (danhMucLoaiCongRows đã tải sẵn từ đầu Tab) — GIỐNG HỆT danh sách
+        // server chấp nhận ở action "suaNgayChamCong" (xem danhSachMaGhiDeHopLe_ trong Code.gs),
+        // để tránh chọn 1 mã rồi bị server từ chối. Không tự ý thêm/gọi API nào khác — chỉ đổi
+        // giao diện, dữ liệu chỉ thật sự ghi khi bấm "Xác nhận" (xem submitChamCongAdjust()).
+        let ccAdjustTarget = null;
+        function openChamCongAdjustModal(msnv, ngay) {
+            if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
+            let row = (chamCongRows || []).find(r => String(r.msnv) === String(msnv));
+            let hoTen = row ? (row.hoTen || "") : "";
+            ccAdjustTarget = { msnv: msnv, ngay: ngay };
+
+            let info = document.getElementById("cc-adjust-info");
+            if (info) info.innerText = "Nhân viên: " + hoTen + " (MSNV " + msnv + ") — Ngày " + ngay;
+
+            let sel = document.getElementById("cc-adjust-select");
+            if (sel) {
+                let options = [
+                    { ma: "X", ten: "Ngày làm việc bình thường" },
+                    { ma: "O", ten: "Ngày không làm việc (chung)" },
+                    { ma: "P", ten: "Nghỉ phép hưởng lương (AL/CL)" },
+                    { ma: "CD", ten: "Nghỉ chế độ Cty (ML/TC)" },
+                    { ma: "KL", ten: "Nghỉ không lương (UL)" },
+                    { ma: "BHXH", ten: "Nghỉ hưởng BHXH (SI)" }
+                ];
+                (danhMucLoaiCongRows || []).forEach(r => {
+                    if (r.ma) options.push({ ma: r.ma, ten: r.ten || "" });
+                });
+                let chiTiet = row ? (row.chiTietNgay || {}) : {};
+                let maHienTai = chiTiet[String(ngay)] || "";
+                let maHienTaiGoc = (String(maHienTai).indexOf("M:") === 0) ? maHienTai.substring(2) : (maHienTai === "OX" ? "X" : (maHienTai === "OO" ? "O" : (maHienTai || "X")));
+                sel.innerHTML = options.map(o => `<option value="${escapeHtml(o.ma)}"${o.ma === maHienTaiGoc ? " selected" : ""}>${escapeHtml(o.ma)} - ${escapeHtml(o.ten)}</option>`).join("");
+            }
+            let err = document.getElementById("cc-adjust-error");
+            if (err) err.style.display = "none";
+            let modal = document.getElementById("cc-adjust-modal");
+            if (modal) modal.style.display = "flex";
+        }
+
+        function closeChamCongAdjustModal() {
+            let modal = document.getElementById("cc-adjust-modal");
+            if (modal) modal.style.display = "none";
+            ccAdjustTarget = null;
+        }
+
+        async function submitChamCongAdjust() {
+            if (!ccAdjustTarget) return;
+            if (!currentUserCanEditChamCong || chamCongDaChot) { closeChamCongAdjustModal(); return; }
+            let sel = document.getElementById("cc-adjust-select");
+            let maChon = sel ? sel.value : "";
+            let err = document.getElementById("cc-adjust-error");
+            if (!maChon) {
+                if (err) { err.innerText = "Vui lòng chọn loại ngày công cần đổi sang."; err.style.display = "block"; }
+                return;
+            }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) { closeChamCongAdjustModal(); return; }
+
+            let result = await callServerAction({
+                action: "suaNgayChamCong", maKy: maKy,
+                msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon
+            });
+            if (result && result.status === "SUCCESS") {
+                closeChamCongAdjustModal();
+                loadChamCongData();
+            } else if (err) {
+                err.innerText = (result && result.message) || "Không thể lưu điều chỉnh.";
+                err.style.display = "block";
             }
         }
 
