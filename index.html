@@ -2764,7 +2764,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemLuong: data.xemLuong, suaLuong: data.suaLuong, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -3872,6 +3872,30 @@
             renderUserListViewForAdmin();
         }
 
+        // [TAB "LƯƠNG NHÂN VIÊN" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Xem"/"Sửa" của Tab "Lương
+        // Nhân Viên" cho 1 tài khoản — ĐỘC LẬP với quyền Tab "Quản Lý Nhân Sự" (HrView/HrEdit)
+        // và với Role chung, giống hệt cách làm với "Bảng Chấm Công" ở trên. Dùng action riêng
+        // "setLuongPermission" (chỉ ghi đúng cột 26-27 của sheet "TaiKhoan", không đụng các
+        // cột/quyền khác). Quyền Xóa dòng lương KHÔNG nằm trong hàm này — vẫn dùng chung quyền
+        // "HrDelete" (checkbox "Xóa" ở khối Quản Lý Nhân Sự) như trước.
+        async function toggleUserLuongPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newXem = (field === "xemLuong") ? checked : !!userDatabase[username].xemLuong;
+            let newSua = (field === "suaLuong") ? checked : !!userDatabase[username].suaLuong;
+            // Bật quyền Sửa thì tự động bật kèm quyền Xem (không thể sửa nếu không xem được).
+            if (field === "suaLuong" && checked) newXem = true;
+
+            let ok = await pushToCloud({ action: "setLuongPermission", username: username, xemLuong: newXem, suaLuong: newSua });
+            if (ok) {
+                userDatabase[username].xemLuong = newXem;
+                userDatabase[username].suaLuong = newSua;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
 
         // việc giao cho người khác) của 1 tài khoản. Xem danh sách công việc MẶC ĐỊNH BẬT cho
         // mọi tài khoản (không điều khiển được ở đây). Dùng action RIÊNG
@@ -4235,6 +4259,27 @@
                     </span>`;
                 }
 
+                // [TAB "LƯƠNG NHÂN VIÊN" - PHÂN QUYỀN RIÊNG] Giống hệt "Bảng Chấm Công": quyền
+                // XEM ở đây KHÔNG mặc định bật — Admin phải cấp riêng cho từng tài khoản (dữ
+                // liệu lương nhạy cảm), ĐỘC LẬP với quyền Tab "Quản Lý Nhân Sự" ở trên.
+                let luongControl = "";
+                if (u === "admin") {
+                    luongControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-sack-dollar"></i> Toàn quyền Lương Nhân Viên</span>';
+                } else {
+                    let lgXChecked = userDatabase[u].xemLuong ? "checked" : "";
+                    let lgEChecked = userDatabase[u].suaLuong ? "checked" : "";
+                    luongControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-sack-dollar" title="Lương Nhân Viên"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${lgXChecked} onchange="toggleUserLuongPermission('${safeU}', 'xemLuong', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${lgEChecked} onchange="toggleUserLuongPermission('${safeU}', 'suaLuong', this.checked)"> Lưu/Sửa lương
+                        </label>
+                        <span style="color:#aaa;">(Xóa dòng lương: dùng chung quyền "Xóa" ở khối Quản Lý Nhân Sự)</span>
+                    </span>`;
+                }
+
                 // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 usersHtml += `<div class="admusr-row">
@@ -4278,6 +4323,7 @@
                         ${llvControl}
                         ${gvControl}
                         ${ccControl}
+                        ${luongControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
                         <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -4395,7 +4441,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemLuong: data.xemLuong, suaLuong: data.suaLuong, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -4517,7 +4563,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemLuong: true, suaLuong: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -4618,14 +4664,20 @@
             currentUserCanViewResignedContacts = canViewResignedContacts;
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
 
-            // ==== [TAB "LƯƠNG NHÂN VIÊN"] Dùng LẠI đúng quyền của Tab "Quản Lý Nhân Sự"
-            // (HrView để xem, HrEdit để sửa/lưu, HrDelete để xóa) — KHÔNG thêm cột phân quyền
-            // mới trên Sheet "TaiKhoan", giữ nguyên cơ chế bảo mật hiện có. ====
-            currentUserCanViewLuong = canViewHR;
-            currentUserCanEditLuong = canEditHRUI;
+            // ==== [TAB "LƯƠNG NHÂN VIÊN"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập với
+            // Role chung VÀ độc lập với quyền Tab "Quản Lý Nhân Sự") — giống hệt cách làm với
+            // "Bảng Chấm Công": Xem tab cần quyền "XemLuong" (hoặc Admin); Lưu/Sửa 1 dòng
+            // lương cần thêm quyền "SuaLuong" (hoặc Admin). [TRƯỚC ĐÂY dùng chung quyền
+            // "HrView"/"HrEdit" của Tab "Quản Lý Nhân Sự" — nay TÁCH RIÊNG để Admin có thể cấp
+            // xem/sửa Lương mà KHÔNG cần cấp thêm quyền Quản Lý Nhân Sự.] Xóa dòng lương: VẪN
+            // GIỮ NGUYÊN quyền "HrDelete" như trước — KHÔNG thuộc phạm vi thay đổi này. ====
+            let canViewLuong = (currentUser.role === "Admin") || !!currentUser.xemLuong;
+            let canEditLuongUI = (currentUser.role === "Admin") || !!currentUser.suaLuong;
+            currentUserCanViewLuong = canViewLuong;
+            currentUserCanEditLuong = canEditLuongUI;
             currentUserCanDeleteLuong = canDeleteHRUI;
             let elMenuLuong = document.getElementById("menu-luong");
-            if (elMenuLuong) elMenuLuong.style.display = canViewHR ? "flex" : "none";
+            if (elMenuLuong) elMenuLuong.style.display = canViewLuong ? "flex" : "none";
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
             // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
@@ -4887,7 +4939,7 @@
                 loadChamCongData();
             }
             if (pageId === "luong") {
-                let canViewLuongPg = currentUser && ((currentUser.role === "Admin") || !!currentUser.hrView);
+                let canViewLuongPg = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemLuong);
                 if (!canViewLuongPg) { alert("⚠️ Bạn không có quyền xem Lương Nhân Viên. Liên hệ Admin để được cấp quyền."); return; }
                 initLuongPeriodPicker();
                 loadLuongData();
@@ -5595,6 +5647,11 @@
         // hiện khi rê chuột) khác nhau theo từng loại để không mất thông tin phân biệt.
         function chamCongMaNgayInfo(ma, isWeekend) {
             if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
+            // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] "OX"/"OO" là mã do người có quyền "Sửa" bảng
+            // chấm công tự sửa tay (khi kỳ CHƯA chốt) — vẫn hiện đúng ký hiệu X/O như bình
+            // thường nhưng có viền đậm + chú thích riêng để phân biệt với dữ liệu tự tính.
+            if (ma === "OX") return { label: "X", bg: "#e6f4ea", title: "Đã sửa thủ công: Ngày làm việc", manual: true };
+            if (ma === "OO") return { label: "O", bg: "#fbe4e6", title: "Đã sửa thủ công: Ngày không làm việc", manual: true };
             if (ma === "P") return { label: "O", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
             if (ma === "CD") return { label: "O", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
             if (ma === "KL") return { label: "O", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
@@ -5674,10 +5731,23 @@
             }
             tbody.innerHTML = chamCongRows.map(r => {
                 let chiTiet = r.chiTietNgay || {};
+                let safeMsnv = escapeHtml(r.msnv || "");
                 let dayTds = (chamCongDanhSachNgay || []).map(d => {
                     let ma = chiTiet[String(d.ngay)] || "";
                     let info = chamCongMaNgayInfo(ma, d.isWeekend);
-                    return `<td style="text-align:center; ${info.bg ? 'background:' + info.bg + ';' : ''}" title="${escapeHtml(info.title)}">${info.label}</td>`;
+                    // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] Chỉ mở khóa click sửa cho: (1) người có
+                    // quyền "SuaChamCong" (hoặc Admin), (2) kỳ CHƯA chốt (dùng cho trường hợp
+                    // đặc biệt trước khi chốt bảng), (3) ngày trong tuần (không sửa Thứ 7/CN vì
+                    // không nằm trong "Ngày công chuẩn"). Click sẽ ĐẢO ngược X<->O cho đúng ngày/
+                    // nhân sự đó.
+                    let editable = currentUserCanEditChamCong && !chamCongDaChot && !d.isWeekend;
+                    let target = (info.label === "X") ? "O" : "X";
+                    let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
+                        (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
+                        (editable ? 'cursor:pointer;' : '');
+                    let fullTitle = info.title + (editable ? " — Bấm để đổi thành \"" + target + "\"" : "");
+                    let clickAttr = editable ? ` onclick="suaNgayChamCongClick('${safeMsnv}', ${d.ngay}, '${target}')"` : '';
+                    return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${info.label}</td>`;
                 }).join("");
                 return `<tr>
                 <td class="cc-col-sticky cc-col-1">${escapeHtml(r.msnv || "")}</td>
@@ -5693,6 +5763,28 @@
                 <td style="text-align:center; font-weight:600;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? ""))}</td>
             </tr>`;
             }).join("");
+        }
+
+        // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] Người có quyền "Sửa" bảng chấm công bấm vào 1 ô
+        // ngày (khi kỳ CHƯA chốt) để đảo ngược "X" (ngày làm việc) <-> "O" (ngày không làm
+        // việc) cho đúng nhân sự/ngày đó — dùng cho các trường hợp đặc biệt (đi làm bù, quên
+        // chấm công...) không nằm trong Đơn nghỉ phép đã duyệt. KHÔNG đụng tới Đơn nghỉ phép
+        // gốc, chỉ lưu ghi đè riêng ở server rồi tải lại bảng để mọi cột tổng hợp (Ngày công
+        // thực tế/Tổng ngày công tính lương...) luôn khớp đúng.
+        async function suaNgayChamCongClick(msnv, ngay, loaiMoi) {
+            if (!currentUserCanEditChamCong || chamCongDaChot) return;
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) return;
+            let nhan = (loaiMoi === "X") ? "X (Ngày làm việc)" : "O (Ngày không làm việc)";
+            if (!confirm("Đổi ngày " + ngay + " của nhân sự \"" + msnv + "\" thành \"" + nhan + "\"?\n\n(Dùng cho trường hợp đặc biệt — chỉ áp dụng khi kỳ chưa chốt.)")) return;
+
+            let result = await callServerAction({ action: "suaNgayChamCong", maKy: maKy, msnv: msnv, ngay: ngay, loai: loaiMoi });
+            if (result && result.status === "SUCCESS") {
+                loadChamCongData();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể sửa ngày chấm công."));
+            }
         }
 
         async function chotBangChamCong() {
