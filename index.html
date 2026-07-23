@@ -705,6 +705,32 @@
                     </div>
                 </div>
 
+                <!-- [XUẤT EXCEL - BÁO CÁO NGÀY NGHỈ PHÉP] Khối RIÊNG chỉ xuất thông tin ngày nghỉ
+                     phép (Tổng số ngày phép / Đã nghỉ / Còn lại) của nhân sự — dữ liệu lấy LẠI
+                     NGUYÊN VẸN từ staffData đã tải sẵn theo đúng quyền của tài khoản đang đăng
+                     nhập (CÙNG nguồn dữ liệu với khối xuất Excel đầy đủ ở trên), không gọi thêm
+                     API nào, không đọc/ghi thêm gì trên Sheet, không đổi dữ liệu gốc và không
+                     thay đổi cơ chế phân quyền/bảo mật hiện có (vẫn yêu cầu quyền "XemNhanSu"
+                     giống hệt điều kiện đang dùng để hiện/ẩn cả Tab và khối xuất Excel ở trên).
+                     Cho phép chọn 3 phạm vi: Tất cả nhân sự / Theo phòng ban cụ thể / Theo từng
+                     cá nhân — dùng LẠI đúng hàm buildHRExportRows() đã có sẵn ở trên. -->
+                <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-bottom:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-calendar-check" style="color:#1e7e34;"></i> Xuất Báo cáo Ngày nghỉ phép</h4>
+                    <div class="table-controls" style="margin:0;">
+                        <select id="hr-leave-export-scope" class="search-box" style="max-width: 260px;" onchange="onHRLeaveExportScopeChange()">
+                            <option value="all">Tất cả nhân sự</option>
+                            <option value="dept">Theo phòng ban cụ thể...</option>
+                            <option value="staff">Xuất theo từng cá nhân...</option>
+                        </select>
+                        <select id="hr-leave-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <input type="text" id="hr-leave-export-staff-search" class="search-box" style="max-width: 200px; display:none;" placeholder="🔎 Tìm theo tên/MSNV..." oninput="debouncedFilterHRLeaveExportStaffOptions()">
+                        <select id="hr-leave-export-staff" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <button type="button" class="btn btn-success" onclick="exportHRLeaveToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel Nghỉ phép (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-hr" class="search-box" oninput="debouncedFilterHRTable()" placeholder="Tìm nhân viên theo tên hoặc mã số (MSNV)...">
                     <select id="filter-hr-dept" class="search-box" onchange="filterHRTable()" style="max-width: 220px;"></select>
@@ -2603,7 +2629,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-17.nghiphep-dinhkemfile-xoadaduyet-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-23.chamcong-dieuchinh-cuoituan-v1";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -2711,6 +2737,9 @@
         let debouncedFilterStaffGrid = debounce(function () { filterStaffGrid(); }, 200);
         let debouncedFilterHRTable = debounce(function () { filterHRTable(); }, 200);
         let debouncedFilterHRExportStaffOptions = debounce(function () { filterHRExportStaffOptions(); }, 200);
+        // [XUẤT BÁO CÁO NGHỈ PHÉP] Bản debounce riêng cho ô tìm nhân viên của khối xuất Excel
+        // "Ngày nghỉ phép" (độc lập với ô tìm của khối xuất Excel đầy đủ ở trên).
+        let debouncedFilterHRLeaveExportStaffOptions = debounce(function () { filterHRLeaveExportStaffOptions(); }, 200);
         let debouncedFilterCrewTable = debounce(function () { filterCrewTable(); }, 200);
         let debouncedFilterEquipmentTable = debounce(function () { filterEquipmentTable(); }, 200);
         let debouncedFilterInternalDocsTable = debounce(function () { filterInternalDocsTable(); }, 200);
@@ -5640,10 +5669,11 @@
             }
         }
 
-        // Tổng số cột hiện tại của bảng (3 cột cố định + N cột theo ngày + 6 cột tổng hợp) —
-        // dùng để colspan dòng thông báo/đang tải cho khớp độ rộng bảng.
+        // Tổng số cột hiện tại của bảng (3 cột cố định + N cột theo ngày + 7 cột tổng hợp) —
+        // dùng để colspan dòng thông báo/đang tải cho khớp độ rộng bảng. [MỚI - CHO PHÉP ĐIỀU
+        // CHỈNH CUỐI TUẦN] Tăng từ 6 lên 7 cột tổng hợp do thêm cột tham khảo "Ngày làm cuối tuần".
         function chamCongTongSoCot() {
-            return 3 + (chamCongDanhSachNgay || []).length + 6;
+            return 3 + (chamCongDanhSachNgay || []).length + 7;
         }
 
         // Tải (và với kỳ chưa chốt, server tự TÍNH LẠI) dữ liệu bảng chấm công của đúng kỳ
@@ -5748,19 +5778,29 @@
         }
 
         function chamCongMaNgayInfo(ma, isWeekend) {
-            if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
+            // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Trước đây MỌI ô cuối tuần luôn hiện trống
+            // (bỏ qua hoàn toàn dữ liệu ô đó). Nay: cuối tuần CHƯA có điều chỉnh gì vẫn hiện
+            // trống như cũ (giữ nguyên hành vi mặc định) — nhưng nếu ĐÃ được điều chỉnh thủ công
+            // (nhân sự đi làm cuối tuần, xem nút "Điều chỉnh"), hiện ĐÚNG mã đã chọn giống hệt
+            // cách hiển thị của ngày trong tuần (dùng chung logic bên dưới), kèm thêm "Cuối tuần"
+            // trong phần chú thích để phân biệt.
+            if (isWeekend && !ma) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
             // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] "OX"/"OO" là mã do người có quyền "Sửa" bảng
             // chấm công tự sửa tay (khi kỳ CHƯA chốt) — vẫn hiện đúng ký hiệu X/O như bình
             // thường nhưng có viền đậm + chú thích riêng để phân biệt với dữ liệu tự tính.
-            if (ma === "OX") return { label: "X", bg: "#e6f4ea", title: "Đã sửa thủ công: Ngày làm việc", manual: true };
-            if (ma === "OO") return { label: "O", bg: "#fbe4e6", title: "Đã sửa thủ công: Ngày không làm việc", manual: true };
+            if (ma === "OX") return { label: "X", bg: "#e6f4ea", title: (isWeekend ? "Cuối tuần - " : "") + "Đã sửa thủ công: Ngày làm việc", manual: true };
+            if (ma === "OO") return { label: "O", bg: "#fbe4e6", title: (isWeekend ? "Cuối tuần - " : "") + "Đã sửa thủ công: Ngày không làm việc", manual: true };
             // [MỚI - NÚT "ĐIỀU CHỈNH"] Mã dạng "M:<mã>" = đã điều chỉnh thủ công sang 1 loại
             // công/nghỉ CỤ THỂ (không chỉ đảo X<->O) — bóc tách mã gốc để hiển thị đúng nhãn/màu,
             // rồi đánh dấu "manual" (viền đậm riêng) + ghi rõ trong chú thích là đã điều chỉnh.
             if (typeof ma === "string" && ma.indexOf("M:") === 0) {
                 let goc = chamCongMaGocInfo_(ma.substring(2));
-                return { label: goc.label, bg: goc.bg, title: "Đã điều chỉnh thủ công: " + goc.title, manual: true };
+                return { label: goc.label, bg: goc.bg, title: (isWeekend ? "Cuối tuần - " : "") + "Đã điều chỉnh thủ công: " + goc.title, manual: true };
             }
+            // Cuối tuần nhưng có ma khác các dạng ghi đè ở trên (không nên xảy ra trong thực tế,
+            // giữ lại để an toàn) -> vẫn hiện trống như hành vi gốc thay vì rơi xuống các nhánh
+            // X/O/P/CD/KL/BHXH bên dưới (vốn chỉ dành cho ngày trong tuần).
+            if (isWeekend) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
             if (ma === "P") return { label: "O", bg: "#fff4e5", title: "Nghỉ phép hưởng lương (AL/CL)" };
             if (ma === "CD") return { label: "O", bg: "#e8f0fe", title: "Nghỉ chế độ Cty (ML/TC)" };
             if (ma === "KL") return { label: "O", bg: "#fdecea", title: "Nghỉ không lương (UL)" };
@@ -5824,6 +5864,7 @@
                 <th>Nghỉ không lương<br>(UL)</th>
                 <th>Nghỉ hưởng BHXH<br>(SI)</th>
                 <th>Tổng ngày công tính lương</th>
+                <th title="Số ngày Thứ 7/CN đã điều chỉnh thủ công thành có đi làm — chỉ mang tính tham khảo, KHÔNG tự cộng vào Ngày công thực tế/Tổng ngày công tính lương.">Ngày làm cuối tuần<br><span style="font-weight:400; font-size:10px;">(tham khảo)</span></th>
             </tr>`;
         }
 
@@ -5846,19 +5887,23 @@
                     let info = chamCongMaNgayInfo(ma, d.isWeekend);
                     // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] Chỉ mở khóa click sửa cho: (1) người có
                     // quyền "SuaChamCong" (hoặc Admin), (2) kỳ CHƯA chốt (dùng cho trường hợp
-                    // đặc biệt trước khi chốt bảng), (3) ngày trong tuần (không sửa Thứ 7/CN vì
-                    // không nằm trong "Ngày công chuẩn"). [MỚI - NÚT "ĐIỀU CHỈNH"] Ngoài ra CHỈ
+                    // đặc biệt trước khi chốt bảng). [MỚI - NÚT "ĐIỀU CHỈNH"] Ngoài ra CHỈ
                     // cho click khi đã bật chế độ "Điều chỉnh" (ccDieuChinhMode) — tránh sửa
                     // nhầm ngoài ý muốn khi chỉ đang xem bảng bình thường. Bấm nút "Điều chỉnh"
                     // ở đầu Tab để bật/tắt. Khi bật, click vào 1 ô sẽ mở hộp thoại cho chọn ĐÚNG
                     // loại công cần đổi sang (không chỉ đảo ngược X<->O như trước — có thể đổi
                     // sang bất kỳ mã nào trong Danh mục loại công, VD "N1"/"WFH"...).
-                    let editable = currentUserCanEditChamCong && !chamCongDaChot && !d.isWeekend && ccDieuChinhMode;
+                    // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Trước đây thêm điều kiện "&&
+                    // !d.isWeekend" để khóa cứng Thứ 7/CN (không nằm trong "Ngày công chuẩn").
+                    // Nay BỎ điều kiện này để cho phép điền thủ công ngày công cho các trường
+                    // hợp nhân sự CÓ đi làm vào cuối tuần (xem mục [26] đầu Code.gs) — vẫn giữ
+                    // NGUYÊN 2 điều kiện quyền hạn/kỳ chưa chốt ở trên.
+                    let editable = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode;
                     let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
                         (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
                         (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
                     let fullTitle = info.title + (editable ? " — Bấm để điều chỉnh loại ngày công" : "");
-                    let clickAttr = editable ? ` onclick="openChamCongAdjustModal('${safeMsnv}', ${d.ngay})"` : '';
+                    let clickAttr = editable ? ` onclick="openChamCongAdjustModal('${safeMsnv}', ${d.ngay}, ${d.isWeekend ? "true" : "false"})"` : '';
                     return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${info.label}</td>`;
                 }).join("");
                 return `<tr>
@@ -5873,6 +5918,7 @@
                 <td style="text-align:center;">${escapeHtml(String(r.nghiKhongLuong ?? 0))}</td>
                 <td style="text-align:center;">${escapeHtml(String(r.nghiBHXH ?? 0))}</td>
                 <td style="text-align:center; font-weight:600;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? ""))}</td>
+                <td style="text-align:center; color:#555;" title="Chỉ mang tính tham khảo, không tự cộng vào Ngày công thực tế/Tổng ngày công tính lương.">${escapeHtml(String(r.ngayLamCuoiTuan ?? 0))}</td>
             </tr>`;
             }).join("");
         }
@@ -5907,14 +5953,17 @@
         // để tránh chọn 1 mã rồi bị server từ chối. Không tự ý thêm/gọi API nào khác — chỉ đổi
         // giao diện, dữ liệu chỉ thật sự ghi khi bấm "Xác nhận" (xem submitChamCongAdjust()).
         let ccAdjustTarget = null;
-        function openChamCongAdjustModal(msnv, ngay) {
+        function openChamCongAdjustModal(msnv, ngay, isWeekend) {
             if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
             let row = (chamCongRows || []).find(r => String(r.msnv) === String(msnv));
             let hoTen = row ? (row.hoTen || "") : "";
             ccAdjustTarget = { msnv: msnv, ngay: ngay };
 
             let info = document.getElementById("cc-adjust-info");
-            if (info) info.innerText = "Nhân viên: " + hoTen + " (MSNV " + msnv + ") — Ngày " + ngay;
+            // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Ghi rõ thêm "(Cuối tuần)" khi đang điều
+            // chỉnh 1 ô Thứ 7/CN, để tránh nhầm với ngày trong tuần — không đổi hành vi với
+            // ngày trong tuần (vẫn hiện y hệt như trước).
+            if (info) info.innerText = "Nhân viên: " + hoTen + " (MSNV " + msnv + ") — Ngày " + ngay + (isWeekend ? " (Cuối tuần)" : "");
 
             let sel = document.getElementById("cc-adjust-select");
             if (sel) {
@@ -6065,7 +6114,7 @@
 
             let headerRow = ["MSNV", "Họ và tên", "Phòng ban"];
             (chamCongDanhSachNgay || []).forEach(d => headerRow.push("Ngày " + d.ngay + " (" + d.thu + ")"));
-            headerRow.push("Ngày công chuẩn", "Ngày công thực tế", "Nghỉ phép lương (AL/CL)", "Nghỉ chế độ Cty (ML/TC)", "Nghỉ không lương (UL)", "Nghỉ hưởng BHXH (SI)", "Tổng ngày công tính lương");
+            headerRow.push("Ngày công chuẩn", "Ngày công thực tế", "Nghỉ phép lương (AL/CL)", "Nghỉ chế độ Cty (ML/TC)", "Nghỉ không lương (UL)", "Nghỉ hưởng BHXH (SI)", "Tổng ngày công tính lương", "Ngày làm cuối tuần (tham khảo)");
 
             let aoa = [headerRow];
             rowsToExport.forEach(r => {
@@ -6074,17 +6123,22 @@
                 (chamCongDanhSachNgay || []).forEach(d => {
                     let ma = chiTiet[String(d.ngay)] || "";
                     let info = chamCongMaNgayInfo(ma, d.isWeekend);
-                    row.push(d.isWeekend ? "Nghỉ" : (info.label || "X"));
+                    // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Trước đây LUÔN ghi "Nghỉ" cho mọi ô
+                    // cuối tuần (kể cả khi đã điều chỉnh thủ công cho đi làm), làm mất thông tin
+                    // khi xuất Excel. Nay: cuối tuần CHƯA điều chỉnh (info.label rỗng) vẫn ghi
+                    // "Nghỉ" như cũ; cuối tuần ĐÃ điều chỉnh thì xuất đúng mã đã chọn (giống hệt
+                    // trên bảng) thay vì luôn ghi "Nghỉ".
+                    row.push(info.label || (d.isWeekend ? "Nghỉ" : "X"));
                 });
-                row.push(r.ngayCongChuan ?? "", r.ngayCongThucTe ?? "", r.nghiPhepLuong ?? 0, r.nghiCheDoCty ?? 0, r.nghiKhongLuong ?? 0, r.nghiBHXH ?? 0, r.tongNgayCongTinhLuong ?? "");
+                row.push(r.ngayCongChuan ?? "", r.ngayCongThucTe ?? "", r.nghiPhepLuong ?? 0, r.nghiCheDoCty ?? 0, r.nghiKhongLuong ?? 0, r.nghiBHXH ?? 0, r.tongNgayCongTinhLuong ?? "", r.ngayLamCuoiTuan ?? 0);
                 aoa.push(row);
             });
 
             let ws = XLSX.utils.aoa_to_sheet(aoa);
-            // Độ rộng cột: 3 cột cố định (MSNV/Họ tên/Phòng ban) + N cột theo ngày (hẹp) + 6 cột tổng hợp.
+            // Độ rộng cột: 3 cột cố định (MSNV/Họ tên/Phòng ban) + N cột theo ngày (hẹp) + 7 cột tổng hợp.
             let cols = [{ wch: 12 }, { wch: 24 }, { wch: 18 }];
             (chamCongDanhSachNgay || []).forEach(() => cols.push({ wch: 6 }));
-            cols.push({ wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 });
+            cols.push({ wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 });
             ws['!cols'] = cols;
 
             let wb = XLSX.utils.book_new();
@@ -8780,6 +8834,23 @@
                 // Giữ nguyên từ khóa đang tìm (nếu có) sau khi danh sách nhân viên vừa được nạp lại.
                 filterHRExportStaffOptions();
             }
+            // [XUẤT BÁO CÁO NGHỈ PHÉP] Select chọn phòng ban / từng nhân viên cụ thể của khối
+            // xuất Excel "Ngày nghỉ phép" — nạp giống HỆT cách làm với hr-export-dept/hr-export-staff
+            // ở trên (không đổi dữ liệu/quyền hạn, chỉ thêm 1 khối UI dùng LẠI đúng staffData này).
+            let hrLeaveExportDeptSel = document.getElementById("hr-leave-export-dept");
+            if (hrLeaveExportDeptSel) {
+                let keepHrLeaveDept = hrLeaveExportDeptSel.value;
+                hrLeaveExportDeptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' + depts.map(d => `<option value="${d}">${d}</option>`).join('');
+                if (keepHrLeaveDept && hrLeaveExportDeptSel.querySelector(`option[value="${CSS.escape(keepHrLeaveDept)}"]`)) hrLeaveExportDeptSel.value = keepHrLeaveDept;
+            }
+            let hrLeaveExportStaffSel = document.getElementById("hr-leave-export-staff");
+            if (hrLeaveExportStaffSel) {
+                let keepHrLeaveStaff = hrLeaveExportStaffSel.value;
+                hrLeaveExportStaffSel.innerHTML = '<option value="">-- Chọn nhân viên --</option>' +
+                    staffData.map(s => `<option value="${escapeHtml(s.msnv)}">${escapeHtml(s.name)} (${escapeHtml(s.msnv)})</option>`).join('');
+                if (keepHrLeaveStaff && hrLeaveExportStaffSel.querySelector(`option[value="${CSS.escape(keepHrLeaveStaff)}"]`)) hrLeaveExportStaffSel.value = keepHrLeaveStaff;
+                filterHRLeaveExportStaffOptions();
+            }
 
             let checkboxesHtml = depts.map((d, i) => `
                 <label class="checkbox-item">
@@ -9657,6 +9728,121 @@
             let now = new Date();
             let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
             let fileName = "QuanLyNhanSu_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
+
+            XLSX.writeFile(wb, fileName);
+        }
+
+        /* ===== [TAB "QUẢN LÝ NHÂN SỰ"] XUẤT BÁO CÁO NGÀY NGHỈ PHÉP RA EXCEL (.xlsx) =====
+           Khối RIÊNG, tách biệt với khối "Xuất Excel" đầy đủ hồ sơ ở trên — chỉ tập trung vào
+           thông tin ngày nghỉ phép (Tổng số ngày phép / Số ngày đã nghỉ / Số ngày còn lại) của
+           từng nhân sự. Xuất file NGAY TẠI TRÌNH DUYỆT bằng SheetJS, dựa hoàn toàn trên staffData
+           ĐÃ TẢI SẴN theo đúng phiên đăng nhập/quyền hiện tại — KHÔNG gọi thêm action nào tới
+           server, KHÔNG đọc/ghi thêm gì trên Sheet, không ảnh hưởng dữ liệu gốc và không thay
+           đổi cơ chế phân quyền/bảo mật hiện có (vẫn yêu cầu quyền "XemNhanSu" y hệt khối xuất
+           Excel đầy đủ ở trên và điều kiện đang dùng để hiện/ẩn cả Tab "Quản Lý Nhân Sự"). */
+
+        // Hiện/ẩn ô chọn phòng ban / cá nhân cụ thể tùy theo phạm vi xuất "Ngày nghỉ phép" đang chọn.
+        function onHRLeaveExportScopeChange() {
+            let scopeEl = document.getElementById("hr-leave-export-scope");
+            let deptEl = document.getElementById("hr-leave-export-dept");
+            let staffEl = document.getElementById("hr-leave-export-staff");
+            let staffSearchEl = document.getElementById("hr-leave-export-staff-search");
+            if (!scopeEl || !deptEl || !staffEl) return;
+            deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
+            let isStaffScope = (scopeEl.value === "staff");
+            staffEl.style.display = isStaffScope ? "" : "none";
+            if (staffSearchEl) {
+                staffSearchEl.style.display = isStaffScope ? "" : "none";
+                if (!isStaffScope) {
+                    staffSearchEl.value = "";
+                    filterHRLeaveExportStaffOptions();
+                }
+            }
+        }
+
+        // Lọc nhanh danh sách nhân viên trong select "hr-leave-export-staff" theo tên hoặc MSNV
+        // người dùng gõ vào ô tìm kiếm. CHỈ ẩn/hiện <option> ngay trên trình duyệt (client-side),
+        // KHÔNG gọi thêm API, KHÔNG đổi dữ liệu staffData/quyền hạn hiện có.
+        function filterHRLeaveExportStaffOptions() {
+            let searchEl = document.getElementById("hr-leave-export-staff-search");
+            let staffEl = document.getElementById("hr-leave-export-staff");
+            if (!searchEl || !staffEl) return;
+            let keyword = searchEl.value.trim().toLowerCase();
+            Array.from(staffEl.options).forEach(opt => {
+                if (!opt.value) { opt.hidden = false; return; }
+                opt.hidden = !(!keyword || opt.text.toLowerCase().includes(keyword));
+            });
+        }
+
+        function exportHRLeaveToExcel() {
+            // [BẢO MẬT] Điều kiện GIỐNG HỆT khối xuất Excel đầy đủ ở trên: chỉ cho phép xuất khi
+            // tài khoản có quyền xem Tab "Quản Lý Nhân Sự" (currentUserCanViewHR) — KHÔNG thêm/
+            // bớt quyền nào khác, không đổi cơ chế phân quyền hiện có.
+            if (!currentUserCanViewHR) {
+                alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let scopeEl = document.getElementById("hr-leave-export-scope");
+            let deptEl = document.getElementById("hr-leave-export-dept");
+            let staffEl = document.getElementById("hr-leave-export-staff");
+            let scope = scopeEl ? scopeEl.value : "all";
+            let deptValue = deptEl ? deptEl.value : "";
+            let staffValue = staffEl ? staffEl.value : "";
+
+            if (scope === "dept" && !deptValue) {
+                alert("⚠️ Vui lòng chọn phòng ban cần xuất.");
+                return;
+            }
+            if (scope === "staff" && !staffValue) {
+                alert("⚠️ Vui lòng chọn nhân viên cần xuất.");
+                return;
+            }
+
+            // Dùng LẠI đúng hàm buildHRExportRows() đã có sẵn (3 phạm vi "all"/"dept"/"staff"
+            // dùng chung logic lọc với khối xuất Excel đầy đủ ở trên) — không viết thêm logic
+            // lọc mới, tránh sai lệch dữ liệu giữa 2 khối xuất.
+            let rows = buildHRExportRows(scope, deptValue, staffValue);
+            if (rows.length === 0) {
+                alert("Không có dữ liệu nhân sự phù hợp với phạm vi đã chọn để xuất.");
+                return;
+            }
+
+            let exportRows = rows.map(s => {
+                let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
+                return {
+                    "MSNV": s.msnv || "",
+                    "Họ và tên": s.name || "",
+                    "Phòng ban": deptText,
+                    "Chức vụ": s.position || "",
+                    "Trạng thái làm việc": (s.workStatus === "OFF") ? "Đã nghỉ việc" : "Đang làm việc",
+                    "Tổng số ngày nghỉ phép": (s.tongSoNgayNghiPhep || s.tongSoNgayNghiPhep === 0) ? s.tongSoNgayNghiPhep : 0,
+                    "Số ngày đã nghỉ": (s.soNgayDaNghi || s.soNgayDaNghi === 0) ? s.soNgayDaNghi : 0,
+                    "Số ngày còn lại": (s.soNgayConLai || s.soNgayConLai === 0) ? s.soNgayConLai : 0
+                };
+            });
+
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            // [ĐỘ RỘNG CỘT] Khớp đúng thứ tự 8 cột dữ liệu ở trên.
+            ws['!cols'] = [
+                { wch: 12 }, { wch: 26 }, { wch: 22 }, { wch: 20 },
+                { wch: 18 }, { wch: 20 }, { wch: 16 }, { wch: 16 }
+            ];
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "NghiPhep");
+
+            let scopeLabelMap = {
+                all: "TatCaNhanSu",
+                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_")
+            };
+            let now = new Date();
+            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+            let fileName = "BaoCaoNghiPhep_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
 
             XLSX.writeFile(wb, fileName);
         }
