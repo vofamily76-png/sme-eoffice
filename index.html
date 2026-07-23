@@ -1358,6 +1358,14 @@
                         <button class="btn" id="cc-btn-dieuchinh" style="display:none;" onclick="toggleChamCongDieuChinh()" title="Bật/tắt cho phép click vào từng ô ngày để đổi sang bất kỳ loại công nào">
                             <i class="fa-solid fa-sliders"></i> Điều chỉnh
                         </button>
+                        <!-- [MỚI - PHẠM VI ĐIỀU CHỈNH] Chỉ hiện khi nút "Điều chỉnh" ở trên đang BẬT.
+                             Mặc định "Toàn bộ nhân sự" (y hệt hành vi cũ). Chọn 1 phòng ban hoặc 1 cá
+                             nhân cụ thể trong danh sách để CHỈ MỞ KHÓA sửa đúng phòng ban/cá nhân đó —
+                             các dòng còn lại tạm khóa lại (mờ đi) cho tới khi đổi phạm vi. Đổi lựa chọn
+                             có hiệu lực NGAY, không cần tắt/bật lại nút "Điều chỉnh". -->
+                        <select id="cc-scope-select" class="search-box" style="max-width:260px; display:none;" onchange="onChamCongScopeSelectChange()" title="Chọn phạm vi được phép điều chỉnh: toàn bộ, 1 phòng ban, hoặc 1 cá nhân cụ thể">
+                            <option value="all">🔓 Toàn bộ nhân sự</option>
+                        </select>
                         <span id="cc-status-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600;"></span>
                     </div>
                 </div>
@@ -2700,6 +2708,16 @@
         // sang bất kỳ loại công nào (xem renderChamCongTable/openChamCongAdjustModal). Mặc định
         // TẮT mỗi khi đổi kỳ/tải lại trang, tránh sửa nhầm ngoài ý muốn.
         let ccDieuChinhMode = false;
+        // [MỚI - PHẠM VI ĐIỀU CHỈNH THEO PHÒNG BAN/CÁ NHÂN] Khi ccDieuChinhMode đang BẬT, CHỈ
+        // những dòng KHỚP đúng phạm vi đang chọn mới thật sự bấm sửa được (xem
+        // chamCongRowMatchesScope/renderChamCongTable) — giúp người quản lý tránh lỡ tay sửa
+        // nhầm nhân sự/phòng ban khác khi chỉ đang muốn điều chỉnh 1 phòng ban hoặc 1 cá nhân cụ
+        // thể. ccScopeType: "all" (toàn bộ, mặc định) | "dept" (theo phòng ban) | "staff" (theo
+        // cá nhân). ccScopeValue: tên phòng ban (khi "dept") hoặc MSNV (khi "staff") tương ứng.
+        // KHÔNG đổi quyền hạn (vẫn cần "SuaChamCong"/Admin + kỳ chưa chốt như cũ) — đây CHỈ là 1
+        // lớp giới hạn THÊM ở giao diện/luồng thao tác, không phải quyền hạn tài khoản mới.
+        let ccScopeType = "all";
+        let ccScopeValue = "";
         // [BẢNG THEO THỨ/NGÀY TRONG THÁNG] Danh sách {ngay, thu, isWeekend} của kỳ đang xem,
         // do server trả về (field "danhSachNgay") — dùng để dựng cột theo từng ngày + xuất Excel.
         let chamCongDanhSachNgay = [];
@@ -5694,6 +5712,7 @@
             chamCongRows = result.rows || [];
             chamCongDaChot = !!result.daChot;
             chamCongDanhSachNgay = result.danhSachNgay || [];
+            populateChamCongScopeSelect();
             renderChamCongTable();
             populateChamCongExportSelects();
         }
@@ -5722,7 +5741,12 @@
             // tự tắt luôn, tránh còn sót trạng thái "đang điều chỉnh" không dùng được nữa.
             if (btnDieuChinh) {
                 btnDieuChinh.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
-                if (!currentUserCanEditChamCong || chamCongDaChot) ccDieuChinhMode = false;
+                if (!currentUserCanEditChamCong || chamCongDaChot) {
+                    ccDieuChinhMode = false;
+                    // [MỚI - PHẠM VI ĐIỀU CHỈNH] Mất quyền/kỳ đã chốt -> luôn về phạm vi "Toàn bộ"
+                    // để lần bật "Điều chỉnh" tiếp theo không bị sót lại phạm vi hẹp từ trước.
+                    ccScopeType = "all"; ccScopeValue = "";
+                }
                 capNhatGiaoDienNutDieuChinh_();
             }
         }
@@ -5732,11 +5756,16 @@
         // (bật/tắt, tải lại dữ liệu, đổi kỳ...) mà không lặp code.
         function capNhatGiaoDienNutDieuChinh_() {
             let btn = document.getElementById("cc-btn-dieuchinh");
-            if (!btn) return;
-            btn.classList.toggle("btn-warning", ccDieuChinhMode);
-            btn.innerHTML = ccDieuChinhMode
-                ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
-                : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
+            if (btn) {
+                btn.classList.toggle("btn-warning", ccDieuChinhMode);
+                btn.innerHTML = ccDieuChinhMode
+                    ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
+                    : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
+            }
+            // [MỚI - PHẠM VI ĐIỀU CHỈNH] Ô chọn phạm vi (Toàn bộ/Phòng ban/Cá nhân) CHỈ hiện khi
+            // nút "Điều chỉnh" đang BẬT — tắt nút thì ẩn luôn ô chọn (và render lại để khóa hết).
+            let sel = document.getElementById("cc-scope-select");
+            if (sel) sel.style.display = ccDieuChinhMode ? "" : "none";
         }
 
         // [MỚI - NÚT "ĐIỀU CHỈNH"] Bật/tắt cho phép click vào từng ô ngày (X/O) trong bảng để mở
@@ -5747,8 +5776,74 @@
         function toggleChamCongDieuChinh() {
             if (!currentUserCanEditChamCong || chamCongDaChot) return;
             ccDieuChinhMode = !ccDieuChinhMode;
+            if (!ccDieuChinhMode) {
+                // [MỚI - PHẠM VI ĐIỀU CHỈNH] Tắt "Điều chỉnh" -> luôn về phạm vi "Toàn bộ" cho
+                // lần bật kế tiếp, tránh còn sót phạm vi hẹp (1 phòng ban/1 cá nhân) từ lần trước
+                // khiến người dùng tưởng bật "Điều chỉnh" là sửa được hết như thường lệ.
+                ccScopeType = "all"; ccScopeValue = "";
+                let sel = document.getElementById("cc-scope-select");
+                if (sel) sel.value = "all";
+            }
             capNhatGiaoDienNutDieuChinh_();
             renderChamCongTable();
+        }
+
+        // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dựng lại danh sách lựa chọn trong ô "cc-scope-select" (Toàn
+        // bộ / từng Phòng ban / từng Cá nhân) theo ĐÚNG dữ liệu chamCongRows vừa tải — gọi lại mỗi
+        // khi tải dữ liệu mới (đổi kỳ) để danh sách luôn khớp đúng nhân sự đang có trong bảng,
+        // giống hệt cách làm với populateChamCongExportSelects() ở khối "Xuất Excel".
+        function populateChamCongScopeSelect() {
+            let sel = document.getElementById("cc-scope-select");
+            if (!sel) return;
+            let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
+            let staffSorted = chamCongRows.slice().sort((a, b) => String(a.hoTen).localeCompare(String(b.hoTen), "vi"));
+            let deptOptions = depts.map(d => `<option value="dept::${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+            let staffOptions = staffSorted.map(r => `<option value="staff::${escapeHtml(r.msnv)}">${escapeHtml(r.msnv)} - ${escapeHtml(r.hoTen)}</option>`).join("");
+            sel.innerHTML = '<option value="all">🔓 Toàn bộ nhân sự</option>' +
+                (deptOptions ? `<optgroup label="Điều chỉnh theo phòng ban">${deptOptions}</optgroup>` : "") +
+                (staffOptions ? `<optgroup label="Điều chỉnh theo cá nhân">${staffOptions}</optgroup>` : "");
+
+            // Khôi phục đúng lựa chọn đang áp dụng (nếu vẫn còn hợp lệ với dữ liệu vừa tải lại) —
+            // tránh bị tự động về "Toàn bộ" một cách khó chịu mỗi lần bấm "Tải / Tính lại" giữa
+            // lúc đang điều chỉnh dở 1 phòng ban/cá nhân. Nếu lựa chọn cũ không còn hợp lệ (VD
+            // nhân sự đó không còn trong danh sách kỳ mới) -> tự động về "Toàn bộ" (an toàn).
+            let currentValue = (ccScopeType === "all") ? "all" : (ccScopeType + "::" + ccScopeValue);
+            let found = false;
+            for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].value === currentValue) { found = true; break; } }
+            if (found) {
+                sel.value = currentValue;
+            } else {
+                sel.value = "all";
+                ccScopeType = "all"; ccScopeValue = "";
+            }
+        }
+
+        // [MỚI - PHẠM VI ĐIỀU CHỈNH] Người dùng đổi lựa chọn ở ô "cc-scope-select" -> cập nhật
+        // ngay ccScopeType/ccScopeValue rồi vẽ lại bảng để khóa/mở khóa đúng dòng tương ứng. Có
+        // hiệu lực NGAY LẬP TỨC, không cần tắt/bật lại nút "Điều chỉnh".
+        function onChamCongScopeSelectChange() {
+            let sel = document.getElementById("cc-scope-select");
+            if (!sel) return;
+            let val = sel.value || "all";
+            if (val === "all") {
+                ccScopeType = "all"; ccScopeValue = "";
+            } else {
+                let idx = val.indexOf("::");
+                ccScopeType = val.substring(0, idx);   // "dept" | "staff"
+                ccScopeValue = val.substring(idx + 2);
+            }
+            renderChamCongTable();
+        }
+
+        // [MỚI - PHẠM VI ĐIỀU CHỈNH] Kiểm tra 1 dòng (1 nhân viên) có thuộc phạm vi đang được mở
+        // khóa để điều chỉnh hay không — dùng CHUNG cho cả việc quyết định "editable" khi vẽ bảng
+        // (renderChamCongTable) LẪN việc chặn phòng hờ khi mở modal điều chỉnh (phòng trường hợp
+        // gọi hàm trực tiếp ngoài luồng click bình thường).
+        function chamCongRowMatchesScope(row) {
+            if (!row) return false;
+            if (ccScopeType === "dept") return (row.phongBan || "(Chưa rõ)") === ccScopeValue;
+            if (ccScopeType === "staff") return String(row.msnv) === String(ccScopeValue);
+            return true; // "all" -> toàn bộ
         }
 
         // Mã trạng thái ngày -> nhãn hiển thị ngắn gọn trong ô + màu nền (dùng chung cho bảng
@@ -5882,6 +5977,10 @@
             tbody.innerHTML = chamCongRows.map(r => {
                 let chiTiet = r.chiTietNgay || {};
                 let safeMsnv = escapeHtml(r.msnv || "");
+                // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dòng (nhân viên) này có thuộc phạm vi đang được mở
+                // khóa để điều chỉnh hay không — tính 1 LẦN cho cả dòng (dùng chung cho mọi ô
+                // ngày của dòng đó). Xem chamCongRowMatchesScope().
+                let rowInScope = chamCongRowMatchesScope(r);
                 let dayTds = (chamCongDanhSachNgay || []).map(d => {
                     let ma = chiTiet[String(d.ngay)] || "";
                     let info = chamCongMaNgayInfo(ma, d.isWeekend);
@@ -5898,7 +5997,10 @@
                     // Nay BỎ điều kiện này để cho phép điền thủ công ngày công cho các trường
                     // hợp nhân sự CÓ đi làm vào cuối tuần (xem mục [26] đầu Code.gs) — vẫn giữ
                     // NGUYÊN 2 điều kiện quyền hạn/kỳ chưa chốt ở trên.
-                    let editable = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode;
+                    // [MỚI - PHẠM VI ĐIỀU CHỈNH] Thêm điều kiện "&& rowInScope": nếu đang chọn
+                    // phạm vi hẹp (1 phòng ban/1 cá nhân), CHỈ dòng khớp phạm vi đó mới bấm sửa
+                    // được — các dòng khác vẫn xem bình thường nhưng KHÔNG click sửa được.
+                    let editable = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode && rowInScope;
                     let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
                         (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
                         (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
@@ -5906,7 +6008,13 @@
                     let clickAttr = editable ? ` onclick="openChamCongAdjustModal('${safeMsnv}', ${d.ngay}, ${d.isWeekend ? "true" : "false"})"` : '';
                     return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${info.label}</td>`;
                 }).join("");
-                return `<tr>
+                // [MỚI - PHẠM VI ĐIỀU CHỈNH] Làm mờ nhẹ cả dòng nếu đang bật "Điều chỉnh" với
+                // phạm vi hẹp (phòng ban/cá nhân) NHƯNG dòng này không thuộc phạm vi đó — chỉ để
+                // báo hiệu trực quan (không phải lỗi), giúp người dùng biết vì sao không bấm sửa
+                // được nhân sự này. KHÔNG ảnh hưởng gì khi đang xem bảng bình thường (chưa bật
+                // "Điều chỉnh") hoặc đang chọn phạm vi "Toàn bộ".
+                let rowStyle = (ccDieuChinhMode && !rowInScope) ? ' style="opacity:0.55;"' : '';
+                return `<tr${rowStyle}>
                 <td class="cc-col-sticky cc-col-1" title="${escapeHtml(r.msnv || "")}">${escapeHtml(r.msnv || "")}</td>
                 <td class="cc-col-sticky cc-col-2" title="${escapeHtml(r.hoTen || "")}">${escapeHtml(r.hoTen || "")}</td>
                 <td class="cc-col-sticky cc-col-3" title="${escapeHtml(r.phongBan || "")}">${escapeHtml(r.phongBan || "")}</td>
@@ -5956,6 +6064,11 @@
         function openChamCongAdjustModal(msnv, ngay, isWeekend) {
             if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
             let row = (chamCongRows || []).find(r => String(r.msnv) === String(msnv));
+            // [MỚI - PHẠM VI ĐIỀU CHỈNH] Chặn phòng hờ: nhân sự này phải thuộc đúng phạm vi
+            // (phòng ban/cá nhân) đang được mở khóa mới cho mở hộp thoại điều chỉnh — bình
+            // thường renderChamCongTable() đã không gắn onclick cho ô ngoài phạm vi nên sẽ
+            // không tới được đây, đây chỉ là lớp bảo vệ thêm phòng trường hợp gọi hàm trực tiếp.
+            if (!chamCongRowMatchesScope(row)) return;
             let hoTen = row ? (row.hoTen || "") : "";
             ccAdjustTarget = { msnv: msnv, ngay: ngay };
 
