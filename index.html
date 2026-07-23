@@ -1366,6 +1366,15 @@
                         <select id="cc-scope-select" class="search-box" style="max-width:260px; display:none;" onchange="onChamCongScopeSelectChange()" title="Chọn phạm vi được phép điều chỉnh: toàn bộ, 1 phòng ban, hoặc 1 cá nhân cụ thể">
                             <option value="all">🔓 Toàn bộ nhân sự</option>
                         </select>
+                        <!-- [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] Chỉ hiện khi đang chọn
+                             phạm vi "Điều chỉnh theo cá nhân" (chọn đúng 1 nhân viên) ở ô "cc-scope-select"
+                             phía trên. Bấm để BẬT/TẮT cho phép ĐÚNG nhân viên đó tự vào Tab "Bảng Chấm
+                             Công" của MÌNH để tự điều chỉnh (dùng cho trường hợp đặc biệt) — KHÔNG cấp
+                             thêm bất kỳ quyền nào khác (không được sửa nhân sự khác, không được Tính lại/
+                             Chốt/Mở lại). -->
+                        <button class="btn" id="cc-btn-tudieuchinh" style="display:none;" onclick="toggleTuDieuChinhChoNhanVienDangChon()" title="Bật/tắt cho phép chính nhân viên này tự điều chỉnh Bảng Chấm Công của họ (trường hợp đặc biệt)">
+                            <i class="fa-solid fa-user-lock"></i> Cho tự điều chỉnh
+                        </button>
                         <span id="cc-status-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600;"></span>
                     </div>
                 </div>
@@ -2699,6 +2708,12 @@
         // [TAB "BẢNG CHẤM CÔNG"]
         let currentUserCanViewChamCong = false;
         let currentUserCanEditChamCong = false;
+        // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] true = tài khoản đang đăng nhập
+        // KHÔNG có quyền "SuaChamCong" nhưng ĐÃ được người quản lý BẬT cờ cho phép tự điều chỉnh
+        // ĐÚNG dòng của chính mình (xem action "toggleTuDieuChinhChamCong"/"getChamCongData" ở
+        // Code.gs). Được cập nhật lại mỗi lần tải dữ liệu (loadChamCongData) theo đúng giá trị
+        // "canSelfAdjust" server trả về — KHÔNG tự suy luận ở phía giao diện.
+        let currentUserCanSelfAdjustChamCong = false;
         let currentUserCanViewLuong = false;
         let currentUserCanEditLuong = false;
         let currentUserCanDeleteLuong = false;
@@ -5712,6 +5727,9 @@
             chamCongRows = result.rows || [];
             chamCongDaChot = !!result.daChot;
             chamCongDanhSachNgay = result.danhSachNgay || [];
+            // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Cập nhật lại đúng theo giá trị server trả về mỗi
+            // lần tải dữ liệu (đổi kỳ, hoặc quản lý vừa bật/tắt cờ cho mình xong).
+            currentUserCanSelfAdjustChamCong = !!result.canSelfAdjust;
             populateChamCongScopeSelect();
             renderChamCongTable();
             populateChamCongExportSelects();
@@ -5736,12 +5754,18 @@
             }
             if (btnChot) btnChot.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
             if (btnMoLai) btnMoLai.style.display = (currentUserCanEditChamCong && chamCongDaChot) ? "inline-flex" : "none";
+            // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Ngoài người có quyền "SuaChamCong" (như cũ), tài
+            // khoản KHÔNG có quyền đó nhưng ĐÃ được BẬT cờ "tự điều chỉnh" cho ĐÚNG MSNV của
+            // chính mình (currentUserCanSelfAdjustChamCong, xem loadChamCongData) cũng được phép
+            // dùng nút "Điều chỉnh" — nhưng CHỈ áp dụng được cho dòng của chính họ (server tự
+            // kiểm tra lại ở action "suaNgayChamCong", không thể bị bỏ qua dù gọi thẳng API).
+            let ccCoTheDieuChinh = currentUserCanEditChamCong || currentUserCanSelfAdjustChamCong;
             // [MỚI - NÚT "ĐIỀU CHỈNH"] Cùng điều kiện hiện với nút "Chốt bảng chấm công" (cần
             // quyền sửa + kỳ chưa chốt). Nếu kỳ đã chốt (hoặc mất quyền) mà chế độ đang bật thì
             // tự tắt luôn, tránh còn sót trạng thái "đang điều chỉnh" không dùng được nữa.
             if (btnDieuChinh) {
-                btnDieuChinh.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
-                if (!currentUserCanEditChamCong || chamCongDaChot) {
+                btnDieuChinh.style.display = (ccCoTheDieuChinh && !chamCongDaChot) ? "inline-flex" : "none";
+                if (!ccCoTheDieuChinh || chamCongDaChot) {
                     ccDieuChinhMode = false;
                     // [MỚI - PHẠM VI ĐIỀU CHỈNH] Mất quyền/kỳ đã chốt -> luôn về phạm vi "Toàn bộ"
                     // để lần bật "Điều chỉnh" tiếp theo không bị sót lại phạm vi hẹp từ trước.
@@ -5763,9 +5787,57 @@
                     : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
             }
             // [MỚI - PHẠM VI ĐIỀU CHỈNH] Ô chọn phạm vi (Toàn bộ/Phòng ban/Cá nhân) CHỈ hiện khi
-            // nút "Điều chỉnh" đang BẬT — tắt nút thì ẩn luôn ô chọn (và render lại để khóa hết).
+            // nút "Điều chỉnh" đang BẬT VÀ tài khoản có quyền "SuaChamCong" (đây là công cụ dành
+            // cho người quản lý để giới hạn phạm vi sửa nhiều nhân sự — tài khoản CHỈ đang tự
+            // điều chỉnh dòng của chính mình, qua cờ "tự điều chỉnh", không cần và không thấy ô
+            // này, tránh gây nhầm lẫn).
             let sel = document.getElementById("cc-scope-select");
-            if (sel) sel.style.display = ccDieuChinhMode ? "" : "none";
+            if (sel) sel.style.display = (ccDieuChinhMode && currentUserCanEditChamCong) ? "" : "none";
+            capNhatNutTuDieuChinh_();
+        }
+
+        // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] Hiện/ẩn + cập nhật nhãn nút "Cho
+        // tự điều chỉnh" theo đúng lựa chọn hiện tại ở ô "cc-scope-select": CHỈ hiện khi người
+        // quản lý (currentUserCanEditChamCong) đang bật "Điều chỉnh", kỳ CHƯA chốt, VÀ đang chọn
+        // phạm vi "Điều chỉnh theo cá nhân" (ccScopeType === "staff") với đúng 1 nhân viên cụ thể
+        // — phản ánh đúng trạng thái Bật/Tắt hiện tại (r.tuDieuChinh) của nhân viên đó.
+        function capNhatNutTuDieuChinh_() {
+            let btn = document.getElementById("cc-btn-tudieuchinh");
+            if (!btn) return;
+            let hienNut = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode && ccScopeType === "staff" && ccScopeValue;
+            let row = hienNut ? (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue)) : null;
+            if (!row) { btn.style.display = "none"; return; }
+            btn.style.display = "inline-flex";
+            let dangBat = !!row.tuDieuChinh;
+            btn.classList.toggle("btn-warning", dangBat);
+            btn.innerHTML = dangBat
+                ? '<i class="fa-solid fa-user-check"></i> Đang cho tự điều chỉnh (bấm để tắt)'
+                : '<i class="fa-solid fa-user-lock"></i> Cho tự điều chỉnh';
+        }
+
+        // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] Người quản lý bấm nút "Cho tự
+        // điều chỉnh" khi đang chọn phạm vi "Điều chỉnh theo cá nhân" (1 nhân viên cụ thể) để
+        // BẬT/TẮT cho phép ĐÚNG nhân viên đó tự vào Tab "Bảng Chấm Công" của MÌNH để tự sửa —
+        // dùng cho trường hợp đặc biệt. KHÔNG cấp thêm bất kỳ quyền nào khác (nhân viên đó vẫn
+        // KHÔNG thấy/sửa được dữ liệu của nhân sự khác, không được Tính lại/Chốt/Mở lại).
+        async function toggleTuDieuChinhChoNhanVienDangChon() {
+            if (!currentUserCanEditChamCong || chamCongDaChot) return;
+            if (ccScopeType !== "staff" || !ccScopeValue) return;
+            let row = (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue));
+            if (!row) return;
+            let dangBat = !!row.tuDieuChinh;
+            let msnv = row.msnv, hoTen = row.hoTen || "";
+            let xacNhan = dangBat
+                ? ("Tắt cho phép nhân viên \"" + hoTen + "\" (MSNV " + msnv + ") tự điều chỉnh Bảng Chấm Công của chính họ?\n\nSau khi tắt, nhân viên này sẽ KHÔNG còn tự sửa được bảng chấm công của mình nữa.")
+                : ("Bật cho phép nhân viên \"" + hoTen + "\" (MSNV " + msnv + ") tự điều chỉnh Bảng Chấm Công của chính họ?\n\nDùng cho trường hợp đặc biệt: khi nhân viên này tự đăng nhập và mở Tab \"Bảng Chấm Công\", họ sẽ tự bấm được nút \"Điều chỉnh\" để tự sửa ĐÚNG bảng chấm công của chính mình. Họ vẫn KHÔNG thấy/sửa được dữ liệu của nhân sự khác, không được Tính lại/Chốt/Mở lại.");
+            if (!confirm(xacNhan)) return;
+
+            let result = await callServerAction({ action: "toggleTuDieuChinhChamCong", msnv: msnv, bat: !dangBat });
+            if (result && result.status === "SUCCESS") {
+                loadChamCongData();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể cập nhật."));
+            }
         }
 
         // [MỚI - NÚT "ĐIỀU CHỈNH"] Bật/tắt cho phép click vào từng ô ngày (X/O) trong bảng để mở
@@ -5774,7 +5846,7 @@
         // KHÔNG gọi thêm action nào tới server (chỉ đổi giao diện) — dữ liệu chỉ thật sự được ghi
         // khi người dùng bấm "Xác nhận" trong hộp thoại điều chỉnh (xem submitChamCongAdjust()).
         function toggleChamCongDieuChinh() {
-            if (!currentUserCanEditChamCong || chamCongDaChot) return;
+            if ((!currentUserCanEditChamCong && !currentUserCanSelfAdjustChamCong) || chamCongDaChot) return;
             ccDieuChinhMode = !ccDieuChinhMode;
             if (!ccDieuChinhMode) {
                 // [MỚI - PHẠM VI ĐIỀU CHỈNH] Tắt "Điều chỉnh" -> luôn về phạm vi "Toàn bộ" cho
@@ -5833,6 +5905,7 @@
                 ccScopeValue = val.substring(idx + 2);
             }
             renderChamCongTable();
+            capNhatNutTuDieuChinh_();
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Kiểm tra 1 dòng (1 nhân viên) có thuộc phạm vi đang được mở
@@ -6000,7 +6073,13 @@
                     // [MỚI - PHẠM VI ĐIỀU CHỈNH] Thêm điều kiện "&& rowInScope": nếu đang chọn
                     // phạm vi hẹp (1 phòng ban/1 cá nhân), CHỈ dòng khớp phạm vi đó mới bấm sửa
                     // được — các dòng khác vẫn xem bình thường nhưng KHÔNG click sửa được.
-                    let editable = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode && rowInScope;
+                    // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Ngoài người có quyền "SuaChamCong" (như cũ),
+                    // tài khoản CHỈ được BẬT cờ "tự điều chỉnh" (currentUserCanSelfAdjustChamCong)
+                    // cũng được tính là "editable" ở đây — nhưng an toàn vì với tài khoản đó,
+                    // server (getChamCongData) đã CHỈ trả về ĐÚNG 1 dòng của chính họ (xem
+                    // Code.gs), nên "editable" thực tế chỉ áp dụng cho dòng của chính họ, không
+                    // thể vô tình mở khóa nhân sự khác.
+                    let editable = (currentUserCanEditChamCong || currentUserCanSelfAdjustChamCong) && !chamCongDaChot && ccDieuChinhMode && rowInScope;
                     let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
                         (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
                         (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
@@ -6038,7 +6117,7 @@
         // gốc, chỉ lưu ghi đè riêng ở server rồi tải lại bảng để mọi cột tổng hợp (Ngày công
         // thực tế/Tổng ngày công tính lương...) luôn khớp đúng.
         async function suaNgayChamCongClick(msnv, ngay, loaiMoi) {
-            if (!currentUserCanEditChamCong || chamCongDaChot) return;
+            if ((!currentUserCanEditChamCong && !currentUserCanSelfAdjustChamCong) || chamCongDaChot) return;
             let inp = document.getElementById("cc-period-input");
             let maKy = inp ? inp.value : "";
             if (!maKy) return;
@@ -6062,7 +6141,7 @@
         // giao diện, dữ liệu chỉ thật sự ghi khi bấm "Xác nhận" (xem submitChamCongAdjust()).
         let ccAdjustTarget = null;
         function openChamCongAdjustModal(msnv, ngay, isWeekend) {
-            if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
+            if ((!currentUserCanEditChamCong && !currentUserCanSelfAdjustChamCong) || chamCongDaChot || !ccDieuChinhMode) return;
             let row = (chamCongRows || []).find(r => String(r.msnv) === String(msnv));
             // [MỚI - PHẠM VI ĐIỀU CHỈNH] Chặn phòng hờ: nhân sự này phải thuộc đúng phạm vi
             // (phòng ban/cá nhân) đang được mở khóa mới cho mở hộp thoại điều chỉnh — bình
@@ -6110,7 +6189,7 @@
 
         async function submitChamCongAdjust() {
             if (!ccAdjustTarget) return;
-            if (!currentUserCanEditChamCong || chamCongDaChot) { closeChamCongAdjustModal(); return; }
+            if ((!currentUserCanEditChamCong && !currentUserCanSelfAdjustChamCong) || chamCongDaChot) { closeChamCongAdjustModal(); return; }
             let sel = document.getElementById("cc-adjust-select");
             let maChon = sel ? sel.value : "";
             let err = document.getElementById("cc-adjust-error");
