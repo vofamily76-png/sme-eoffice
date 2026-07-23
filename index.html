@@ -836,12 +836,22 @@
                         </div>
                         <div class="input-group">
                             <label>Ngày ký hợp đồng</label>
-                            <input type="date" id="inp-contract-sign-date">
+                            <input type="date" id="inp-contract-sign-date" onchange="updateSuggestedLeaveDaysForm()">
                         </div>
                         <div class="input-group" id="contract-expiry-group" style="display:none;">
                             <label>Ngày hết hạn hợp đồng</label>
                             <input type="date" id="inp-contract-expiry-date">
                             <span class="file-help-text">Hệ thống sẽ tự động cảnh báo khi hợp đồng còn 30 ngày trước hạn.</span>
+                        </div>
+                    </div>
+                    <div class="form-row contract-group">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-file-signature"></i> Số lần ký hợp đồng</label>
+                            <span style="font-weight:normal; color:#888; font-size:11.5px;">Ghi lại toàn bộ các lần ký hợp đồng lao động (VD: ký lần đầu, ký lại/gia hạn...). Hệ thống tự đánh số thứ tự "Lần ký" theo đúng thời gian, dùng để tự tính đề xuất Tổng số ngày nghỉ phép bên dưới.</span>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <div id="contract-history-list"></div>
+                            <button type="button" class="btn btn-sm" style="background:var(--secondary-color); width:auto; margin-top:6px;" onclick="addContractHistoryRow()"><i class="fa-solid fa-plus"></i> Thêm lần ký hợp đồng</button>
                         </div>
                     </div>
                     <div class="form-row contract-group">
@@ -1666,8 +1676,8 @@
                         <div class="input-group">
                             <label>Tổng số ngày nghỉ phép</label>
                             <input type="number" id="inp-np-tongsongay" min="0" step="0.5" placeholder="Tự tính theo Từ ngày/Đến ngày (chỉ tính Thứ 2-Thứ 6), có thể sửa lại">
+                            <small id="np-quota-hint" style="color:#c0392b; font-weight:bold; margin-top:4px; display:block;"></small>
                             <small style="color:#888; margin-top:4px; display:block;">* Thứ 7 và Chủ nhật không được tự động tính vào ngày nghỉ phép; hệ thống chỉ tính các ngày Thứ 2 đến Thứ 6 trong khoảng đã chọn.</small>
-                            <small id="np-quota-hint" style="color:#888; margin-top:4px; display:block;"></small>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Loại nghỉ phép *</label>
@@ -8886,6 +8896,95 @@
             if (!needsExpiry) document.getElementById("inp-contract-expiry-date").value = "";
         }
 
+        // [TAB "THÊM NHÂN SỰ MỚI" - SỐ LẦN KÝ HỢP ĐỒNG] Danh sách các lần ký hợp đồng của nhân
+        // sự đang thêm/sửa trên form (chỉ tồn tại tạm trong bộ nhớ trình duyệt cho tới khi bấm
+        // "Lưu nhân viên"). Mỗi phần tử: {ngayKy: "yyyy-MM-dd"}. Server sẽ tự sắp xếp theo thời
+        // gian và đánh lại số "Lần ký" khi lưu (xem normalizeContractHistory ở Code.gs), nên ở
+        // đây không cần tự quản lý "lanKy" — chỉ hiển thị tạm theo thứ tự đã sắp xếp để người
+        // dùng dễ theo dõi.
+        let currentContractHistory = [];
+
+        // Vẽ lại danh sách "Số lần ký hợp đồng" trên form theo currentContractHistory (đã sắp
+        // xếp tăng dần theo ngày ký để đánh số "Lần ký" hiển thị tạm giống với server). Tham số
+        // recalcLeave = true (mặc định) sẽ tự tính lại đề xuất "Tổng số ngày nghỉ phép" mỗi khi
+        // danh sách thay đổi (thêm/xóa/sửa ngày ký) — truyền false khi chỉ đang TẢI LẠI dữ liệu
+        // đã lưu sẵn của 1 nhân sự có sẵn (sửa nhân sự), để KHÔNG vô tình ghi đè số ngày phép đã
+        // được Admin/HR tự chỉnh tay từ trước.
+        function renderContractHistoryList(recalcLeave) {
+            let sorted = currentContractHistory.slice().sort(function (a, b) {
+                if (!a.ngayKy) return 1;
+                if (!b.ngayKy) return -1;
+                return new Date(a.ngayKy) - new Date(b.ngayKy);
+            });
+            currentContractHistory = sorted;
+            let container = document.getElementById("contract-history-list");
+            if (!container) return;
+            if (currentContractHistory.length === 0) {
+                container.innerHTML = '<div style="color:#888; font-size:13px; padding:6px 0;">Chưa có lần ký hợp đồng nào được ghi nhận.</div>';
+            } else {
+                container.innerHTML = currentContractHistory.map(function (item, idx) {
+                    return '<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">' +
+                        '<span style="min-width:70px; font-weight:bold;">Lần ' + (idx + 1) + ':</span>' +
+                        '<input type="date" value="' + (item.ngayKy || "") + '" onchange="updateContractHistoryDate(' + idx + ', this.value)" style="flex:1;">' +
+                        '<button type="button" class="btn btn-danger btn-sm" style="width:auto; padding:8px 12px;" onclick="removeContractHistoryRow(' + idx + ')"><i class="fa-solid fa-trash"></i></button>' +
+                        '</div>';
+                }).join("");
+            }
+            if (recalcLeave !== false) updateSuggestedLeaveDaysForm();
+        }
+
+        function addContractHistoryRow() {
+            currentContractHistory.push({ ngayKy: "" });
+            renderContractHistoryList();
+        }
+
+        function removeContractHistoryRow(idx) {
+            currentContractHistory.splice(idx, 1);
+            renderContractHistoryList();
+        }
+
+        function updateContractHistoryDate(idx, val) {
+            if (currentContractHistory[idx]) currentContractHistory[idx].ngayKy = val;
+            renderContractHistoryList();
+        }
+
+        // [TAB "THÊM NHÂN SỰ MỚI" - NGHỈ PHÉP TỰ ĐỘNG] Tính (và tự điền lên form) số ngày nghỉ
+        // phép năm ĐỀ XUẤT: mặc định 12 ngày, cộng thêm 1 ngày cho mỗi 5 năm thâm niên tính từ
+        // lần ký hợp đồng ĐẦU TIÊN trong "Số lần ký hợp đồng" (nếu chưa khai báo lần ký nào thì
+        // tạm lấy "Ngày ký hợp đồng" hiện tại, nếu vẫn chưa có thì lấy "Ngày vào làm"). Đây CHỈ
+        // là gợi ý tự động điền sẵn — tài khoản quản lý (Admin/HR) vẫn xem và sửa lại thoải mái
+        // ngay trên ô "Tổng số ngày nghỉ phép" trước khi bấm Lưu; giá trị cuối cùng gửi lên
+        // server luôn là giá trị đang hiển thị trên ô đó (xem chỗ thu thập dữ liệu lưu bên dưới).
+        function computeSuggestedLeaveDaysForm() {
+            let baseDays = 12;
+            let earliestStr = "";
+            let validHistory = currentContractHistory.filter(function (e) { return e.ngayKy; });
+            if (validHistory.length > 0) {
+                earliestStr = validHistory[0].ngayKy; // currentContractHistory đã được sắp xếp tăng dần
+            } else {
+                let signDateEl = document.getElementById("inp-contract-sign-date");
+                let joinDateEl = document.getElementById("inp-date-join");
+                earliestStr = (signDateEl && signDateEl.value) ? signDateEl.value : ((joinDateEl && joinDateEl.value) ? joinDateEl.value : "");
+            }
+            if (!earliestStr) return baseDays;
+            let earliestDate = new Date(earliestStr);
+            if (isNaN(earliestDate.getTime())) return baseDays;
+            let years = (new Date().getTime() - earliestDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+            if (years < 0) return baseDays;
+            return baseDays + Math.floor(years / 5);
+        }
+
+        // Tự động điền lại ô "Tổng số ngày nghỉ phép" theo gợi ý mới nhất (xem
+        // computeSuggestedLeaveDaysForm). Chỉ gọi khi thêm MỚI nhân sự hoặc khi người dùng chủ
+        // động thay đổi "Số lần ký hợp đồng"/"Ngày ký hợp đồng" — không tự ý ghi đè khi đang MỞ
+        // form để sửa 1 nhân sự đã có sẵn số ngày phép (tránh làm mất/sai lệch dữ liệu đã lưu).
+        function updateSuggestedLeaveDaysForm() {
+            let tongEl = document.getElementById("inp-tong-ngay-nghiphep");
+            if (!tongEl) return;
+            tongEl.value = computeSuggestedLeaveDaysForm();
+            npCapNhatSoNgayConLaiForm();
+        }
+
         function processAndValidateImage(inputElement) {
             const file = inputElement.files[0];
             const previewImg = document.getElementById("img-file-preview");
@@ -9002,6 +9101,7 @@
                     <p><span class="label">Trạng thái:</span> <span class="chip-dept ${contractInfo.cls}">${escapeHtml(contractInfo.label)}</span></p>
                     <p><span class="label">Số BHXH:</span>${escapeHtml(s.socialInsuranceNumber) || 'Chưa cập nhật'}</p>
                     <p><span class="label">GP lao động:</span>${escapeHtml(s.workPermitNumber) || 'Chưa cập nhật'}</p>
+                    <p><span class="label">Số lần ký HĐ:</span>${(Array.isArray(s.lichSuKyHopDong) && s.lichSuKyHopDong.length > 0) ? s.lichSuKyHopDong.map(e => 'Lần ' + e.lanKy + ': ' + formatDateDisplay(e.ngayKy)).join(' | ') : 'Chưa cập nhật'}</p>
                 </div>
                 <h5><i class="fa-solid fa-building-columns"></i> Ngân hàng</h5>
                 <div class="detail-fields">
@@ -9490,6 +9590,7 @@
                     "Ngày ký hợp đồng": s.contractSignDate ? formatDateDisplay(s.contractSignDate) : "",
                     "Ngày hết hạn hợp đồng": s.contractExpiryDate ? formatDateDisplay(s.contractExpiryDate) : "",
                     "Trạng thái hợp đồng": info.label,
+                    "Số lần ký hợp đồng": (Array.isArray(s.lichSuKyHopDong) && s.lichSuKyHopDong.length > 0) ? s.lichSuKyHopDong.map(e => "Lần " + e.lanKy + ": " + formatDateDisplay(e.ngayKy)).join(" | ") : "",
                     "Số CCCD/Passport": s.idNumber || "",
                     "Ngày cấp CCCD/Passport": s.idIssueDate ? formatDateDisplay(s.idIssueDate) : "",
                     "Nơi cấp CCCD/Passport": s.idIssuePlace || "",
@@ -10524,7 +10625,11 @@
                     // Nhân Viên". "Lương thời gian thực tế"/"Tổng thu nhập" KHÔNG gửi lên từ đây
                     // (server tự giữ nguyên giá trị đã đồng bộ từ lần lưu lương gần nhất).
                     phuCapMacDinh: parseFloat(document.getElementById("inp-phu-cap-mac-dinh").value) || 0,
-                    khauTruKhacMacDinh: parseFloat(document.getElementById("inp-khau-tru-khac-mac-dinh").value) || 0
+                    khauTruKhacMacDinh: parseFloat(document.getElementById("inp-khau-tru-khac-mac-dinh").value) || 0,
+                    // [BỔ SUNG MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Danh sách các lần ký hợp đồng (chỉ gửi
+                    // các dòng đã có ngày ký hợp lệ) — server sẽ tự sắp xếp theo thời gian và
+                    // đánh lại số "Lần ký" khi lưu.
+                    lichSuKyHopDong: currentContractHistory.filter(function (e) { return e.ngayKy; })
                 };
 
                 if (isEdit) staffData[index] = obj; else staffData.push(obj);
@@ -10613,6 +10718,13 @@
                 document.getElementById("inp-contract-sign-date").value = d.contractSignDate || "";
                 document.getElementById("inp-contract-expiry-date").value = d.contractExpiryDate || "";
                 onContractTypeChange();
+
+                // [BỔ SUNG MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Đổ lại lịch sử các lần ký hợp đồng đã lưu.
+                // Truyền recalcLeave = false để KHÔNG tự ý ghi đè "Tổng số ngày nghỉ phép" đã có
+                // sẵn của nhân sự này (chỉ tự tính lại đề xuất khi Admin/HR chủ động thêm/sửa/
+                // xóa 1 lần ký ngay trên form).
+                currentContractHistory = Array.isArray(d.lichSuKyHopDong) ? d.lichSuKyHopDong.map(function (e) { return { ngayKy: e && e.ngayKy ? e.ngayKy : "" }; }) : [];
+                renderContractHistoryList(false);
 
                 // [BỔ SUNG MỚI] Đổ lại Số hợp đồng, thông tin ngân hàng, thông tin liên hệ khẩn
                 // cấp vào form khi sửa.
@@ -10747,6 +10859,11 @@
             // input phía trên (chỉ nhắm input) nên cần đưa về mặc định riêng.
             document.getElementById("inp-contract-type").value = "Không thời hạn";
             onContractTypeChange();
+            // [BỔ SUNG MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Xóa lại danh sách "Số lần ký hợp đồng" (đang
+            // thêm MỚI nhân sự) rồi tự động điền lại "Tổng số ngày nghỉ phép" mặc định 12 ngày
+            // (xem computeSuggestedLeaveDaysForm) — Admin/HR vẫn sửa lại thoải mái trước khi lưu.
+            currentContractHistory = [];
+            renderContractHistoryList();
             // [BỔ SUNG MỚI] Ô "Ngày cấp CCCD/Passport" (type="date") không nằm trong vòng lặp
             // input phía trên (chỉ reset input KHÔNG phải type="date") nên cần xóa riêng.
             document.getElementById("inp-id-issue-date").value = "";
