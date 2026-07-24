@@ -1349,6 +1349,15 @@
                             <input type="month" id="cc-period-input" style="padding:6px 8px;">
                         </div>
                         <button class="btn btn-primary" onclick="loadChamCongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
+                        <!-- [MỚI - MỤC "NHẬN FILE"] Xem lại TOÀN BỘ file minh chứng đã được gửi tới
+                             CHÍNH tài khoản đang đăng nhập (được chọn làm "Người nhận" ở hộp thoại
+                             "Điều chỉnh ngày công", xem action "getChamCongFileNhanDuoc") — ngay
+                             trong ứng dụng, không phụ thuộc phải mở email. Luôn hiện với mọi tài
+                             khoản có quyền xem Tab này (ai cũng có thể được chọn làm "Người nhận"). -->
+                        <button class="btn btn-secondary" id="cc-btn-nhanfile" onclick="openChamCongNhanFileModal()" title="Xem lại các file minh chứng đã được gửi đến bạn từ mục 'Điều chỉnh ngày công'">
+                            <i class="fa-solid fa-inbox"></i> Nhận file
+                            <span id="cc-nhanfile-badge" style="display:none; background:#d9534f; color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; margin-left:5px;"></span>
+                        </button>
                         <button class="btn btn-success" id="cc-btn-chot" style="display:none;" onclick="chotBangChamCong()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
                         <button class="btn btn-warning" id="cc-btn-mo-lai" style="display:none;" onclick="moLaiBangChamCong()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
                         <!-- [MỚI - NÚT "ĐIỀU CHỈNH"] Chỉ hiện khi có quyền sửa Bảng Chấm Công và kỳ CHƯA
@@ -1414,24 +1423,51 @@
                     </div>
                 </div>
 
-                <!-- [MỚI] Danh mục loại công (theo file Excel người dùng cung cấp) — chỉ mang tính
-                     CHÚ THÍCH/tham khảo (chỉ đọc), không phải nơi nhập liệu. -->
+                <!-- [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây là 1 bảng nhiều cột chỉ mang tính
+                     CHÚ THÍCH/tham khảo (Mã/Tên/Nhóm hiển thị/Có lương/Là OT/Trừ phép năm/Cần nộp
+                     đơn-Duyệt/Cần đính kèm/Ghi chú). NAY đổi thành 1 form ngắn gọn: chọn "Mã công"
+                     (dữ liệu lấy nguyên từ action "getDanhMucLoaiCong" như cũ, KHÔNG đổi gì ở
+                     Code.gs cho phần đọc danh mục) -> "Tên loại công" tương ứng TỰ HIỆN RA (xem
+                     onDmlcMaChange() bên dưới, thuần xử lý ở FE, không gọi thêm action nào); các
+                     cột "Nhóm hiển thị/Có lương/Là OT/Trừ phép năm/Cần nộp đơn-Duyệt/Cần đính kèm/
+                     Ghi chú" KHÔNG còn hiển thị ở đây nữa (dữ liệu gốc trên Sheet "DanhMucLoaiCong"
+                     KHÔNG bị xóa/đổi gì — logic "Cần đính kèm" bắt buộc ở mục "Điều chỉnh" bên
+                     dưới vẫn hoạt động y hệt như cũ, chỉ là không còn hiển thị lại ở bảng này).
+                     Thêm mới: "Đính kèm file" + "Người nhận file" — chọn xong bấm "Gửi file" sẽ
+                     GỬI EMAIL NGAY kèm file cho (các) người nhận đã chọn (action MỚI
+                     "guiFileDanhMucLoaiCong" ở Code.gs, không liên quan tới ngày công/nhân viên cụ
+                     thể nào, tách biệt hoàn toàn với mục "Điều chỉnh" bên dưới) — xem
+                     loadDanhMucLoaiCong/onDmlcMaChange/populateDmlcNguoiNhanList/submitDmlcGuiFile
+                     bên dưới. -->
                 <div class="admin-box" style="border-left: 5px solid #2f6fed; background:#f5f8ff; margin-top:16px;">
                     <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
-                    <div style="overflow-x:auto;">
-                        <table class="data-table" id="dmlc-table" style="min-width:900px; margin-bottom:0;">
-                            <thead>
-                                <tr>
-                                    <th>Mã</th><th>Tên loại công / nghỉ</th><th>Nhóm hiển thị</th>
-                                    <th>Có lương</th><th>Là OT</th><th>Trừ phép năm</th>
-                                    <th>Cần nộp đơn/Duyệt</th><th>Cần đính kèm</th><th>Ghi chú</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dmlc-table-body">
-                                <tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>
-                            </tbody>
-                        </table>
+                    <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                        <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
+                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file và chọn "Người nhận" để gửi email ngay.
+                    </p>
+                    <div class="input-group">
+                        <label>Mã công</label>
+                        <select id="dmlc-ma-select" onchange="onDmlcMaChange()">
+                            <option value="">-- Chọn mã công --</option>
+                        </select>
                     </div>
+                    <div class="input-group">
+                        <label>Tên loại công</label>
+                        <input type="text" id="dmlc-ten" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
+                    </div>
+                    <div class="input-group">
+                        <label>Đính kèm file</label>
+                        <input type="file" id="dmlc-file">
+                    </div>
+                    <div class="input-group">
+                        <label>Người nhận file <span style="color:#d9534f;">*</span></label>
+                        <div class="checkbox-dropdown-list" id="dmlc-recipient-list" style="max-height:140px;"></div>
+                    </div>
+                    <div id="dmlc-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+                    <div id="dmlc-success" style="color:#2e7d32; font-size:13px; margin-bottom:10px; display:none;"></div>
+                    <button type="button" class="btn" style="width:auto;" onclick="submitDmlcGuiFile()">
+                        <i class="fa-solid fa-paper-plane"></i> Gửi file
+                    </button>
                 </div>
 
                 <!-- [THANH TRƯỢT] Bọc bảng trong 1 khung cuộn riêng (dọc LẪN ngang) — dòng tiêu đề
@@ -1454,17 +1490,78 @@
                  Chỉ mở được khi đã bật nút "Điều chỉnh" và click vào 1 ô còn mở khóa sửa (xem
                  renderChamCongTable/openChamCongAdjustModal/submitChamCongAdjust bên dưới). -->
             <div id="cc-adjust-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
-                <div class="login-box" style="max-width:420px;">
+                <div class="login-box" style="max-width:460px; max-height:88vh; overflow-y:auto;">
                     <h2><i class="fa-solid fa-sliders"></i> Điều chỉnh ngày công</h2>
                     <p id="cc-adjust-info" style="color:#555; font-size:14px;"></p>
                     <div class="input-group">
                         <label>Chọn loại ngày công mới</label>
-                        <select id="cc-adjust-select"></select>
+                        <select id="cc-adjust-select" onchange="updateChamCongAdjustAttachmentUI()"></select>
+                    </div>
+                    <!-- [MỚI - MỤC "NGƯỜI GỬI"] Chọn ĐÚNG 1 nhân viên/tài khoản để ghi nhận là người
+                         THỰC SỰ yêu cầu/gửi lần điều chỉnh này — khác với tài khoản ĐANG đăng nhập
+                         thực hiện thao tác (tài khoản đăng nhập vẫn luôn được ghi lại ở cột
+                         "NguoiCapNhat"/audit log như cũ, KHÔNG đổi bảo mật). Dùng cho trường hợp 1
+                         tài khoản quản lý dùng chung, cần ghi rõ ai là người thực sự gửi/yêu cầu.
+                         Mặc định chọn sẵn ĐÚNG tài khoản đang đăng nhập, có thể đổi sang tài khoản
+                         khác. Xem populateChamCongNguoiGuiList()/submitChamCongAdjust() bên dưới. -->
+                    <div class="input-group">
+                        <label>Người gửi <span style="font-weight:normal; color:#888; font-size:11.5px;">(người thực sự yêu cầu/gửi điều chỉnh này)</span></label>
+                        <select id="cc-adjust-sender-select"></select>
+                    </div>
+                    <!-- [MỚI - BẮT BUỘC ĐÍNH KÈM] Chỉ hiện/bắt buộc khi loại công vừa chọn được đánh
+                         dấu "Cần đính kèm" = "Có" trong Danh mục loại công (xem
+                         updateChamCongAdjustAttachmentUI()) — Server luôn kiểm tra lại, không thể
+                         bị bỏ qua dù ẩn/hiện ở giao diện. -->
+                    <div class="input-group" id="cc-adjust-file-group" style="display:none;">
+                        <label>File minh chứng đính kèm <span id="cc-adjust-file-required" style="color:#d9534f;">*</span></label>
+                        <input type="file" id="cc-adjust-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                        <div id="cc-adjust-file-hint" style="font-size:12.5px; color:#555; margin-top:4px;"></div>
+                    </div>
+                    <!-- [MỚI - MỤC "NGƯỜI NHẬN"] Chọn 1 hoặc nhiều tài khoản sẽ được gửi email kèm
+                         file đính kèm ở trên — dùng chung khung "checkbox-dropdown-list" đang có sẵn
+                         (giống mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép"). -->
+                    <div class="input-group" id="cc-adjust-recipient-group" style="display:none;">
+                        <label>Người nhận (sẽ được gửi email kèm file đính kèm) <span style="color:#d9534f;">*</span></label>
+                        <div class="checkbox-dropdown-list" id="cc-adjust-recipient-list" style="max-height:140px;"></div>
                     </div>
                     <div id="cc-adjust-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div style="display:flex; gap:10px;">
                         <button class="btn" style="width:auto; flex-grow:1;" onclick="submitChamCongAdjust()">Xác nhận ✔️</button>
                         <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeChamCongAdjustModal()">Hủy</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [MỚI - MỤC "NHẬN FILE"] Hộp thoại liệt kê TOÀN BỘ file minh chứng (ở MỌI kỳ chấm
+                 công) đã được gửi tới CHÍNH tài khoản đang đăng nhập qua mục "Người nhận" của hộp
+                 thoại "Điều chỉnh ngày công" ở trên — cho xem/tải lại NGAY TRONG ứng dụng, không
+                 phụ thuộc phải mở email (xem action "getChamCongFileNhanDuoc"/
+                 openChamCongNhanFileModal() bên dưới). Quyền XEM/TẢI từng file cụ thể vẫn được
+                 kiểm tra lại ở Server (checkChamCongGhiDeFileAccess) khi bấm mở file — KHÔNG đổi
+                 bảo mật hiện có. -->
+            <div id="cc-nhanfile-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+                <div class="login-box" style="max-width:760px; max-height:88vh; overflow-y:auto;">
+                    <h2><i class="fa-solid fa-inbox"></i> File nhận được (Điều chỉnh ngày công)</h2>
+                    <p style="color:#555; font-size:13px; margin-top:0;">
+                        Danh sách file minh chứng đã được gửi đến <b>chính tài khoản của bạn</b> (mục
+                        "Người nhận") khi có người dùng nút "Điều chỉnh" ở Tab Bảng Chấm Công — xem/tải
+                        lại tại đây, không phụ thuộc vào email.
+                    </p>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" id="cc-nhanfile-table" style="min-width:640px; margin-bottom:0;">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian</th><th>Nhân sự liên quan</th><th>Kỳ</th>
+                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cc-nhanfile-table-body">
+                                <tr><td colspan="7" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:14px;">
+                        <button class="btn btn-secondary" style="width:auto; flex-grow:1;" onclick="closeChamCongNhanFileModal()">Đóng</button>
                     </div>
                 </div>
             </div>
@@ -2662,7 +2759,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-23.chamcong-dieuchinh-cuoituan-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-24.chamcong-dinhkem-nguoinhan-v2";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -5067,6 +5164,10 @@
                 initChamCongPeriodPicker();
                 loadDanhMucLoaiCong();
                 loadChamCongData();
+                // [MỚI - MỤC "NHẬN FILE"] Tự tải lại số lượng file đã nhận được (badge) mỗi khi mở
+                // Tab này — KHÔNG mở modal, chỉ cập nhật số đếm để người dùng biết có file mới hay
+                // không (xem loadChamCongFileNhanDuocQuietly()/updateChamCongNhanFileBadge()).
+                loadChamCongFileNhanDuocQuietly();
             }
             if (pageId === "luong") {
                 let canViewLuongPg = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemLuong);
@@ -5749,6 +5850,11 @@
             // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Cập nhật lại đúng theo giá trị server trả về mỗi
             // lần tải dữ liệu (đổi kỳ, hoặc quản lý vừa bật/tắt cờ cho mình xong).
             currentUserCanSelfAdjustChamCong = !!result.canSelfAdjust;
+            // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Tải kèm chi tiết các lần điều chỉnh đã lưu của
+            // đúng kỳ này (file đính kèm/người nhận) để hộp thoại "Điều chỉnh" hiển thị lại đúng
+            // thông tin đã có khi người dùng mở lại 1 ô đã từng điều chỉnh trước đó — không chặn
+            // việc hiển thị bảng chính nếu lỗi (chỉ mất phần chú thích file đính kèm).
+            loadChamCongGhiDeChiTiet(maKy);
             populateChamCongScopeSelect();
             renderChamCongTable();
             populateChamCongExportSelects();
@@ -6066,40 +6172,205 @@
             return { label: "X", bg: "", title: "Ngày làm việc" };
         }
 
-        // [MỚI] Danh mục loại công (theo file Excel người dùng cung cấp) — tải 1 lần khi mở Tab
-        // "Bảng Chấm Công", hiển thị thành khối chú thích (chỉ đọc). Dùng chung quyền "XemChamCong".
+        // [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Tải 1 lần khi mở Tab "Bảng Chấm Công" — dữ liệu vẫn lấy
+        // nguyên từ action "getDanhMucLoaiCong" như cũ (Dùng chung quyền "XemChamCong"), chỉ khác
+        // là hiển thị thành select "Mã công" + ô "Tên loại công" tự hiện thay vì bảng nhiều cột
+        // như trước (xem renderDanhMucLoaiCongTable() bên dưới).
         let danhMucLoaiCongRows = [];
         async function loadDanhMucLoaiCong() {
-            let tbody = document.getElementById("dmlc-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            let sel = document.getElementById("dmlc-ma-select");
+            if (sel) sel.innerHTML = '<option value="">-- Đang tải... --</option>';
             let result = await callServerAction({ action: "getDanhMucLoaiCong" });
             if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được danh mục loại công.") + '</td></tr>';
+                if (sel) sel.innerHTML = '<option value="">-- ' + escapeHtml((result && result.message) || "Không tải được danh mục loại công.") + ' --</option>';
                 return;
             }
             danhMucLoaiCongRows = result.rows || [];
             renderDanhMucLoaiCongTable();
         }
 
+        // [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây vẽ thành 1 bảng nhiều cột (renderDanhMucLoaiCongTable).
+        // Nay chỉ cần đổ danh sách "Mã công" vào <select id="dmlc-ma-select"> — "Tên loại công"
+        // tương ứng được lấy lại từ ĐÚNG danhMucLoaiCongRows đã tải sẵn (KHÔNG gọi thêm action
+        // nào) mỗi khi người dùng đổi lựa chọn, xem onDmlcMaChange() bên dưới. Đồng thời tải sẵn
+        // danh sách "Người nhận file" (dùng chung action "getChamCongNguoiNhanList" như mục "Điều
+        // chỉnh" bên dưới, KHÔNG thêm action mới cho phần này).
         function renderDanhMucLoaiCongTable() {
-            let tbody = document.getElementById("dmlc-table-body");
-            if (!tbody) return;
+            let sel = document.getElementById("dmlc-ma-select");
+            if (!sel) return;
             if (!danhMucLoaiCongRows.length) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có dữ liệu danh mục loại công.</td></tr>';
+                sel.innerHTML = '<option value="">-- Chưa có dữ liệu danh mục loại công --</option>';
+            } else {
+                sel.innerHTML = '<option value="">-- Chọn mã công --</option>' +
+                    danhMucLoaiCongRows.map(r => `<option value="${escapeHtml(r.ma || "")}">${escapeHtml(r.ma || "")}</option>`).join("");
+            }
+            onDmlcMaChange();
+            populateDmlcNguoiNhanList();
+        }
+
+        // [MỚI] Khi người dùng chọn 1 "Mã công" ở <select id="dmlc-ma-select">, tự hiện "Tên loại
+        // công" tương ứng ở ô chỉ đọc <input id="dmlc-ten"> — tra thẳng trong danhMucLoaiCongRows
+        // đã tải sẵn, không gọi thêm action nào tới server.
+        function onDmlcMaChange() {
+            let sel = document.getElementById("dmlc-ma-select");
+            let tenInput = document.getElementById("dmlc-ten");
+            if (!sel || !tenInput) return;
+            let maChon = String(sel.value || "").trim().toUpperCase();
+            let dong = (danhMucLoaiCongRows || []).find(r => String(r.ma || "").trim().toUpperCase() === maChon);
+            tenInput.value = dong ? (dong.ten || "") : "";
+        }
+
+        // [MỚI - MỤC "NGƯỜI NHẬN FILE"] Đổ danh sách username vào khối checkbox nhiều lựa chọn
+        // "dmlc-recipient-list" — dùng lại ĐÚNG danh sách username đã tải cho mục "Điều chỉnh"
+        // (ccNguoiNhanUsernames, action "getChamCongNguoiNhanList") thông qua
+        // populateChamCongNguoiNhanList() có sẵn, chỉ khác khối đích (boxId) để không lẫn với
+        // mục "Điều chỉnh" bên dưới.
+        async function populateDmlcNguoiNhanList() {
+            await populateChamCongNguoiNhanList([], "dmlc-recipient-list");
+        }
+
+        // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" - GỬI FILE] Đọc file đính kèm thành base64 (CÙNG kỹ
+        // thuật/giới hạn dung lượng đang dùng cho "Điều chỉnh ngày công"/"Đơn nghỉ phép"), gửi lên
+        // action MỚI "guiFileDanhMucLoaiCong" — server tự upload lên Drive (riêng tư) + gửi email
+        // NGAY tới từng "Người nhận" đã chọn, không liên quan tới ngày công/nhân viên cụ thể nào.
+        async function submitDmlcGuiFile() {
+            let err = document.getElementById("dmlc-error");
+            let ok = document.getElementById("dmlc-success");
+            if (err) err.style.display = "none";
+            if (ok) ok.style.display = "none";
+
+            let maChon = document.getElementById("dmlc-ma-select").value;
+            if (!maChon) {
+                if (err) { err.innerText = "Vui lòng chọn \"Mã công\"."; err.style.display = "block"; }
                 return;
             }
-            tbody.innerHTML = danhMucLoaiCongRows.map(r => `<tr>
-                <td style="font-weight:600;">${escapeHtml(r.ma || "")}</td>
-                <td>${escapeHtml(r.ten || "")}</td>
-                <td>${escapeHtml(r.nhomHienThi || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.coLuong || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.laOT || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.truPhepNam || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.canDuyet || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.canDinhKem || "")}</td>
-                <td style="font-size:12.5px; color:#555;">${escapeHtml(r.ghiChu || "")}</td>
-            </tr>`).join("");
+            let fileInput = document.getElementById("dmlc-file");
+            let fileChon = fileInput && fileInput.files && fileInput.files[0];
+            if (!fileChon) {
+                if (err) { err.innerText = "Vui lòng chọn file đính kèm."; err.style.display = "block"; }
+                return;
+            }
+            if (fileChon.size > 15 * 1024 * 1024) {
+                if (err) { err.innerText = "File quá lớn (giới hạn 15MB)."; err.style.display = "block"; }
+                return;
+            }
+            let nguoiNhan = Array.from(document.querySelectorAll("#dmlc-recipient-list input:checked")).map(i => i.value);
+            if (!nguoiNhan.length) {
+                if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\"."; err.style.display = "block"; }
+                return;
+            }
+
+            let base64Data = await new Promise((resolve, reject) => {
+                let reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(",")[1]);
+                reader.onerror = () => reject(new Error("Không thể đọc file."));
+                reader.readAsDataURL(fileChon);
+            }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return null; });
+            if (base64Data === null) return;
+
+            let result = await callServerAction({
+                action: "guiFileDanhMucLoaiCong", ma: maChon,
+                fileName: fileChon.name, mimeType: fileChon.type || "application/octet-stream",
+                fileData: base64Data, nguoiNhan: nguoiNhan
+            });
+            if (result && result.status === "SUCCESS") {
+                if (ok) { ok.innerText = "Đã gửi file thành công tới " + (result.daGui || 0) + "/" + (result.tongSo || nguoiNhan.length) + " người nhận."; ok.style.display = "block"; }
+                if (fileInput) fileInput.value = "";
+            } else if (err) {
+                err.innerText = (result && result.message) || "Không thể gửi file.";
+                err.style.display = "block";
+            }
         }
+
+        // [MỚI - BẮT BUỘC ĐÍNH KÈM] Tra cứu Danh mục loại công (đã tải sẵn ở danhMucLoaiCongRows)
+        // xem 1 mã cụ thể có được đánh dấu "Cần đính kèm" = "Có" hay không — DÙNG CHUNG logic với
+        // Server (laMaCanDinhKem_ ở Code.gs) chỉ để hiện/ẩn giao diện cho thuận tiện; Server luôn
+        // tự kiểm tra lại nên không thể bị bỏ qua dù sửa giao diện. Các mã "X"/"O"/"P"/"CD"/"KL"/
+        // "BHXH" (không nằm trong Danh mục loại công) luôn coi là KHÔNG bắt buộc đính kèm.
+        function chamCongMaCanDinhKem(ma) {
+            let maChuan = String(ma || "").trim().toUpperCase();
+            let dm = (danhMucLoaiCongRows || []).find(r => String(r.ma || "").trim().toUpperCase() === maChuan);
+            return !!(dm && String(dm.canDinhKem || "").trim() === "Có");
+        }
+
+        // [MỚI - NÚT "ĐIỀU CHỈNH" - MỤC "NGƯỜI NHẬN"] Tải danh sách username để chọn "Người nhận"
+        // (nơi gửi file đính kèm) và vẽ thành checkbox nhiều lựa chọn — dùng lại đúng class
+        // "checkbox-dropdown-list"/"checkbox-item" đang có sẵn, giống mục "Người phê duyệt" ở Tab
+        // "Đăng ký nghỉ phép" (populateLeaveApproverList), nhưng gọi action RIÊNG
+        // "getChamCongNguoiNhanList" để không lẫn với cấu hình riêng của nghỉ phép.
+        let ccNguoiNhanUsernames = [];
+        async function populateChamCongNguoiNhanList(checkedUsernames, boxId) {
+            let box = document.getElementById(boxId || "cc-adjust-recipient-list");
+            if (!box) return;
+            if (!ccNguoiNhanUsernames.length) {
+                let result = await callServerAction({ action: "getChamCongNguoiNhanList" });
+                if (result && result.status === "SUCCESS") ccNguoiNhanUsernames = result.usernames || [];
+            }
+            let checked = checkedUsernames || [];
+            box.innerHTML = ccNguoiNhanUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${checked.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
+        }
+
+        // [MỚI - MỤC "NGƯỜI GỬI"] Đổ danh sách username vào <select id="cc-adjust-sender-select">
+        // để chọn ĐÚNG 1 tài khoản ghi nhận là người thực sự gửi/yêu cầu lần điều chỉnh này. Tái
+        // sử dụng ĐÚNG danh sách username đã tải cho "Người nhận" (ccNguoiNhanUsernames, action
+        // "getChamCongNguoiNhanList") để không phải gọi thêm API mới — action đó chỉ loại trừ
+        // tài khoản ĐANG đăng nhập, nên ở đây tự thêm lại tài khoản đang đăng nhập vào đầu danh
+        // sách (vì "Người gửi" mặc định CHÍNH là tài khoản đang đăng nhập — hợp lý hơn "Người
+        // nhận" vốn không tự gửi email cho chính mình). selectedUsername = giá trị cần chọn sẵn
+        // (ưu tiên giá trị đã lưu trước đó cho đúng ô này, mặc định = tài khoản đang đăng nhập).
+        async function populateChamCongNguoiGuiList(selectedUsername) {
+            let sel = document.getElementById("cc-adjust-sender-select");
+            if (!sel) return;
+            if (!ccNguoiNhanUsernames.length) {
+                let result = await callServerAction({ action: "getChamCongNguoiNhanList" });
+                if (result && result.status === "SUCCESS") ccNguoiNhanUsernames = result.usernames || [];
+            }
+            let allUsers = [];
+            if (currentUsername) allUsers.push(currentUsername);
+            (ccNguoiNhanUsernames || []).forEach(u => { if (u !== currentUsername) allUsers.push(u); });
+            let chon = selectedUsername || currentUsername || "";
+            sel.innerHTML = allUsers.map(u =>
+                `<option value="${escapeHtml(u)}"${u === chon ? " selected" : ""}>${escapeHtml(u)}${u === currentUsername ? " (đang đăng nhập)" : ""}</option>`
+            ).join("") || '<option value="">Chưa có tài khoản nào trong hệ thống.</option>';
+        }
+
+        // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Chi tiết các lần điều chỉnh ngày công đã lưu của kỳ
+        // đang xem (file đính kèm/người nhận) — tải lại mỗi khi đổi kỳ/tải lại bảng (xem
+        // loadChamCongData()), lưu vào map theo khóa "MSNV_Ngay" để tra nhanh khi mở hộp thoại
+        // "Điều chỉnh" cho 1 ô cụ thể (xem openChamCongAdjustModal()). Lỗi tải KHÔNG chặn hiển thị
+        // bảng chính — chỉ mất phần chú thích "File hiện có" khi mở lại hộp thoại.
+        let ccGhiDeChiTietMap = {};
+        async function loadChamCongGhiDeChiTiet(maKy) {
+            ccGhiDeChiTietMap = {};
+            try {
+                let result = await callServerAction({ action: "getChamCongGhiDeChiTiet", maKy: maKy });
+                if (result && result.status === "SUCCESS") {
+                    // [MỚI - MỤC "NGƯỜI GỬI"] r.nguoiGui (nếu có) được server trả kèm — dùng để tự
+                    // chọn sẵn lại đúng "Người gửi" đã lưu trước đó khi mở lại hộp thoại cho đúng ô
+                    // này (xem openChamCongAdjustModal/populateChamCongNguoiGuiList()).
+                    (result.rows || []).forEach(r => { ccGhiDeChiTietMap[r.msnv + "_" + r.ngay] = r; });
+                }
+            } catch (e) { console.error("Lỗi tải chi tiết điều chỉnh ngày công:", e); }
+        }
+
+        // [MỚI - BẮT BUỘC ĐÍNH KÈM] Hiện/ẩn khối "File minh chứng đính kèm" + "Người nhận" trong
+        // hộp thoại "Điều chỉnh ngày công" tùy theo mã loại công VỪA CHỌN có "Cần đính kèm" = "Có"
+        // hay không (xem chamCongMaCanDinhKem()) — gọi mỗi khi người dùng đổi lựa chọn ở
+        // <select id="cc-adjust-select"> (onchange) VÀ ngay khi mở hộp thoại lần đầu.
+        function updateChamCongAdjustAttachmentUI() {
+            let sel = document.getElementById("cc-adjust-select");
+            let maChon = sel ? sel.value : "";
+            let batBuoc = chamCongMaCanDinhKem(maChon);
+            let fileGroup = document.getElementById("cc-adjust-file-group");
+            let recipientGroup = document.getElementById("cc-adjust-recipient-group");
+            if (fileGroup) fileGroup.style.display = batBuoc ? "block" : "none";
+            if (recipientGroup) recipientGroup.style.display = batBuoc ? "block" : "none";
+            let err = document.getElementById("cc-adjust-error");
+            if (err) err.style.display = "none";
+        }
+
 
         // Dựng phần <thead> động: 3 cột cố định (MSNV/Họ tên/Phòng ban) + 1 cột cho MỖI ngày
         // trong tháng của kỳ đang xem (hiện số ngày + Thứ, VD "5\nT4") + 6 cột tổng hợp cuối
@@ -6265,6 +6536,27 @@
                 let maHienTaiGoc = (String(maHienTai).indexOf("M:") === 0) ? maHienTai.substring(2) : (maHienTai === "OX" ? "X" : (maHienTai === "OO" ? "O" : (maHienTai || "X")));
                 sel.innerHTML = options.map(o => `<option value="${escapeHtml(o.ma)}"${o.ma === maHienTaiGoc ? " selected" : ""}>${escapeHtml(o.ma)} - ${escapeHtml(o.ten)}</option>`).join("");
             }
+
+            // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Xóa lựa chọn file cũ (input file không thể set
+            // giá trị bằng JS vì lý do bảo mật trình duyệt) + hiển thị lại file/người nhận ĐÃ LƯU
+            // của đúng (msnv, ngay) này (nếu có, xem ccGhiDeChiTietMap/loadChamCongGhiDeChiTiet()),
+            // để người dùng biết đã từng đính kèm gì trước đó (không bắt buộc chọn lại file nếu
+            // không muốn thay đổi — chỉ bắt buộc khi CHƯA từng có file cho lần điều chỉnh này).
+            let fileInput = document.getElementById("cc-adjust-file");
+            if (fileInput) fileInput.value = "";
+            let daCo = ccGhiDeChiTietMap[String(msnv) + "_" + String(ngay)];
+            let fileHint = document.getElementById("cc-adjust-file-hint");
+            if (fileHint) {
+                fileHint.innerHTML = (daCo && daCo.fileId)
+                    ? ('📎 File hiện có: <a href="javascript:void(0)" onclick="viewSecureFile(\'' + escapeHtml(daCo.fileId) + '\', \'' + escapeHtml(daCo.fileName) + '\', \'chamCongGhiDe\')">' + escapeHtml(daCo.fileName) + '</a> (chọn file mới để thay thế, hoặc để trống nếu giữ nguyên)')
+                    : "";
+            }
+            populateChamCongNguoiNhanList(daCo ? (daCo.nguoiNhan || []) : []);
+            // [MỚI - MỤC "NGƯỜI GỬI"] Chọn sẵn lại "Người gửi" đã lưu trước đó cho đúng ô này (nếu
+            // có), mặc định là tài khoản đang đăng nhập nếu đây là lần điều chỉnh đầu tiên.
+            populateChamCongNguoiGuiList(daCo ? (daCo.nguoiGui || "") : "");
+
+            updateChamCongAdjustAttachmentUI();
             let err = document.getElementById("cc-adjust-error");
             if (err) err.style.display = "none";
             let modal = document.getElementById("cc-adjust-modal");
@@ -6275,6 +6567,8 @@
             let modal = document.getElementById("cc-adjust-modal");
             if (modal) modal.style.display = "none";
             ccAdjustTarget = null;
+            let fileInput = document.getElementById("cc-adjust-file");
+            if (fileInput) fileInput.value = "";
         }
 
         async function submitChamCongAdjust() {
@@ -6287,21 +6581,149 @@
                 if (err) { err.innerText = "Vui lòng chọn loại ngày công cần đổi sang."; err.style.display = "block"; }
                 return;
             }
+
+            // [MỚI - BẮT BUỘC ĐÍNH KÈM + NGƯỜI NHẬN] Nếu mã vừa chọn được đánh dấu "Cần đính kèm"
+            // = "Có", BẮT BUỘC phải có file (mới chọn HOẶC đã có sẵn từ lần điều chỉnh trước cho
+            // đúng ô này) VÀ chọn ít nhất 1 "Người nhận". Server luôn kiểm tra lại (không thể bị
+            // bỏ qua dù sửa giao diện) — kiểm tra ở đây chỉ để báo lỗi sớm, thân thiện hơn.
+            let batBuoc = chamCongMaCanDinhKem(maChon);
+            let fileInput = document.getElementById("cc-adjust-file");
+            let fileChon = fileInput && fileInput.files && fileInput.files[0];
+            let daCoSan = ccGhiDeChiTietMap[String(ccAdjustTarget.msnv) + "_" + String(ccAdjustTarget.ngay)];
+            let daCoFileSan = daCoSan && daCoSan.fileId && String(daCoSan.loai || "").toUpperCase() === maChon;
+            let nguoiNhan = Array.from(document.querySelectorAll("#cc-adjust-recipient-list input:checked")).map(i => i.value);
+            // [MỚI - MỤC "NGƯỜI GỬI"] Luôn bắt buộc chọn ĐÚNG 1 "Người gửi" (mặc định đã tự chọn
+            // sẵn tài khoản đang đăng nhập ở populateChamCongNguoiGuiList(), nên bình thường luôn
+            // có giá trị) — chỉ báo lỗi nếu vì lý do gì đó danh sách rỗng.
+            let senderSel = document.getElementById("cc-adjust-sender-select");
+            let nguoiGui = senderSel ? senderSel.value : "";
+            if (!nguoiGui) {
+                if (err) { err.innerText = "Vui lòng chọn \"Người gửi\" (người thực sự yêu cầu/gửi điều chỉnh này)."; err.style.display = "block"; }
+                return;
+            }
+            if (batBuoc) {
+                if (!fileChon && !daCoFileSan) {
+                    if (err) { err.innerText = "Loại công \"" + maChon + "\" yêu cầu phải đính kèm file minh chứng. Vui lòng chọn file."; err.style.display = "block"; }
+                    return;
+                }
+                if (!nguoiNhan.length) {
+                    if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\" để gửi file đính kèm."; err.style.display = "block"; }
+                    return;
+                }
+            }
+
             let inp = document.getElementById("cc-period-input");
             let maKy = inp ? inp.value : "";
             if (!maKy) { closeChamCongAdjustModal(); return; }
 
-            let result = await callServerAction({
+            let payload = {
                 action: "suaNgayChamCong", maKy: maKy,
-                msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon
-            });
+                msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon,
+                nguoiNhan: nguoiNhan, nguoiGui: nguoiGui
+            };
+
+            // [ĐÍNH KÈM FILE] Tùy chọn — nếu người dùng có chọn file mới, đọc thành base64 và gửi
+            // kèm (CÙNG kỹ thuật/giới hạn dung lượng đang dùng cho "Đơn nghỉ phép"). Không chọn
+            // file mới thì server tự giữ nguyên file cũ (nếu đã có sẵn cho đúng ô này).
+            if (fileChon) {
+                if (fileChon.size > 15 * 1024 * 1024) {
+                    if (err) { err.innerText = "File quá lớn (giới hạn 15MB)."; err.style.display = "block"; }
+                    return;
+                }
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(fileChon);
+                }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return null; });
+                if (base64Data === null) return;
+                payload.fileName = fileChon.name;
+                payload.mimeType = fileChon.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let result = await callServerAction(payload);
             if (result && result.status === "SUCCESS") {
                 closeChamCongAdjustModal();
                 loadChamCongData();
+                // [MỚI - MỤC "NHẬN FILE"] Nếu vừa gửi kèm file cho 1 hoặc nhiều "Người nhận", tự
+                // làm mới lại số đếm "Nhận file" của CHÍNH tài khoản đang xem (trường hợp người
+                // điều chỉnh cũng đồng thời tự chọn mình làm "Người nhận").
+                if (fileChon) loadChamCongFileNhanDuocQuietly();
             } else if (err) {
                 err.innerText = (result && result.message) || "Không thể lưu điều chỉnh.";
                 err.style.display = "block";
             }
+        }
+
+        // [MỚI - MỤC "NHẬN FILE"] Danh sách file minh chứng đã được gửi tới CHÍNH tài khoản đang
+        // đăng nhập (mục "Người nhận" của hộp thoại "Điều chỉnh ngày công") — tải qua action RIÊNG
+        // "getChamCongFileNhanDuoc" (server tự lọc theo ĐÚNG tài khoản gọi, xem Code.gs), không
+        // giới hạn theo kỳ đang xem (liệt kê ở MỌI kỳ) để không bỏ sót file cũ.
+        let ccNhanFileRows = [];
+
+        // Tải NGẦM (không mở modal) mỗi khi mở Tab "Bảng Chấm Công" — chỉ để cập nhật số đếm ở
+        // huy hiệu (badge) trên nút "Nhận file", giúp người dùng biết có file mới mà không cần tự
+        // bấm mở ra kiểm tra. Lỗi tải (nếu có) KHÔNG hiện gì cả — tránh làm phiền, người dùng vẫn
+        // luôn có thể tự bấm "Nhận file" để tải lại thủ công.
+        async function loadChamCongFileNhanDuocQuietly() {
+            try {
+                let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
+                if (result && result.status === "SUCCESS") {
+                    ccNhanFileRows = result.rows || [];
+                    updateChamCongNhanFileBadge();
+                }
+            } catch (e) { /* Im lặng bỏ qua — không chặn việc dùng Tab Bảng Chấm Công. */ }
+        }
+
+        function updateChamCongNhanFileBadge() {
+            let badge = document.getElementById("cc-nhanfile-badge");
+            if (!badge) return;
+            if (ccNhanFileRows.length) { badge.style.display = "inline-block"; badge.innerText = ccNhanFileRows.length; }
+            else badge.style.display = "none";
+        }
+
+        // Mở hộp thoại "Nhận file" — luôn tải lại MỚI NHẤT từ server (không dùng lại dữ liệu cũ
+        // trong bộ nhớ) để đảm bảo thấy đúng file mới nhất ngay cả khi vừa có người khác gửi.
+        async function openChamCongNhanFileModal() {
+            let modal = document.getElementById("cc-nhanfile-modal");
+            if (modal) modal.style.display = "flex";
+            let tbody = document.getElementById("cc-nhanfile-table-body");
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
+            if (!result || result.status !== "SUCCESS") {
+                if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
+                return;
+            }
+            ccNhanFileRows = result.rows || [];
+            renderChamCongNhanFileTable();
+        }
+
+        function renderChamCongNhanFileTable() {
+            let tbody = document.getElementById("cc-nhanfile-table-body");
+            if (!tbody) return;
+            updateChamCongNhanFileBadge();
+            if (!ccNhanFileRows.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = ccNhanFileRows.map(r => {
+                let nhanSu = r.hoTen ? (escapeHtml(r.hoTen) + " (MSNV " + escapeHtml(r.msnv) + ")") : escapeHtml(r.msnv);
+                return `<tr>
+                    <td>${escapeHtml(r.thoiGian || "")}</td>
+                    <td>${nhanSu}</td>
+                    <td>${escapeHtml(r.maKy || "")}</td>
+                    <td style="text-align:center;">${escapeHtml(r.ngay || "")}</td>
+                    <td style="text-align:center;">${escapeHtml(r.loai || "")}</td>
+                    <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', 'chamCongGhiDe')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
+                </tr>`;
+            }).join("");
+        }
+
+        function closeChamCongNhanFileModal() {
+            let modal = document.getElementById("cc-nhanfile-modal");
+            if (modal) modal.style.display = "none";
         }
 
         async function chotBangChamCong() {
