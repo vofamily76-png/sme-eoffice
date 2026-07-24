@@ -2690,7 +2690,7 @@
         // Đổi giá trị này (Claude sẽ tự đổi mỗi lần sửa code) để Admin có thể xác nhận trang
         // web đang mở THỰC SỰ là bản mới nhất, tránh nhầm với bản index.html cũ hơn còn lưu
         // trên máy chủ web hoặc trong cache trình duyệt.
-        const FRONTEND_BUILD_VERSION = "2026-07-23.chamcong-dieuchinh-cuoituan-v1";
+        const FRONTEND_BUILD_VERSION = "2026-07-24.chamcong-dinhkem-nguoinhan-v2";
         // [CHẨN ĐOÁN] true nếu Apps Script (backend) ĐANG CHẠY TRÊN URL Web App hiện tại đã
         // hỗ trợ tính năng tải ảnh đại diện lên Google Drive. Mặc định null = "chưa biết"
         // (chưa đồng bộ lần nào) để không cảnh báo nhầm trước khi có dữ liệu thực tế từ server.
@@ -6121,7 +6121,15 @@
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có dữ liệu danh mục loại công.</td></tr>';
                 return;
             }
-            tbody.innerHTML = danhMucLoaiCongRows.map(r => `<tr>
+            // [MỚI - BẮT BUỘC ĐÍNH KÈM] Tô đậm rõ ràng ô "Cần đính kèm" = "Có" (nền đỏ nhạt + chữ
+            // đậm) để dễ nhận biết ngay những mã BẮT BUỘC phải đính kèm file khi điều chỉnh — thay
+            // vì chỉ hiện chữ thường như trước, giúp phân biệt rõ với "Không".
+            tbody.innerHTML = danhMucLoaiCongRows.map(r => {
+                let canDinhKemVal = String(r.canDinhKem || "").trim();
+                let canDinhKemHtml = (canDinhKemVal === "Có")
+                    ? '<span style="background:#fdecea; color:#c0392b; font-weight:700; padding:2px 8px; border-radius:10px;">Có</span>'
+                    : escapeHtml(canDinhKemVal || "Không");
+                return `<tr>
                 <td style="font-weight:600;">${escapeHtml(r.ma || "")}</td>
                 <td>${escapeHtml(r.ten || "")}</td>
                 <td>${escapeHtml(r.nhomHienThi || "")}</td>
@@ -6129,9 +6137,10 @@
                 <td style="text-align:center;">${escapeHtml(r.laOT || "")}</td>
                 <td style="text-align:center;">${escapeHtml(r.truPhepNam || "")}</td>
                 <td style="text-align:center;">${escapeHtml(r.canDuyet || "")}</td>
-                <td style="text-align:center;">${escapeHtml(r.canDinhKem || "")}</td>
+                <td style="text-align:center;">${canDinhKemHtml}</td>
                 <td style="font-size:12.5px; color:#555;">${escapeHtml(r.ghiChu || "")}</td>
-            </tr>`).join("");
+            </tr>`;
+            }).join("");
         }
 
         // [MỚI - BẮT BUỘC ĐÍNH KÈM] Tra cứu Danh mục loại công (đã tải sẵn ở danhMucLoaiCongRows)
