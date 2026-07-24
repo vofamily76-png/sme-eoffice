@@ -1443,7 +1443,7 @@
                     <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
                     <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
                         <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
-                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file và chọn "Người nhận" để gửi email ngay.
+                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file, ghi chú (nếu cần) và chọn "Người nhận" để gửi ngay — người nhận sẽ nhận được cả qua email lẫn ngay trong mục "Nhận file" ở trên.
                     </p>
                     <div class="input-group">
                         <label>Mã công</label>
@@ -1463,11 +1463,39 @@
                         <label>Người nhận file <span style="color:#d9534f;">*</span></label>
                         <div class="checkbox-dropdown-list" id="dmlc-recipient-list" style="max-height:140px;"></div>
                     </div>
+                    <!-- [MỚI - MỤC "GHI CHÚ"] Ô nhập TÙY CHỌN (không bắt buộc) để ghi thêm nội dung
+                         nếu cần thiết cho lần gửi file này — lưu kèm vào Sheet
+                         "ChamCongDanhMucLoaiCongFile" (cột "GhiChu"), hiện lại trong email và mục
+                         "Nhận file". Xem submitDmlcGuiFile() bên dưới. -->
+                    <div class="input-group">
+                        <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — ghi thêm nội dung nếu cần thiết)</span></label>
+                        <textarea id="dmlc-ghichu" rows="2" maxlength="500" placeholder="Ghi chú thêm (nếu có)..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                    </div>
                     <div id="dmlc-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div id="dmlc-success" style="color:#2e7d32; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <button type="button" class="btn" style="width:auto;" onclick="submitDmlcGuiFile()">
                         <i class="fa-solid fa-paper-plane"></i> Gửi file
                     </button>
+                </div>
+
+                <!-- [MỚI - MỤC "NGƯỜI NHẬN", CHỈ HIỆN VỚI TÀI KHOẢN ADMIN] Admin chọn 1 danh sách
+                     CON trong TẤT CẢ tài khoản -> danh sách này sẽ là DUY NHẤT được phép hiện ra ở
+                     mục "Người nhận" (áp dụng cho CẢ "Điều chỉnh ngày công" LẪN "Danh mục loại
+                     công" ở trên, cho MỌI tài khoản). Để TRỐNG (không chọn ai) = KHÔNG giới hạn,
+                     giữ nguyên hành vi CŨ (cho chọn TẤT CẢ tài khoản khác) — không mất/không đổi
+                     dữ liệu đã có nếu Admin chưa dùng tới mục này. Dữ liệu lưu ở sheet RIÊNG
+                     "CaiDatNguoiNhanChamCong" (xem saveChamCongNguoiNhanSettings ở Code.gs), TÁCH
+                     BIỆT hoàn toàn với "CaiDatPheDuyet" (mục "Người được phê duyệt" ở Tab "Đăng ký
+                     nghỉ phép") — KHÔNG đụng tới sheet "TaiKhoan"/"DanhMuc" hay bất kỳ quyền
+                     hạn/dữ liệu nào khác. -->
+                <div class="admin-box" id="cc-admin-nguoinhan-settings-box" style="border-left: 5px solid #37474f; background:#f5f5f5; margin-top:16px; display:none;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-user-shield" style="color:#37474f;"></i> Người nhận <small style="font-weight:normal; color:#888; font-size:12px;">(chỉ Admin thấy mục này)</small></h4>
+                    <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                        Chọn ai sẽ được phép hiện ra ở mục "Người nhận" (áp dụng cho cả "Điều chỉnh ngày công" và "Danh mục loại công" ở trên, cho mọi tài khoản). Để trống = không giới hạn, cho chọn tất cả tài khoản như cũ.
+                    </p>
+                    <div class="checkbox-dropdown-list" id="cc-admin-nguoinhan-settings-list" style="max-height:160px;"></div>
+                    <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveChamCongNguoiNhanSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người nhận"</button>
+                    <span id="cc-admin-nguoinhan-settings-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
                 </div>
 
                 <!-- [THANH TRƯỢT] Bọc bảng trong 1 khung cuộn riêng (dọc LẪN ngang) — dòng tiêu đề
@@ -2818,6 +2846,10 @@
         // username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = CHƯA cấu hình gì,
         // mọi tài khoản vẫn được chọn TẤT CẢ tài khoản khác như trước — xem populateLeaveApproverList()).
         let approvedApproversList = [];
+        // [TAB "BẢNG CHẤM CÔNG" - MỤC "NGƯỜI NHẬN", CHỈ ADMIN CẤU HÌNH] Danh sách username Admin
+        // đã chọn để giới hạn lựa chọn ở mục "Người nhận" — TÁCH BIỆT hoàn toàn với
+        // "approvedApproversList" ở trên (mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép").
+        let approvedChamCongNguoiNhanList = [];
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
@@ -3159,6 +3191,7 @@
                 // để vẫn nhận đúng mảng RỖNG khi Admin vừa bỏ chọn hết (xóa cấu hình), giống cách
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
+                if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
@@ -4955,6 +4988,12 @@
             // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Cập nhật ngay giao diện khối "Xuất bảng
             // chấm công ra Excel" theo đúng quyền vừa xác định ở trên (xem capNhatChamCongExportUI()).
             capNhatChamCongExportUI();
+            // [MỚI - MỤC "NGƯỜI NHẬN" - CHỈ ADMIN] Chỉ Admin mới thấy khối cấu hình này.
+            let ccAdminNguoiNhanBox = document.getElementById("cc-admin-nguoinhan-settings-box");
+            if (ccAdminNguoiNhanBox) {
+                ccAdminNguoiNhanBox.style.display = (currentUser.role === "Admin") ? "block" : "none";
+                if (currentUser.role === "Admin") populateAdminChamCongNguoiNhanSettingsList();
+            }
 
             // ==== [TAB "GIAO VIỆC"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được danh sách
             // công việc. Giao việc (tạo/sửa/xóa): CHỈ tài khoản có quyền riêng "DuocGiaoViec"
@@ -6238,6 +6277,54 @@
             await populateChamCongNguoiNhanList([], "dmlc-recipient-list");
         }
 
+        // [MỚI - MỤC "NGƯỜI NHẬN", CHỈ HIỆN VỚI ADMIN] Vẽ checkbox cho TẤT CẢ tài khoản hiện có
+        // (lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin — không gọi thêm action mới), tick sẵn
+        // đúng những tài khoản đang nằm trong "approvedChamCongNguoiNhanList" (cũng đã tải sẵn qua
+        // loadFromCloud/getData, xem action "getChamCongNguoiNhanList"/buildSystemData ở Code.gs).
+        // Dùng CHUNG kỹ thuật với populateAdminApprovalSettingsList() ở Tab "Đăng ký nghỉ phép",
+        // nhưng TÁCH BIỆT hoàn toàn (không lẫn 2 danh sách/2 sheet với nhau).
+        function populateAdminChamCongNguoiNhanSettingsList() {
+            let box = document.getElementById("cc-admin-nguoinhan-settings-list");
+            if (!box || !currentUser || currentUser.role !== "Admin") return;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${(approvedChamCongNguoiNhanList || []).includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("");
+        }
+
+        // Lưu lại danh sách "Người nhận" mà Admin vừa chọn (action RIÊNG
+        // "saveChamCongNguoiNhanSettings", chỉ Admin gọi được — server đã tự kiểm tra qua
+        // requireAuth(data, isAdmin), xem Code.gs). Gửi mảng RỖNG (bỏ chọn hết) = Admin chủ động
+        // xóa cấu hình, quay lại cho chọn TẤT CẢ như cũ.
+        async function saveChamCongNguoiNhanSettings() {
+            let box = document.getElementById("cc-admin-nguoinhan-settings-list");
+            if (!box) return;
+            let statusEl = document.getElementById("cc-admin-nguoinhan-settings-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let ok = await pushToCloud({ action: "saveChamCongNguoiNhanSettings", usernames: usernames });
+            if (ok) {
+                approvedChamCongNguoiNhanList = usernames;
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người nhận\").")
+                        : "✅ Đã lưu (KHÔNG giới hạn — cho chọn tất cả tài khoản như cũ).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                }
+                // Tải lại ngay 2 khung "Người nhận" (Điều chỉnh ngày công + Danh mục loại công) để
+                // Admin thấy đúng kết quả sau khi lưu, không cần tải lại cả trang.
+                populateChamCongNguoiNhanList(Array.from(document.querySelectorAll("#cc-adjust-recipient-list input:checked")).map(i => i.value));
+                populateDmlcNguoiNhanList();
+            } else if (statusEl) {
+                statusEl.style.color = "#d9534f";
+                statusEl.innerText = "⚠️ Lỗi lưu cấu hình.";
+            }
+        }
+
         // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" - GỬI FILE] Đọc file đính kèm thành base64 (CÙNG kỹ
         // thuật/giới hạn dung lượng đang dùng cho "Điều chỉnh ngày công"/"Đơn nghỉ phép"), gửi lên
         // action MỚI "guiFileDanhMucLoaiCong" — server tự upload lên Drive (riêng tư) + gửi email
@@ -6268,6 +6355,10 @@
                 if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\"."; err.style.display = "block"; }
                 return;
             }
+            // [MỚI - MỤC "GHI CHÚ"] TÙY CHỌN (không bắt buộc) — gửi kèm đúng nội dung đang nhập ở
+            // ô "Ghi chú" (có thể để trống).
+            let dmlcGhiChuInput = document.getElementById("dmlc-ghichu");
+            let dmlcGhiChu = dmlcGhiChuInput ? dmlcGhiChuInput.value.trim() : "";
 
             let base64Data = await new Promise((resolve, reject) => {
                 let reader = new FileReader();
@@ -6280,11 +6371,15 @@
             let result = await callServerAction({
                 action: "guiFileDanhMucLoaiCong", ma: maChon,
                 fileName: fileChon.name, mimeType: fileChon.type || "application/octet-stream",
-                fileData: base64Data, nguoiNhan: nguoiNhan
+                fileData: base64Data, nguoiNhan: nguoiNhan, ghiChu: dmlcGhiChu
             });
             if (result && result.status === "SUCCESS") {
                 if (ok) { ok.innerText = "Đã gửi file thành công tới " + (result.daGui || 0) + "/" + (result.tongSo || nguoiNhan.length) + " người nhận."; ok.style.display = "block"; }
                 if (fileInput) fileInput.value = "";
+                if (dmlcGhiChuInput) dmlcGhiChuInput.value = "";
+                // [MỚI - MỤC "NHẬN FILE"] Tự làm mới số đếm "Nhận file" nếu người gửi cũng đồng
+                // thời tự chọn mình làm "Người nhận".
+                loadChamCongFileNhanDuocQuietly();
             } else if (err) {
                 err.innerText = (result && result.message) || "Không thể gửi file.";
                 err.style.display = "block";
@@ -6709,7 +6804,7 @@
             let modal = document.getElementById("cc-nhanfile-modal");
             if (modal) modal.style.display = "flex";
             let tbody = document.getElementById("cc-nhanfile-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>';
             let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
             if (!result || result.status !== "SUCCESS") {
                 if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
@@ -6728,15 +6823,24 @@
                 return;
             }
             tbody.innerHTML = ccNhanFileRows.map(r => {
-                let nhanSu = r.hoTen ? (escapeHtml(r.hoTen) + " (MSNV " + escapeHtml(r.msnv) + ")") : escapeHtml(r.msnv);
+                // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" - HIỆN TRONG "NHẬN FILE"] Dòng gửi từ mục "Danh
+                // mục loại công" không gắn với 1 nhân sự/kỳ/ngày cụ thể nào (r.nguon ===
+                // "danhMucLoaiCong") — hiển thị khác đi cho rõ ràng, không lẫn với dòng từ mục
+                // "Điều chỉnh ngày công" (nguon "dieuChinh" hoặc không có, để tương thích ngược).
+                let laDmlc = r.nguon === "danhMucLoaiCong";
+                let nhanSu = laDmlc
+                    ? '<span style="color:#2f6fed;"><i class="fa-solid fa-list-check"></i> Danh mục loại công</span>'
+                    : (r.hoTen ? (escapeHtml(r.hoTen) + " (MSNV " + escapeHtml(r.msnv) + ")") : escapeHtml(r.msnv));
+                let loaiHien = laDmlc ? (escapeHtml(r.loai || "") + (r.tenLoai ? (" - " + escapeHtml(r.tenLoai)) : "")) : escapeHtml(r.loai || "");
+                let fileKind = laDmlc ? "dmlcFile" : "chamCongGhiDe";
                 return `<tr>
                     <td>${escapeHtml(r.thoiGian || "")}</td>
                     <td>${nhanSu}</td>
-                    <td>${escapeHtml(r.maKy || "")}</td>
-                    <td style="text-align:center;">${escapeHtml(r.ngay || "")}</td>
-                    <td style="text-align:center;">${escapeHtml(r.loai || "")}</td>
+                    <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.maKy || "")}</td>
+                    <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.ngay || "")}</td>
+                    <td style="text-align:center;">${loaiHien}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
-                    <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', 'chamCongGhiDe')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
+                    <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', '${fileKind}')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                 </tr>`;
             }).join("");
