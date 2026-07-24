@@ -1415,9 +1415,21 @@
                 </div>
 
                 <!-- [MỚI] Danh mục loại công (theo file Excel người dùng cung cấp) — chỉ mang tính
-                     CHÚ THÍCH/tham khảo (chỉ đọc), không phải nơi nhập liệu. -->
+                     CHÚ THÍCH/tham khảo (chỉ đọc), không phải nơi nhập liệu.
+                     [MỚI - BẮT BUỘC ĐÍNH KÈM] Cột "Cần đính kèm" = "Có" nay KHÔNG CÒN chỉ là ghi
+                     chú tham khảo: khi bấm nút "Điều chỉnh" và đổi 1 ngày công sang ĐÚNG mã đó,
+                     hộp thoại "Điều chỉnh ngày công" sẽ BẮT BUỘC phải chọn file minh chứng đính
+                     kèm + chọn ít nhất 1 "Người nhận" để hệ thống tự gửi email kèm file đó (xem
+                     openChamCongAdjustModal/updateChamCongAdjustAttachmentUI/submitChamCongAdjust
+                     bên dưới) — Server luôn kiểm tra lại (laMaCanDinhKem_ ở Code.gs), không thể bị
+                     bỏ qua dù sửa giao diện. -->
                 <div class="admin-box" style="border-left: 5px solid #2f6fed; background:#f5f8ff; margin-top:16px;">
                     <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
+                    <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                        <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
+                        Các mã có cột <b>"Cần đính kèm" = Có</b> nay <b>bắt buộc</b> phải đính kèm file minh chứng
+                        và chọn "Người nhận" khi điều chỉnh ngày công (mục "Điều chỉnh" bên dưới).
+                    </p>
                     <div style="overflow-x:auto;">
                         <table class="data-table" id="dmlc-table" style="min-width:900px; margin-bottom:0;">
                             <thead>
@@ -1454,12 +1466,28 @@
                  Chỉ mở được khi đã bật nút "Điều chỉnh" và click vào 1 ô còn mở khóa sửa (xem
                  renderChamCongTable/openChamCongAdjustModal/submitChamCongAdjust bên dưới). -->
             <div id="cc-adjust-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
-                <div class="login-box" style="max-width:420px;">
+                <div class="login-box" style="max-width:460px; max-height:88vh; overflow-y:auto;">
                     <h2><i class="fa-solid fa-sliders"></i> Điều chỉnh ngày công</h2>
                     <p id="cc-adjust-info" style="color:#555; font-size:14px;"></p>
                     <div class="input-group">
                         <label>Chọn loại ngày công mới</label>
-                        <select id="cc-adjust-select"></select>
+                        <select id="cc-adjust-select" onchange="updateChamCongAdjustAttachmentUI()"></select>
+                    </div>
+                    <!-- [MỚI - BẮT BUỘC ĐÍNH KÈM] Chỉ hiện/bắt buộc khi loại công vừa chọn được đánh
+                         dấu "Cần đính kèm" = "Có" trong Danh mục loại công (xem
+                         updateChamCongAdjustAttachmentUI()) — Server luôn kiểm tra lại, không thể
+                         bị bỏ qua dù ẩn/hiện ở giao diện. -->
+                    <div class="input-group" id="cc-adjust-file-group" style="display:none;">
+                        <label>File minh chứng đính kèm <span id="cc-adjust-file-required" style="color:#d9534f;">*</span></label>
+                        <input type="file" id="cc-adjust-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                        <div id="cc-adjust-file-hint" style="font-size:12.5px; color:#555; margin-top:4px;"></div>
+                    </div>
+                    <!-- [MỚI - MỤC "NGƯỜI NHẬN"] Chọn 1 hoặc nhiều tài khoản sẽ được gửi email kèm
+                         file đính kèm ở trên — dùng chung khung "checkbox-dropdown-list" đang có sẵn
+                         (giống mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép"). -->
+                    <div class="input-group" id="cc-adjust-recipient-group" style="display:none;">
+                        <label>Người nhận (sẽ được gửi email kèm file đính kèm) <span style="color:#d9534f;">*</span></label>
+                        <div class="checkbox-dropdown-list" id="cc-adjust-recipient-list" style="max-height:140px;"></div>
                     </div>
                     <div id="cc-adjust-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div style="display:flex; gap:10px;">
@@ -5749,6 +5777,11 @@
             // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Cập nhật lại đúng theo giá trị server trả về mỗi
             // lần tải dữ liệu (đổi kỳ, hoặc quản lý vừa bật/tắt cờ cho mình xong).
             currentUserCanSelfAdjustChamCong = !!result.canSelfAdjust;
+            // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Tải kèm chi tiết các lần điều chỉnh đã lưu của
+            // đúng kỳ này (file đính kèm/người nhận) để hộp thoại "Điều chỉnh" hiển thị lại đúng
+            // thông tin đã có khi người dùng mở lại 1 ô đã từng điều chỉnh trước đó — không chặn
+            // việc hiển thị bảng chính nếu lỗi (chỉ mất phần chú thích file đính kèm).
+            loadChamCongGhiDeChiTiet(maKy);
             populateChamCongScopeSelect();
             renderChamCongTable();
             populateChamCongExportSelects();
@@ -6101,6 +6134,69 @@
             </tr>`).join("");
         }
 
+        // [MỚI - BẮT BUỘC ĐÍNH KÈM] Tra cứu Danh mục loại công (đã tải sẵn ở danhMucLoaiCongRows)
+        // xem 1 mã cụ thể có được đánh dấu "Cần đính kèm" = "Có" hay không — DÙNG CHUNG logic với
+        // Server (laMaCanDinhKem_ ở Code.gs) chỉ để hiện/ẩn giao diện cho thuận tiện; Server luôn
+        // tự kiểm tra lại nên không thể bị bỏ qua dù sửa giao diện. Các mã "X"/"O"/"P"/"CD"/"KL"/
+        // "BHXH" (không nằm trong Danh mục loại công) luôn coi là KHÔNG bắt buộc đính kèm.
+        function chamCongMaCanDinhKem(ma) {
+            let maChuan = String(ma || "").trim().toUpperCase();
+            let dm = (danhMucLoaiCongRows || []).find(r => String(r.ma || "").trim().toUpperCase() === maChuan);
+            return !!(dm && String(dm.canDinhKem || "").trim() === "Có");
+        }
+
+        // [MỚI - NÚT "ĐIỀU CHỈNH" - MỤC "NGƯỜI NHẬN"] Tải danh sách username để chọn "Người nhận"
+        // (nơi gửi file đính kèm) và vẽ thành checkbox nhiều lựa chọn — dùng lại đúng class
+        // "checkbox-dropdown-list"/"checkbox-item" đang có sẵn, giống mục "Người phê duyệt" ở Tab
+        // "Đăng ký nghỉ phép" (populateLeaveApproverList), nhưng gọi action RIÊNG
+        // "getChamCongNguoiNhanList" để không lẫn với cấu hình riêng của nghỉ phép.
+        let ccNguoiNhanUsernames = [];
+        async function populateChamCongNguoiNhanList(checkedUsernames) {
+            let box = document.getElementById("cc-adjust-recipient-list");
+            if (!box) return;
+            if (!ccNguoiNhanUsernames.length) {
+                let result = await callServerAction({ action: "getChamCongNguoiNhanList" });
+                if (result && result.status === "SUCCESS") ccNguoiNhanUsernames = result.usernames || [];
+            }
+            let checked = checkedUsernames || [];
+            box.innerHTML = ccNguoiNhanUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${checked.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
+        }
+
+        // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Chi tiết các lần điều chỉnh ngày công đã lưu của kỳ
+        // đang xem (file đính kèm/người nhận) — tải lại mỗi khi đổi kỳ/tải lại bảng (xem
+        // loadChamCongData()), lưu vào map theo khóa "MSNV_Ngay" để tra nhanh khi mở hộp thoại
+        // "Điều chỉnh" cho 1 ô cụ thể (xem openChamCongAdjustModal()). Lỗi tải KHÔNG chặn hiển thị
+        // bảng chính — chỉ mất phần chú thích "File hiện có" khi mở lại hộp thoại.
+        let ccGhiDeChiTietMap = {};
+        async function loadChamCongGhiDeChiTiet(maKy) {
+            ccGhiDeChiTietMap = {};
+            try {
+                let result = await callServerAction({ action: "getChamCongGhiDeChiTiet", maKy: maKy });
+                if (result && result.status === "SUCCESS") {
+                    (result.rows || []).forEach(r => { ccGhiDeChiTietMap[r.msnv + "_" + r.ngay] = r; });
+                }
+            } catch (e) { console.error("Lỗi tải chi tiết điều chỉnh ngày công:", e); }
+        }
+
+        // [MỚI - BẮT BUỘC ĐÍNH KÈM] Hiện/ẩn khối "File minh chứng đính kèm" + "Người nhận" trong
+        // hộp thoại "Điều chỉnh ngày công" tùy theo mã loại công VỪA CHỌN có "Cần đính kèm" = "Có"
+        // hay không (xem chamCongMaCanDinhKem()) — gọi mỗi khi người dùng đổi lựa chọn ở
+        // <select id="cc-adjust-select"> (onchange) VÀ ngay khi mở hộp thoại lần đầu.
+        function updateChamCongAdjustAttachmentUI() {
+            let sel = document.getElementById("cc-adjust-select");
+            let maChon = sel ? sel.value : "";
+            let batBuoc = chamCongMaCanDinhKem(maChon);
+            let fileGroup = document.getElementById("cc-adjust-file-group");
+            let recipientGroup = document.getElementById("cc-adjust-recipient-group");
+            if (fileGroup) fileGroup.style.display = batBuoc ? "block" : "none";
+            if (recipientGroup) recipientGroup.style.display = batBuoc ? "block" : "none";
+            let err = document.getElementById("cc-adjust-error");
+            if (err) err.style.display = "none";
+        }
+
+
         // Dựng phần <thead> động: 3 cột cố định (MSNV/Họ tên/Phòng ban) + 1 cột cho MỖI ngày
         // trong tháng của kỳ đang xem (hiện số ngày + Thứ, VD "5\nT4") + 6 cột tổng hợp cuối
         // bảng — vì số ngày trong tháng thay đổi (28-31) nên không thể viết cố định trong HTML.
@@ -6265,6 +6361,24 @@
                 let maHienTaiGoc = (String(maHienTai).indexOf("M:") === 0) ? maHienTai.substring(2) : (maHienTai === "OX" ? "X" : (maHienTai === "OO" ? "O" : (maHienTai || "X")));
                 sel.innerHTML = options.map(o => `<option value="${escapeHtml(o.ma)}"${o.ma === maHienTaiGoc ? " selected" : ""}>${escapeHtml(o.ma)} - ${escapeHtml(o.ten)}</option>`).join("");
             }
+
+            // [MỚI - ĐÍNH KÈM FILE + NGƯỜI NHẬN] Xóa lựa chọn file cũ (input file không thể set
+            // giá trị bằng JS vì lý do bảo mật trình duyệt) + hiển thị lại file/người nhận ĐÃ LƯU
+            // của đúng (msnv, ngay) này (nếu có, xem ccGhiDeChiTietMap/loadChamCongGhiDeChiTiet()),
+            // để người dùng biết đã từng đính kèm gì trước đó (không bắt buộc chọn lại file nếu
+            // không muốn thay đổi — chỉ bắt buộc khi CHƯA từng có file cho lần điều chỉnh này).
+            let fileInput = document.getElementById("cc-adjust-file");
+            if (fileInput) fileInput.value = "";
+            let daCo = ccGhiDeChiTietMap[String(msnv) + "_" + String(ngay)];
+            let fileHint = document.getElementById("cc-adjust-file-hint");
+            if (fileHint) {
+                fileHint.innerHTML = (daCo && daCo.fileId)
+                    ? ('📎 File hiện có: <a href="javascript:void(0)" onclick="viewSecureFile(\'' + escapeHtml(daCo.fileId) + '\', \'' + escapeHtml(daCo.fileName) + '\', \'chamCongGhiDe\')">' + escapeHtml(daCo.fileName) + '</a> (chọn file mới để thay thế, hoặc để trống nếu giữ nguyên)')
+                    : "";
+            }
+            populateChamCongNguoiNhanList(daCo ? (daCo.nguoiNhan || []) : []);
+
+            updateChamCongAdjustAttachmentUI();
             let err = document.getElementById("cc-adjust-error");
             if (err) err.style.display = "none";
             let modal = document.getElementById("cc-adjust-modal");
@@ -6275,6 +6389,8 @@
             let modal = document.getElementById("cc-adjust-modal");
             if (modal) modal.style.display = "none";
             ccAdjustTarget = null;
+            let fileInput = document.getElementById("cc-adjust-file");
+            if (fileInput) fileInput.value = "";
         }
 
         async function submitChamCongAdjust() {
@@ -6287,14 +6403,59 @@
                 if (err) { err.innerText = "Vui lòng chọn loại ngày công cần đổi sang."; err.style.display = "block"; }
                 return;
             }
+
+            // [MỚI - BẮT BUỘC ĐÍNH KÈM + NGƯỜI NHẬN] Nếu mã vừa chọn được đánh dấu "Cần đính kèm"
+            // = "Có", BẮT BUỘC phải có file (mới chọn HOẶC đã có sẵn từ lần điều chỉnh trước cho
+            // đúng ô này) VÀ chọn ít nhất 1 "Người nhận". Server luôn kiểm tra lại (không thể bị
+            // bỏ qua dù sửa giao diện) — kiểm tra ở đây chỉ để báo lỗi sớm, thân thiện hơn.
+            let batBuoc = chamCongMaCanDinhKem(maChon);
+            let fileInput = document.getElementById("cc-adjust-file");
+            let fileChon = fileInput && fileInput.files && fileInput.files[0];
+            let daCoSan = ccGhiDeChiTietMap[String(ccAdjustTarget.msnv) + "_" + String(ccAdjustTarget.ngay)];
+            let daCoFileSan = daCoSan && daCoSan.fileId && String(daCoSan.loai || "").toUpperCase() === maChon;
+            let nguoiNhan = Array.from(document.querySelectorAll("#cc-adjust-recipient-list input:checked")).map(i => i.value);
+            if (batBuoc) {
+                if (!fileChon && !daCoFileSan) {
+                    if (err) { err.innerText = "Loại công \"" + maChon + "\" yêu cầu phải đính kèm file minh chứng. Vui lòng chọn file."; err.style.display = "block"; }
+                    return;
+                }
+                if (!nguoiNhan.length) {
+                    if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\" để gửi file đính kèm."; err.style.display = "block"; }
+                    return;
+                }
+            }
+
             let inp = document.getElementById("cc-period-input");
             let maKy = inp ? inp.value : "";
             if (!maKy) { closeChamCongAdjustModal(); return; }
 
-            let result = await callServerAction({
+            let payload = {
                 action: "suaNgayChamCong", maKy: maKy,
-                msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon
-            });
+                msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon,
+                nguoiNhan: nguoiNhan
+            };
+
+            // [ĐÍNH KÈM FILE] Tùy chọn — nếu người dùng có chọn file mới, đọc thành base64 và gửi
+            // kèm (CÙNG kỹ thuật/giới hạn dung lượng đang dùng cho "Đơn nghỉ phép"). Không chọn
+            // file mới thì server tự giữ nguyên file cũ (nếu đã có sẵn cho đúng ô này).
+            if (fileChon) {
+                if (fileChon.size > 15 * 1024 * 1024) {
+                    if (err) { err.innerText = "File quá lớn (giới hạn 15MB)."; err.style.display = "block"; }
+                    return;
+                }
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(fileChon);
+                }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return null; });
+                if (base64Data === null) return;
+                payload.fileName = fileChon.name;
+                payload.mimeType = fileChon.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let result = await callServerAction(payload);
             if (result && result.status === "SUCCESS") {
                 closeChamCongAdjustModal();
                 loadChamCongData();
