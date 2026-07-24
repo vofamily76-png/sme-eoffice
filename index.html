@@ -1385,6 +1385,13 @@
                 <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-top:16px;">
                     <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-file-excel" style="color:#1e7e34;"></i> Xuất bảng chấm công ra Excel</h4>
                     <div class="table-controls" style="margin:0;">
+                        <!-- [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Ô chọn phạm vi (Tất cả/Phòng ban/
+                             Cá nhân) CHỈ hiện với tài khoản có quyền "SuaChamCong"/Admin
+                             (currentUserCanEditChamCong) — người xem được TOÀN BỘ nhân sự. Tài khoản
+                             CHỈ có quyền xem (dữ liệu chamCongRows tải về vốn đã bị server giới hạn chỉ
+                             còn đúng dòng của chính họ, xem action "getChamCongData") sẽ KHÔNG còn thấy
+                             ô chọn phạm vi này nữa (tránh gây hiểu lầm là có thể chọn xuất người khác) —
+                             xem hàm capNhatChamCongExportUI(). -->
                         <select id="cc-export-scope" class="search-box" style="max-width: 240px;" onchange="onChamCongExportScopeChange()">
                             <option value="all">Xuất tất cả nhân sự</option>
                             <option value="dept">Theo phòng ban cụ thể...</option>
@@ -1392,6 +1399,12 @@
                         </select>
                         <select id="cc-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
                         <select id="cc-export-staff" class="search-box" style="max-width: 240px; display:none;"></select>
+                        <!-- [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Hiện thay cho ô chọn phạm vi ở
+                             trên, CHỈ với tài khoản KHÔNG có quyền "SuaChamCong"/Admin — cho biết rõ họ
+                             sẽ luôn xuất đúng bảng chấm công của chính mình. -->
+                        <span id="cc-export-own-label" style="display:none; font-size:13px; color:#555; padding:6px 4px;">
+                            <i class="fa-solid fa-circle-info"></i> Bạn sẽ xuất đúng bảng chấm công của chính mình.
+                        </span>
                         <button type="button" class="btn btn-success" onclick="exportChamCongToExcel()">
                             <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
                         </button>
@@ -4830,6 +4843,9 @@
             currentUserCanEditChamCong = canEditChamCong;
             let elMenuChamCong = document.getElementById("menu-chamcong");
             if (elMenuChamCong) elMenuChamCong.style.display = canViewChamCong ? "flex" : "none";
+            // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Cập nhật ngay giao diện khối "Xuất bảng
+            // chấm công ra Excel" theo đúng quyền vừa xác định ở trên (xem capNhatChamCongExportUI()).
+            capNhatChamCongExportUI();
 
             // ==== [TAB "GIAO VIỆC"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được danh sách
             // công việc. Giao việc (tạo/sửa/xóa): CHỈ tài khoản có quyền riêng "DuocGiaoViec"
@@ -5733,6 +5749,39 @@
             populateChamCongScopeSelect();
             renderChamCongTable();
             populateChamCongExportSelects();
+            // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Gọi lại sau mỗi lần tải dữ liệu để chắc
+            // chắn khối "Xuất Excel" luôn khớp đúng quyền hiện có (phòng trường hợp quyền vừa được
+            // admin thay đổi mà chưa tải lại trang).
+            capNhatChamCongExportUI();
+        }
+
+        // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Tài khoản KHÔNG có quyền "SuaChamCong"/Admin
+        // (currentUserCanEditChamCong = false) chỉ xem được ĐÚNG dòng của chính mình (server đã tự
+        // lọc ở action "getChamCongData"), nên ô chọn phạm vi "Tất cả/Phòng ban/Cá nhân" là thừa và
+        // gây hiểu lầm (trông như có thể chọn xuất người khác trong khi thực ra không có dữ liệu
+        // người khác để chọn). Hàm này ẩn hẳn ô chọn phạm vi + 2 ô phụ (phòng ban/cá nhân) và thay
+        // bằng 1 dòng chú thích rõ ràng cho tài khoản chỉ có quyền xem; ngược lại (có quyền
+        // "SuaChamCong"/Admin) vẫn hiện đầy đủ như cũ, không đổi gì. KHÔNG đụng tới dữ liệu/API nào.
+        function capNhatChamCongExportUI() {
+            let scopeSel = document.getElementById("cc-export-scope");
+            let deptSel = document.getElementById("cc-export-dept");
+            let staffSel = document.getElementById("cc-export-staff");
+            let ownLabel = document.getElementById("cc-export-own-label");
+            if (!scopeSel || !ownLabel) return;
+            if (currentUserCanEditChamCong) {
+                scopeSel.style.display = "";
+                ownLabel.style.display = "none";
+                // Giữ đúng trạng thái ẩn/hiện của 2 ô phụ theo lựa chọn hiện tại (như cũ).
+                onChamCongExportScopeChange();
+            } else {
+                scopeSel.style.display = "none";
+                if (deptSel) deptSel.style.display = "none";
+                if (staffSel) staffSel.style.display = "none";
+                ownLabel.style.display = "inline-block";
+                // Ép về "all" để hàm exportChamCongToExcel() luôn xuất đúng (và chỉ) dữ liệu đã tải
+                // về — với tài khoản này, chamCongRows vốn đã chỉ có đúng 1 dòng của chính họ.
+                scopeSel.value = "all";
+            }
         }
 
         // Cập nhật badge + hiện/ẩn đúng nút Chốt/Mở lại theo trạng thái hiện tại (chamCongDaChot).
@@ -6293,6 +6342,11 @@
             let scope = scopeEl ? scopeEl.value : "all";
             let deptValue = deptEl ? deptEl.value : "";
             let staffValue = staffEl ? staffEl.value : "";
+            // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Phòng vệ thêm 1 lớp ở phía FE (dù ô chọn
+            // phạm vi đã bị ẩn với tài khoản này ở capNhatChamCongExportUI()): tài khoản KHÔNG có
+            // quyền "SuaChamCong"/Admin LUÔN xuất với scope "all" — an toàn vì chamCongRows của họ
+            // vốn đã bị server giới hạn chỉ còn đúng dòng của chính mình (getChamCongData).
+            if (!currentUserCanEditChamCong) { scope = "all"; deptValue = ""; staffValue = ""; }
 
             if (scope === "dept" && !deptValue) { alert("⚠️ Vui lòng chọn phòng ban cần xuất."); return; }
             if (scope === "staff" && !staffValue) { alert("⚠️ Vui lòng chọn nhân viên cần xuất."); return; }
