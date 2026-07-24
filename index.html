@@ -1368,10 +1368,13 @@
                         </select>
                         <!-- [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] Chỉ hiện khi đang chọn
                              phạm vi "Điều chỉnh theo cá nhân" (chọn đúng 1 nhân viên) ở ô "cc-scope-select"
-                             phía trên. Bấm để BẬT/TẮT cho phép ĐÚNG nhân viên đó tự vào Tab "Bảng Chấm
-                             Công" của MÌNH để tự điều chỉnh (dùng cho trường hợp đặc biệt) — KHÔNG cấp
-                             thêm bất kỳ quyền nào khác (không được sửa nhân sự khác, không được Tính lại/
-                             Chốt/Mở lại). -->
+                             phía trên. Kể từ khi có tính năng TỰ ĐỘNG LIÊN KẾT (xem hàm JS
+                             tuDongMoiLienKetTuDieuChinh_() bên dưới), việc BẬT quyền này cho 1
+                             nhân viên đã tự động xảy ra (kèm hộp thoại xác nhận) ngay khi chọn đúng
+                             nhân viên đó ở ô phía trên — nút này giờ chủ yếu dùng để chủ động TẮT (thu
+                             hồi) quyền đã cấp, hoặc để bật lại nếu quản trị lỡ bấm "Hủy" ở hộp thoại tự
+                             động. KHÔNG cấp thêm bất kỳ quyền nào khác (không được sửa nhân sự khác,
+                             không được Tính lại/Chốt/Mở lại). -->
                         <button class="btn" id="cc-btn-tudieuchinh" style="display:none;" onclick="toggleTuDieuChinhChoNhanVienDangChon()" title="Bật/tắt cho phép chính nhân viên này tự điều chỉnh Bảng Chấm Công của họ (trường hợp đặc biệt)">
                             <i class="fa-solid fa-user-lock"></i> Cho tự điều chỉnh
                         </button>
@@ -5955,6 +5958,44 @@
             }
             renderChamCongTable();
             capNhatNutTuDieuChinh_();
+            // [MỚI - TỰ ĐỘNG LIÊN KẾT TÀI KHOẢN KHI CHỌN "ĐIỀU CHỈNH THEO CÁ NHÂN"] Theo yêu cầu:
+            // khi quản trị đang bật "Điều chỉnh" và chọn đúng 1 nhân viên ở phạm vi này, hệ thống tự
+            // hỏi xác nhận để LIÊN KẾT luôn tài khoản của nhân viên đó (bật cờ tự điều chỉnh) — không
+            // cần bấm thêm nút "Cho tự điều chỉnh" ở bước riêng như trước. Xem
+            // tuDongMoiLienKetTuDieuChinh_() ngay bên dưới.
+            tuDongMoiLienKetTuDieuChinh_();
+        }
+
+        // [MỚI - TỰ ĐỘNG LIÊN KẾT TÀI KHOẢN KHI CHỌN "ĐIỀU CHỈNH THEO CÁ NHÂN"] Gộp 2 bước cũ
+        // (chọn cá nhân ở ô phạm vi + bấm riêng nút "Cho tự điều chỉnh") thành 1 bước duy nhất:
+        // ngay khi quản trị (đang bật "Điều chỉnh") chọn đúng 1 nhân viên trong ô phạm vi, hệ
+        // thống tự hỏi xác nhận rồi LIÊN KẾT (bật cờ "tự điều chỉnh") luôn cho MSNV đó — để khi
+        // đúng nhân viên này tự đăng nhập vào Tab "Bảng Chấm Công" của MÌNH, họ sẽ thấy nút
+        // "Điều chỉnh" và tự sửa được ĐÚNG dòng của chính mình (y hệt cơ chế đã có ở action
+        // "suaNgayChamCong"/"toggleTuDieuChinhChamCong" — KHÔNG đổi, KHÔNG thêm quyền mới, KHÔNG
+        // đụng gì tới Sheet "TaiKhoan"/"BangChamCong"). CHỈ tự hỏi khi MSNV đó CHƯA được liên kết
+        // từ trước (tránh hỏi lại/làm phiền mỗi lần chỉ đang xem qua người đã được cấp quyền rồi).
+        // Nút "Cho tự điều chỉnh" (xem toggleTuDieuChinhChoNhanVienDangChon()) vẫn còn nguyên để
+        // chủ động HỦY liên kết (tắt quyền) bất kỳ lúc nào, hoặc bật lại nếu quản trị lỡ bấm "Hủy"
+        // ở hộp thoại xác nhận này. Điều kiện thực hiện y hệt nút cũ: cần quyền "SuaChamCong"/
+        // Admin + kỳ CHƯA chốt (server "toggleTuDieuChinhChamCong" luôn tự kiểm tra lại, không thể
+        // bị bỏ qua dù gọi thẳng API) — không thay đổi bảo mật hiện có.
+        async function tuDongMoiLienKetTuDieuChinh_() {
+            if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
+            if (ccScopeType !== "staff" || !ccScopeValue) return;
+            let row = (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue));
+            if (!row || row.tuDieuChinh) return; // Chưa có dòng, hoặc đã liên kết từ trước -> không hỏi lại.
+            let hoTen = row.hoTen || "";
+            let xacNhan = "Liên kết tài khoản nhân viên \"" + hoTen + "\" (MSNV " + ccScopeValue + ") với chế độ Điều chỉnh này?" +
+                "\n\nSau khi liên kết, khi nhân viên này tự đăng nhập và mở Tab \"Bảng Chấm Công\" của chính mình, họ sẽ tự thấy nút \"Điều chỉnh\" để tự sửa ĐÚNG bảng chấm công của mình. Họ vẫn KHÔNG thấy/sửa được dữ liệu của nhân sự khác, không được Tính lại/Chốt/Mở lại." +
+                "\n\n(Bấm \"Hủy\" nếu bạn chỉ đang xem/sửa tạm dòng này, không muốn liên kết/cấp quyền tự điều chỉnh cho họ — có thể liên kết lại sau bằng nút \"Cho tự điều chỉnh\".)";
+            if (!confirm(xacNhan)) return;
+            let result = await callServerAction({ action: "toggleTuDieuChinhChamCong", msnv: ccScopeValue, bat: true });
+            if (result && result.status === "SUCCESS") {
+                loadChamCongData();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể liên kết tự điều chỉnh cho nhân viên này."));
+            }
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Kiểm tra 1 dòng (1 nhân viên) có thuộc phạm vi đang được mở
