@@ -1524,6 +1524,15 @@
                         <label>Người nhận (sẽ được gửi email kèm file đính kèm) <span style="color:#d9534f;">*</span></label>
                         <div class="checkbox-dropdown-list" id="cc-adjust-recipient-list" style="max-height:140px;"></div>
                     </div>
+                    <!-- [MỚI - MỤC "GHI CHÚ"] Ô nhập TÙY CHỌN (không bắt buộc) để ghi thêm nội dung/lý
+                         do nếu cần thiết cho lần điều chỉnh này — luôn hiện (không phụ thuộc loại
+                         công có "Cần đính kèm" hay không), lưu kèm vào đúng dòng ghi đè (Kỳ, MSNV,
+                         Ngày) ở Sheet "ChamCongGhiDe" (cột "GhiChu"). Xem submitChamCongAdjust()/
+                         openChamCongAdjustModal() bên dưới. -->
+                    <div class="input-group">
+                        <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — ghi thêm nội dung nếu cần thiết)</span></label>
+                        <textarea id="cc-adjust-ghichu" rows="2" maxlength="500" placeholder="Ghi chú thêm (nếu có)..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                    </div>
                     <div id="cc-adjust-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div style="display:flex; gap:10px;">
                         <button class="btn" style="width:auto; flex-grow:1;" onclick="submitChamCongAdjust()">Xác nhận ✔️</button>
@@ -1552,11 +1561,11 @@
                             <thead>
                                 <tr>
                                     <th>Thời gian</th><th>Nhân sự liên quan</th><th>Kỳ</th>
-                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th>
+                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
                                 </tr>
                             </thead>
                             <tbody id="cc-nhanfile-table-body">
-                                <tr><td colspan="7" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                                <tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -6555,6 +6564,10 @@
             // [MỚI - MỤC "NGƯỜI GỬI"] Chọn sẵn lại "Người gửi" đã lưu trước đó cho đúng ô này (nếu
             // có), mặc định là tài khoản đang đăng nhập nếu đây là lần điều chỉnh đầu tiên.
             populateChamCongNguoiGuiList(daCo ? (daCo.nguoiGui || "") : "");
+            // [MỚI - MỤC "GHI CHÚ"] Điền lại sẵn nội dung "Ghi chú" đã lưu trước đó cho đúng ô này
+            // (nếu có) — để không mất; để trống nếu đây là lần điều chỉnh đầu tiên.
+            let ghiChuInput = document.getElementById("cc-adjust-ghichu");
+            if (ghiChuInput) ghiChuInput.value = daCo ? (daCo.ghiChu || "") : "";
 
             updateChamCongAdjustAttachmentUI();
             let err = document.getElementById("cc-adjust-error");
@@ -6569,6 +6582,8 @@
             ccAdjustTarget = null;
             let fileInput = document.getElementById("cc-adjust-file");
             if (fileInput) fileInput.value = "";
+            let ghiChuInput = document.getElementById("cc-adjust-ghichu");
+            if (ghiChuInput) ghiChuInput.value = "";
         }
 
         async function submitChamCongAdjust() {
@@ -6616,10 +6631,15 @@
             let maKy = inp ? inp.value : "";
             if (!maKy) { closeChamCongAdjustModal(); return; }
 
+            // [MỚI - MỤC "GHI CHÚ"] TÙY CHỌN (không bắt buộc) — gửi kèm đúng nội dung đang nhập ở
+            // ô "Ghi chú" (có thể để trống).
+            let ghiChuVal = document.getElementById("cc-adjust-ghichu");
+            let ghiChu = ghiChuVal ? ghiChuVal.value.trim() : "";
+
             let payload = {
                 action: "suaNgayChamCong", maKy: maKy,
                 msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay, loai: maChon,
-                nguoiNhan: nguoiNhan, nguoiGui: nguoiGui
+                nguoiNhan: nguoiNhan, nguoiGui: nguoiGui, ghiChu: ghiChu
             };
 
             // [ĐÍNH KÈM FILE] Tùy chọn — nếu người dùng có chọn file mới, đọc thành base64 và gửi
@@ -6692,7 +6712,7 @@
             if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Đang tải...</td></tr>';
             let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
             if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
                 return;
             }
             ccNhanFileRows = result.rows || [];
@@ -6704,7 +6724,7 @@
             if (!tbody) return;
             updateChamCongNhanFileBadge();
             if (!ccNhanFileRows.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = ccNhanFileRows.map(r => {
@@ -6717,6 +6737,7 @@
                     <td style="text-align:center;">${escapeHtml(r.loai || "")}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
                     <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', 'chamCongGhiDe')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
                 </tr>`;
             }).join("");
         }
