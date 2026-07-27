@@ -1493,7 +1493,15 @@
                     <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
                         Chọn ai sẽ được phép hiện ra ở mục "Người nhận" (áp dụng cho cả "Điều chỉnh ngày công" và "Danh mục loại công" ở trên, cho mọi tài khoản). Để trống = không giới hạn, cho chọn tất cả tài khoản như cũ.
                     </p>
-                    <div class="checkbox-dropdown-list" id="cc-admin-nguoinhan-settings-list" style="max-height:160px;"></div>
+                    <!-- [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN]
+                         Chỉ tài khoản nào ĐANG được chọn ở "Người nhận" (checkbox bên trái) VÀ có
+                         bật thêm nút "Điều chỉnh" (checkbox bên phải) mới tự điều chỉnh được ngày
+                         công của CHÍNH mình khi tự đăng nhập — có tên trong "Người nhận" mà chưa
+                         bật "Điều chỉnh" thì CHỈ nhận được file, KHÔNG tự điều chỉnh được. -->
+                    <p style="margin:0 0 8px 0; font-size:12px; color:#888;">
+                        <i class="fa-solid fa-circle-info"></i> Tick thêm ô "Điều chỉnh" bên cạnh 1 tài khoản để CHÍNH tài khoản đó (khi tự đăng nhập) được tự điều chỉnh ngày công của mình ở Tab "Bảng Chấm Công". Chưa tick "Điều chỉnh" = chỉ nhận file, không tự điều chỉnh được.
+                    </p>
+                    <div class="checkbox-dropdown-list" id="cc-admin-nguoinhan-settings-list" style="max-height:220px;"></div>
                     <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveChamCongNguoiNhanSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người nhận"</button>
                     <span id="cc-admin-nguoinhan-settings-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
                 </div>
@@ -1589,11 +1597,11 @@
                             <thead>
                                 <tr>
                                     <th>Thời gian</th><th>Nhân sự liên quan</th><th>Kỳ</th>
-                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
+                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>Email người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
                                 </tr>
                             </thead>
                             <tbody id="cc-nhanfile-table-body">
-                                <tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                                <tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -2850,6 +2858,13 @@
         // đã chọn để giới hạn lựa chọn ở mục "Người nhận" — TÁCH BIỆT hoàn toàn với
         // "approvedApproversList" ở trên (mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép").
         let approvedChamCongNguoiNhanList = [];
+        // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Danh sách CON
+        // trong "approvedChamCongNguoiNhanList" ở trên — những username Admin đã BẬT thêm nút
+        // "Điều chỉnh" (chỉ Admin nhận được danh sách này từ server, xem buildSystemData ở
+        // Code.gs). Dùng để tick sẵn đúng checkbox "Điều chỉnh" khi Admin mở lại màn hình cấu
+        // hình "Người nhận" — KHÔNG phải nơi thật sự quyết định quyền (server luôn tự kiểm tra
+        // lại ở action "suaNgayChamCong"/"getChamCongData").
+        let approvedChamCongDieuChinhList = [];
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
@@ -3192,6 +3207,9 @@
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
+                // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ
+                // Admin nhận được trường này từ server (xem buildSystemData ở Code.gs).
+                if (data.approvedChamCongDieuChinh !== undefined) approvedChamCongDieuChinhList = data.approvedChamCongDieuChinh;
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
@@ -6291,9 +6309,41 @@
                 box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
                 return;
             }
-            box.innerHTML = allUsernames.map(u =>
-                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${(approvedChamCongNguoiNhanList || []).includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
-            ).join("");
+            // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Mỗi dòng
+            // giờ có 2 checkbox: (1) "cc-nn-user" = có nằm trong danh sách "Người nhận" hay không
+            // (y hệt trước đây), (2) "cc-nn-dieuchinh" = có được BẬT thêm nút "Điều chỉnh" để tự
+            // điều chỉnh ngày công của chính mình hay không (CHỈ có ý nghĩa khi checkbox (1) cũng
+            // đang được tick — ẩn/mờ đi nếu (1) chưa tick, xử lý ở onChangeCcNguoiNhanUserBox()).
+            box.innerHTML = allUsernames.map(u => {
+                let daChonNguoiNhan = (approvedChamCongNguoiNhanList || []).includes(u);
+                let daBatDieuChinh = (approvedChamCongDieuChinhList || []).includes(u);
+                let uAttr = escapeHtml(u);
+                return `<div class="checkbox-item" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">` +
+                    `<label style="flex:1; margin:0; cursor:pointer;"><input type="checkbox" class="cc-nn-user" value="${uAttr}" ${daChonNguoiNhan ? "checked" : ""} onchange="onChangeCcNguoiNhanUserBox(this)"> ${uAttr}</label>` +
+                    `<label style="display:flex; align-items:center; gap:4px; font-size:12px; color:#37474f; cursor:pointer; ${daChonNguoiNhan ? "" : "opacity:0.4;"}" title="Bật để CHÍNH tài khoản này tự điều chỉnh được ngày công của mình">` +
+                    `<input type="checkbox" class="cc-nn-dieuchinh" data-username="${uAttr}" ${daBatDieuChinh ? "checked" : ""} ${daChonNguoiNhan ? "" : "disabled"}> Điều chỉnh</label>` +
+                    `</div>`;
+            }).join("");
+        }
+
+        // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Bỏ chọn 1 tài
+        // khoản khỏi "Người nhận" -> tự động bỏ chọn + khóa (disable) luôn checkbox "Điều chỉnh"
+        // đi kèm (không thể bật "Điều chỉnh" cho tài khoản không nằm trong "Người nhận"). Chọn lại
+        // "Người nhận" -> mở khóa checkbox "Điều chỉnh" (không tự tick lại, Admin tick lại nếu cần).
+        function onChangeCcNguoiNhanUserBox(checkboxEl) {
+            let row = checkboxEl.closest(".checkbox-item");
+            if (!row) return;
+            let dieuChinhBox = row.querySelector(".cc-nn-dieuchinh");
+            let label = row.querySelector(".cc-nn-dieuchinh")?.closest("label");
+            if (!dieuChinhBox) return;
+            if (checkboxEl.checked) {
+                dieuChinhBox.disabled = false;
+                if (label) label.style.opacity = "1";
+            } else {
+                dieuChinhBox.checked = false;
+                dieuChinhBox.disabled = true;
+                if (label) label.style.opacity = "0.4";
+            }
         }
 
         // Lưu lại danh sách "Người nhận" mà Admin vừa chọn (action RIÊNG
@@ -6304,14 +6354,20 @@
             let box = document.getElementById("cc-admin-nguoinhan-settings-list");
             if (!box) return;
             let statusEl = document.getElementById("cc-admin-nguoinhan-settings-status");
-            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
-            let ok = await pushToCloud({ action: "saveChamCongNguoiNhanSettings", usernames: usernames });
+            let usernames = Array.from(box.querySelectorAll(".cc-nn-user:checked")).map(i => i.value);
+            // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ những
+            // checkbox "Điều chỉnh" ĐANG BẬT + KHÔNG bị khóa (disabled, tức tài khoản đó vẫn đang
+            // nằm trong "Người nhận") mới được gửi lên — tránh trường hợp hiếm gặp checkbox còn
+            // sót trạng thái checked dù đã bị khóa do vừa bỏ chọn "Người nhận".
+            let dieuChinhUsernames = Array.from(box.querySelectorAll(".cc-nn-dieuchinh:checked:not(:disabled)")).map(i => i.dataset.username);
+            let ok = await pushToCloud({ action: "saveChamCongNguoiNhanSettings", usernames: usernames, dieuChinhUsernames: dieuChinhUsernames });
             if (ok) {
                 approvedChamCongNguoiNhanList = usernames;
+                approvedChamCongDieuChinhList = dieuChinhUsernames;
                 if (statusEl) {
                     statusEl.style.color = "#2e7d32";
                     statusEl.innerText = usernames.length
-                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người nhận\").")
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người nhận\", " + dieuChinhUsernames.length + " tài khoản được bật \"Điều chỉnh\").")
                         : "✅ Đã lưu (KHÔNG giới hạn — cho chọn tất cả tài khoản như cũ).";
                     setTimeout(() => { statusEl.innerText = ""; }, 5000);
                 }
@@ -6804,10 +6860,10 @@
             let modal = document.getElementById("cc-nhanfile-modal");
             if (modal) modal.style.display = "flex";
             let tbody = document.getElementById("cc-nhanfile-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>';
             let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
             if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
                 return;
             }
             ccNhanFileRows = result.rows || [];
@@ -6819,7 +6875,7 @@
             if (!tbody) return;
             updateChamCongNhanFileBadge();
             if (!ccNhanFileRows.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = ccNhanFileRows.map(r => {
@@ -6840,6 +6896,7 @@
                     <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.ngay || "")}</td>
                     <td style="text-align:center;">${loaiHien}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${escapeHtml(r.nguoiGuiEmail || "")}</td>
                     <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', '${fileKind}')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                 </tr>`;
