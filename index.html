@@ -2888,11 +2888,6 @@
         let currentUserCanDeleteLuong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
-        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Danh sách thông báo CHƯA XEM gửi riêng cho tài
-        // khoản đang đăng nhập (chỉ có nếu tài khoản này nằm trong danh sách "Người nhận") — tải
-        // kèm mỗi lần loadFromCloud() (xem buildSystemData ở Code.gs, trường
-        // "chamCongThongBaoCuaToi"). Hiển thị ở chuông thông báo chung (xem getNotificationItems()).
-        let chamCongThongBaoCuaToi = [];
         // [MỚI - NÚT "ĐIỀU CHỈNH"] true = đang bật chế độ cho phép click vào từng ô ngày để đổi
         // sang bất kỳ loại công nào (xem renderChamCongTable/openChamCongAdjustModal). Mặc định
         // TẮT mỗi khi đổi kỳ/tải lại trang, tránh sửa nhầm ngoài ý muốn.
@@ -3212,7 +3207,6 @@
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
-                if (data.chamCongThongBaoCuaToi !== undefined) chamCongThongBaoCuaToi = data.chamCongThongBaoCuaToi;
                 // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ
                 // Admin nhận được trường này từ server (xem buildSystemData ở Code.gs).
                 if (data.approvedChamCongDieuChinh !== undefined) approvedChamCongDieuChinhList = data.approvedChamCongDieuChinh;
@@ -3439,35 +3433,8 @@
                 });
             }
 
-            // 4) Thông báo bật "Điều chỉnh" Bảng Chấm Công từ tài khoản "Người nhận" khác.
-            items = items.concat(getChamCongThongBaoNotificationItems_());
-
             items.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
             return items;
-        }
-
-        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Nguồn thông báo thứ 4: 1 tài khoản "Người nhận"
-        // khác vừa bật "Điều chỉnh" Bảng Chấm Công (xem guiThongBaoDieuChinhChamCong_() và action
-        // "taoThongBaoDieuChinhChamCong" ở Code.gs). Bấm vào -> điều hướng qua Tab "Bảng Chấm
-        // Công" + đánh dấu ĐÃ XEM (gọi action "danhDauDaXemThongBaoChamCong", không chặn UI nếu
-        // lỗi) rồi xóa khỏi danh sách cục bộ để chuông cập nhật ngay, không cần tải lại trang.
-        function getChamCongThongBaoNotificationItems_() {
-            return (chamCongThongBaoCuaToi || []).map(n => ({
-                tab: "chamcong",
-                sortKey: n.thoiGian || "",
-                icon: "fa-user-pen",
-                color: "#6a1b9a",
-                title: "Điều chỉnh Bảng Chấm Công",
-                desc: n.noiDung || "",
-                onClick: function () {
-                    switchPage("chamcong");
-                    pushToCloud({ action: "danhDauDaXemThongBaoChamCong", id: n.id }).catch(function (e) {
-                        console.error("Lỗi đánh dấu đã xem thông báo:", e);
-                    });
-                    chamCongThongBaoCuaToi = chamCongThongBaoCuaToi.filter(x => x.id !== n.id);
-                    updateNotificationBell();
-                }
-            }));
         }
 
         // Vẽ lại số đếm (badge đỏ) + danh sách trong chuông thông báo. Gọi lại mỗi khi dữ liệu
@@ -5031,19 +4998,7 @@
             // quyền "XemChamCong" (hoặc Admin); Tính lại/Chốt/Mở lại cần thêm quyền
             // "SuaChamCong" (hoặc Admin). ====
             let canViewChamCong = (currentUser.role === "Admin") || !!currentUser.xemChamCong;
-            // [SỬA - GẮN QUYỀN "ĐIỀU CHỈNH"/"CHỐT"/"MỞ LẠI" VỚI DANH SÁCH "NGƯỜI NHẬN"] Theo yêu
-            // cầu mới: tài khoản nằm trong danh sách "Người nhận" (Admin cấu hình ở mục "Người
-            // nhận" ngay trong Tab "Bảng Chấm Công") được coi là có quyền Điều chỉnh/Chốt/Mở lại —
-            // KHÔNG cần thêm quyền "SuaChamCong" riêng nữa. Admin luôn có đủ quyền (không đổi).
-            // Nếu Admin CHƯA cấu hình danh sách "Người nhận" (mảng rỗng) -> GIỮ NGUYÊN hành vi CŨ,
-            // dùng đúng quyền "SuaChamCong" (an toàn, tránh khóa nhầm những nơi chưa dùng tới tính
-            // năng "Người nhận"). Server (Code.gs, hàm canAdjustChamCong) áp dụng ĐÚNG quy tắc
-            // này để kiểm tra lại mọi request — không thể bị bỏ qua dù sửa biến này ở phía FE.
-            let ccDsNguoiNhan = approvedChamCongNguoiNhanList || [];
-            let canEditChamCong = (currentUser.role === "Admin") ||
-                (ccDsNguoiNhan.length > 0
-                    ? ccDsNguoiNhan.includes(currentUser.username)
-                    : !!currentUser.suaChamCong);
+            let canEditChamCong = (currentUser.role === "Admin") || !!currentUser.suaChamCong;
             currentUserCanViewChamCong = canViewChamCong;
             currentUserCanEditChamCong = canEditChamCong;
             let elMenuChamCong = document.getElementById("menu-chamcong");
@@ -6128,40 +6083,9 @@
                 ccScopeType = "all"; ccScopeValue = "";
                 let sel = document.getElementById("cc-scope-select");
                 if (sel) sel.value = "all";
-            } else {
-                // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Vừa BẬT (không phải tắt) "Điều chỉnh" ->
-                // báo cho các tài khoản "Người nhận" khác biết, theo đúng phạm vi đang chọn lúc
-                // này (mặc định "Toàn bộ nhân sự" nếu chưa đổi ô phạm vi). Không chặn thao tác
-                // chính nếu gửi thông báo lỗi (xem catch bên trong hàm).
-                guiThongBaoDieuChinhChamCong_();
             }
             capNhatGiaoDienNutDieuChinh_();
             renderChamCongTable();
-        }
-
-        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Gửi 1 thông báo lên chuông thông báo của TỪNG
-        // tài khoản KHÁC đang nằm trong danh sách "Người nhận" (không gửi cho chính mình), báo
-        // rằng mình vừa bật "Điều chỉnh" Bảng Chấm Công ở phạm vi hiện tại (1 nhân viên/1 phòng
-        // ban/toàn bộ). Chỉ gửi khi CHÍNH tài khoản đang đăng nhập có quyền Điều chỉnh
-        // (currentUserCanEditChamCong) — khớp với điều kiện server yêu cầu ở action
-        // "taoThongBaoDieuChinhChamCong" (canAdjustChamCong), tránh gọi vô ích nếu chắc chắn sẽ
-        // bị server từ chối. KHÔNG ghi đè/xóa bất kỳ dữ liệu chấm công nào — chỉ tạo 1 dòng thông
-        // báo mới, hoàn toàn tách biệt.
-        async function guiThongBaoDieuChinhChamCong_() {
-            if (!currentUserCanEditChamCong) return;
-            let maKy = document.getElementById("cc-period-input") ? document.getElementById("cc-period-input").value : "";
-            let phamVi = "Toàn bộ nhân sự";
-            if (ccScopeType === "dept") {
-                phamVi = "Phòng ban \"" + ccScopeValue + "\"";
-            } else if (ccScopeType === "staff") {
-                let row = (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue));
-                phamVi = row ? (row.hoTen + " (MSNV " + row.msnv + ")") : ("MSNV " + ccScopeValue);
-            }
-            try {
-                await pushToCloud({ action: "taoThongBaoDieuChinhChamCong", maKy: maKy, phamVi: phamVi });
-            } catch (e) {
-                console.error("Lỗi gửi thông báo bật \"Điều chỉnh\" Bảng Chấm Công:", e);
-            }
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dựng lại danh sách lựa chọn trong ô "cc-scope-select" (Toàn
