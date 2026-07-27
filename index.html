@@ -1493,13 +1493,13 @@
                     <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
                         Chọn ai sẽ được phép hiện ra ở mục "Người nhận" (áp dụng cho cả "Điều chỉnh ngày công" và "Danh mục loại công" ở trên, cho mọi tài khoản). Để trống = không giới hạn, cho chọn tất cả tài khoản như cũ.
                     </p>
-                    <!-- [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN]
-                         Chỉ tài khoản nào ĐANG được chọn ở "Người nhận" (checkbox bên trái) VÀ có
-                         bật thêm nút "Điều chỉnh" (checkbox bên phải) mới tự điều chỉnh được ngày
-                         công của CHÍNH mình khi tự đăng nhập — có tên trong "Người nhận" mà chưa
-                         bật "Điều chỉnh" thì CHỈ nhận được file, KHÔNG tự điều chỉnh được. -->
+                    <!-- [SỬA - VÔ HIỆU HÓA "TỰ ĐIỀU CHỈNH"] Không tài khoản nào được tự điều
+                         chỉnh Bảng Chấm Công của chính mình nữa. Chỉ tài khoản có quyền
+                         "SuaChamCong" (cấp riêng ở Tab "Quản Lý Tài Khoản") hoặc Admin mới thấy/
+                         dùng được nút "Điều chỉnh" — và phải chủ động chọn đúng nhân viên cần sửa
+                         ở ô phạm vi rồi tự bấm giúp, nhân viên đó KHÔNG tự sửa được. -->
                     <p style="margin:0 0 8px 0; font-size:12px; color:#888;">
-                        <i class="fa-solid fa-circle-info"></i> Tick thêm ô "Điều chỉnh" bên cạnh 1 tài khoản để CHÍNH tài khoản đó (khi tự đăng nhập) được tự điều chỉnh ngày công của mình ở Tab "Bảng Chấm Công". Chưa tick "Điều chỉnh" = chỉ nhận file, không tự điều chỉnh được.
+                        <i class="fa-solid fa-circle-info"></i> Danh sách "Người nhận" ở đây chỉ dùng để nhận file minh chứng qua email/mục "Nhận file" — KHÔNG cấp quyền tự điều chỉnh ngày công. Chỉ tài khoản được cấp quyền "SuaChamCong" (Tab "Quản Lý Tài Khoản") hoặc Admin mới có nút "Điều chỉnh"; nhân viên khác muốn điều chỉnh phải nhờ tài khoản đó chọn đúng tên mình rồi sửa giúp.
                     </p>
                     <div class="checkbox-dropdown-list" id="cc-admin-nguoinhan-settings-list" style="max-height:220px;"></div>
                     <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveChamCongNguoiNhanSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người nhận"</button>
@@ -1597,11 +1597,11 @@
                             <thead>
                                 <tr>
                                     <th>Thời gian</th><th>Nhân sự liên quan</th><th>Kỳ</th>
-                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>Email người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
+                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
                                 </tr>
                             </thead>
                             <tbody id="cc-nhanfile-table-body">
-                                <tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                                <tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -6028,7 +6028,11 @@
         function capNhatNutTuDieuChinh_() {
             let btn = document.getElementById("cc-btn-tudieuchinh");
             if (!btn) return;
-            let hienNut = currentUserCanEditChamCong && !chamCongDaChot && ccDieuChinhMode && ccScopeType === "staff" && ccScopeValue;
+            // [SỬA - VÔ HIỆU HÓA "TỰ ĐIỀU CHỈNH"] Theo yêu cầu mới: không tài khoản nào được tự
+            // điều chỉnh Bảng Chấm Công của chính mình nữa (xem canSelfAdjustChamCong_ ở Code.gs)
+            // -> luôn ẩn nút này, không cho bật lại. Giữ nguyên phần code còn lại bên dưới (không
+            // xóa) để không mất dữ liệu/lịch sử, chỉ đơn giản là không còn đường nào gọi tới nữa.
+            let hienNut = false;
             let row = hienNut ? (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue)) : null;
             if (!row) { btn.style.display = "none"; return; }
             btn.style.display = "inline-flex";
@@ -6153,6 +6157,12 @@
         // Admin + kỳ CHƯA chốt (server "toggleTuDieuChinhChamCong" luôn tự kiểm tra lại, không thể
         // bị bỏ qua dù gọi thẳng API) — không thay đổi bảo mật hiện có.
         async function tuDongMoiLienKetTuDieuChinh_() {
+            // [SỬA - VÔ HIỆU HÓA "TỰ ĐIỀU CHỈNH"] Không còn tự động hỏi liên kết "tự điều chỉnh"
+            // nữa — tài khoản có quyền "SuaChamCong"/Admin giờ luôn là người trực tiếp bấm "Điều
+            // chỉnh" giúp đúng nhân viên đang chọn ở ô phạm vi, thay vì cấp quyền cho nhân viên đó
+            // tự sửa. Xem canSelfAdjustChamCong_ ở Code.gs.
+            return;
+            // eslint-disable-next-line no-unreachable
             if (!currentUserCanEditChamCong || chamCongDaChot || !ccDieuChinhMode) return;
             if (ccScopeType !== "staff" || !ccScopeValue) return;
             let row = (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue));
@@ -6309,19 +6319,20 @@
                 box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
                 return;
             }
-            // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Mỗi dòng
-            // giờ có 2 checkbox: (1) "cc-nn-user" = có nằm trong danh sách "Người nhận" hay không
-            // (y hệt trước đây), (2) "cc-nn-dieuchinh" = có được BẬT thêm nút "Điều chỉnh" để tự
-            // điều chỉnh ngày công của chính mình hay không (CHỈ có ý nghĩa khi checkbox (1) cũng
-            // đang được tick — ẩn/mờ đi nếu (1) chưa tick, xử lý ở onChangeCcNguoiNhanUserBox()).
+            // [SỬA - VÔ HIỆU HÓA "TỰ ĐIỀU CHỈNH"] Trước đây mỗi dòng có thêm 1 checkbox "Điều
+            // chỉnh" để cho phép CHÍNH tài khoản đó tự sửa ngày công của mình. Theo yêu cầu mới,
+            // KHÔNG tài khoản nào được tự điều chỉnh nữa (chỉ tài khoản có quyền "SuaChamCong"/
+            // Admin mới được sửa, và phải chủ động chọn đúng nhân viên rồi bấm "Điều chỉnh" giúp)
+            // -> bỏ hẳn checkbox "Điều chỉnh" khỏi giao diện này, chỉ còn lại đúng 1 checkbox
+            // "Người nhận" (dùng để nhận file minh chứng qua email, không liên quan tới quyền sửa).
+            // Dữ liệu cột "ChoPhepDieuChinh" cũ ở sheet CaiDatNguoiNhanChamCong vẫn được GIỮ
+            // NGUYÊN trên server (không xóa/không mất dữ liệu), chỉ đơn giản là không còn được đọc
+            // tới nữa (xem canSelfAdjustChamCong_ ở Code.gs).
             box.innerHTML = allUsernames.map(u => {
                 let daChonNguoiNhan = (approvedChamCongNguoiNhanList || []).includes(u);
-                let daBatDieuChinh = (approvedChamCongDieuChinhList || []).includes(u);
                 let uAttr = escapeHtml(u);
-                return `<div class="checkbox-item" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">` +
-                    `<label style="flex:1; margin:0; cursor:pointer;"><input type="checkbox" class="cc-nn-user" value="${uAttr}" ${daChonNguoiNhan ? "checked" : ""} onchange="onChangeCcNguoiNhanUserBox(this)"> ${uAttr}</label>` +
-                    `<label style="display:flex; align-items:center; gap:4px; font-size:12px; color:#37474f; cursor:pointer; ${daChonNguoiNhan ? "" : "opacity:0.4;"}" title="Bật để CHÍNH tài khoản này tự điều chỉnh được ngày công của mình">` +
-                    `<input type="checkbox" class="cc-nn-dieuchinh" data-username="${uAttr}" ${daBatDieuChinh ? "checked" : ""} ${daChonNguoiNhan ? "" : "disabled"}> Điều chỉnh</label>` +
+                return `<div class="checkbox-item">` +
+                    `<label style="margin:0; cursor:pointer;"><input type="checkbox" class="cc-nn-user" value="${uAttr}" ${daChonNguoiNhan ? "checked" : ""}> ${uAttr}</label>` +
                     `</div>`;
             }).join("");
         }
@@ -6355,19 +6366,18 @@
             if (!box) return;
             let statusEl = document.getElementById("cc-admin-nguoinhan-settings-status");
             let usernames = Array.from(box.querySelectorAll(".cc-nn-user:checked")).map(i => i.value);
-            // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ những
-            // checkbox "Điều chỉnh" ĐANG BẬT + KHÔNG bị khóa (disabled, tức tài khoản đó vẫn đang
-            // nằm trong "Người nhận") mới được gửi lên — tránh trường hợp hiếm gặp checkbox còn
-            // sót trạng thái checked dù đã bị khóa do vừa bỏ chọn "Người nhận".
-            let dieuChinhUsernames = Array.from(box.querySelectorAll(".cc-nn-dieuchinh:checked:not(:disabled)")).map(i => i.dataset.username);
-            let ok = await pushToCloud({ action: "saveChamCongNguoiNhanSettings", usernames: usernames, dieuChinhUsernames: dieuChinhUsernames });
+            // [SỬA - VÔ HIỆU HÓA "TỰ ĐIỀU CHỈNH"] Không còn checkbox "Điều chỉnh" trong giao diện
+            // nữa nên KHÔNG gửi "dieuChinhUsernames" lên server -> server sẽ tự ghi "false" cho mọi
+            // tài khoản ở cột "ChoPhepDieuChinh" (xem action saveChamCongNguoiNhanSettings ở
+            // Code.gs) — dù vậy cột này giờ không còn được đọc tới nên không ảnh hưởng gì.
+            let ok = await pushToCloud({ action: "saveChamCongNguoiNhanSettings", usernames: usernames });
             if (ok) {
                 approvedChamCongNguoiNhanList = usernames;
-                approvedChamCongDieuChinhList = dieuChinhUsernames;
+                approvedChamCongDieuChinhList = [];
                 if (statusEl) {
                     statusEl.style.color = "#2e7d32";
                     statusEl.innerText = usernames.length
-                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người nhận\", " + dieuChinhUsernames.length + " tài khoản được bật \"Điều chỉnh\").")
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người nhận\").")
                         : "✅ Đã lưu (KHÔNG giới hạn — cho chọn tất cả tài khoản như cũ).";
                     setTimeout(() => { statusEl.innerText = ""; }, 5000);
                 }
@@ -6860,10 +6870,10 @@
             let modal = document.getElementById("cc-nhanfile-modal");
             if (modal) modal.style.display = "flex";
             let tbody = document.getElementById("cc-nhanfile-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>';
             let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
             if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
                 return;
             }
             ccNhanFileRows = result.rows || [];
@@ -6875,7 +6885,7 @@
             if (!tbody) return;
             updateChamCongNhanFileBadge();
             if (!ccNhanFileRows.length) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = ccNhanFileRows.map(r => {
@@ -6896,7 +6906,6 @@
                     <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.ngay || "")}</td>
                     <td style="text-align:center;">${loaiHien}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
-                    <td>${escapeHtml(r.nguoiGuiEmail || "")}</td>
                     <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', '${fileKind}')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                 </tr>`;
