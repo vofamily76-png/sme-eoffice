@@ -1791,6 +1791,15 @@
                     <button type="button" class="btn btn-primary" style="width:auto;" onclick="changeWorkScheduleWeek(1)">Tuần sau <i class="fa-solid fa-chevron-right"></i></button>
                     <span id="llv-week-label" style="font-weight:600; color:var(--primary-color); padding: 0 10px;"></span>
                     <input type="text" id="search-llv" class="search-box" oninput="renderWorkScheduleWeek()" placeholder="Tìm theo tên công việc, người phụ trách, địa điểm..." style="max-width:280px;">
+                    <!-- [MỚI - ĐỒNG BỘ TỪ GOOGLE CALENDAR] Chỉ hiện với tài khoản có quyền
+                         "SuaLichLamViec"/Admin (currentUserCanEditLichLamViec). Cuộc họp tạo trên
+                         Google Calendar "meeting@seahorse.com.vn" tự động đồng bộ vào đây mỗi 10
+                         phút (trigger định kỳ) — nút này để đồng bộ NGAY, không cần chờ. Xem
+                         action "dongBoLichLamViecTuGoogleCalendarNgay"/hàm
+                         dongBoLichLamViecTuGoogleCalendar_ ở Code.gs. -->
+                    <button type="button" class="btn btn-secondary" id="llv-btn-sync-gcal" style="display:none; width:auto; margin-left:auto;" onclick="dongBoLichLamViecTuGoogleCalendarNgay()" title="Đồng bộ ngay các cuộc họp mới/vừa đổi trên Google Calendar &quot;meeting@seahorse.com.vn&quot; (tự động đồng bộ mỗi 10 phút, nút này để đồng bộ ngay lập tức)">
+                        <i class="fa-solid fa-rotate"></i> Đồng bộ Google Calendar
+                    </button>
                 </div>
 
                 <div id="llv-week-grid" class="llv-week-grid"></div>
@@ -4998,6 +5007,8 @@
             document.getElementById("menu-lichlamviec").style.display = "flex";
             let llvFormBox = document.getElementById("llv-form-box");
             if (llvFormBox) llvFormBox.style.display = canEditLichLamViec ? "block" : "none";
+            let llvSyncBtn = document.getElementById("llv-btn-sync-gcal");
+            if (llvSyncBtn) llvSyncBtn.style.display = canEditLichLamViec ? "inline-flex" : "none";
             renderWorkScheduleWeek();
             renderDashboardScheduleWidget();
 
@@ -5773,7 +5784,7 @@
                     let status = computeScheduleStatusClient(item);
                     let gioText = item.gioBatDau ? (escapeHtml(item.gioBatDau) + (item.gioKetThuc ? ("–" + escapeHtml(item.gioKetThuc)) : "")) : "Cả ngày";
                     return `<div class="llv-task-card" onclick="openWorkScheduleDetail('${item.id}')">
-                        <div class="llv-task-title">${escapeHtml(item.tenCongViec)}</div>
+                        <div class="llv-task-title">${escapeHtml(item.tenCongViec)}${item.tuGoogleCalendar ? ' <i class="fa-brands fa-google" style="color:#4285F4; font-size:11px;" title="Đồng bộ tự động từ Google Calendar"></i>' : ''}</div>
                         <div class="llv-task-meta">
                             <i class="fa-regular fa-clock"></i> ${gioText}<br>
                             ${item.nguoiPhuTrach ? '<i class="fa-regular fa-user"></i> ' + escapeHtml(item.nguoiPhuTrach) + '<br>' : ''}
@@ -7448,6 +7459,26 @@
                 renderWorkScheduleWeek();
                 alert("✔️ Đã lưu công việc thành công.");
             }
+        }
+
+        // [MỚI - ĐỒNG BỘ TỪ GOOGLE CALENDAR] Gọi action "dongBoLichLamViecTuGoogleCalendarNgay" để
+        // đồng bộ NGAY (không cần chờ tối đa 10 phút của trigger định kỳ). Nếu lịch
+        // "meeting@seahorse.com.vn" CHƯA được chia sẻ đúng quyền cho tài khoản chạy Apps Script,
+        // sẽ hiện đúng thông báo lỗi kèm hướng dẫn khắc phục (xem
+        // dongBoLichLamViecTuGoogleCalendar_ ở Code.gs) thay vì âm thầm không có gì xảy ra.
+        async function dongBoLichLamViecTuGoogleCalendarNgay() {
+            if (!currentUserCanEditLichLamViec) { alert("⚠️ Bạn không có quyền dùng chức năng này. Liên hệ Admin để được cấp quyền."); return; }
+            let btn = document.getElementById("llv-btn-sync-gcal");
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang đồng bộ...'; }
+            let result = await callServerAction({ action: "dongBoLichLamViecTuGoogleCalendarNgay" });
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Đồng bộ Google Calendar'; }
+            if (!result || result.status !== "SUCCESS") {
+                alert("⚠️ " + ((result && result.message) || "Không thể đồng bộ Google Calendar."));
+                return;
+            }
+            alert(`✔️ Đã đồng bộ xong (${result.tongSuKien} sự kiện trong khoảng 7 ngày trước → 120 ngày sau): ${result.moi} công việc mới, ${result.capNhat} công việc cập nhật.`);
+            await loadFromCloud(true);
+            renderWorkScheduleWeek();
         }
 
         async function deleteWorkScheduleRow(id) {
