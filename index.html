@@ -1349,15 +1349,14 @@
                             <input type="month" id="cc-period-input" style="padding:6px 8px;">
                         </div>
                         <button class="btn btn-primary" onclick="loadChamCongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
-                        <!-- [MỚI - MỤC "NHẬN FILE"] Xem lại TOÀN BỘ file minh chứng đã được gửi tới
-                             CHÍNH tài khoản đang đăng nhập (được chọn làm "Người nhận" ở hộp thoại
-                             "Điều chỉnh ngày công", xem action "getChamCongFileNhanDuoc") — ngay
-                             trong ứng dụng, không phụ thuộc phải mở email. Luôn hiện với mọi tài
-                             khoản có quyền xem Tab này (ai cũng có thể được chọn làm "Người nhận"). -->
-                        <button class="btn btn-secondary" id="cc-btn-nhanfile" onclick="openChamCongNhanFileModal()" title="Xem lại các file minh chứng đã được gửi đến bạn từ mục 'Điều chỉnh ngày công'">
-                            <i class="fa-solid fa-inbox"></i> Nhận file
-                            <span id="cc-nhanfile-badge" style="display:none; background:#d9534f; color:#fff; border-radius:10px; padding:1px 7px; font-size:11px; margin-left:5px;"></span>
-                        </button>
+                        <!-- [ĐÃ XÓA - MỤC "NHẬN FILE"] Theo yêu cầu, bỏ nút "Nhận file" khỏi Tab
+                             "Bảng Chấm Công" (không còn cách nào mở hộp thoại xem lại file NGAY
+                             TRONG ứng dụng nữa). Người nhận vẫn tiếp tục nhận được file minh chứng
+                             qua EMAIL như cũ (không đổi action "guiFileDanhMucLoaiCong"/gửi mail ở
+                             "suaNgayChamCong"). KHÔNG xóa dữ liệu: Sheet lưu file
+                             (CHAMCONG_DMLC_FILE_SHEET_NAME/CHAMCONG_GHIDE_SHEET_NAME) và action
+                             "getChamCongFileNhanDuoc" ở Code.gs vẫn còn nguyên, chỉ đơn giản
+                             không còn lối vào từ giao diện Tab này nữa. -->
                         <button class="btn btn-success" id="cc-btn-chot" style="display:none;" onclick="chotBangChamCong()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
                         <button class="btn btn-warning" id="cc-btn-mo-lai" style="display:none;" onclick="moLaiBangChamCong()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
                         <!-- [MỚI - NÚT "ĐIỀU CHỈNH"] Chỉ hiện khi có quyền sửa Bảng Chấm Công và kỳ CHƯA
@@ -1410,6 +1409,12 @@
                             <option value="staff">Theo từng cá nhân...</option>
                         </select>
                         <select id="cc-export-dept" class="search-box" style="max-width: 220px; display:none;"></select>
+                        <!-- [MỚI - TÌM KIẾM NHANH THEO TÊN] Chỉ hiện cùng lúc với ô "cc-export-staff"
+                             (phạm vi "Theo từng cá nhân"). Gõ vào đây để lọc nhanh danh sách nhân sự
+                             trong ô chọn bên dưới theo Họ tên/MSNV (không phân biệt hoa-thường/dấu) —
+                             xem filterChamCongExportStaffSelect(). KHÔNG gọi thêm API nào, chỉ lọc lại
+                             đúng danh sách đã có sẵn ở client (chamCongRows). -->
+                        <input type="text" id="cc-export-staff-search" class="search-box" style="max-width: 200px; display:none;" placeholder="🔍 Tìm tên nhân sự..." oninput="filterChamCongExportStaffSelect()">
                         <select id="cc-export-staff" class="search-box" style="max-width: 240px; display:none;"></select>
                         <!-- [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Hiện thay cho ô chọn phạm vi ở
                              trên, CHỈ với tài khoản KHÔNG có quyền "SuaChamCong"/Admin — cho biết rõ họ
@@ -1443,7 +1448,7 @@
                     <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
                     <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
                         <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
-                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file, ghi chú (nếu cần) và chọn "Người nhận" để gửi ngay — người nhận sẽ nhận được cả qua email lẫn ngay trong mục "Nhận file" ở trên.
+                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file, ghi chú (nếu cần) và chọn "Người nhận" để gửi ngay — người nhận sẽ nhận được qua email.
                     </p>
                     <div class="input-group">
                         <label>Mã công</label>
@@ -1465,8 +1470,8 @@
                     </div>
                     <!-- [MỚI - MỤC "GHI CHÚ"] Ô nhập TÙY CHỌN (không bắt buộc) để ghi thêm nội dung
                          nếu cần thiết cho lần gửi file này — lưu kèm vào Sheet
-                         "ChamCongDanhMucLoaiCongFile" (cột "GhiChu"), hiện lại trong email và mục
-                         "Nhận file". Xem submitDmlcGuiFile() bên dưới. -->
+                         "ChamCongDanhMucLoaiCongFile" (cột "GhiChu"), hiện lại trong email gửi tới
+                         người nhận. Xem submitDmlcGuiFile() bên dưới. -->
                     <div class="input-group">
                         <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — ghi thêm nội dung nếu cần thiết)</span></label>
                         <textarea id="dmlc-ghichu" rows="2" maxlength="500" placeholder="Ghi chú thêm (nếu có)..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
@@ -1499,7 +1504,7 @@
                          dùng được nút "Điều chỉnh" — và phải chủ động chọn đúng nhân viên cần sửa
                          ở ô phạm vi rồi tự bấm giúp, nhân viên đó KHÔNG tự sửa được. -->
                     <p style="margin:0 0 8px 0; font-size:12px; color:#888;">
-                        <i class="fa-solid fa-circle-info"></i> Danh sách "Người nhận" ở đây chỉ dùng để nhận file minh chứng qua email/mục "Nhận file" — KHÔNG cấp quyền tự điều chỉnh ngày công. Chỉ tài khoản được cấp quyền "SuaChamCong" (Tab "Quản Lý Tài Khoản") hoặc Admin mới có nút "Điều chỉnh"; nhân viên khác muốn điều chỉnh phải nhờ tài khoản đó chọn đúng tên mình rồi sửa giúp.
+                        <i class="fa-solid fa-circle-info"></i> Danh sách "Người nhận" ở đây chỉ dùng để nhận file minh chứng qua email — KHÔNG cấp quyền tự điều chỉnh ngày công. Chỉ tài khoản được cấp quyền "SuaChamCong" (Tab "Quản Lý Tài Khoản") hoặc Admin mới có nút "Điều chỉnh"; nhân viên khác muốn điều chỉnh phải nhờ tài khoản đó chọn đúng tên mình rồi sửa giúp.
                     </p>
                     <div class="checkbox-dropdown-list" id="cc-admin-nguoinhan-settings-list" style="max-height:220px;"></div>
                     <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveChamCongNguoiNhanSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người nhận"</button>
@@ -1577,39 +1582,9 @@
                 </div>
             </div>
 
-            <!-- [MỚI - MỤC "NHẬN FILE"] Hộp thoại liệt kê TOÀN BỘ file minh chứng (ở MỌI kỳ chấm
-                 công) đã được gửi tới CHÍNH tài khoản đang đăng nhập qua mục "Người nhận" của hộp
-                 thoại "Điều chỉnh ngày công" ở trên — cho xem/tải lại NGAY TRONG ứng dụng, không
-                 phụ thuộc phải mở email (xem action "getChamCongFileNhanDuoc"/
-                 openChamCongNhanFileModal() bên dưới). Quyền XEM/TẢI từng file cụ thể vẫn được
-                 kiểm tra lại ở Server (checkChamCongGhiDeFileAccess) khi bấm mở file — KHÔNG đổi
-                 bảo mật hiện có. -->
-            <div id="cc-nhanfile-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
-                <div class="login-box" style="max-width:760px; max-height:88vh; overflow-y:auto;">
-                    <h2><i class="fa-solid fa-inbox"></i> File nhận được (Điều chỉnh ngày công)</h2>
-                    <p style="color:#555; font-size:13px; margin-top:0;">
-                        Danh sách file minh chứng đã được gửi đến <b>chính tài khoản của bạn</b> (mục
-                        "Người nhận") khi có người dùng nút "Điều chỉnh" ở Tab Bảng Chấm Công — xem/tải
-                        lại tại đây, không phụ thuộc vào email.
-                    </p>
-                    <div style="overflow-x:auto;">
-                        <table class="data-table" id="cc-nhanfile-table" style="min-width:640px; margin-bottom:0;">
-                            <thead>
-                                <tr>
-                                    <th>Thời gian</th><th>Nhân sự liên quan</th><th>Kỳ</th>
-                                    <th>Ngày</th><th>Loại công</th><th>Người gửi</th><th>File đính kèm</th><th>Ghi chú</th>
-                                </tr>
-                            </thead>
-                            <tbody id="cc-nhanfile-table-body">
-                                <tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="display:flex; gap:10px; margin-top:14px;">
-                        <button class="btn btn-secondary" style="width:auto; flex-grow:1;" onclick="closeChamCongNhanFileModal()">Đóng</button>
-                    </div>
-                </div>
-            </div>
+            <!-- [ĐÃ XÓA - MỤC "NHẬN FILE"] Hộp thoại "File nhận được (Điều chỉnh ngày công)" đã
+                 được bỏ khỏi Tab "Bảng Chấm Công" theo yêu cầu. Người dùng vẫn nhận được file minh
+                 chứng qua email như cũ. KHÔNG xóa dữ liệu/Sheet/action liên quan ở Code.gs. -->
 
             <div id="page-luong" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-sack-dollar"></i> Lương Nhân Viên</h2>
@@ -2888,6 +2863,11 @@
         let currentUserCanDeleteLuong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
+        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Danh sách thông báo CHƯA XEM gửi riêng cho tài
+        // khoản đang đăng nhập (chỉ có nếu tài khoản này nằm trong danh sách "Người nhận") — tải
+        // kèm mỗi lần loadFromCloud() (xem buildSystemData ở Code.gs, trường
+        // "chamCongThongBaoCuaToi"). Hiển thị ở chuông thông báo chung (xem getNotificationItems()).
+        let chamCongThongBaoCuaToi = [];
         // [MỚI - NÚT "ĐIỀU CHỈNH"] true = đang bật chế độ cho phép click vào từng ô ngày để đổi
         // sang bất kỳ loại công nào (xem renderChamCongTable/openChamCongAdjustModal). Mặc định
         // TẮT mỗi khi đổi kỳ/tải lại trang, tránh sửa nhầm ngoài ý muốn.
@@ -3207,6 +3187,7 @@
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
+                if (data.chamCongThongBaoCuaToi !== undefined) chamCongThongBaoCuaToi = data.chamCongThongBaoCuaToi;
                 // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ
                 // Admin nhận được trường này từ server (xem buildSystemData ở Code.gs).
                 if (data.approvedChamCongDieuChinh !== undefined) approvedChamCongDieuChinhList = data.approvedChamCongDieuChinh;
@@ -3433,8 +3414,35 @@
                 });
             }
 
+            // 4) Thông báo bật "Điều chỉnh" Bảng Chấm Công từ tài khoản "Người nhận" khác.
+            items = items.concat(getChamCongThongBaoNotificationItems_());
+
             items.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
             return items;
+        }
+
+        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Nguồn thông báo thứ 4: 1 tài khoản "Người nhận"
+        // khác vừa bật "Điều chỉnh" Bảng Chấm Công (xem guiThongBaoDieuChinhChamCong_() và action
+        // "taoThongBaoDieuChinhChamCong" ở Code.gs). Bấm vào -> điều hướng qua Tab "Bảng Chấm
+        // Công" + đánh dấu ĐÃ XEM (gọi action "danhDauDaXemThongBaoChamCong", không chặn UI nếu
+        // lỗi) rồi xóa khỏi danh sách cục bộ để chuông cập nhật ngay, không cần tải lại trang.
+        function getChamCongThongBaoNotificationItems_() {
+            return (chamCongThongBaoCuaToi || []).map(n => ({
+                tab: "chamcong",
+                sortKey: n.thoiGian || "",
+                icon: "fa-user-pen",
+                color: "#6a1b9a",
+                title: "Điều chỉnh Bảng Chấm Công",
+                desc: n.noiDung || "",
+                onClick: function () {
+                    switchPage("chamcong");
+                    pushToCloud({ action: "danhDauDaXemThongBaoChamCong", id: n.id }).catch(function (e) {
+                        console.error("Lỗi đánh dấu đã xem thông báo:", e);
+                    });
+                    chamCongThongBaoCuaToi = chamCongThongBaoCuaToi.filter(x => x.id !== n.id);
+                    updateNotificationBell();
+                }
+            }));
         }
 
         // Vẽ lại số đếm (badge đỏ) + danh sách trong chuông thông báo. Gọi lại mỗi khi dữ liệu
@@ -4998,7 +5006,19 @@
             // quyền "XemChamCong" (hoặc Admin); Tính lại/Chốt/Mở lại cần thêm quyền
             // "SuaChamCong" (hoặc Admin). ====
             let canViewChamCong = (currentUser.role === "Admin") || !!currentUser.xemChamCong;
-            let canEditChamCong = (currentUser.role === "Admin") || !!currentUser.suaChamCong;
+            // [SỬA - GẮN QUYỀN "ĐIỀU CHỈNH"/"CHỐT"/"MỞ LẠI" VỚI DANH SÁCH "NGƯỜI NHẬN"] Theo yêu
+            // cầu mới: tài khoản nằm trong danh sách "Người nhận" (Admin cấu hình ở mục "Người
+            // nhận" ngay trong Tab "Bảng Chấm Công") được coi là có quyền Điều chỉnh/Chốt/Mở lại —
+            // KHÔNG cần thêm quyền "SuaChamCong" riêng nữa. Admin luôn có đủ quyền (không đổi).
+            // Nếu Admin CHƯA cấu hình danh sách "Người nhận" (mảng rỗng) -> GIỮ NGUYÊN hành vi CŨ,
+            // dùng đúng quyền "SuaChamCong" (an toàn, tránh khóa nhầm những nơi chưa dùng tới tính
+            // năng "Người nhận"). Server (Code.gs, hàm canAdjustChamCong) áp dụng ĐÚNG quy tắc
+            // này để kiểm tra lại mọi request — không thể bị bỏ qua dù sửa biến này ở phía FE.
+            let ccDsNguoiNhan = approvedChamCongNguoiNhanList || [];
+            let canEditChamCong = (currentUser.role === "Admin") ||
+                (ccDsNguoiNhan.length > 0
+                    ? ccDsNguoiNhan.includes(currentUser.username)
+                    : !!currentUser.suaChamCong);
             currentUserCanViewChamCong = canViewChamCong;
             currentUserCanEditChamCong = canEditChamCong;
             let elMenuChamCong = document.getElementById("menu-chamcong");
@@ -5230,10 +5250,8 @@
                 initChamCongPeriodPicker();
                 loadDanhMucLoaiCong();
                 loadChamCongData();
-                // [MỚI - MỤC "NHẬN FILE"] Tự tải lại số lượng file đã nhận được (badge) mỗi khi mở
-                // Tab này — KHÔNG mở modal, chỉ cập nhật số đếm để người dùng biết có file mới hay
-                // không (xem loadChamCongFileNhanDuocQuietly()/updateChamCongNhanFileBadge()).
-                loadChamCongFileNhanDuocQuietly();
+                // [ĐÃ XÓA - MỤC "NHẬN FILE"] Không còn tự tải số đếm file nhận được nữa (mục "Nhận
+                // file" đã bị bỏ khỏi Tab này theo yêu cầu).
             }
             if (pageId === "luong") {
                 let canViewLuongPg = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemLuong);
@@ -5952,6 +5970,8 @@
                 scopeSel.style.display = "none";
                 if (deptSel) deptSel.style.display = "none";
                 if (staffSel) staffSel.style.display = "none";
+                let staffSearchEl = document.getElementById("cc-export-staff-search");
+                if (staffSearchEl) staffSearchEl.style.display = "none";
                 ownLabel.style.display = "inline-block";
                 // Ép về "all" để hàm exportChamCongToExcel() luôn xuất đúng (và chỉ) dữ liệu đã tải
                 // về — với tài khoản này, chamCongRows vốn đã chỉ có đúng 1 dòng của chính họ.
@@ -6083,9 +6103,40 @@
                 ccScopeType = "all"; ccScopeValue = "";
                 let sel = document.getElementById("cc-scope-select");
                 if (sel) sel.value = "all";
+            } else {
+                // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Vừa BẬT (không phải tắt) "Điều chỉnh" ->
+                // báo cho các tài khoản "Người nhận" khác biết, theo đúng phạm vi đang chọn lúc
+                // này (mặc định "Toàn bộ nhân sự" nếu chưa đổi ô phạm vi). Không chặn thao tác
+                // chính nếu gửi thông báo lỗi (xem catch bên trong hàm).
+                guiThongBaoDieuChinhChamCong_();
             }
             capNhatGiaoDienNutDieuChinh_();
             renderChamCongTable();
+        }
+
+        // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Gửi 1 thông báo lên chuông thông báo của TỪNG
+        // tài khoản KHÁC đang nằm trong danh sách "Người nhận" (không gửi cho chính mình), báo
+        // rằng mình vừa bật "Điều chỉnh" Bảng Chấm Công ở phạm vi hiện tại (1 nhân viên/1 phòng
+        // ban/toàn bộ). Chỉ gửi khi CHÍNH tài khoản đang đăng nhập có quyền Điều chỉnh
+        // (currentUserCanEditChamCong) — khớp với điều kiện server yêu cầu ở action
+        // "taoThongBaoDieuChinhChamCong" (canAdjustChamCong), tránh gọi vô ích nếu chắc chắn sẽ
+        // bị server từ chối. KHÔNG ghi đè/xóa bất kỳ dữ liệu chấm công nào — chỉ tạo 1 dòng thông
+        // báo mới, hoàn toàn tách biệt.
+        async function guiThongBaoDieuChinhChamCong_() {
+            if (!currentUserCanEditChamCong) return;
+            let maKy = document.getElementById("cc-period-input") ? document.getElementById("cc-period-input").value : "";
+            let phamVi = "Toàn bộ nhân sự";
+            if (ccScopeType === "dept") {
+                phamVi = "Phòng ban \"" + ccScopeValue + "\"";
+            } else if (ccScopeType === "staff") {
+                let row = (chamCongRows || []).find(r => String(r.msnv) === String(ccScopeValue));
+                phamVi = row ? (row.hoTen + " (MSNV " + row.msnv + ")") : ("MSNV " + ccScopeValue);
+            }
+            try {
+                await pushToCloud({ action: "taoThongBaoDieuChinhChamCong", maKy: maKy, phamVi: phamVi });
+            } catch (e) {
+                console.error("Lỗi gửi thông báo bật \"Điều chỉnh\" Bảng Chấm Công:", e);
+            }
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dựng lại danh sách lựa chọn trong ô "cc-scope-select" (Toàn
@@ -6443,9 +6494,8 @@
                 if (ok) { ok.innerText = "Đã gửi file thành công tới " + (result.daGui || 0) + "/" + (result.tongSo || nguoiNhan.length) + " người nhận."; ok.style.display = "block"; }
                 if (fileInput) fileInput.value = "";
                 if (dmlcGhiChuInput) dmlcGhiChuInput.value = "";
-                // [MỚI - MỤC "NHẬN FILE"] Tự làm mới số đếm "Nhận file" nếu người gửi cũng đồng
-                // thời tự chọn mình làm "Người nhận".
-                loadChamCongFileNhanDuocQuietly();
+                // [ĐÃ XÓA - MỤC "NHẬN FILE"] Không còn cập nhật số đếm "Nhận file" nữa (mục này đã
+                // bị bỏ khỏi Tab "Bảng Chấm Công" theo yêu cầu). File vẫn được gửi qua email như cũ.
             } else if (err) {
                 err.innerText = (result && result.message) || "Không thể gửi file.";
                 err.style.display = "block";
@@ -6827,95 +6877,19 @@
             if (result && result.status === "SUCCESS") {
                 closeChamCongAdjustModal();
                 loadChamCongData();
-                // [MỚI - MỤC "NHẬN FILE"] Nếu vừa gửi kèm file cho 1 hoặc nhiều "Người nhận", tự
-                // làm mới lại số đếm "Nhận file" của CHÍNH tài khoản đang xem (trường hợp người
-                // điều chỉnh cũng đồng thời tự chọn mình làm "Người nhận").
-                if (fileChon) loadChamCongFileNhanDuocQuietly();
+                // [ĐÃ XÓA - MỤC "NHẬN FILE"] Không còn cập nhật số đếm "Nhận file" nữa (mục này đã
+                // bị bỏ khỏi Tab "Bảng Chấm Công" theo yêu cầu). File vẫn được gửi qua email như cũ.
             } else if (err) {
                 err.innerText = (result && result.message) || "Không thể lưu điều chỉnh.";
                 err.style.display = "block";
             }
         }
 
-        // [MỚI - MỤC "NHẬN FILE"] Danh sách file minh chứng đã được gửi tới CHÍNH tài khoản đang
-        // đăng nhập (mục "Người nhận" của hộp thoại "Điều chỉnh ngày công") — tải qua action RIÊNG
-        // "getChamCongFileNhanDuoc" (server tự lọc theo ĐÚNG tài khoản gọi, xem Code.gs), không
-        // giới hạn theo kỳ đang xem (liệt kê ở MỌI kỳ) để không bỏ sót file cũ.
-        let ccNhanFileRows = [];
-
-        // Tải NGẦM (không mở modal) mỗi khi mở Tab "Bảng Chấm Công" — chỉ để cập nhật số đếm ở
-        // huy hiệu (badge) trên nút "Nhận file", giúp người dùng biết có file mới mà không cần tự
-        // bấm mở ra kiểm tra. Lỗi tải (nếu có) KHÔNG hiện gì cả — tránh làm phiền, người dùng vẫn
-        // luôn có thể tự bấm "Nhận file" để tải lại thủ công.
-        async function loadChamCongFileNhanDuocQuietly() {
-            try {
-                let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
-                if (result && result.status === "SUCCESS") {
-                    ccNhanFileRows = result.rows || [];
-                    updateChamCongNhanFileBadge();
-                }
-            } catch (e) { /* Im lặng bỏ qua — không chặn việc dùng Tab Bảng Chấm Công. */ }
-        }
-
-        function updateChamCongNhanFileBadge() {
-            let badge = document.getElementById("cc-nhanfile-badge");
-            if (!badge) return;
-            if (ccNhanFileRows.length) { badge.style.display = "inline-block"; badge.innerText = ccNhanFileRows.length; }
-            else badge.style.display = "none";
-        }
-
-        // Mở hộp thoại "Nhận file" — luôn tải lại MỚI NHẤT từ server (không dùng lại dữ liệu cũ
-        // trong bộ nhớ) để đảm bảo thấy đúng file mới nhất ngay cả khi vừa có người khác gửi.
-        async function openChamCongNhanFileModal() {
-            let modal = document.getElementById("cc-nhanfile-modal");
-            if (modal) modal.style.display = "flex";
-            let tbody = document.getElementById("cc-nhanfile-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Đang tải...</td></tr>';
-            let result = await callServerAction({ action: "getChamCongFileNhanDuoc" });
-            if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#d9534f;">' + escapeHtml((result && result.message) || "Lỗi tải danh sách file nhận được.") + '</td></tr>';
-                return;
-            }
-            ccNhanFileRows = result.rows || [];
-            renderChamCongNhanFileTable();
-        }
-
-        function renderChamCongNhanFileTable() {
-            let tbody = document.getElementById("cc-nhanfile-table-body");
-            if (!tbody) return;
-            updateChamCongNhanFileBadge();
-            if (!ccNhanFileRows.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Bạn chưa nhận được file minh chứng nào.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = ccNhanFileRows.map(r => {
-                // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" - HIỆN TRONG "NHẬN FILE"] Dòng gửi từ mục "Danh
-                // mục loại công" không gắn với 1 nhân sự/kỳ/ngày cụ thể nào (r.nguon ===
-                // "danhMucLoaiCong") — hiển thị khác đi cho rõ ràng, không lẫn với dòng từ mục
-                // "Điều chỉnh ngày công" (nguon "dieuChinh" hoặc không có, để tương thích ngược).
-                let laDmlc = r.nguon === "danhMucLoaiCong";
-                let nhanSu = laDmlc
-                    ? '<span style="color:#2f6fed;"><i class="fa-solid fa-list-check"></i> Danh mục loại công</span>'
-                    : (r.hoTen ? (escapeHtml(r.hoTen) + " (MSNV " + escapeHtml(r.msnv) + ")") : escapeHtml(r.msnv));
-                let loaiHien = laDmlc ? (escapeHtml(r.loai || "") + (r.tenLoai ? (" - " + escapeHtml(r.tenLoai)) : "")) : escapeHtml(r.loai || "");
-                let fileKind = laDmlc ? "dmlcFile" : "chamCongGhiDe";
-                return `<tr>
-                    <td>${escapeHtml(r.thoiGian || "")}</td>
-                    <td>${nhanSu}</td>
-                    <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.maKy || "")}</td>
-                    <td style="text-align:center;">${laDmlc ? "—" : escapeHtml(r.ngay || "")}</td>
-                    <td style="text-align:center;">${loaiHien}</td>
-                    <td>${escapeHtml(r.nguoiGui || "")}</td>
-                    <td><a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(r.fileId)}', '${escapeHtml(r.fileName)}', '${fileKind}')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "Xem file")}</a></td>
-                    <td>${escapeHtml(r.ghiChu || "")}</td>
-                </tr>`;
-            }).join("");
-        }
-
-        function closeChamCongNhanFileModal() {
-            let modal = document.getElementById("cc-nhanfile-modal");
-            if (modal) modal.style.display = "none";
-        }
+        // [ĐÃ XÓA - MỤC "NHẬN FILE"] Toàn bộ hàm JS cho hộp thoại "Nhận file" (loadChamCongFileNhanDuocQuietly/
+        // updateChamCongNhanFileBadge/openChamCongNhanFileModal/renderChamCongNhanFileTable/closeChamCongNhanFileModal)
+        // đã được bỏ theo yêu cầu — Tab "Bảng Chấm Công" không còn nút/hộp thoại này nữa. Action
+        // "getChamCongFileNhanDuoc" ở Code.gs VẪN CÒN NGUYÊN (không xóa), người dùng vẫn tiếp tục
+        // nhận được file minh chứng qua EMAIL như cũ.
 
         async function chotBangChamCong() {
             if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền chốt Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
@@ -6967,19 +6941,50 @@
                 let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
                 deptSel.innerHTML = depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
             }
+            // [MỚI - TÌM KIẾM NHANH THEO TÊN] Lưu lại TOÀN BỘ danh sách nhân sự (chưa lọc) vào biến
+            // riêng "chamCongExportStaffFullList" để filterChamCongExportStaffSelect() lọc lại từ đây
+            // mỗi khi gõ tìm kiếm — không mất dữ liệu gốc dù ô "cc-export-staff" đang hiển thị danh
+            // sách đã lọc hẹp hơn.
+            chamCongExportStaffFullList = chamCongRows.slice().sort((a, b) => String(a.hoTen).localeCompare(String(b.hoTen), "vi"));
+            let searchEl = document.getElementById("cc-export-staff-search");
+            if (searchEl) searchEl.value = "";
             if (staffSel) {
-                let sorted = chamCongRows.slice().sort((a, b) => String(a.hoTen).localeCompare(String(b.hoTen), "vi"));
-                staffSel.innerHTML = sorted.map(r => `<option value="${escapeHtml(r.msnv)}">${escapeHtml(r.msnv)} - ${escapeHtml(r.hoTen)}</option>`).join("");
+                staffSel.innerHTML = chamCongExportStaffFullList.map(r => `<option value="${escapeHtml(r.msnv)}">${escapeHtml(r.msnv)} - ${escapeHtml(r.hoTen)}</option>`).join("");
             }
+        }
+
+        // [MỚI - TÌM KIẾM NHANH THEO TÊN] Lọc lại danh sách hiển thị trong ô "cc-export-staff" theo
+        // đúng nội dung đang gõ ở ô "cc-export-staff-search" — so khớp cả Họ tên lẫn MSNV, không
+        // phân biệt hoa/thường và không phân biệt dấu tiếng Việt (dùng lại hàm boDauTiengViet() đã
+        // có sẵn ở khối xuất PDF). Giữ nguyên lựa chọn đang chọn nếu vẫn còn khớp sau khi lọc.
+        let chamCongExportStaffFullList = [];
+        function filterChamCongExportStaffSelect() {
+            let searchEl = document.getElementById("cc-export-staff-search");
+            let staffSel = document.getElementById("cc-export-staff");
+            if (!searchEl || !staffSel) return;
+            let keyword = boDauTiengViet(searchEl.value || "").trim().toLowerCase();
+            let currentValue = staffSel.value;
+            let filtered = !keyword ? chamCongExportStaffFullList : chamCongExportStaffFullList.filter(r => {
+                let hay = boDauTiengViet((r.msnv || "") + " " + (r.hoTen || "")).toLowerCase();
+                return hay.indexOf(keyword) !== -1;
+            });
+            staffSel.innerHTML = filtered.length
+                ? filtered.map(r => `<option value="${escapeHtml(r.msnv)}">${escapeHtml(r.msnv)} - ${escapeHtml(r.hoTen)}</option>`).join("")
+                : `<option value="" disabled selected>Không tìm thấy nhân sự phù hợp</option>`;
+            // Giữ nguyên lựa chọn cũ nếu vẫn còn trong danh sách đã lọc, tránh mất lựa chọn đang xuất
+            // dở chỉ vì gõ thêm/xóa bớt ký tự tìm kiếm.
+            if (currentValue && filtered.some(r => r.msnv === currentValue)) staffSel.value = currentValue;
         }
 
         function onChamCongExportScopeChange() {
             let scopeEl = document.getElementById("cc-export-scope");
             let deptEl = document.getElementById("cc-export-dept");
             let staffEl = document.getElementById("cc-export-staff");
+            let staffSearchEl = document.getElementById("cc-export-staff-search");
             if (!scopeEl || !deptEl || !staffEl) return;
             deptEl.style.display = (scopeEl.value === "dept") ? "" : "none";
             staffEl.style.display = (scopeEl.value === "staff") ? "" : "none";
+            if (staffSearchEl) staffSearchEl.style.display = (scopeEl.value === "staff") ? "" : "none";
         }
 
         // Xuất bảng chấm công (kèm đầy đủ cột theo từng ngày trong tháng) ra file .xlsx —
