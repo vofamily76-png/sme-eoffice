@@ -5006,19 +5006,17 @@
             // quyền "XemChamCong" (hoặc Admin); Tính lại/Chốt/Mở lại cần thêm quyền
             // "SuaChamCong" (hoặc Admin). ====
             let canViewChamCong = (currentUser.role === "Admin") || !!currentUser.xemChamCong;
-            // [SỬA - GẮN QUYỀN "ĐIỀU CHỈNH"/"CHỐT"/"MỞ LẠI" VỚI DANH SÁCH "NGƯỜI NHẬN"] Theo yêu
-            // cầu mới: tài khoản nằm trong danh sách "Người nhận" (Admin cấu hình ở mục "Người
-            // nhận" ngay trong Tab "Bảng Chấm Công") được coi là có quyền Điều chỉnh/Chốt/Mở lại —
-            // KHÔNG cần thêm quyền "SuaChamCong" riêng nữa. Admin luôn có đủ quyền (không đổi).
-            // Nếu Admin CHƯA cấu hình danh sách "Người nhận" (mảng rỗng) -> GIỮ NGUYÊN hành vi CŨ,
-            // dùng đúng quyền "SuaChamCong" (an toàn, tránh khóa nhầm những nơi chưa dùng tới tính
-            // năng "Người nhận"). Server (Code.gs, hàm canAdjustChamCong) áp dụng ĐÚNG quy tắc
-            // này để kiểm tra lại mọi request — không thể bị bỏ qua dù sửa biến này ở phía FE.
+            // [SỬA - GỘP "TOÀN QUYỀN" (SuaChamCong) VÀ "NGƯỜI NHẬN" LÀM 2 ĐƯỜNG SONG SONG] Theo
+            // yêu cầu mới nhất: tài khoản được Admin gán "toàn quyền" (cột "SuaChamCong", cấp ở
+            // Tab "Quản Lý Tài Khoản") PHẢI LUÔN thấy nút "Điều chỉnh" + xuất được Excel cho Tất
+            // cả/Phòng ban/Cá nhân — BẤT KỂ có nằm trong danh sách "Người nhận" hay không. Danh
+            // sách "Người nhận" là đường CỘNG THÊM (không thay thế): ai nằm trong đó cũng được
+            // Điều chỉnh dù không có "SuaChamCong". Admin luôn có đủ quyền (không đổi). Server
+            // (Code.gs, hàm canAdjustChamCong) áp dụng ĐÚNG quy tắc này để kiểm tra lại mọi
+            // request — không thể bị bỏ qua dù sửa biến này ở phía FE.
             let ccDsNguoiNhan = approvedChamCongNguoiNhanList || [];
-            let canEditChamCong = (currentUser.role === "Admin") ||
-                (ccDsNguoiNhan.length > 0
-                    ? ccDsNguoiNhan.includes(currentUser.username)
-                    : !!currentUser.suaChamCong);
+            let canEditChamCong = (currentUser.role === "Admin") || !!currentUser.suaChamCong ||
+                ccDsNguoiNhan.includes(currentUser.username);
             currentUserCanViewChamCong = canViewChamCong;
             currentUserCanEditChamCong = canEditChamCong;
             let elMenuChamCong = document.getElementById("menu-chamcong");
