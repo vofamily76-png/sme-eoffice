@@ -552,7 +552,6 @@
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-chamcong" style="display:none;" onclick="switchPage('chamcong')"><i class="fa-solid fa-clipboard-check"></i> Bảng Chấm Công</li>
-                    <li class="menu-item" id="menu-luong" style="display:none;" onclick="switchPage('luong')"><i class="fa-solid fa-sack-dollar"></i> Lương Nhân Viên</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
                          chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
@@ -579,6 +578,10 @@
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
+                    <!-- [MỚI] Tab "Bảng Chấm Công Thuyền Viên" — mặc định ẩn (display:none), chỉ
+                         hiện cho tài khoản có quyền "XemChamCongThuyenVien" (hoặc Admin), giống
+                         hệt cơ chế của "menu-chamcong" ở trên. -->
+                    <li class="menu-item" id="menu-chamcongthuyenvien" style="display:none;" onclick="switchPage('chamcongthuyenvien')"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
@@ -976,8 +979,8 @@
                     </div>
                     <div class="form-row contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
-                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-link"></i> Liên kết Tab "Lương Nhân Viên"</label>
-                            <span style="font-weight:normal; color:#888; font-size:11.5px;">2 trường đầu do bạn tự nhập (dùng làm giá trị đề xuất khi tính lương); 2 trường sau tự động cập nhật mỗi khi lương của nhân sự này được lưu ở Tab "Lương Nhân Viên", không sửa được ở đây.</span>
+                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-sack-dollar"></i> Thông tin lương</label>
+                            <span style="font-weight:normal; color:#888; font-size:11.5px;">2 trường đầu do bạn tự nhập; 2 trường sau (chỉ đọc) hiện không còn nguồn nào tự động cập nhật, giữ nguyên giá trị đã lưu gần nhất.</span>
                         </div>
                         <div class="input-group">
                             <label>Phụ cấp (nếu có)</label>
@@ -1699,119 +1702,106 @@
                  được bỏ khỏi Tab "Bảng Chấm Công" theo yêu cầu. Người dùng vẫn nhận được file minh
                  chứng qua email như cũ. KHÔNG xóa dữ liệu/Sheet/action liên quan ở Code.gs. -->
 
-            <div id="page-luong" class="page-content">
-                <h2 class="page-title"><i class="fa-solid fa-sack-dollar"></i> Lương Nhân Viên</h2>
+            <!-- [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" — hoàn toàn TÁCH BIỆT với Tab "Bảng Chấm
+                 Công" của Văn phòng ở trên (dữ liệu lưu trên 1 Google Sheet riêng, xem chú thích
+                 CREWCHAMCONG_SPREADSHEET_ID ở Code.gs). Thuyền viên được lấy từ Sheet "Đội tàu"
+                 có sẵn (Tab "Quản lý Đội tàu") — CHỈ ĐỌC, không sửa dữ liệu Sheet đó. -->
+            <div id="page-chamcongthuyenvien" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
-                    Chọn kỳ lương (tháng/năm) để xem/tính lương của toàn bộ nhân sự đang làm việc. <b>Tổng ngày
-                    công tính lương</b> được lấy TỰ ĐỘNG từ Tab "Bảng Chấm Công" của đúng kỳ đó (cần Chốt bảng
-                    chấm công của kỳ này trước để có số liệu chính xác). Với nhân sự chưa có dòng lương nào được
-                    lưu trong kỳ, hệ thống tự đề xuất số liệu để bạn kiểm tra rồi bấm "Lưu lương".
+                    Ghi nhận ngày công của Thuyền viên (Đội tàu) theo Danh mục loại công riêng: <b>B1, B2, B3, B4,
+                    DP, N, N1, N2, D</b>. Dữ liệu được lưu trên Google Sheet riêng, tách biệt hoàn toàn với Bảng
+                    Chấm Công của Văn phòng.
                 </p>
 
                 <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
                     <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
                         <div class="form-group" style="margin:0;">
-                            <label>Kỳ lương (tháng/năm)</label>
-                            <input type="month" id="luong-period-input" style="padding:6px 8px;">
+                            <label>Kỳ chấm công (tháng/năm)</label>
+                            <input type="month" id="cctv-period-input" style="padding:6px 8px;">
                         </div>
-                        <button class="btn btn-primary" onclick="loadLuongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
-                        <button class="btn btn-secondary" id="luong-btn-export" onclick="xuatFileLuong()"><i class="fa-solid fa-file-excel"></i> Xuất File Excel</button>
-                    </div>
-                </div>
-
-                <!-- [FORM CẬP NHẬT 1 DÒNG LƯƠNG] Chỉ hiện với tài khoản có quyền sửa lương (HrEdit hoặc Admin). -->
-                <div class="admin-box" id="luong-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
-                    <h3 id="luong-form-title"><i class="fa-solid fa-pen-to-square"></i> Cập nhật lương nhân viên</h3>
-                    <input type="hidden" id="luong-edit-makyluong">
-                    <input type="hidden" id="luong-edit-msnv">
-                    <input type="hidden" id="luong-edit-maky">
-                    <div class="form-row">
-                        <div class="input-group">
-                            <label>Mã kỳ lương</label>
-                            <input type="text" id="luong-view-makyluong" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>MSNV & Họ và tên</label>
-                            <input type="text" id="luong-view-msnv-hoten" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>Phòng ban & Chức vụ</label>
-                            <input type="text" id="luong-view-phongban-chucvu" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>Mức lương cơ bản</label>
-                            <input type="number" id="luong-inp-mucluongcoban" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Tổng ngày công tính lương <span style="font-weight:normal; color:#888; font-size:11.5px;">(từ Bảng Chấm Công)</span></label>
-                            <input type="number" id="luong-inp-ngaycong" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Lương thời gian (Lương thực tế)</label>
-                            <input type="number" id="luong-view-luongthoigian" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>Phụ cấp (nếu có)</label>
-                            <input type="number" id="luong-inp-phucap" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Tổng thu nhập</label>
-                            <input type="number" id="luong-view-tongthunhap" disabled>
-                        </div>
-                        <div class="input-group">
-                            <label>Mức lương đóng BHXH</label>
-                            <input type="number" id="luong-inp-mucbhxh" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Trừ tiền BHXH/BHYT/BHTN <span style="font-weight:normal; color:#888; font-size:11.5px;">(để trống = tự tính 10.5%)</span></label>
-                            <input type="number" id="luong-inp-trubhxh" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Giảm trừ gia cảnh</label>
-                            <input type="text" id="luong-inp-giamtru" placeholder="VD: Bản thân + 1 người phụ thuộc">
-                        </div>
-                        <div class="input-group">
-                            <label>Khấu trừ khác</label>
-                            <input type="number" id="luong-inp-khautru" min="0" oninput="tinhLuongPreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Thực lãnh (Lương thực nhận)</label>
-                            <input type="number" id="luong-view-thuclanh" disabled>
-                        </div>
-                        <div class="input-group" style="grid-column: 1 / -1;">
-                            <label>Thông tin thanh toán</label>
-                            <input type="text" id="luong-inp-thanhtoan" placeholder="Số tài khoản / ngân hàng / hình thức chi trả...">
-                        </div>
-                        <div class="input-group">
-                            <label>Trạng thái thanh toán</label>
-                            <select id="luong-inp-trangthai">
-                                <option value="Chưa thanh toán">Chưa thanh toán</option>
-                                <option value="Đã thanh toán">Đã thanh toán</option>
+                        <div class="form-group" style="margin:0;">
+                            <label>Lọc theo tàu</label>
+                            <select id="cctv-tau-filter" class="search-box" style="max-width:220px;" onchange="renderChamCongThuyenVienTable()">
+                                <option value="">Tất cả các tàu</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-row" style="margin-top:10px">
-                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
-                            <button class="btn btn-success" style="width:auto;" onclick="saveLuongRow()">Lưu lương ✔️</button>
-                            <button class="btn btn-danger" id="luong-btn-delete" onclick="deleteLuongRow()" style="display:none; margin-left:10px; width:auto; padding:12px;">Xóa dòng lương 🗑️</button>
-                            <button class="btn btn-secondary" style="margin-left:10px; width:auto; padding:12px;" onclick="resetLuongForm()">Đóng</button>
-                        </div>
+                        <button class="btn btn-primary" onclick="loadChamCongThuyenVienData()"><i class="fa-solid fa-rotate"></i> Tải dữ liệu</button>
+                        <button class="btn btn-primary" id="cctv-btn-them" style="display:none;" onclick="moFormChamCongThuyenVien()"><i class="fa-solid fa-plus"></i> Ghi nhận ngày công mới</button>
                     </div>
                 </div>
 
-                <div class="admin-box" style="margin-top:16px; overflow-x:auto;">
-                    <table class="data-table" id="luong-table" style="min-width:1400px;">
+                <!-- [MỚI] Mục "Danh mục loại công" — bảng tra cứu nhanh toàn bộ mã công đang có
+                     (B1, B2, B3, B4, DP, N, N1, N2, D...) và tên loại công tương ứng. Dữ liệu lấy
+                     từ Sheet "DanhMucLoaiCongThuyenVien" (đã tải cùng loadChamCongThuyenVienData()),
+                     không gọi thêm action nào khác. -->
+                <div class="admin-box" style="border-top: 4px solid var(--primary-color); margin-top:16px;">
+                    <h3 style="margin-top:0;"><i class="fa-solid fa-list"></i> Danh mục loại công</h3>
+                    <div style="overflow-x:auto;">
+                        <table class="data-table" id="cctv-danhmuc-table" style="min-width:400px;">
+                            <thead><tr><th style="width:100px;">Mã công</th><th>Tên loại công</th></tr></thead>
+                            <tbody id="cctv-danhmuc-tbody">
+                                <tr><td colspan="2" style="text-align:center; color:#999;">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- [MỚI] Form thêm/sửa 1 ngày công thuyền viên -->
+                <div class="admin-box" id="cctv-form-box" style="display:none; border-top:4px solid var(--primary-color); margin-top:16px;">
+                    <h3 style="margin-top:0;">Ghi nhận ngày công</h3>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Thuyền viên</label>
+                            <select id="cctv-form-thuyenvien" class="search-box" style="min-width:220px;"></select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Ngày làm việc</label>
+                            <input type="date" id="cctv-form-ngay" style="padding:6px 8px;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Mã loại công</label>
+                            <select id="cctv-form-maloaicong" class="search-box" style="min-width:140px;" onchange="onCctvMaLoaiCongChange()">
+                                <option value="">-- Chọn mã công --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex:1; min-width:260px;">
+                            <label>Tên loại công</label>
+                            <input type="text" id="cctv-form-tenloaicong" class="search-box" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ghi chú (không bắt buộc)</label>
+                        <input type="text" id="cctv-form-ghichu" class="search-box" maxlength="500" placeholder="Ghi chú thêm (nếu có)">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fa-solid fa-paperclip"></i> Đính kèm file (không bắt buộc, tối đa 10MB)</label>
+                        <input type="file" id="cctv-form-file">
+                        <div id="cctv-form-file-current" style="font-size:12px; color:#666; margin-top:4px;"></div>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-success" onclick="luuChamCongThuyenVien()"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+                        <button class="btn btn-danger" style="width:auto;" onclick="dongFormChamCongThuyenVien()">Hủy</button>
+                    </div>
+                </div>
+
+                <div style="overflow-x:auto; margin-top:16px;">
+                    <table class="data-table" id="cctv-table" style="min-width:1000px;">
                         <thead>
                             <tr>
-                                <th>MSNV</th><th>Họ và tên</th><th>Phòng ban</th><th>Chức vụ</th>
-                                <th>Lương cơ bản</th><th>Ngày công tính lương</th><th>Lương thời gian</th>
-                                <th>Phụ cấp</th><th>Tổng thu nhập</th><th>Lương đóng BHXH</th>
-                                <th>Trừ BHXH/BHYT/BHTN</th><th>Giảm trừ gia cảnh</th><th>Khấu trừ khác</th>
-                                <th>Thực lãnh</th><th>Trạng thái TT</th><th></th>
+                                <th>Họ và tên</th>
+                                <th>Chức vụ</th>
+                                <th>Tàu</th>
+                                <th>Ngày làm việc</th>
+                                <th>Mã loại công</th>
+                                <th>Ghi chú</th>
+                                <th>File đính kèm</th>
+                                <th>Cập nhật</th>
+                                <th></th>
                             </tr>
                         </thead>
-                        <tbody id="luong-table-body">
-                            <tr><td colspan="16" style="text-align:center; color:#999;">Chọn kỳ lương rồi bấm "Tải / Tính lại".</td></tr>
+                        <tbody id="cctv-tbody">
+                            <tr><td colspan="9" style="text-align:center; color:#999;">Chưa có dữ liệu — chọn kỳ và bấm "Tải dữ liệu".</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2965,15 +2955,20 @@
         // [TAB "BẢNG CHẤM CÔNG"]
         let currentUserCanViewChamCong = false;
         let currentUserCanEditChamCong = false;
+        // [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" — biến trạng thái riêng, tách biệt hoàn toàn với
+        // Bảng Chấm Công Văn phòng ở trên.
+        let currentUserCanViewCrewChamCong = false;
+        let currentUserCanEditCrewChamCong = false;
+        let cctvCrewList = [];
+        let cctvRecords = [];
+        let cctvDanhMuc = [];
+        let cctvDangSuaHoTen = null, cctvDangSuaTau = null, cctvDangSuaNgay = null;
         // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] true = tài khoản đang đăng nhập
         // KHÔNG có quyền "SuaChamCong" nhưng ĐÃ được người quản lý BẬT cờ cho phép tự điều chỉnh
         // ĐÚNG dòng của chính mình (xem action "toggleTuDieuChinhChamCong"/"getChamCongData" ở
         // Code.gs). Được cập nhật lại mỗi lần tải dữ liệu (loadChamCongData) theo đúng giá trị
         // "canSelfAdjust" server trả về — KHÔNG tự suy luận ở phía giao diện.
         let currentUserCanSelfAdjustChamCong = false;
-        let currentUserCanViewLuong = false;
-        let currentUserCanEditLuong = false;
-        let currentUserCanDeleteLuong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
         // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Danh sách thông báo CHƯA XEM gửi riêng cho tài
@@ -2998,7 +2993,6 @@
         // [BẢNG THEO THỨ/NGÀY TRONG THÁNG] Danh sách {ngay, thu, isWeekend} của kỳ đang xem,
         // do server trả về (field "danhSachNgay") — dùng để dựng cột theo từng ngày + xuất Excel.
         let chamCongDanhSachNgay = [];
-        let luongRows = [];
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
 
@@ -3137,7 +3131,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemLuong: data.xemLuong, suaLuong: data.suaLuong, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -4277,23 +4271,20 @@
             renderUserListViewForAdmin();
         }
 
-        // [TAB "LƯƠNG NHÂN VIÊN" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Xem"/"Sửa" của Tab "Lương
-        // Nhân Viên" cho 1 tài khoản — ĐỘC LẬP với quyền Tab "Quản Lý Nhân Sự" (HrView/HrEdit)
-        // và với Role chung, giống hệt cách làm với "Bảng Chấm Công" ở trên. Dùng action riêng
-        // "setLuongPermission" (chỉ ghi đúng cột 26-27 của sheet "TaiKhoan", không đụng các
-        // cột/quyền khác). Quyền Xóa dòng lương KHÔNG nằm trong hàm này — vẫn dùng chung quyền
-        // "HrDelete" (checkbox "Xóa" ở khối Quản Lý Nhân Sự) như trước.
-        async function toggleUserLuongPermission(username, field, checked) {
+        // [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - PHÂN QUYỀN RIÊNG, độc lập hoàn toàn với
+        // "toggleUserChamCongPermission" ở trên (Bảng Chấm Công Văn phòng). Dùng action riêng
+        // "setChamCongThuyenVienPermission" (chỉ ghi đúng cột 28-29 của sheet "TaiKhoan").
+        async function toggleUserChamCongThuyenVienPermission(username, field, checked) {
             if (!userDatabase[username]) return;
-            let newXem = (field === "xemLuong") ? checked : !!userDatabase[username].xemLuong;
-            let newSua = (field === "suaLuong") ? checked : !!userDatabase[username].suaLuong;
+            let newXem = (field === "xemChamCongThuyenVien") ? checked : !!userDatabase[username].xemChamCongThuyenVien;
+            let newSua = (field === "suaChamCongThuyenVien") ? checked : !!userDatabase[username].suaChamCongThuyenVien;
             // Bật quyền Sửa thì tự động bật kèm quyền Xem (không thể sửa nếu không xem được).
-            if (field === "suaLuong" && checked) newXem = true;
+            if (field === "suaChamCongThuyenVien" && checked) newXem = true;
 
-            let ok = await pushToCloud({ action: "setLuongPermission", username: username, xemLuong: newXem, suaLuong: newSua });
+            let ok = await pushToCloud({ action: "setChamCongThuyenVienPermission", username: username, xemChamCongThuyenVien: newXem, suaChamCongThuyenVien: newSua });
             if (ok) {
-                userDatabase[username].xemLuong = newXem;
-                userDatabase[username].suaLuong = newSua;
+                userDatabase[username].xemChamCongThuyenVien = newXem;
+                userDatabase[username].suaChamCongThuyenVien = newSua;
                 saveLocalCache();
             } else {
                 alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
@@ -4664,24 +4655,23 @@
                     </span>`;
                 }
 
-                // [TAB "LƯƠNG NHÂN VIÊN" - PHÂN QUYỀN RIÊNG] Giống hệt "Bảng Chấm Công": quyền
-                // XEM ở đây KHÔNG mặc định bật — Admin phải cấp riêng cho từng tài khoản (dữ
-                // liệu lương nhạy cảm), ĐỘC LẬP với quyền Tab "Quản Lý Nhân Sự" ở trên.
-                let luongControl = "";
+                // [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - PHÂN QUYỀN RIÊNG, độc lập hoàn toàn
+                // với "ccControl" (Bảng Chấm Công Văn phòng) ở trên — dùng action riêng
+                // "setChamCongThuyenVienPermission" (chỉ ghi đúng cột 28-29 của sheet "TaiKhoan").
+                let cctvControl = "";
                 if (u === "admin") {
-                    luongControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-sack-dollar"></i> Toàn quyền Lương Nhân Viên</span>';
+                    cctvControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-ship"></i> Toàn quyền Bảng Chấm Công Thuyền Viên</span>';
                 } else {
-                    let lgXChecked = userDatabase[u].xemLuong ? "checked" : "";
-                    let lgEChecked = userDatabase[u].suaLuong ? "checked" : "";
-                    luongControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <i class="fa-solid fa-sack-dollar" title="Lương Nhân Viên"></i>
+                    let cctvXChecked = userDatabase[u].xemChamCongThuyenVien ? "checked" : "";
+                    let cctvEChecked = userDatabase[u].suaChamCongThuyenVien ? "checked" : "";
+                    cctvControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-ship" title="Bảng Chấm Công Thuyền Viên"></i>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                            <input type="checkbox" style="width:auto;" ${lgXChecked} onchange="toggleUserLuongPermission('${safeU}', 'xemLuong', this.checked)"> Xem tab
+                            <input type="checkbox" style="width:auto;" ${cctvXChecked} onchange="toggleUserChamCongThuyenVienPermission('${safeU}', 'xemChamCongThuyenVien', this.checked)"> Xem tab
                         </label>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
-                            <input type="checkbox" style="width:auto;" ${lgEChecked} onchange="toggleUserLuongPermission('${safeU}', 'suaLuong', this.checked)"> Lưu/Sửa lương
+                            <input type="checkbox" style="width:auto;" ${cctvEChecked} onchange="toggleUserChamCongThuyenVienPermission('${safeU}', 'suaChamCongThuyenVien', this.checked)"> Thêm/Sửa/Xóa ngày công
                         </label>
-                        <span style="color:#aaa;">(Xóa dòng lương: dùng chung quyền "Xóa" ở khối Quản Lý Nhân Sự)</span>
                     </span>`;
                 }
 
@@ -4728,7 +4718,7 @@
                         ${llvControl}
                         ${gvControl}
                         ${ccControl}
-                        ${luongControl}
+                        ${cctvControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
                         <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -4846,7 +4836,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemLuong: data.xemLuong, suaLuong: data.suaLuong, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -4968,7 +4958,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemLuong: true, suaLuong: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -5069,21 +5059,6 @@
             currentUserCanViewResignedContacts = canViewResignedContacts;
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
 
-            // ==== [TAB "LƯƠNG NHÂN VIÊN"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập với
-            // Role chung VÀ độc lập với quyền Tab "Quản Lý Nhân Sự") — giống hệt cách làm với
-            // "Bảng Chấm Công": Xem tab cần quyền "XemLuong" (hoặc Admin); Lưu/Sửa 1 dòng
-            // lương cần thêm quyền "SuaLuong" (hoặc Admin). [TRƯỚC ĐÂY dùng chung quyền
-            // "HrView"/"HrEdit" của Tab "Quản Lý Nhân Sự" — nay TÁCH RIÊNG để Admin có thể cấp
-            // xem/sửa Lương mà KHÔNG cần cấp thêm quyền Quản Lý Nhân Sự.] Xóa dòng lương: VẪN
-            // GIỮ NGUYÊN quyền "HrDelete" như trước — KHÔNG thuộc phạm vi thay đổi này. ====
-            let canViewLuong = (currentUser.role === "Admin") || !!currentUser.xemLuong;
-            let canEditLuongUI = (currentUser.role === "Admin") || !!currentUser.suaLuong;
-            currentUserCanViewLuong = canViewLuong;
-            currentUserCanEditLuong = canEditLuongUI;
-            currentUserCanDeleteLuong = canDeleteHRUI;
-            let elMenuLuong = document.getElementById("menu-luong");
-            if (elMenuLuong) elMenuLuong.style.display = canViewLuong ? "flex" : "none";
-
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
             // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
             // phần tử "menu-chukyso" không tồn tại nữa. Toàn bộ logic phân quyền/dữ liệu bên dưới
@@ -5134,6 +5109,14 @@
             currentUserCanEditChamCong = canEditChamCong;
             let elMenuChamCong = document.getElementById("menu-chamcong");
             if (elMenuChamCong) elMenuChamCong.style.display = canViewChamCong ? "flex" : "none";
+            // [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" — hiện/ẩn menu theo đúng quyền riêng
+            // "XemChamCongThuyenVien" (độc lập hoàn toàn với quyền "XemChamCong" của Văn phòng).
+            let canViewCrewChamCong = (currentUser.role === "Admin") || !!currentUser.xemChamCongThuyenVien;
+            let canEditCrewChamCong = (currentUser.role === "Admin") || !!currentUser.suaChamCongThuyenVien;
+            currentUserCanViewCrewChamCong = canViewCrewChamCong;
+            currentUserCanEditCrewChamCong = canEditCrewChamCong;
+            let elMenuCrewChamCong = document.getElementById("menu-chamcongthuyenvien");
+            if (elMenuCrewChamCong) elMenuCrewChamCong.style.display = canViewCrewChamCong ? "flex" : "none";
             // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Cập nhật ngay giao diện khối "Xuất bảng
             // chấm công ra Excel" theo đúng quyền vừa xác định ở trên (xem capNhatChamCongExportUI()).
             capNhatChamCongExportUI();
@@ -5364,11 +5347,17 @@
                 // [ĐÃ XÓA - MỤC "NHẬN FILE"] Không còn tự tải số đếm file nhận được nữa (mục "Nhận
                 // file" đã bị bỏ khỏi Tab này theo yêu cầu).
             }
-            if (pageId === "luong") {
-                let canViewLuongPg = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemLuong);
-                if (!canViewLuongPg) { alert("⚠️ Bạn không có quyền xem Lương Nhân Viên. Liên hệ Admin để được cấp quyền."); return; }
-                initLuongPeriodPicker();
-                loadLuongData();
+            // [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" — kiểm tra quyền riêng "XemChamCongThuyenVien"
+            // (độc lập với "XemChamCong" của Văn phòng), sau đó tự tải dữ liệu của kỳ hiện tại.
+            if (pageId === "chamcongthuyenvien") {
+                let canViewCrewChamCong = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemChamCongThuyenVien);
+                if (!canViewCrewChamCong) { alert("⚠️ Bạn không có quyền xem Bảng Chấm Công Thuyền Viên. Liên hệ Admin để được cấp quyền."); return; }
+                let cctvPeriodEl = document.getElementById("cctv-period-input");
+                if (cctvPeriodEl && !cctvPeriodEl.value) {
+                    let nowD = new Date();
+                    cctvPeriodEl.value = nowD.getFullYear() + "-" + String(nowD.getMonth() + 1).padStart(2, "0");
+                }
+                loadChamCongThuyenVienData();
             }
             if (pageId === "giaoviec") {
                 // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Giống hệt "Lịch làm việc
@@ -6415,6 +6404,217 @@
         // là hiển thị thành select "Mã công" + ô "Tên loại công" tự hiện thay vì bảng nhiều cột
         // như trước (xem renderDanhMucLoaiCongTable() bên dưới).
         let danhMucLoaiCongRows = [];
+        /* =====================================================================================
+         * [MỚI] TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" — TOÀN BỘ LOGIC JS RIÊNG, TÁCH BIỆT HOÀN TOÀN
+         * với Bảng Chấm Công của Văn phòng ở trên (không dùng chung biến/hàm nào của phần đó).
+         * =====================================================================================
+         */
+        async function loadChamCongThuyenVienData() {
+            let thang = (document.getElementById("cctv-period-input") || {}).value || "";
+            let tbody = document.getElementById("cctv-tbody");
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            let res = await callServerAction({ action: "getChamCongThuyenVienData", thang: thang });
+            if (!res || res.status === "ERROR") {
+                alert("Lỗi tải dữ liệu Bảng Chấm Công Thuyền Viên: " + (res ? res.message : "Không kết nối được máy chủ."));
+                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#c00;">Tải dữ liệu thất bại.</td></tr>';
+                return;
+            }
+            cctvCrewList = res.crew || [];
+            cctvRecords = res.records || [];
+            cctvDanhMuc = res.danhMuc || [];
+            // [BẢO MẬT] Server luôn kiểm tra lại quyền ở MỌI action ghi dữ liệu — cờ "canEdit" trả
+            // về đây chỉ dùng để ẩn/hiện nút bấm cho gọn giao diện, không phải là lớp bảo mật.
+            currentUserCanEditCrewChamCong = !!res.canEdit;
+            capNhatBoLocTauChamCongThuyenVien();
+            capNhatDropdownThuyenVienChamCongThuyenVien();
+            capNhatDropdownMaLoaiCongChamCongThuyenVien();
+            renderCctvDanhMucTable();
+            renderChamCongThuyenVienTable();
+            let btnThem = document.getElementById("cctv-btn-them");
+            if (btnThem) btnThem.style.display = currentUserCanEditCrewChamCong ? "inline-flex" : "none";
+        }
+
+        function capNhatBoLocTauChamCongThuyenVien() {
+            let sel = document.getElementById("cctv-tau-filter");
+            if (!sel) return;
+            let cur = sel.value;
+            let taus = [...new Set(cctvCrewList.map(c => c.tau).filter(t => t))].sort();
+            sel.innerHTML = '<option value="">Tất cả các tàu</option>' +
+                taus.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+            sel.value = taus.includes(cur) ? cur : "";
+        }
+
+        function capNhatDropdownThuyenVienChamCongThuyenVien() {
+            let sel = document.getElementById("cctv-form-thuyenvien");
+            if (!sel) return;
+            sel.innerHTML = cctvCrewList.map((c, idx) =>
+                `<option value="${idx}">${escapeHtml(c.hoTen)} - ${escapeHtml(c.chucDanh || "")} (${escapeHtml(c.tau || "")})</option>`
+            ).join("");
+        }
+
+        // [SỬA] Nay <select id="cctv-form-maloaicong"> CHỈ chứa "Mã công" (giống hệt cách làm với
+        // <select id="dmlc-ma-select"> của Văn phòng) — "Tên loại công" tương ứng tự hiện ra ở ô
+        // chỉ đọc <input id="cctv-form-tenloaicong"> ngay khi chọn, xem onCctvMaLoaiCongChange().
+        function capNhatDropdownMaLoaiCongChamCongThuyenVien() {
+            let sel = document.getElementById("cctv-form-maloaicong");
+            if (!sel) return;
+            let cur = sel.value;
+            sel.innerHTML = '<option value="">-- Chọn mã công --</option>' +
+                cctvDanhMuc.map(d => `<option value="${escapeHtml(d.ma)}">${escapeHtml(d.ma)}</option>`).join("");
+            sel.value = cctvDanhMuc.some(d => d.ma === cur) ? cur : "";
+            onCctvMaLoaiCongChange();
+        }
+
+        // [MỚI] Khi chọn 1 "Mã công" ở <select id="cctv-form-maloaicong">, tự hiện "Tên loại công"
+        // tương ứng ở ô chỉ đọc <input id="cctv-form-tenloaicong"> — tra thẳng trong cctvDanhMuc đã
+        // tải sẵn (KHÔNG gọi thêm action nào tới server).
+        function onCctvMaLoaiCongChange() {
+            let sel = document.getElementById("cctv-form-maloaicong");
+            let tenInput = document.getElementById("cctv-form-tenloaicong");
+            if (!sel || !tenInput) return;
+            let maChon = String(sel.value || "").trim().toUpperCase();
+            let dong = cctvDanhMuc.find(d => String(d.ma || "").trim().toUpperCase() === maChon);
+            tenInput.value = dong ? (dong.ten || "") : "";
+        }
+
+        // [MỚI] Mục "Danh mục loại công" — bảng tra cứu nhanh (chỉ hiển thị, không cần thao tác)
+        // toàn bộ mã công + tên loại công tương ứng, lấy từ dữ liệu đã tải sẵn (cctvDanhMuc).
+        function renderCctvDanhMucTable() {
+            let tbody = document.getElementById("cctv-danhmuc-tbody");
+            if (!tbody) return;
+            if (!cctvDanhMuc.length) {
+                tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#999;">Chưa có dữ liệu danh mục loại công.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = cctvDanhMuc.map(d =>
+                `<tr><td><b>${escapeHtml(d.ma)}</b></td><td>${escapeHtml(d.ten || "")}</td></tr>`
+            ).join("");
+        }
+
+        function renderChamCongThuyenVienTable() {
+            let tbody = document.getElementById("cctv-tbody");
+            if (!tbody) return;
+            let tauLoc = (document.getElementById("cctv-tau-filter") || {}).value || "";
+            let list = cctvRecords.filter(r => !tauLoc || r.tau === tauLoc);
+            list.sort((a, b) => (b.ngay || "").localeCompare(a.ngay || "") || (a.hoTen || "").localeCompare(b.hoTen || ""));
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Không có dữ liệu phù hợp trong kỳ đã chọn.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(r => {
+                let maInfo = cctvDanhMuc.find(d => d.ma === r.maLoaiCong);
+                let fileHtml = r.fileId
+                    ? `<a href="#" onclick="taiFileChamCongThuyenVien('${escapeHtml(r.fileId)}','${escapeHtml(r.fileName || "").replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "")}</a>`
+                    : "";
+                let actionsHtml = currentUserCanEditCrewChamCong
+                    ? `<button class="btn btn-sm" onclick="suaChamCongThuyenVien('${escapeHtml(r.hoTen).replace(/'/g, "\\'")}','${escapeHtml(r.tau || "").replace(/'/g, "\\'")}','${r.ngay}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                       <button class="btn btn-sm btn-danger" style="width:auto;" onclick="xoaChamCongThuyenVien('${escapeHtml(r.hoTen).replace(/'/g, "\\'")}','${escapeHtml(r.tau || "").replace(/'/g, "\\'")}','${r.ngay}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
+                    : "";
+                return `<tr>
+                    <td>${escapeHtml(r.hoTen)}</td>
+                    <td>${escapeHtml(r.chucDanh || "")}</td>
+                    <td>${escapeHtml(r.tau || "")}</td>
+                    <td>${escapeHtml(r.ngay || "")}</td>
+                    <td title="${escapeHtml(maInfo ? maInfo.ten : "")}"><b>${escapeHtml(r.maLoaiCong || "")}</b></td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${fileHtml}</td>
+                    <td style="font-size:12px; color:#666;">${escapeHtml(r.nguoiCapNhat || "")}<br>${escapeHtml(r.ngayCapNhat || "")}</td>
+                    <td>${actionsHtml}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        function moFormChamCongThuyenVien() {
+            let box = document.getElementById("cctv-form-box");
+            if (!box) return;
+            box.style.display = "block";
+            document.getElementById("cctv-form-ngay").value = "";
+            document.getElementById("cctv-form-ghichu").value = "";
+            document.getElementById("cctv-form-file").value = "";
+            document.getElementById("cctv-form-file-current").textContent = "";
+            document.getElementById("cctv-form-maloaicong").value = "";
+            document.getElementById("cctv-form-tenloaicong").value = "";
+            if (document.getElementById("cctv-form-thuyenvien").options.length) document.getElementById("cctv-form-thuyenvien").selectedIndex = 0;
+            cctvDangSuaHoTen = null; cctvDangSuaTau = null; cctvDangSuaNgay = null;
+            box.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        function dongFormChamCongThuyenVien() {
+            let box = document.getElementById("cctv-form-box");
+            if (box) box.style.display = "none";
+        }
+
+        function suaChamCongThuyenVien(hoTen, tau, ngay) {
+            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === tau && r.ngay === ngay);
+            if (!rec) return;
+            moFormChamCongThuyenVien();
+            let idx = cctvCrewList.findIndex(c => c.hoTen === hoTen && (c.tau || "") === tau);
+            if (idx >= 0) document.getElementById("cctv-form-thuyenvien").value = idx;
+            document.getElementById("cctv-form-ngay").value = rec.ngay;
+            document.getElementById("cctv-form-maloaicong").value = rec.maLoaiCong;
+            onCctvMaLoaiCongChange();
+            document.getElementById("cctv-form-ghichu").value = rec.ghiChu || "";
+            if (rec.fileName) {
+                document.getElementById("cctv-form-file-current").textContent =
+                    "File hiện có: " + rec.fileName + " (chọn file mới bên trên nếu muốn thay thế)";
+            }
+            cctvDangSuaHoTen = hoTen; cctvDangSuaTau = tau; cctvDangSuaNgay = ngay;
+        }
+
+        async function xoaChamCongThuyenVien(hoTen, tau, ngay) {
+            if (!confirm(`Xóa ngày công ${ngay} của "${hoTen}"?`)) return;
+            let res = await callServerAction({ action: "deleteChamCongThuyenVien", hoTen: hoTen, tau: tau, ngay: ngay });
+            if (!res || res.status === "ERROR") { alert("Lỗi: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            await loadChamCongThuyenVienData();
+        }
+
+        function fileToBase64ChamCongThuyenVien(file) {
+            return new Promise((resolve, reject) => {
+                let reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(",")[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function luuChamCongThuyenVien() {
+            let selThuyenVien = document.getElementById("cctv-form-thuyenvien");
+            let crew = cctvCrewList[selThuyenVien.value];
+            if (!crew) { alert("Vui lòng chọn thuyền viên."); return; }
+            let ngay = document.getElementById("cctv-form-ngay").value;
+            if (!ngay) { alert("Vui lòng chọn ngày làm việc."); return; }
+            let ma = document.getElementById("cctv-form-maloaicong").value;
+            if (!ma) { alert("Vui lòng chọn mã loại công."); return; }
+            let ghiChu = document.getElementById("cctv-form-ghichu").value || "";
+            let payload = {
+                action: "saveChamCongThuyenVien",
+                hoTen: crew.hoTen, tau: crew.tau, chucDanh: crew.chucDanh,
+                ngay: ngay, maLoaiCong: ma, ghiChu: ghiChu
+            };
+            let fileInput = document.getElementById("cctv-form-file");
+            if (fileInput.files && fileInput.files[0]) {
+                let file = fileInput.files[0];
+                if (file.size > 10 * 1024 * 1024) { alert("File đính kèm không được lớn hơn 10MB."); return; }
+                payload.fileData = await fileToBase64ChamCongThuyenVien(file);
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+            }
+            let res = await callServerAction(payload);
+            if (!res || res.status === "ERROR") { alert("Lỗi lưu dữ liệu: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            dongFormChamCongThuyenVien();
+            await loadChamCongThuyenVienData();
+        }
+
+        async function taiFileChamCongThuyenVien(fileId, fileName) {
+            let res = await callServerAction({ action: "getFileContent", fileId: fileId });
+            if (!res || res.status === "ERROR") { alert("Lỗi tải file: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            let link = document.createElement("a");
+            link.href = "data:" + (res.mimeType || "application/octet-stream") + ";base64," + res.fileData;
+            link.download = fileName || res.fileName || "file";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         async function loadDanhMucLoaiCong() {
             let sel = document.getElementById("dmlc-ma-select");
             if (sel) sel.innerHTML = '<option value="">-- Đang tải... --</option>';
@@ -7219,220 +7419,6 @@
             let fileName = "BangChamCong_" + (maKy || "KyChamCong") + "_" + (scopeLabelMap[scope] || "Export") + ".xlsx";
             XLSX.writeFile(wb, fileName);
         }
-
-        /* ===== [TAB "LƯƠNG NHÂN VIÊN"] ===== */
-
-        function initLuongPeriodPicker() {
-            let inp = document.getElementById("luong-period-input");
-            if (!inp) return;
-            if (!inp.value) {
-                let now = new Date();
-                let y = now.getFullYear();
-                let m = String(now.getMonth() + 1).padStart(2, "0");
-                inp.value = y + "-" + m;
-            }
-        }
-
-        async function loadLuongData() {
-            let inp = document.getElementById("luong-period-input");
-            let maKy = inp ? inp.value : "";
-            if (!maKy) { alert("Vui lòng chọn kỳ lương (tháng/năm)."); return; }
-
-            let tbody = document.getElementById("luong-table-body");
-            if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; color:#999;">Đang tải...</td></tr>';
-            resetLuongForm();
-
-            let result = await callServerAction({ action: "getLuongData", maKy: maKy });
-            if (!result || result.status !== "SUCCESS") {
-                if (tbody) tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; color:#c0392b;">' + escapeHtml((result && result.message) || "Không tải được dữ liệu.") + '</td></tr>';
-                return;
-            }
-            luongRows = result.rows || [];
-            renderLuongTable();
-        }
-
-        function fmtLuongMoney(v) {
-            let n = Number(v) || 0;
-            return n.toLocaleString("vi-VN");
-        }
-
-        // [MỚI] Xuất bảng lương của kỳ đang chọn ra 1 file MỚI, lưu vào thư mục Google Drive đã
-        // cấu hình ở server (Code.gs — biến LUONG_EXPORT_FOLDER_ID). Server tự tính lại dữ liệu
-        // theo đúng kỳ (không dùng dữ liệu đã tải sẵn ở trình duyệt) để đảm bảo luôn khớp với
-        // quyền hạn và dữ liệu mới nhất.
-        async function xuatFileLuong() {
-            let inp = document.getElementById("luong-period-input");
-            let maKy = inp ? inp.value : "";
-            if (!maKy) { alert("Vui lòng chọn kỳ lương (tháng/năm) trước khi xuất file."); return; }
-
-            let btn = document.getElementById("luong-btn-export");
-            let oldHtml = btn ? btn.innerHTML : "";
-            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xuất...'; }
-
-            try {
-                let result = await callServerAction({ action: "xuatFileLuong", maKy: maKy });
-                if (!result || result.status !== "SUCCESS") {
-                    alert("⚠️ " + ((result && result.message) || "Không xuất được file lương."));
-                    return;
-                }
-                if (result.fileUrl) window.open(result.fileUrl, "_blank", "noopener");
-                alert("✅ Đã xuất file \"" + (result.fileName || "") + "\" và lưu vào thư mục Google Drive đã cấu hình.");
-            } finally {
-                if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
-            }
-        }
-
-        function renderLuongTable() {
-            let tbody = document.getElementById("luong-table-body");
-            if (!tbody) return;
-            if (!luongRows.length) {
-                tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
-                return;
-            }
-            tbody.innerHTML = luongRows.map(r => {
-                let ttBg = r.trangThaiThanhToan === "Đã thanh toán" ? "#e6f4ea" : "#fff4e5";
-                let ttColor = r.trangThaiThanhToan === "Đã thanh toán" ? "#1a7f37" : "#b26a00";
-                let canhBao = (!r.coDuLieuChamCong && !r.daLuu) ? ' <span title="Kỳ này chưa có dữ liệu Bảng Chấm Công đã lưu/chốt — Tổng ngày công tạm là 0." style="color:#c0392b;">⚠️</span>' : '';
-                let editBtn = currentUserCanEditLuong
-                    ? `<button type="button" class="btn btn-primary" style="width:auto; padding:6px 10px; font-size:12px;" onclick="editLuongRow('${escapeHtml(r.msnv)}')"><i class="fa-solid fa-pen"></i></button>`
-                    : '';
-                return `<tr>
-                <td>${escapeHtml(r.msnv || "")}</td>
-                <td>${escapeHtml(r.hoTen || "")}</td>
-                <td>${escapeHtml(r.phongBan || "")}</td>
-                <td>${escapeHtml(r.chucVu || "")}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.mucLuongCoBan)}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? 0))}${canhBao}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.luongThoiGian)}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.phuCap)}</td>
-                <td style="text-align:right; font-weight:600;">${fmtLuongMoney(r.tongThuNhap)}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.mucLuongDongBHXH)}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.truBHXH)}</td>
-                <td>${escapeHtml(r.giamTruGiaCanh || "")}</td>
-                <td style="text-align:right;">${fmtLuongMoney(r.khauTruKhac)}</td>
-                <td style="text-align:right; font-weight:700; color:var(--primary-color);">${fmtLuongMoney(r.thucLanh)}</td>
-                <td style="text-align:center;"><span style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600; background:${ttBg}; color:${ttColor};">${escapeHtml(r.trangThaiThanhToan || "Chưa thanh toán")}</span></td>
-                <td style="text-align:center;">${editBtn}</td>
-            </tr>`;
-            }).join("");
-        }
-
-        function editLuongRow(msnv) {
-            if (!currentUserCanEditLuong) { alert("⚠️ Bạn không có quyền sửa Lương Nhân Viên. Liên hệ Admin để được cấp quyền."); return; }
-            let r = luongRows.find(x => x.msnv === msnv);
-            if (!r) return;
-
-            document.getElementById("luong-edit-makyluong").value = r.maKyLuong || "";
-            document.getElementById("luong-edit-msnv").value = r.msnv || "";
-            document.getElementById("luong-edit-maky").value = r.maKy || "";
-            document.getElementById("luong-view-makyluong").value = r.maKyLuong || "";
-            document.getElementById("luong-view-msnv-hoten").value = (r.msnv || "") + " - " + (r.hoTen || "");
-            document.getElementById("luong-view-phongban-chucvu").value = (r.phongBan || "") + (r.chucVu ? (" - " + r.chucVu) : "");
-            document.getElementById("luong-inp-mucluongcoban").value = r.mucLuongCoBan || 0;
-            document.getElementById("luong-inp-ngaycong").value = r.tongNgayCongTinhLuong || 0;
-            document.getElementById("luong-inp-phucap").value = r.phuCap || 0;
-            document.getElementById("luong-inp-mucbhxh").value = r.mucLuongDongBHXH || 0;
-            document.getElementById("luong-inp-trubhxh").value = r.truBHXH || 0;
-            document.getElementById("luong-inp-giamtru").value = r.giamTruGiaCanh || "";
-            document.getElementById("luong-inp-khautru").value = r.khauTruKhac || 0;
-            document.getElementById("luong-inp-thanhtoan").value = r.thongTinThanhToan || "";
-            document.getElementById("luong-inp-trangthai").value = r.trangThaiThanhToan || "Chưa thanh toán";
-
-            let delBtn = document.getElementById("luong-btn-delete");
-            if (delBtn) delBtn.style.display = (currentUserCanDeleteLuong && r.daLuu) ? "inline-flex" : "none";
-
-            tinhLuongPreview();
-            document.getElementById("luong-form-box").style.display = "block";
-            document.getElementById("luong-form-box").scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-
-        // Tính lại NGAY trên trình duyệt (chỉ để xem trước, server luôn tính lại chính xác khi Lưu).
-        function tinhLuongPreview() {
-            let mucLuongCoBan = parseFloat(document.getElementById("luong-inp-mucluongcoban").value) || 0;
-            let ngayCong = parseFloat(document.getElementById("luong-inp-ngaycong").value) || 0;
-            let phuCap = parseFloat(document.getElementById("luong-inp-phucap").value) || 0;
-            let mucBHXH = parseFloat(document.getElementById("luong-inp-mucbhxh").value) || 0;
-            let truBHXHInp = document.getElementById("luong-inp-trubhxh").value;
-            let khauTru = parseFloat(document.getElementById("luong-inp-khautru").value) || 0;
-
-            // Ngày công chuẩn: lấy theo tháng của kỳ đang sửa (Thứ 2 -> Thứ 6).
-            let maKy = document.getElementById("luong-edit-maky").value || "";
-            let mParts = maKy.match(/^(\d{4})-(\d{2})$/);
-            let ngayCongChuan = 22; // giá trị dự phòng nếu chưa xác định được kỳ
-            if (mParts) {
-                let nam = parseInt(mParts[1], 10), thang = parseInt(mParts[2], 10);
-                let soNgay = new Date(nam, thang, 0).getDate();
-                let dem = 0;
-                for (let d = 1; d <= soNgay; d++) {
-                    let thu = new Date(nam, thang - 1, d).getDay();
-                    if (thu !== 0 && thu !== 6) dem++;
-                }
-                ngayCongChuan = dem;
-            }
-
-            let luongThoiGian = ngayCongChuan > 0 ? Math.round((mucLuongCoBan / ngayCongChuan) * ngayCong) : 0;
-            let tongThuNhap = luongThoiGian + phuCap;
-            let truBHXH = (truBHXHInp !== "" && truBHXHInp !== null) ? (parseFloat(truBHXHInp) || 0) : Math.round(mucBHXH * 0.105);
-            let thucLanh = Math.max(0, tongThuNhap - truBHXH - khauTru);
-
-            document.getElementById("luong-view-luongthoigian").value = luongThoiGian;
-            document.getElementById("luong-view-tongthunhap").value = tongThuNhap;
-            document.getElementById("luong-view-thuclanh").value = thucLanh;
-        }
-
-        function resetLuongForm() {
-            let box = document.getElementById("luong-form-box");
-            if (box) box.style.display = "none";
-            ["luong-edit-makyluong", "luong-edit-msnv", "luong-edit-maky", "luong-inp-giamtru", "luong-inp-thanhtoan"].forEach(id => {
-                let el = document.getElementById(id);
-                if (el) el.value = "";
-            });
-        }
-
-        async function saveLuongRow() {
-            if (!currentUserCanEditLuong) { alert("⚠️ Bạn không có quyền sửa Lương Nhân Viên. Liên hệ Admin để được cấp quyền."); return; }
-            let msnv = document.getElementById("luong-edit-msnv").value;
-            let maKy = document.getElementById("luong-edit-maky").value;
-            if (!msnv || !maKy) { alert("⚠️ Vui lòng chọn 1 dòng lương (bấm nút sửa ✏️ trong bảng) trước khi lưu."); return; }
-            let r = luongRows.find(x => x.msnv === msnv) || {};
-
-            let payload = {
-                action: "luuLuongRow", maKy: maKy, msnv: msnv, hoTen: r.hoTen || "",
-                phongBan: r.phongBan || "", chucVu: r.chucVu || "",
-                mucLuongCoBan: document.getElementById("luong-inp-mucluongcoban").value,
-                tongNgayCongTinhLuong: document.getElementById("luong-inp-ngaycong").value,
-                phuCap: document.getElementById("luong-inp-phucap").value,
-                mucLuongDongBHXH: document.getElementById("luong-inp-mucbhxh").value,
-                truBHXH: document.getElementById("luong-inp-trubhxh").value,
-                giamTruGiaCanh: document.getElementById("luong-inp-giamtru").value,
-                khauTruKhac: document.getElementById("luong-inp-khautru").value,
-                thongTinThanhToan: document.getElementById("luong-inp-thanhtoan").value,
-                trangThaiThanhToan: document.getElementById("luong-inp-trangthai").value
-            };
-            let result = await callServerAction(payload);
-            if (result && result.status === "SUCCESS") {
-                alert("Đã lưu lương cho \"" + (r.hoTen || msnv) + "\" - kỳ " + maKy + ".");
-                resetLuongForm();
-                loadLuongData();
-            } else {
-                alert("⚠️ " + ((result && result.message) || "Không thể lưu lương."));
-            }
-        }
-
-        async function deleteLuongRow() {
-            if (!currentUserCanDeleteLuong) { alert("⚠️ Bạn không có quyền xóa Lương Nhân Viên. Liên hệ Admin để được cấp quyền."); return; }
-            let maKyLuong = document.getElementById("luong-edit-makyluong").value;
-            if (!maKyLuong) return;
-            if (!confirm("Xóa dòng lương này? Hành động không thể hoàn tác.")) return;
-            let result = await callServerAction({ action: "xoaLuongRow", maKyLuong: maKyLuong });
-            if (result && result.status === "SUCCESS") {
-                resetLuongForm();
-                loadLuongData();
-            } else {
-                alert("⚠️ " + ((result && result.message) || "Không thể xóa dòng lương."));
-            }
-        }
-
 
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY" - Giờ bắt đầu/kết thúc] Khởi tạo option cho 4 dropdown
            Giờ/Phút (bắt đầu + kết thúc). Phút: 00–59. Giờ: 00–23 nhưng được NHÓM RÕ RÀNG thành
