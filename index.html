@@ -1725,24 +1725,29 @@
                 <h2 class="page-title"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
                     Ghi nhận ngày công của Thuyền viên (Đội tàu) theo Danh mục loại công riêng: <b>B1, B2, B3, B4,
-                    DP, N, N1, N2, D</b>. Dữ liệu được lưu trên Google Sheet riêng, tách biệt hoàn toàn với Bảng
-                    Chấm Công của Văn phòng.
+                    DP, N, N1, N2, D</b>. Mã <b>DP</b> là công chức danh — khi chọn sẽ cần chọn thêm phân loại
+                    <b>JDPO</b> hoặc <b>SDPO</b>. Bảng chấm công tự động mặc định mã <b>DP</b> cho <b>Thuyền
+                    trưởng</b>/<b>Đại phó</b> và mã <b>B2</b> cho các chức danh còn lại ở mọi ngày (bấm vào từng ô
+                    để ghi nhận/sửa lại cụ thể nếu cần). Dữ liệu được lưu trên Google Sheet riêng, tách biệt hoàn
+                    toàn với Bảng Chấm Công của Văn phòng.
                 </p>
 
-                <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"] Trước đây
-                     chỉ có 2 nút "Tải dữ liệu" + "Ghi nhận ngày công mới", ai có quyền
-                     "SuaChamCongThuyenVien" cũng sửa/xóa được NGAY bất kỳ lúc nào. NAY đổi giống
-                     Tab "Bảng Chấm Công" của Văn phòng: nút "Tải dữ liệu" đổi tên thành
-                     "Tải / Tính lại" (CÙNG 1 hàm loadChamCongThuyenVienData(), không đổi gì cách
-                     tải); thêm "Chốt bảng chấm công" (khóa kỳ đang chọn — action MỚI
-                     "chotBangChamCongThuyenVien") / "Mở lại" (action MỚI
-                     "moLaiBangChamCongThuyenVien"); thêm "Điều chỉnh" (bật/tắt hiển thị nút
-                     Sửa/Xóa từng dòng + nút "Ghi nhận ngày công mới" — CHỈ xử lý ở FE, không gọi
-                     thêm action nào); thêm "Xuất bảng chấm công ra Excel" (chạy hoàn toàn ở trình
-                     duyệt bằng thư viện XLSX đã có sẵn, xuất RIÊNG 1 sheet cho MỖI tàu). Kỳ đã
-                     CHỐT thì ẩn nút "Điều chỉnh"/"Ghi nhận ngày công mới" + ẩn nút Sửa/Xóa từng
-                     dòng (Server luôn tự kiểm tra lại, không thể bị bỏ qua dù sửa giao diện) — xem
-                     capNhatNutChotDieuChinhCctv()/chotBangChamCongThuyenVien()/
+                <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"; XÓA NÚT
+                     "GHI NHẬN NGÀY CÔNG MỚI"] nút "Tải dữ liệu" đổi tên thành "Tải / Tính lại"
+                     (CÙNG 1 hàm loadChamCongThuyenVienData(), không đổi gì cách tải); thêm "Chốt
+                     bảng chấm công" (khóa kỳ đang chọn — action MỚI "chotBangChamCongThuyenVien")
+                     / "Mở lại" (action MỚI "moLaiBangChamCongThuyenVien"); thêm "Điều chỉnh" (bật/
+                     tắt hiển thị khả năng bấm sửa từng ô — CHỈ xử lý ở FE, không gọi thêm action
+                     nào); thêm "Xuất bảng chấm công ra Excel" (chạy hoàn toàn ở trình duyệt bằng
+                     thư viện XLSX đã có sẵn, xuất RIÊNG 1 sheet cho MỖI tàu). Bảng chấm công nay
+                     LUÔN tự hiện mã công MẶC ĐỊNH theo chức danh (DP cho Thuyền trưởng/Đại phó,
+                     B2 cho các chức danh còn lại) cho MỌI ngày CHƯA có bản ghi cụ thể — nên
+                     KHÔNG còn "ô trống cần ghi nhận mới" nữa, đã XÓA nút "Ghi nhận ngày công
+                     mới": bấm vào BẤT KỲ ô nào (khi đang "Điều chỉnh" và kỳ chưa chốt) đều mở
+                     form để xem/sửa lại đúng ngày đó, prefill sẵn mã mặc định nếu chưa có bản ghi
+                     cụ thể (xem clickCctvCell()). Kỳ đã CHỐT thì ẩn nút "Điều chỉnh" + ẩn khả năng
+                     sửa từng ô (Server luôn tự kiểm tra lại, không thể bị bỏ qua dù sửa giao diện)
+                     — xem capNhatNutChotDieuChinhCctv()/chotBangChamCongThuyenVien()/
                      moLaiBangChamCongThuyenVien()/toggleChamCongThuyenVienDieuChinh()/
                      exportChamCongThuyenVienToExcel() bên dưới. KHÔNG mất/đổi bất kỳ dữ liệu ngày
                      công nào đã lưu, KHÔNG đổi quyền hạn (vẫn dùng chung
@@ -1769,7 +1774,6 @@
                         <button class="btn btn-success" id="cctv-btn-chot" style="width:100%; display:none;" onclick="chotBangChamCongThuyenVien()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
                         <button class="btn btn-danger" id="cctv-btn-mo-lai" style="width:100%; display:none;" onclick="moLaiBangChamCongThuyenVien()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
                         <button class="btn btn-primary" id="cctv-btn-dieu-chinh" style="width:100%; display:none;" onclick="toggleChamCongThuyenVienDieuChinh()"><i class="fa-solid fa-sliders"></i> Điều chỉnh</button>
-                        <button class="btn btn-success" id="cctv-btn-them" style="width:100%; display:none;" onclick="moFormChamCongThuyenVien()"><i class="fa-solid fa-plus"></i> Ghi nhận ngày công mới</button>
                         <button class="btn btn-success" style="width:100%;" onclick="exportChamCongThuyenVienToExcel()"><i class="fa-solid fa-file-export"></i> Xuất bảng chấm công ra Excel (theo từng tàu)</button>
                     </div>
                     <div id="cctv-status-badge" style="margin-top:10px; font-size:13px; font-weight:600;"></div>
@@ -1849,15 +1853,31 @@
                             <input type="text" id="cctv-form-tenloaicong" class="search-box" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
                         </div>
                     </div>
+                    <!-- [MỚI - MÃ CÔNG "DP"] "DP" là công chức danh (Thuyền trưởng/Đại phó) — khi
+                         chọn mã "DP" ở trên, CHỈ hiện ô này để bắt buộc chọn thêm phân loại cụ thể
+                         "JDPO" (Junior DPO) hoặc "SDPO" (Senior DPO); ẩn với mọi mã công khác (xem
+                         onCctvMaLoaiCongChange()). Server luôn kiểm tra lại bắt buộc phải chọn
+                         đúng 1 trong 2 giá trị này khi lưu (action "saveChamCongThuyenVien"),
+                         không thể bị bỏ qua dù sửa giao diện. -->
+                    <div class="form-group" id="cctv-form-loaidp-group" style="display:none;">
+                        <label>Phân loại DP <span style="color:#d9534f;">*</span></label>
+                        <select id="cctv-form-loaidp" class="search-box" style="max-width:200px;">
+                            <option value="">-- Chọn phân loại --</option>
+                            <option value="JDPO">JDPO (Junior DPO)</option>
+                            <option value="SDPO">SDPO (Senior DPO)</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Ghi chú (không bắt buộc)</label>
                         <input type="text" id="cctv-form-ghichu" class="search-box" maxlength="500" placeholder="Ghi chú thêm (nếu có)">
                     </div>
-                    <div class="form-group">
-                        <label><i class="fa-solid fa-paperclip"></i> Đính kèm file (không bắt buộc, tối đa 10MB)</label>
-                        <input type="file" id="cctv-form-file">
-                        <div id="cctv-form-file-current" style="font-size:12px; color:#666; margin-top:4px;"></div>
-                    </div>
+                    <!-- [ĐÃ XÓA - MỤC "ĐÍNH KÈM FILE"] Theo yêu cầu mới, form "Ghi nhận ngày công" của
+                         Bảng Chấm Công Thuyền Viên KHÔNG còn ô đính kèm file nữa (chỉ sửa index.html —
+                         KHÔNG đổi/xóa gì ở Code.gs: cột "FileName"/"FileId"/"FileUrl" trên Sheet
+                         "BangChamCongThuyenVien" và action "getFileContent" vẫn giữ nguyên, nên các
+                         bản ghi ĐÃ có file đính kèm từ trước vẫn xem/tải lại được bình thường qua biểu
+                         tượng ghim ở từng ô trên bảng lưới — xem taiFileChamCongThuyenVien()). Bản ghi
+                         MỚI lưu từ nay sẽ không còn kèm file. -->
                     <div style="display:flex; gap:8px;">
                         <button class="btn btn-success" onclick="luuChamCongThuyenVien()"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
                         <button class="btn btn-danger" id="cctv-form-btn-xoa" style="width:auto; display:none;" onclick="xoaChamCongThuyenVienTuForm()"><i class="fa-solid fa-trash"></i> Xóa</button>
@@ -3052,6 +3072,11 @@
         // đang phục vụ Tab "Bảng Chấm Công" Văn phòng) để dựng cột theo từng ngày, giống hệt
         // chamCongDanhSachNgay của Văn phòng.
         let cctvDanhSachNgay = [];
+        // [MỚI - CỘT "CÔNG DP"/"CÔNG B1"/"CÔNG B2"] Tổng hợp số ngày công theo từng mã của MỖI
+        // thuyền viên trong kỳ đang chọn — server tính sẵn (xem tinhTongHopChamCongThuyenVien_ ở
+        // Code.gs), cùng thứ tự/độ dài với "cctvCrewList" (tra theo đúng index gốc, KHÔNG theo
+        // index đã lọc theo tàu — xem renderChamCongThuyenVienTable()).
+        let cctvTongHop = [];
         // [MỚI - "CHỐT BẢNG CHẤM CÔNG"/"ĐIỀU CHỈNH"] cctvDaChot = true khi kỳ đang chọn đã được
         // chốt (khóa) — Server luôn tự kiểm tra lại (KHÔNG thể bị bỏ qua dù sửa giao diện), biến
         // này CHỈ dùng để ẩn/hiện nút bấm cho gọn giao diện. cctvDieuChinhMode = true khi đang bật
@@ -6520,6 +6545,7 @@
             cctvRecords = res.records || [];
             cctvDanhMuc = res.danhMuc || [];
             cctvDanhSachNgay = res.danhSachNgay || [];
+            cctvTongHop = res.tongHop || [];
             // [BẢO MẬT] Server luôn kiểm tra lại quyền ở MỌI action ghi dữ liệu — cờ "canEdit" trả
             // về đây chỉ dùng để ẩn/hiện nút bấm cho gọn giao diện, không phải là lớp bảo mật.
             currentUserCanEditCrewChamCong = !!res.canEdit;
@@ -6535,17 +6561,16 @@
         }
 
         // [MỚI - "CHỐT BẢNG CHẤM CÔNG"/"ĐIỀU CHỈNH"] Cập nhật hiện/ẩn các nút "Chốt bảng chấm
-        // công"/"Mở lại"/"Điều chỉnh"/"Ghi nhận ngày công mới" + badge trạng thái, theo ĐÚNG
-        // quyền hiện có (currentUserCanEditCrewChamCong) và trạng thái khóa của kỳ đang chọn
-        // (cctvDaChot) — CHỈ xử lý ở FE cho gọn giao diện, KHÔNG phải lớp bảo mật (Server luôn tự
-        // kiểm tra lại ở từng action ghi/xóa dữ liệu). Luôn vẽ lại bảng ở cuối để áp đúng
-        // cctvDieuChinhMode mới nhất vào cột "Sửa/Xóa".
+        // công"/"Mở lại"/"Điều chỉnh" + badge trạng thái, theo ĐÚNG quyền hiện có
+        // (currentUserCanEditCrewChamCong) và trạng thái khóa của kỳ đang chọn (cctvDaChot) —
+        // CHỈ xử lý ở FE cho gọn giao diện, KHÔNG phải lớp bảo mật (Server luôn tự kiểm tra lại ở
+        // từng action ghi/xóa dữ liệu). Luôn vẽ lại bảng ở cuối để áp đúng cctvDieuChinhMode mới
+        // nhất vào khả năng bấm sửa từng ô.
         function capNhatNutChotDieuChinhCctv() {
             let thang = (document.getElementById("cctv-period-input") || {}).value || "";
             let btnChot = document.getElementById("cctv-btn-chot");
             let btnMoLai = document.getElementById("cctv-btn-mo-lai");
             let btnDieuChinh = document.getElementById("cctv-btn-dieu-chinh");
-            let btnThem = document.getElementById("cctv-btn-them");
             let badge = document.getElementById("cctv-status-badge");
             let coTheThaoTac = currentUserCanEditCrewChamCong && !!thang;
 
@@ -6557,7 +6582,6 @@
                     ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
                     : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
             }
-            if (btnThem) btnThem.style.display = (coTheThaoTac && cctvDieuChinhMode) ? "inline-flex" : "none";
             if (!cctvDieuChinhMode) dongFormChamCongThuyenVien();
 
             if (badge) {
@@ -6640,24 +6664,31 @@
                 let headerThuRow = ["", ""];
                 let headerNgayRow = ["Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
+                headerThuRow.push("", "", "");
+                headerNgayRow.push("Công DP", "Công B1", "Công B2");
                 headerNgayRow.push("Ghi chú");
                 let aoa = [headerThuRow, headerNgayRow];
                 crewOfTau.forEach(c => {
+                    let idxGoc = cctvCrewList.indexOf(c);
                     let row = [c.hoTen, c.chucDanh || ""];
                     let ghiChuList = [];
                     ngayList.forEach(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                         let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr);
-                        row.push(rec ? (rec.maLoaiCong || "") : "");
+                        let maHienThi = rec ? (rec.maLoaiCong || "") : "";
+                        if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
+                        row.push(maHienThi);
                         if (rec && rec.ghiChu) ghiChuList.push("Ngày " + d.ngay + ": " + rec.ghiChu);
                     });
+                    let tongHopDong = cctvTongHop[idxGoc] || { congDP: 0, congB1: 0, congB2: 0 };
+                    row.push(tongHopDong.congDP, tongHopDong.congB1, tongHopDong.congB2);
                     row.push(ghiChuList.join("; "));
                     aoa.push(row);
                 });
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
                 let cols = [{ wch: 24 }, { wch: 16 }];
                 ngayList.forEach(() => cols.push({ wch: 6 }));
-                cols.push({ wch: 30 });
+                cols.push({ wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 30 });
                 ws['!cols'] = cols;
                 ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
                 ws['!freeze'] = { xSplit: 2, ySplit: 2 };
@@ -6670,11 +6701,19 @@
             XLSX.writeFile(wb, fileName);
         }
 
+        // [SỬA LỖI - "LỌC THEO TÀU" CHỈ HIỆN 1 TÀU] Trước đây bộ lọc này chỉ liệt kê những tàu
+        // ĐANG có ít nhất 1 thuyền viên trong "cctvCrewList" (dữ liệu Sheet "Đội tàu" vừa tải) —
+        // nếu phần lớn tàu trong danh mục chưa có thuyền viên nào (hoặc dữ liệu đang tải dở), bộ
+        // lọc sẽ chỉ hiện đúng 1 (hoặc vài) tàu thay vì ĐẦY ĐỦ mọi tàu hiện có. NAY đổi sang dùng
+        // ĐÚNG danh mục tàu do Admin quản lý ở biến toàn cục "vessels" (mục "Danh sách tàu" ở Tab
+        // "Cài đặt hệ thống", dùng CHUNG với Tab "Quản lý Đội tàu"/"Thêm nhân sự mới") — LUÔN hiện
+        // ĐỦ mọi tàu đang có trong hệ thống, kể cả tàu chưa có thuyền viên nào. KHÔNG đổi action
+        // nào ở server, KHÔNG đổi dữ liệu (chỉ đổi nguồn danh sách hiển thị ở FE).
         function capNhatBoLocTauChamCongThuyenVien() {
             let sel = document.getElementById("cctv-tau-filter");
             if (!sel) return;
             let cur = sel.value;
-            let taus = [...new Set(cctvCrewList.map(c => c.tau).filter(t => t))].sort();
+            let taus = [...new Set((vessels || []).filter(t => t))].sort();
             sel.innerHTML = '<option value="">Tất cả các tàu</option>' +
                 taus.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
             sel.value = taus.includes(cur) ? cur : "";
@@ -6703,7 +6742,9 @@
 
         // [MỚI] Khi chọn 1 "Mã công" ở <select id="cctv-form-maloaicong">, tự hiện "Tên loại công"
         // tương ứng ở ô chỉ đọc <input id="cctv-form-tenloaicong"> — tra thẳng trong cctvDanhMuc đã
-        // tải sẵn (KHÔNG gọi thêm action nào tới server).
+        // tải sẵn (KHÔNG gọi thêm action nào tới server). [MỚI - MÃ CÔNG "DP"] Nếu chọn đúng mã
+        // "DP" (công chức danh), hiện thêm ô bắt buộc "Phân loại DP" (JDPO/SDPO) — ẩn đi với mọi
+        // mã công khác (server luôn kiểm tra lại bắt buộc chọn khi lưu, xem luuChamCongThuyenVien()).
         function onCctvMaLoaiCongChange() {
             let sel = document.getElementById("cctv-form-maloaicong");
             let tenInput = document.getElementById("cctv-form-tenloaicong");
@@ -6711,6 +6752,8 @@
             let maChon = String(sel.value || "").trim().toUpperCase();
             let dong = cctvDanhMuc.find(d => String(d.ma || "").trim().toUpperCase() === maChon);
             tenInput.value = dong ? (dong.ten || "") : "";
+            let loaiDPGroup = document.getElementById("cctv-form-loaidp-group");
+            if (loaiDPGroup) loaiDPGroup.style.display = (maChon === "DP") ? "" : "none";
         }
 
         // [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây vẽ thành 1 bảng tra cứu chỉ đọc
@@ -6828,16 +6871,32 @@
             return (document.getElementById("cctv-period-input") || {}).value || "";
         }
 
-        // Tổng số cột của bảng lưới (2 cột cố định "Họ Tên"/"Chức Danh" + 1 cột/ngày trong kỳ) —
-        // dùng cho thuộc tính colspan của các dòng thông báo (VD "Không có dữ liệu...").
+        // [ĐÃ XÓA - MÃ CÔNG MẶC ĐỊNH THEO CHỨC DANH] Trước đây hàm này tự động trả về "DP" cho
+        // Thuyền trưởng/Đại phó và "B2" cho các chức danh còn lại để HIỂN THỊ sẵn cho mọi ngày
+        // chưa có bản ghi cụ thể. Theo yêu cầu mới, bảng chấm công KHÔNG còn tự điền mã công mặc
+        // định nữa — ô nào chưa có bản ghi cụ thể sẽ để TRỐNG, người dùng (khi bật "Điều chỉnh")
+        // phải tự bấm vào ô và chọn đúng mã công cho ngày đó. Hàm được giữ lại NGUYÊN VẸN (không
+        // xóa) để không ảnh hưởng gì tới dữ liệu/logic khác lỡ có nơi nào còn tham chiếu tới, chỉ
+        // đơn giản là không còn được gọi ở renderChamCongThuyenVienTable()/clickCctvCell()/
+        // exportChamCongThuyenVienToExcel() nữa (xem các hàm này bên dưới).
+        var CCTV_CHUCDANH_MAC_DINH_DP = ["thuyền trưởng", "đại phó"];
+        function macDinhMaLoaiCongThuyenVien(chucDanh) {
+            let cd = String(chucDanh || "").trim().toLowerCase();
+            return CCTV_CHUCDANH_MAC_DINH_DP.includes(cd) ? "DP" : "B2";
+        }
+
+        // Tổng số cột của bảng lưới (2 cột cố định "Họ Tên"/"Chức Danh" + 1 cột/ngày trong kỳ +
+        // 3 cột tổng hợp cuối bảng "Công DP"/"Công B1"/"Công B2") — dùng cho thuộc tính colspan
+        // của các dòng thông báo (VD "Không có dữ liệu...").
         function cctvTongSoCot() {
-            return 2 + (cctvDanhSachNgay || []).length;
+            return 2 + (cctvDanhSachNgay || []).length + 3;
         }
 
         // Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1 cột cho MỖI ngày trong kỳ
-        // đang chọn (hiện số ngày + Thứ, VD "5\nT4") — giống HỆT cách làm của Tab "Bảng Chấm
-        // Công" Văn phòng (xem buildChamCongTableHead()) vì số ngày trong tháng thay đổi
-        // (28-31) nên không thể viết cố định trong HTML.
+        // đang chọn (hiện số ngày + Thứ, VD "5\nT4") + 3 cột tổng hợp cuối bảng "Công DP"/"Công
+        // B1"/"Công B2" (MỚI — xem renderChamCongThuyenVienTable()) — giống HỆT cách làm của Tab
+        // "Bảng Chấm Công" Văn phòng (xem buildChamCongTableHead()) vì số ngày trong tháng thay
+        // đổi (28-31) nên không thể viết cố định trong HTML.
         function buildCctvTableHead() {
             let thead = document.getElementById("cctv-table-thead");
             if (!thead) return;
@@ -6848,6 +6907,9 @@
                 <th class="cctv-col-sticky cctv-col-1">Họ Tên</th>
                 <th class="cctv-col-sticky cctv-col-2">Chức Danh</th>
                 ${dayThs}
+                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'DP' trong kỳ (bản ghi cụ thể hoặc mặc định theo chức danh)">Công DP</th>
+                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'B1' trong kỳ">Công B1</th>
+                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'B2' trong kỳ (bản ghi cụ thể hoặc mặc định theo chức danh)">Công B2</th>
             </tr>`;
         }
 
@@ -6880,18 +6942,27 @@
             let editable = currentUserCanEditCrewChamCong && cctvDieuChinhMode && !cctvDaChot;
             tbody.innerHTML = crewFiltered.map(c => {
                 // Index của thuyền viên này trong cctvCrewList GỐC (chưa lọc) — dùng để chọn sẵn
-                // đúng người ở <select id="cctv-form-thuyenvien"> khi bấm vào 1 ô còn trống.
+                // đúng người ở <select id="cctv-form-thuyenvien"> khi bấm vào 1 ô còn trống, và để
+                // tra đúng dòng "cctvTongHop" tương ứng (server trả về CÙNG thứ tự với cctvCrewList).
                 let idxGoc = cctvCrewList.indexOf(c);
+                // [SỬA - BỎ MÃ CÔNG MẶC ĐỊNH] Ngày CHƯA có bản ghi cụ thể nào -> để TRỐNG (không
+                // còn tự hiện "DP"/"B2" theo chức danh nữa) — người dùng khi bật "Điều chỉnh" phải
+                // tự bấm vào ô và chọn đúng mã công cho ngày đó (VD nhân sự không làm việc ngày đó
+                // thì cứ để trống, không cần ghi gì).
                 let dayTds = (cctvDanhSachNgay || []).map(d => {
                     let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                     let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr);
-                    let maInfo = rec ? cctvDanhMuc.find(x => x.ma === rec.maLoaiCong) : null;
+                    let maHienThi = rec ? (rec.maLoaiCong || "") : "";
+                    let maInfo = cctvDanhMuc.find(x => x.ma === maHienThi);
                     let titleParts = [];
                     if (maInfo) titleParts.push(maInfo.ten);
+                    if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) titleParts.push("Phân loại DP: " + rec.loaiDP);
+                    if (!rec) titleParts.push("Chưa ghi nhận ngày công (ô trống)");
                     if (rec && rec.ghiChu) titleParts.push("Ghi chú: " + rec.ghiChu);
                     if (rec && (rec.nguoiCapNhat || rec.ngayCapNhat)) titleParts.push("Cập nhật: " + (rec.nguoiCapNhat || "") + " " + (rec.ngayCapNhat || ""));
                     if (editable) titleParts.push("Bấm để " + (rec ? "sửa" : "ghi nhận") + " ngày công");
                     let style = 'text-align:center; ' + (d.isWeekend ? 'background:#f8f9fa; ' : '') +
+                        (rec ? '' : 'color:#999; ') +
                         (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
                     let clickAttr = editable
                         ? ` onclick="clickCctvCell('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${ngayStr}',${idxGoc})"`
@@ -6899,49 +6970,71 @@
                     let fileIcon = (rec && rec.fileId)
                         ? ` <a href="#" onclick="event.stopPropagation(); taiFileChamCongThuyenVien('${escapeHtml(rec.fileId)}','${escapeHtml(rec.fileName || "").replace(/'/g, "\\'")}'); return false;" title="Xem file đính kèm: ${escapeHtml(rec.fileName || "")}"><i class="fa-solid fa-paperclip" style="font-size:10px;"></i></a>`
                         : "";
-                    return `<td style="${style}" title="${escapeHtml(titleParts.join(" — "))}"${clickAttr}><b>${escapeHtml(rec ? (rec.maLoaiCong || "") : "")}</b>${fileIcon}</td>`;
+                    // [MỚI - NÚT "XÓA" NGAY TRÊN Ô] Chỉ hiện khi đang "Điều chỉnh" VÀ ngày đó ĐÃ có
+                    // bản ghi cụ thể (không có gì để xóa ở ô còn trống) — cho phép xóa NGAY, không
+                    // cần mở form, dùng cho đúng trường hợp nhân sự không làm việc ngày đó nhưng lỡ
+                    // đã ghi nhận nhầm. Dùng LẠI hàm xoaChamCongThuyenVien() có sẵn (đã tự kiểm tra
+                    // quyền/kỳ chốt ở server), KHÔNG tạo action mới.
+                    let delIcon = (editable && rec)
+                        ? ` <a href="#" onclick="event.stopPropagation(); xoaChamCongThuyenVien('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${ngayStr}'); return false;" title="Xóa ngày công này"><i class="fa-solid fa-trash" style="font-size:10px; color:#d9534f;"></i></a>`
+                        : "";
+                    return `<td style="${style}" title="${escapeHtml(titleParts.join(" — "))}"${clickAttr}><b>${escapeHtml(maHienThi)}</b>${fileIcon}${delIcon}</td>`;
                 }).join("");
+                // [MỚI - CỘT "CÔNG DP"/"CÔNG B1"/"CÔNG B2"] Lấy từ "cctvTongHop" server đã tính sẵn
+                // (CÙNG thứ tự với cctvCrewList — tra đúng theo idxGoc); nếu vì lý do nào đó chưa
+                // có (VD tải dữ liệu cũ trước khi có tính năng này) thì hiện "0" an toàn, không lỗi.
+                let tongHopDong = cctvTongHop[idxGoc] || { congDP: 0, congB1: 0, congB2: 0 };
                 return `<tr>
                     <td class="cctv-col-sticky cctv-col-1" title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
                     <td class="cctv-col-sticky cctv-col-2" title="${escapeHtml(c.chucDanh || "")}">${escapeHtml(c.chucDanh || "")}</td>
                     ${dayTds}
+                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congDP}</td>
+                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congB1}</td>
+                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congB2}</td>
                 </tr>`;
             }).join("");
         }
 
-        // [MỚI] Bấm vào 1 Ô ngày trên bảng lưới: nếu ngày đó ĐÃ có ghi nhận công -> mở form ở
-        // đúng chế độ "Sửa" (prefill sẵn dữ liệu); nếu CHƯA có -> mở form ở chế độ "Thêm mới" với
-        // Thuyền viên + Ngày làm việc đã chọn sẵn theo đúng ô vừa bấm.
+        // [SỬA - BỎ MÃ CÔNG MẶC ĐỊNH] Bấm vào 1 Ô ngày trên bảng lưới: nếu ngày đó ĐÃ có ghi nhận
+        // công -> mở form ở đúng chế độ "Sửa" (prefill sẵn dữ liệu, có thêm nút "Xóa"); nếu CHƯA
+        // có -> mở form với Thuyền viên + Ngày làm việc đã chọn sẵn theo đúng ô vừa bấm nhưng "Mã
+        // loại công" để TRỐNG (không còn tự chọn sẵn "DP"/"B2" theo chức danh nữa) — người dùng tự
+        // chọn đúng mã công cần ghi nhận rồi lưu (vẫn tạo 1 bản ghi cụ thể như bình thường, xem
+        // action "saveChamCongThuyenVien").
         function clickCctvCell(hoTen, tau, ngayStr, crewIdxGoc) {
             if (!currentUserCanEditCrewChamCong || !cctvDieuChinhMode || cctvDaChot) return;
             let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr);
             if (rec) {
                 suaChamCongThuyenVien(hoTen, tau, ngayStr);
             } else {
-                moFormChamCongThuyenVien(crewIdxGoc, ngayStr);
+                moFormChamCongThuyenVien(crewIdxGoc, ngayStr, "");
             }
         }
 
-        // [SỬA] Thêm 2 tham số TÙY CHỌN (prefillCrewIdx/prefillNgay) để có thể mở form đã chọn
-        // sẵn đúng Thuyền viên + Ngày làm việc khi bấm vào 1 ô còn trống trên bảng lưới (xem
-        // clickCctvCell() ở trên) — gọi KHÔNG kèm tham số (như nút "Ghi nhận ngày công mới") vẫn
-        // hoạt động y hệt trước (mở form trống, chọn sẵn thuyền viên đầu danh sách).
-        function moFormChamCongThuyenVien(prefillCrewIdx, prefillNgay) {
+        // [SỬA - XÓA NÚT "GHI NHẬN NGÀY CÔNG MỚI"] Thêm tham số TÙY CHỌN thứ 3 (prefillMa) để có
+        // thể mở form đã chọn sẵn đúng Mã loại công MẶC ĐỊNH theo chức danh khi bấm vào 1 ô CHƯA
+        // có bản ghi cụ thể (xem clickCctvCell() ở trên) — vì bảng lưới giờ LUÔN hiện đủ mã công
+        // (mặc định hoặc đã ghi nhận) cho mọi ngày, không còn khái niệm ô "trống cần ghi nhận
+        // mới" nữa nên nút "Ghi nhận ngày công mới" (mở form KHÔNG kèm ô/ngày cụ thể) đã được bỏ;
+        // hàm này giờ CHỈ còn được gọi từ clickCctvCell()/suaChamCongThuyenVien() (luôn kèm đủ
+        // tham số) — không đổi hành vi lưu dữ liệu, vẫn dùng chung action "saveChamCongThuyenVien".
+        function moFormChamCongThuyenVien(prefillCrewIdx, prefillNgay, prefillMa) {
             if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
             let box = document.getElementById("cctv-form-box");
             if (!box) return;
             box.style.display = "block";
             document.getElementById("cctv-form-ngay").value = prefillNgay || "";
             document.getElementById("cctv-form-ghichu").value = "";
-            document.getElementById("cctv-form-file").value = "";
-            document.getElementById("cctv-form-file-current").textContent = "";
-            document.getElementById("cctv-form-maloaicong").value = "";
+            document.getElementById("cctv-form-maloaicong").value = prefillMa || "";
             document.getElementById("cctv-form-tenloaicong").value = "";
+            let selLoaiDP = document.getElementById("cctv-form-loaidp");
+            if (selLoaiDP) selLoaiDP.value = "";
             let selTv = document.getElementById("cctv-form-thuyenvien");
             if (selTv && selTv.options.length) {
                 selTv.value = (prefillCrewIdx !== undefined && prefillCrewIdx !== null) ? String(prefillCrewIdx) : "0";
                 if (selTv.selectedIndex < 0) selTv.selectedIndex = 0;
             }
+            onCctvMaLoaiCongChange();
             let btnXoa = document.getElementById("cctv-form-btn-xoa");
             if (btnXoa) btnXoa.style.display = "none";
             cctvDangSuaHoTen = null; cctvDangSuaTau = null; cctvDangSuaNgay = null;
@@ -6961,11 +7054,9 @@
             document.getElementById("cctv-form-ngay").value = rec.ngay;
             document.getElementById("cctv-form-maloaicong").value = rec.maLoaiCong;
             onCctvMaLoaiCongChange();
+            let selLoaiDP = document.getElementById("cctv-form-loaidp");
+            if (selLoaiDP) selLoaiDP.value = rec.loaiDP || "";
             document.getElementById("cctv-form-ghichu").value = rec.ghiChu || "";
-            if (rec.fileName) {
-                document.getElementById("cctv-form-file-current").textContent =
-                    "File hiện có: " + rec.fileName + " (chọn file mới bên trên nếu muốn thay thế)";
-            }
             cctvDangSuaHoTen = hoTen; cctvDangSuaTau = tau; cctvDangSuaNgay = ngay;
             // [MỚI - BẢNG DẠNG LƯỚI] Bảng lưới không còn hiện nút "Xóa" riêng cho từng dòng như
             // bảng cũ (mỗi ô ngày giờ dùng chung 1 lượt bấm để mở form Sửa) — nên hiện thêm nút
@@ -6992,15 +7083,6 @@
             dongFormChamCongThuyenVien();
         }
 
-        function fileToBase64ChamCongThuyenVien(file) {
-            return new Promise((resolve, reject) => {
-                let reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(",")[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
         async function luuChamCongThuyenVien() {
             let selThuyenVien = document.getElementById("cctv-form-thuyenvien");
             let crew = cctvCrewList[selThuyenVien.value];
@@ -7009,20 +7091,22 @@
             if (!ngay) { alert("Vui lòng chọn ngày làm việc."); return; }
             let ma = document.getElementById("cctv-form-maloaicong").value;
             if (!ma) { alert("Vui lòng chọn mã loại công."); return; }
+            let loaiDP = "";
+            if (String(ma).trim().toUpperCase() === "DP") {
+                loaiDP = (document.getElementById("cctv-form-loaidp") || {}).value || "";
+                if (!loaiDP) { alert("Mã công \"DP\" cần chọn thêm Phân loại DP (JDPO hoặc SDPO)."); return; }
+            }
             let ghiChu = document.getElementById("cctv-form-ghichu").value || "";
+            // [ĐÃ XÓA - MỤC "ĐÍNH KÈM FILE"] Form "Ghi nhận ngày công" không còn ô chọn file nữa
+            // (xem ghi chú ở khối HTML cctv-form-box) nên không còn đọc/gửi fileData lên nữa. Bản
+            // ghi nào ĐÃ có file đính kèm từ trước (fileId/fileName/fileUrl lưu sẵn ở Sheet) vẫn
+            // được server tự GIỮ NGUYÊN không đổi (xem action "saveChamCongThuyenVien" ở Code.gs —
+            // chỉ thay file khi có "data.fileData" gửi lên, nay luôn không có nên không đụng gì).
             let payload = {
                 action: "saveChamCongThuyenVien",
                 hoTen: crew.hoTen, tau: crew.tau, chucDanh: crew.chucDanh,
-                ngay: ngay, maLoaiCong: ma, ghiChu: ghiChu
+                ngay: ngay, maLoaiCong: ma, loaiDP: loaiDP, ghiChu: ghiChu
             };
-            let fileInput = document.getElementById("cctv-form-file");
-            if (fileInput.files && fileInput.files[0]) {
-                let file = fileInput.files[0];
-                if (file.size > 10 * 1024 * 1024) { alert("File đính kèm không được lớn hơn 10MB."); return; }
-                payload.fileData = await fileToBase64ChamCongThuyenVien(file);
-                payload.fileName = file.name;
-                payload.mimeType = file.type || "application/octet-stream";
-            }
             let res = await callServerAction(payload);
             if (!res || res.status === "ERROR") { alert("Lỗi lưu dữ liệu: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
             dongFormChamCongThuyenVien();
