@@ -1714,8 +1714,30 @@
                     Chấm Công của Văn phòng.
                 </p>
 
+                <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"] Trước đây
+                     chỉ có 2 nút "Tải dữ liệu" + "Ghi nhận ngày công mới", ai có quyền
+                     "SuaChamCongThuyenVien" cũng sửa/xóa được NGAY bất kỳ lúc nào. NAY đổi giống
+                     Tab "Bảng Chấm Công" của Văn phòng: nút "Tải dữ liệu" đổi tên thành
+                     "Tải / Tính lại" (CÙNG 1 hàm loadChamCongThuyenVienData(), không đổi gì cách
+                     tải); thêm "Chốt bảng chấm công" (khóa kỳ đang chọn — action MỚI
+                     "chotBangChamCongThuyenVien") / "Mở lại" (action MỚI
+                     "moLaiBangChamCongThuyenVien"); thêm "Điều chỉnh" (bật/tắt hiển thị nút
+                     Sửa/Xóa từng dòng + nút "Ghi nhận ngày công mới" — CHỈ xử lý ở FE, không gọi
+                     thêm action nào); thêm "Xuất bảng chấm công ra Excel" (chạy hoàn toàn ở trình
+                     duyệt bằng thư viện XLSX đã có sẵn, xuất RIÊNG 1 sheet cho MỖI tàu). Kỳ đã
+                     CHỐT thì ẩn nút "Điều chỉnh"/"Ghi nhận ngày công mới" + ẩn nút Sửa/Xóa từng
+                     dòng (Server luôn tự kiểm tra lại, không thể bị bỏ qua dù sửa giao diện) — xem
+                     capNhatNutChotDieuChinhCctv()/chotBangChamCongThuyenVien()/
+                     moLaiBangChamCongThuyenVien()/toggleChamCongThuyenVienDieuChinh()/
+                     exportChamCongThuyenVienToExcel() bên dưới. KHÔNG mất/đổi bất kỳ dữ liệu ngày
+                     công nào đã lưu, KHÔNG đổi quyền hạn (vẫn dùng chung
+                     "XemChamCongThuyenVien"/"SuaChamCongThuyenVien" như cũ). -->
                 <div class="admin-box" style="border-top: 4px solid var(--secondary-color);">
-                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                    <p style="margin:0 0 12px 0; font-size:12.5px; color:#555;">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Chọn kỳ chấm công (tháng/năm) để xem bảng chấm công của thuyền viên. Khi kỳ <b>chưa chốt</b>, hệ thống cho phép ghi nhận/sửa/xóa ngày công bình thường. Sau khi <b>chốt</b>, dữ liệu của kỳ đó được khóa lại — muốn ghi nhận/sửa/xóa thêm phải bấm "Mở lại" trước.
+                    </p>
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:12px;">
                         <div class="form-group" style="margin:0;">
                             <label>Kỳ chấm công (tháng/năm)</label>
                             <input type="month" id="cctv-period-input" style="padding:6px 8px;">
@@ -1726,25 +1748,67 @@
                                 <option value="">Tất cả các tàu</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary" onclick="loadChamCongThuyenVienData()"><i class="fa-solid fa-rotate"></i> Tải dữ liệu</button>
-                        <button class="btn btn-primary" id="cctv-btn-them" style="display:none;" onclick="moFormChamCongThuyenVien()"><i class="fa-solid fa-plus"></i> Ghi nhận ngày công mới</button>
                     </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <button class="btn btn-primary" style="width:100%;" onclick="loadChamCongThuyenVienData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
+                        <button class="btn btn-success" id="cctv-btn-chot" style="width:100%; display:none;" onclick="chotBangChamCongThuyenVien()"><i class="fa-solid fa-lock"></i> Chốt bảng chấm công</button>
+                        <button class="btn btn-danger" id="cctv-btn-mo-lai" style="width:100%; display:none;" onclick="moLaiBangChamCongThuyenVien()"><i class="fa-solid fa-lock-open"></i> Mở lại</button>
+                        <button class="btn btn-primary" id="cctv-btn-dieu-chinh" style="width:100%; display:none;" onclick="toggleChamCongThuyenVienDieuChinh()"><i class="fa-solid fa-sliders"></i> Điều chỉnh</button>
+                        <button class="btn btn-success" id="cctv-btn-them" style="width:100%; display:none;" onclick="moFormChamCongThuyenVien()"><i class="fa-solid fa-plus"></i> Ghi nhận ngày công mới</button>
+                        <button class="btn btn-success" style="width:100%;" onclick="exportChamCongThuyenVienToExcel()"><i class="fa-solid fa-file-export"></i> Xuất bảng chấm công ra Excel (theo từng tàu)</button>
+                    </div>
+                    <div id="cctv-status-badge" style="margin-top:10px; font-size:13px; font-weight:600;"></div>
                 </div>
 
-                <!-- [MỚI] Mục "Danh mục loại công" — bảng tra cứu nhanh toàn bộ mã công đang có
-                     (B1, B2, B3, B4, DP, N, N1, N2, D...) và tên loại công tương ứng. Dữ liệu lấy
-                     từ Sheet "DanhMucLoaiCongThuyenVien" (đã tải cùng loadChamCongThuyenVienData()),
-                     không gọi thêm action nào khác. -->
-                <div class="admin-box" style="border-top: 4px solid var(--primary-color); margin-top:16px;">
-                    <h3 style="margin-top:0;"><i class="fa-solid fa-list"></i> Danh mục loại công</h3>
-                    <div style="overflow-x:auto;">
-                        <table class="data-table" id="cctv-danhmuc-table" style="min-width:400px;">
-                            <thead><tr><th style="width:100px;">Mã công</th><th>Tên loại công</th></tr></thead>
-                            <tbody id="cctv-danhmuc-tbody">
-                                <tr><td colspan="2" style="text-align:center; color:#999;">Đang tải...</td></tr>
-                            </tbody>
-                        </table>
+                <!-- [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây chỉ là 1 bảng 2 cột (Mã công/Tên
+                     loại công) mang tính tra cứu, không thao tác được gì. NAY đổi thành 1 form
+                     ngắn gọn, giống HỆT mục "Danh mục loại công" ở Tab "Bảng Chấm Công" của Văn
+                     phòng: chọn "Mã công" (dữ liệu lấy nguyên từ cctvDanhMuc đã tải sẵn cùng
+                     loadChamCongThuyenVienData() — KHÔNG gọi thêm action nào, KHÔNG đổi gì cách
+                     đọc Sheet "DanhMucLoaiCongThuyenVien") -> "Tên loại công" tương ứng TỰ HIỆN
+                     RA (xem onCctvDmlcMaChange() bên dưới, thuần xử lý ở FE); có thể đính kèm 1
+                     file, chọn 1 hoặc nhiều "Người nhận" rồi bấm "Gửi file" để GỬI EMAIL NGAY kèm
+                     file cho từng người (action MỚI "guiFileDanhMucLoaiCongThuyenVien" ở Code.gs,
+                     TÁCH BIỆT hoàn toàn với action "guiFileDanhMucLoaiCong" của Văn phòng và với
+                     ngày công/thuyền viên cụ thể nào) — xem renderCctvDanhMucForm()/
+                     onCctvDmlcMaChange()/populateCctvDmlcNguoiNhanList()/submitCctvDmlcGuiFile()
+                     bên dưới. Không mất dữ liệu: Sheet "DanhMucLoaiCongThuyenVien" và toàn bộ
+                     logic đọc danh mục hiện có KHÔNG bị đụng tới; không đổi phân quyền: mục này
+                     vẫn dùng CHUNG điều kiện quyền XEM Bảng Chấm Công Thuyền Viên
+                     (canViewCrewChamCong = "XemChamCongThuyenVien" hoặc Admin) như cả Tab. -->
+                <div class="admin-box" style="border-left: 5px solid #2f6fed; background:#f5f8ff; margin-top:16px;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
+                    <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                        <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
+                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file, ghi chú (nếu cần) và chọn "Người nhận" để gửi ngay — người nhận sẽ nhận được qua email.
+                    </p>
+                    <div class="input-group">
+                        <label>Mã công</label>
+                        <select id="cctv-dmlc-ma-select" onchange="onCctvDmlcMaChange()">
+                            <option value="">-- Chọn mã công --</option>
+                        </select>
                     </div>
+                    <div class="input-group">
+                        <label>Tên loại công</label>
+                        <input type="text" id="cctv-dmlc-ten" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
+                    </div>
+                    <div class="input-group">
+                        <label>Đính kèm file</label>
+                        <input type="file" id="cctv-dmlc-file">
+                    </div>
+                    <div class="input-group">
+                        <label>Người nhận file <span style="color:#d9534f;">*</span></label>
+                        <div class="checkbox-dropdown-list" id="cctv-dmlc-recipient-list" style="max-height:140px;"></div>
+                    </div>
+                    <div class="input-group">
+                        <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — ghi thêm nội dung nếu cần thiết)</span></label>
+                        <textarea id="cctv-dmlc-ghichu" rows="2" maxlength="500" placeholder="Ghi chú thêm (nếu có)..." style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                    </div>
+                    <div id="cctv-dmlc-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
+                    <div id="cctv-dmlc-success" style="color:#2e7d32; font-size:13px; margin-bottom:10px; display:none;"></div>
+                    <button type="button" class="btn" style="width:auto;" onclick="submitCctvDmlcGuiFile()">
+                        <i class="fa-solid fa-paper-plane"></i> Gửi file
+                    </button>
                 </div>
 
                 <!-- [MỚI] Form thêm/sửa 1 ngày công thuyền viên -->
@@ -2962,6 +3026,13 @@
         let cctvCrewList = [];
         let cctvRecords = [];
         let cctvDanhMuc = [];
+        // [MỚI - "CHỐT BẢNG CHẤM CÔNG"/"ĐIỀU CHỈNH"] cctvDaChot = true khi kỳ đang chọn đã được
+        // chốt (khóa) — Server luôn tự kiểm tra lại (KHÔNG thể bị bỏ qua dù sửa giao diện), biến
+        // này CHỈ dùng để ẩn/hiện nút bấm cho gọn giao diện. cctvDieuChinhMode = true khi đang bật
+        // "Điều chỉnh" (hiện nút Sửa/Xóa từng dòng + nút "Ghi nhận ngày công mới") — CHỈ xử lý ở
+        // FE, không gọi thêm action nào, tự tắt khi tải lại dữ liệu/đổi kỳ đã chốt.
+        let cctvDaChot = false;
+        let cctvDieuChinhMode = false;
         let cctvDangSuaHoTen = null, cctvDangSuaTau = null, cctvDangSuaNgay = null;
         // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] true = tài khoản đang đăng nhập
         // KHÔNG có quyền "SuaChamCong" nhưng ĐÃ được người quản lý BẬT cờ cho phép tự điều chỉnh
@@ -6425,13 +6496,151 @@
             // [BẢO MẬT] Server luôn kiểm tra lại quyền ở MỌI action ghi dữ liệu — cờ "canEdit" trả
             // về đây chỉ dùng để ẩn/hiện nút bấm cho gọn giao diện, không phải là lớp bảo mật.
             currentUserCanEditCrewChamCong = !!res.canEdit;
+            // [MỚI - "CHỐT BẢNG CHẤM CÔNG"] Mỗi lần tải lại dữ liệu, đồng bộ lại đúng trạng thái
+            // khóa của kỳ đang chọn (Server luôn tự tính lại, không lưu trạng thái cũ ở FE).
+            cctvDaChot = !!res.daChot;
+            cctvDieuChinhMode = false;
             capNhatBoLocTauChamCongThuyenVien();
             capNhatDropdownThuyenVienChamCongThuyenVien();
             capNhatDropdownMaLoaiCongChamCongThuyenVien();
-            renderCctvDanhMucTable();
-            renderChamCongThuyenVienTable();
+            renderCctvDanhMucForm();
+            capNhatNutChotDieuChinhCctv();
+        }
+
+        // [MỚI - "CHỐT BẢNG CHẤM CÔNG"/"ĐIỀU CHỈNH"] Cập nhật hiện/ẩn các nút "Chốt bảng chấm
+        // công"/"Mở lại"/"Điều chỉnh"/"Ghi nhận ngày công mới" + badge trạng thái, theo ĐÚNG
+        // quyền hiện có (currentUserCanEditCrewChamCong) và trạng thái khóa của kỳ đang chọn
+        // (cctvDaChot) — CHỈ xử lý ở FE cho gọn giao diện, KHÔNG phải lớp bảo mật (Server luôn tự
+        // kiểm tra lại ở từng action ghi/xóa dữ liệu). Luôn vẽ lại bảng ở cuối để áp đúng
+        // cctvDieuChinhMode mới nhất vào cột "Sửa/Xóa".
+        function capNhatNutChotDieuChinhCctv() {
+            let thang = (document.getElementById("cctv-period-input") || {}).value || "";
+            let btnChot = document.getElementById("cctv-btn-chot");
+            let btnMoLai = document.getElementById("cctv-btn-mo-lai");
+            let btnDieuChinh = document.getElementById("cctv-btn-dieu-chinh");
             let btnThem = document.getElementById("cctv-btn-them");
-            if (btnThem) btnThem.style.display = currentUserCanEditCrewChamCong ? "inline-flex" : "none";
+            let badge = document.getElementById("cctv-status-badge");
+            let coTheThaoTac = currentUserCanEditCrewChamCong && !!thang;
+
+            if (btnChot) btnChot.style.display = (coTheThaoTac && !cctvDaChot) ? "inline-flex" : "none";
+            if (btnMoLai) btnMoLai.style.display = (coTheThaoTac && cctvDaChot) ? "inline-flex" : "none";
+            if (btnDieuChinh) {
+                btnDieuChinh.style.display = (coTheThaoTac && !cctvDaChot) ? "inline-flex" : "none";
+                btnDieuChinh.innerHTML = cctvDieuChinhMode
+                    ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
+                    : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
+            }
+            if (btnThem) btnThem.style.display = (coTheThaoTac && cctvDieuChinhMode) ? "inline-flex" : "none";
+            if (!cctvDieuChinhMode) dongFormChamCongThuyenVien();
+
+            if (badge) {
+                if (!thang) {
+                    badge.textContent = "";
+                } else if (cctvDaChot) {
+                    badge.innerHTML = '<i class="fa-solid fa-lock"></i> Đã chốt — dữ liệu được khóa, không thể ghi nhận/sửa/xóa thêm cho tới khi "Mở lại".';
+                    badge.style.color = "#2e7d32";
+                } else {
+                    badge.innerHTML = 'Đang tính (tự động cập nhật)';
+                    badge.style.color = "#b8860b";
+                }
+            }
+            renderChamCongThuyenVienTable();
+        }
+
+        // [MỚI - "ĐIỀU CHỈNH"] Bật/tắt chế độ cho phép sửa/xóa từng dòng + ghi nhận ngày công mới
+        // — giống hệt cơ chế nút "Điều chỉnh" của Bảng Chấm Công Văn phòng, CHỈ xử lý ở FE (ẩn/
+        // hiện nút bấm), KHÔNG gọi thêm action nào. Không cho bật khi kỳ đã chốt.
+        function toggleChamCongThuyenVienDieuChinh() {
+            if (!currentUserCanEditCrewChamCong || cctvDaChot) return;
+            cctvDieuChinhMode = !cctvDieuChinhMode;
+            capNhatNutChotDieuChinhCctv();
+        }
+
+        // [MỚI - "CHỐT BẢNG CHẤM CÔNG"] Khóa kỳ đang chọn (action MỚI
+        // "chotBangChamCongThuyenVien") — KHÔNG tính toán/ghi đè lại dữ liệu ngày công nào, chỉ
+        // lưu 1 dòng trạng thái ở Sheet riêng "ChotBangChamCongThuyenVien" (xem Code.gs).
+        async function chotBangChamCongThuyenVien() {
+            let thang = (document.getElementById("cctv-period-input") || {}).value || "";
+            if (!thang) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi chốt."); return; }
+            if (!confirm(`Chốt bảng chấm công thuyền viên kỳ "${thang}"?\n\nSau khi chốt sẽ KHÔNG thể ghi nhận/sửa/xóa ngày công của kỳ này nữa cho tới khi bấm "Mở lại".`)) return;
+            let res = await callServerAction({ action: "chotBangChamCongThuyenVien", thang: thang });
+            if (!res || res.status === "ERROR") { alert("Lỗi chốt bảng chấm công: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvDaChot = true;
+            cctvDieuChinhMode = false;
+            capNhatNutChotDieuChinhCctv();
+        }
+
+        // [MỚI - "MỞ LẠI"] Mở khóa lại kỳ đã chốt (action MỚI "moLaiBangChamCongThuyenVien") —
+        // KHÔNG xóa/đổi bất kỳ dữ liệu ngày công nào đã lưu.
+        async function moLaiBangChamCongThuyenVien() {
+            let thang = (document.getElementById("cctv-period-input") || {}).value || "";
+            if (!thang) return;
+            if (!confirm(`Mở lại bảng chấm công thuyền viên kỳ "${thang}"?`)) return;
+            let res = await callServerAction({ action: "moLaiBangChamCongThuyenVien", thang: thang });
+            if (!res || res.status === "ERROR") { alert("Lỗi mở lại bảng chấm công: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvDaChot = false;
+            capNhatNutChotDieuChinhCctv();
+        }
+
+        // [MỚI - "XUẤT EXCEL"] Xuất bảng chấm công thuyền viên ra file .xlsx — chạy hoàn toàn ở
+        // trình duyệt (thư viện SheetJS/XLSX đã có sẵn trong trang, giống hệt kỹ thuật đang dùng
+        // cho exportChamCongToExcel() của Văn phòng), CHỈ dùng dữ liệu cctvCrewList/cctvRecords đã
+        // tải theo đúng quyền hiện có — KHÔNG gọi thêm action nào tới server. Xuất RIÊNG 1 sheet
+        // cho MỖI tàu (theo yêu cầu "xuất theo từng tàu"): mỗi sheet có 1 dòng/thuyền viên, các
+        // cột là từng ngày trong kỳ đang chọn (giống cách trình bày dạng lưới của Văn phòng).
+        function exportChamCongThuyenVienToExcel() {
+            if (!currentUserCanViewCrewChamCong) { alert("⚠️ Bạn không có quyền xem/xuất Bảng Chấm Công Thuyền Viên. Liên hệ Admin để được cấp quyền."); return; }
+            if (typeof XLSX === "undefined") { alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại."); return; }
+            if (!cctvCrewList.length) { alert("Chưa có dữ liệu để xuất. Vui lòng chọn kỳ và bấm \"Tải / Tính lại\" trước."); return; }
+
+            let thang = (document.getElementById("cctv-period-input") || {}).value || "";
+            let ngayList = [];
+            let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
+            if (m) {
+                let nam = parseInt(m[1], 10), thangSo = parseInt(m[2], 10);
+                let soNgay = new Date(nam, thangSo, 0).getDate();
+                let thuTen = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+                for (let d = 1; d <= soNgay; d++) {
+                    ngayList.push({ ngay: d, thu: thuTen[new Date(nam, thangSo - 1, d).getDay()] });
+                }
+            }
+            if (!ngayList.length) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi xuất."); return; }
+
+            let taus = [...new Set(cctvCrewList.map(c => c.tau || "(Chưa rõ tàu)"))].sort();
+            let wb = XLSX.utils.book_new();
+            taus.forEach(tau => {
+                let crewOfTau = cctvCrewList.filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
+                let headerThuRow = ["", ""];
+                let headerNgayRow = ["Họ và tên", "Chức vụ"];
+                ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
+                headerNgayRow.push("Ghi chú");
+                let aoa = [headerThuRow, headerNgayRow];
+                crewOfTau.forEach(c => {
+                    let row = [c.hoTen, c.chucDanh || ""];
+                    let ghiChuList = [];
+                    ngayList.forEach(d => {
+                        let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                        let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr);
+                        row.push(rec ? (rec.maLoaiCong || "") : "");
+                        if (rec && rec.ghiChu) ghiChuList.push("Ngày " + d.ngay + ": " + rec.ghiChu);
+                    });
+                    row.push(ghiChuList.join("; "));
+                    aoa.push(row);
+                });
+                let ws = XLSX.utils.aoa_to_sheet(aoa);
+                let cols = [{ wch: 24 }, { wch: 16 }];
+                ngayList.forEach(() => cols.push({ wch: 6 }));
+                cols.push({ wch: 30 });
+                ws['!cols'] = cols;
+                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
+                ws['!freeze'] = { xSplit: 2, ySplit: 2 };
+                // Tên sheet tối đa 31 ký tự, không chứa ký tự đặc biệt Excel không cho phép.
+                let sheetName = String(tau).replace(/[\[\]\*\/\\\?:]/g, "_").substring(0, 31) || "Tau";
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+            });
+
+            let fileName = "BangChamCongThuyenVien_" + (thang || "KyChamCong") + ".xlsx";
+            XLSX.writeFile(wb, fileName);
         }
 
         function capNhatBoLocTauChamCongThuyenVien() {
@@ -6477,18 +6686,114 @@
             tenInput.value = dong ? (dong.ten || "") : "";
         }
 
-        // [MỚI] Mục "Danh mục loại công" — bảng tra cứu nhanh (chỉ hiển thị, không cần thao tác)
-        // toàn bộ mã công + tên loại công tương ứng, lấy từ dữ liệu đã tải sẵn (cctvDanhMuc).
-        function renderCctvDanhMucTable() {
-            let tbody = document.getElementById("cctv-danhmuc-tbody");
-            if (!tbody) return;
+        // [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây vẽ thành 1 bảng tra cứu chỉ đọc
+        // (renderCctvDanhMucTable, ĐÃ THAY THẾ). Nay chỉ cần đổ danh sách "Mã công" vào
+        // <select id="cctv-dmlc-ma-select"> — "Tên loại công" tương ứng được lấy lại từ ĐÚNG
+        // cctvDanhMuc đã tải sẵn (KHÔNG gọi thêm action nào) mỗi khi người dùng đổi lựa chọn,
+        // xem onCctvDmlcMaChange() bên dưới. Đồng thời tải sẵn danh sách "Người nhận file"
+        // (action RIÊNG "getChamCongThuyenVienNguoiNhanList", TÁCH BIỆT với danh sách "Người
+        // nhận" của Bảng Chấm Công Văn phòng).
+        function renderCctvDanhMucForm() {
+            let sel = document.getElementById("cctv-dmlc-ma-select");
+            if (!sel) return;
+            let cur = sel.value;
             if (!cctvDanhMuc.length) {
-                tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:#999;">Chưa có dữ liệu danh mục loại công.</td></tr>';
+                sel.innerHTML = '<option value="">-- Chưa có dữ liệu danh mục loại công --</option>';
+            } else {
+                sel.innerHTML = '<option value="">-- Chọn mã công --</option>' +
+                    cctvDanhMuc.map(d => `<option value="${escapeHtml(d.ma)}">${escapeHtml(d.ma)}</option>`).join("");
+            }
+            sel.value = cctvDanhMuc.some(d => d.ma === cur) ? cur : "";
+            onCctvDmlcMaChange();
+            populateCctvDmlcNguoiNhanList();
+        }
+
+        // [MỚI] Khi người dùng chọn 1 "Mã công" ở <select id="cctv-dmlc-ma-select">, tự hiện
+        // "Tên loại công" tương ứng ở ô chỉ đọc <input id="cctv-dmlc-ten"> — tra thẳng trong
+        // cctvDanhMuc đã tải sẵn, không gọi thêm action nào tới server.
+        function onCctvDmlcMaChange() {
+            let sel = document.getElementById("cctv-dmlc-ma-select");
+            let tenInput = document.getElementById("cctv-dmlc-ten");
+            if (!sel || !tenInput) return;
+            let maChon = String(sel.value || "").trim().toUpperCase();
+            let dong = (cctvDanhMuc || []).find(d => String(d.ma || "").trim().toUpperCase() === maChon);
+            tenInput.value = dong ? (dong.ten || "") : "";
+        }
+
+        // [MỚI - MỤC "NGƯỜI NHẬN FILE"] Đổ danh sách username vào khối checkbox nhiều lựa chọn
+        // "cctv-dmlc-recipient-list" — dùng action RIÊNG "getChamCongThuyenVienNguoiNhanList"
+        // (quyền "XemChamCongThuyenVien" hoặc Admin), TÁCH BIỆT hoàn toàn với danh sách "Người
+        // nhận" của Bảng Chấm Công Văn phòng (populateChamCongNguoiNhanList/
+        // "getChamCongNguoiNhanList", quyền "XemChamCong").
+        let cctvNguoiNhanUsernames = [];
+        async function populateCctvDmlcNguoiNhanList() {
+            let box = document.getElementById("cctv-dmlc-recipient-list");
+            if (!box) return;
+            if (!cctvNguoiNhanUsernames.length) {
+                let result = await callServerAction({ action: "getChamCongThuyenVienNguoiNhanList" });
+                if (result && result.status === "SUCCESS") cctvNguoiNhanUsernames = result.usernames || [];
+            }
+            box.innerHTML = cctvNguoiNhanUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}"> ${escapeHtml(u)}</label>`
+            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
+        }
+
+        // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" (THUYỀN VIÊN) - GỬI FILE] Đọc file đính kèm thành
+        // base64 (CÙNG kỹ thuật/giới hạn dung lượng đang dùng cho mục tương ứng của Văn phòng),
+        // gửi lên action MỚI "guiFileDanhMucLoaiCongThuyenVien" — server tự upload lên Drive
+        // (riêng tư) + gửi email NGAY tới từng "Người nhận" đã chọn, không liên quan tới ngày
+        // công/thuyền viên cụ thể nào, TÁCH BIỆT hoàn toàn với "guiFileDanhMucLoaiCong" của Văn
+        // phòng.
+        async function submitCctvDmlcGuiFile() {
+            let err = document.getElementById("cctv-dmlc-error");
+            let ok = document.getElementById("cctv-dmlc-success");
+            if (err) err.style.display = "none";
+            if (ok) ok.style.display = "none";
+
+            let maChon = document.getElementById("cctv-dmlc-ma-select").value;
+            if (!maChon) {
+                if (err) { err.innerText = "Vui lòng chọn \"Mã công\"."; err.style.display = "block"; }
                 return;
             }
-            tbody.innerHTML = cctvDanhMuc.map(d =>
-                `<tr><td><b>${escapeHtml(d.ma)}</b></td><td>${escapeHtml(d.ten || "")}</td></tr>`
-            ).join("");
+            let fileInput = document.getElementById("cctv-dmlc-file");
+            let fileChon = fileInput && fileInput.files && fileInput.files[0];
+            if (!fileChon) {
+                if (err) { err.innerText = "Vui lòng chọn file đính kèm."; err.style.display = "block"; }
+                return;
+            }
+            if (fileChon.size > 15 * 1024 * 1024) {
+                if (err) { err.innerText = "File quá lớn (giới hạn 15MB)."; err.style.display = "block"; }
+                return;
+            }
+            let nguoiNhan = Array.from(document.querySelectorAll("#cctv-dmlc-recipient-list input:checked")).map(i => i.value);
+            if (!nguoiNhan.length) {
+                if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\"."; err.style.display = "block"; }
+                return;
+            }
+            let ghiChuInput = document.getElementById("cctv-dmlc-ghichu");
+            let ghiChu = ghiChuInput ? ghiChuInput.value.trim() : "";
+
+            let base64Data = await new Promise((resolve, reject) => {
+                let reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(",")[1]);
+                reader.onerror = () => reject(new Error("Không thể đọc file."));
+                reader.readAsDataURL(fileChon);
+            }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return null; });
+            if (base64Data === null) return;
+
+            let result = await callServerAction({
+                action: "guiFileDanhMucLoaiCongThuyenVien", ma: maChon,
+                fileName: fileChon.name, mimeType: fileChon.type || "application/octet-stream",
+                fileData: base64Data, nguoiNhan: nguoiNhan, ghiChu: ghiChu
+            });
+            if (result && result.status === "SUCCESS") {
+                if (ok) { ok.innerText = "Đã gửi file thành công tới " + (result.daGui || 0) + "/" + (result.tongSo || nguoiNhan.length) + " người nhận."; ok.style.display = "block"; }
+                if (fileInput) fileInput.value = "";
+                if (ghiChuInput) ghiChuInput.value = "";
+            } else if (err) {
+                err.innerText = (result && result.message) || "Không thể gửi file.";
+                err.style.display = "block";
+            }
         }
 
         function renderChamCongThuyenVienTable() {
@@ -6506,7 +6811,7 @@
                 let fileHtml = r.fileId
                     ? `<a href="#" onclick="taiFileChamCongThuyenVien('${escapeHtml(r.fileId)}','${escapeHtml(r.fileName || "").replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "")}</a>`
                     : "";
-                let actionsHtml = currentUserCanEditCrewChamCong
+                let actionsHtml = (currentUserCanEditCrewChamCong && cctvDieuChinhMode && !cctvDaChot)
                     ? `<button class="btn btn-sm" onclick="suaChamCongThuyenVien('${escapeHtml(r.hoTen).replace(/'/g, "\\'")}','${escapeHtml(r.tau || "").replace(/'/g, "\\'")}','${r.ngay}')" title="Sửa"><i class="fa-solid fa-pen"></i></button>
                        <button class="btn btn-sm btn-danger" style="width:auto;" onclick="xoaChamCongThuyenVien('${escapeHtml(r.hoTen).replace(/'/g, "\\'")}','${escapeHtml(r.tau || "").replace(/'/g, "\\'")}','${r.ngay}')" title="Xóa"><i class="fa-solid fa-trash"></i></button>`
                     : "";
@@ -6525,6 +6830,7 @@
         }
 
         function moFormChamCongThuyenVien() {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
             let box = document.getElementById("cctv-form-box");
             if (!box) return;
             box.style.display = "block";
@@ -6561,6 +6867,7 @@
         }
 
         async function xoaChamCongThuyenVien(hoTen, tau, ngay) {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi xóa ngày công."); return; }
             if (!confirm(`Xóa ngày công ${ngay} của "${hoTen}"?`)) return;
             let res = await callServerAction({ action: "deleteChamCongThuyenVien", hoTen: hoTen, tau: tau, ngay: ngay });
             if (!res || res.status === "ERROR") { alert("Lỗi: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
