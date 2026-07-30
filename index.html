@@ -567,6 +567,11 @@
                     <li class="menu-item" id="menu-add-person" onclick="switchPage('add-person')"><i class="fa-solid fa-user-plus"></i> Thêm Nhân Sự Mới</li>
                     <li class="menu-item" id="menu-lichlamviec" onclick="switchPage('lichlamviec')"><i class="fa-solid fa-calendar-week"></i> Lịch Làm Việc Công Ty</li>
                     <li class="menu-item" id="menu-chamcong" style="display:none;" onclick="switchPage('chamcong')"><i class="fa-solid fa-clipboard-check"></i> Bảng Chấm Công</li>
+                    <!-- [MỚI - DI CHUYỂN VỊ TRÍ] Tab "Bảng Chấm Công Thuyền Viên" chuyển lên nằm NGAY DƯỚI Tab
+                         "Bảng Chấm Công" (chỉ đổi thứ tự hiển thị trong menu, không đổi id/action/quyền hạn gì —
+                         xem đầy đủ phần khai báo/logic gốc của mục này ở vị trí cũ bên dưới, đã được xóa khỏi đó
+                         để tránh trùng lặp). -->
+                    <li class="menu-item" id="menu-chamcongthuyenvien" style="display:none;" onclick="switchPage('chamcongthuyenvien')"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</li>
                     <li class="menu-item" id="menu-contacts" onclick="switchPage('contacts')"><i class="fa-solid fa-address-book"></i> Danh bạ CBCNV</li>
                     <!-- [ĐÃ ẨN THEO YÊU CẦU] Mục menu "Chữ Ký Số" được gỡ khỏi sidebar giao diện
                          chính. Toàn bộ dữ liệu (signatureData, signatureUsernames), logic phân
@@ -593,10 +598,6 @@
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
-                    <!-- [MỚI] Tab "Bảng Chấm Công Thuyền Viên" — mặc định ẩn (display:none), chỉ
-                         hiện cho tài khoản có quyền "XemChamCongThuyenVien" (hoặc Admin), giống
-                         hệt cơ chế của "menu-chamcong" ở trên. -->
-                    <li class="menu-item" id="menu-chamcongthuyenvien" style="display:none;" onclick="switchPage('chamcongthuyenvien')"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
                     <li class="menu-item" id="menu-admin" onclick="switchPage('admin')"><i class="fa-solid fa-sliders"></i> ⚙️ Cài đặt hệ thống (Admin)</li>
@@ -1885,6 +1886,39 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - "CHỌN NHIỀU Ô" ĐỂ GHI NHẬN/XÓA HÀNG LOẠT] Thanh công cụ nổi, CHỈ hiện khi
+                     đang bật "Điều chỉnh" VÀ có ít nhất 1 ô đã được tick chọn trên bảng lưới (xem
+                     cctvOChonMap, toggleCctvOChon() bên dưới) — cho phép chọn 1 "Mã công" rồi bấm
+                     "Áp dụng" để ghi nhận/sửa NGAY LẬP TỨC cho TẤT CẢ các ô đã chọn (dùng action MỚI
+                     "saveChamCongThuyenVienBulk"), hoặc bấm "Xóa các ô đã chọn" để xóa hàng loạt
+                     (action MỚI "deleteChamCongThuyenVienBulk") — thay vì phải lưu/xóa từng ô một. -->
+                <div id="cctv-bulk-toolbar" class="admin-box" style="display:none; position:sticky; bottom:10px; z-index:5; border-left:5px solid #2f6fed; background:#eef4ff; box-shadow:0 2px 10px rgba(0,0,0,0.15); margin-top:16px;">
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="font-weight:600; color:#2f6fed;"><i class="fa-solid fa-square-check"></i> Đã chọn <span id="cctv-bulk-count">0</span> ô</div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Mã công áp dụng</label>
+                            <select id="cctv-bulk-maloaicong" class="search-box" style="min-width:140px;" onchange="onCctvBulkMaLoaiCongChange()">
+                                <option value="">-- Chọn mã công --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="cctv-bulk-loaidp-group" style="margin:0; display:none;">
+                            <label>Phân loại DP <span style="color:#d9534f;">*</span></label>
+                            <select id="cctv-bulk-loaidp" class="search-box" style="max-width:180px;">
+                                <option value="">-- Chọn phân loại --</option>
+                                <option value="JDPO">JDPO (Junior DPO)</option>
+                                <option value="SDPO">SDPO (Senior DPO)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex:1; min-width:200px;">
+                            <label>Ghi chú (áp dụng chung, không bắt buộc)</label>
+                            <input type="text" id="cctv-bulk-ghichu" class="search-box" maxlength="500" placeholder="Ghi chú thêm (nếu có)">
+                        </div>
+                        <button class="btn btn-success" style="width:auto;" onclick="apDungMaCongHangLoatCctv()"><i class="fa-solid fa-check-double"></i> Áp dụng</button>
+                        <button class="btn btn-danger" style="width:auto;" onclick="xoaHangLoatCctv()"><i class="fa-solid fa-trash"></i> Xóa các ô đã chọn</button>
+                        <button class="btn" style="width:auto;" onclick="boChonTatCctv()"><i class="fa-solid fa-xmark"></i> Bỏ chọn</button>
+                    </div>
+                </div>
+
                 <!-- [SỬA - BẢNG DẠNG LƯỚI THEO NGÀY] Trước đây bảng này liệt kê TỪNG DÒNG là 1
                      bản ghi ngày công đã lưu (Họ và tên/Chức vụ/Tàu/Ngày làm việc/Mã loại
                      công/Ghi chú/File đính kèm/Cập nhật) — nên khi kỳ CHƯA có bản ghi nào, bảng
@@ -3085,6 +3119,15 @@
         let cctvDaChot = false;
         let cctvDieuChinhMode = false;
         let cctvDangSuaHoTen = null, cctvDangSuaTau = null, cctvDangSuaNgay = null;
+        // [MỚI - "CHỌN NHIỀU Ô" ĐỂ GHI NHẬN/XÓA HÀNG LOẠT] Tập hợp các ô ngày công ĐANG được tick
+        // chọn trên bảng lưới (chỉ hoạt động khi đang bật "Điều chỉnh" — cctvDieuChinhMode). Mỗi
+        // phần tử là 1 object { hoTen, tau, chucDanh, ngay } — key duy nhất dùng để tick/bỏ tick
+        // là "hoTen|tau|ngay" (giống hệt khóa duy nhất của Sheet "BangChamCongThuyenVien"). Dùng 1
+        // Map (thay vì Set chuỗi) để vẫn giữ đủ thông tin cần gửi lên server khi bấm "Áp dụng"/
+        // "Xóa các ô đã chọn" (xem capNhatThanhCongCuChonNhieuCctv(), apDungMaCongHangLoatCctv(),
+        // xoaHangLoatCctv() bên dưới).
+        let cctvOChonMap = new Map();
+        function cctvOChonKey(hoTen, tau, ngay) { return hoTen + "|" + (tau || "") + "|" + ngay; }
         // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] true = tài khoản đang đăng nhập
         // KHÔNG có quyền "SuaChamCong" nhưng ĐÃ được người quản lý BẬT cờ cho phép tự điều chỉnh
         // ĐÚNG dòng của chính mình (xem action "toggleTuDieuChinhChamCong"/"getChamCongData" ở
@@ -6553,6 +6596,7 @@
             // khóa của kỳ đang chọn (Server luôn tự tính lại, không lưu trạng thái cũ ở FE).
             cctvDaChot = !!res.daChot;
             cctvDieuChinhMode = false;
+            cctvOChonMap.clear();
             capNhatBoLocTauChamCongThuyenVien();
             capNhatDropdownThuyenVienChamCongThuyenVien();
             capNhatDropdownMaLoaiCongChamCongThuyenVien();
@@ -6596,6 +6640,7 @@
                 }
             }
             renderChamCongThuyenVienTable();
+            capNhatThanhCongCuChonNhieuCctv();
         }
 
         // [MỚI - "ĐIỀU CHỈNH"] Bật/tắt chế độ cho phép sửa/xóa từng dòng + ghi nhận ngày công mới
@@ -6604,6 +6649,7 @@
         function toggleChamCongThuyenVienDieuChinh() {
             if (!currentUserCanEditCrewChamCong || cctvDaChot) return;
             cctvDieuChinhMode = !cctvDieuChinhMode;
+            if (!cctvDieuChinhMode) cctvOChonMap.clear();
             capNhatNutChotDieuChinhCctv();
         }
 
@@ -6664,8 +6710,8 @@
                 let headerThuRow = ["", ""];
                 let headerNgayRow = ["Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
-                headerThuRow.push("", "", "");
-                headerNgayRow.push("Công DP", "Công B1", "Công B2");
+                (cctvDanhMuc || []).forEach(() => headerThuRow.push(""));
+                headerNgayRow.push(...(cctvDanhMuc || []).map(dm => "Ngày công " + dm.ma));
                 headerNgayRow.push("Ghi chú");
                 let aoa = [headerThuRow, headerNgayRow];
                 crewOfTau.forEach(c => {
@@ -6680,15 +6726,16 @@
                         row.push(maHienThi);
                         if (rec && rec.ghiChu) ghiChuList.push("Ngày " + d.ngay + ": " + rec.ghiChu);
                     });
-                    let tongHopDong = cctvTongHop[idxGoc] || { congDP: 0, congB1: 0, congB2: 0 };
-                    row.push(tongHopDong.congDP, tongHopDong.congB1, tongHopDong.congB2);
+                    let tongHopDong = cctvTongHop[idxGoc] || {};
+                    row.push(...(cctvDanhMuc || []).map(dm => tongHopDong[dm.ma] || 0));
                     row.push(ghiChuList.join("; "));
                     aoa.push(row);
                 });
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
                 let cols = [{ wch: 24 }, { wch: 16 }];
                 ngayList.forEach(() => cols.push({ wch: 6 }));
-                cols.push({ wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 30 });
+                (cctvDanhMuc || []).forEach(() => cols.push({ wch: 10 }));
+                cols.push({ wch: 30 });
                 ws['!cols'] = cols;
                 ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
                 ws['!freeze'] = { xSplit: 2, ySplit: 2 };
@@ -6885,31 +6932,35 @@
             return CCTV_CHUCDANH_MAC_DINH_DP.includes(cd) ? "DP" : "B2";
         }
 
-        // Tổng số cột của bảng lưới (2 cột cố định "Họ Tên"/"Chức Danh" + 1 cột/ngày trong kỳ +
-        // 3 cột tổng hợp cuối bảng "Công DP"/"Công B1"/"Công B2") — dùng cho thuộc tính colspan
-        // của các dòng thông báo (VD "Không có dữ liệu...").
+        // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (2 cột cố định "Họ Tên"/"Chức
+        // Danh" + 1 cột/ngày trong kỳ + 1 cột tổng hợp CHO MỖI mã công đang có trong danh mục
+        // "cctvDanhMuc" — trước đây cố định 3 cột "Công DP"/"Công B1"/"Công B2", nay tự thay đổi
+        // theo đúng danh mục loại công thực tế) — dùng cho thuộc tính colspan của các dòng thông
+        // báo (VD "Không có dữ liệu...").
         function cctvTongSoCot() {
-            return 2 + (cctvDanhSachNgay || []).length + 3;
+            return 2 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
         }
 
-        // Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1 cột cho MỖI ngày trong kỳ
-        // đang chọn (hiện số ngày + Thứ, VD "5\nT4") + 3 cột tổng hợp cuối bảng "Công DP"/"Công
-        // B1"/"Công B2" (MỚI — xem renderChamCongThuyenVienTable()) — giống HỆT cách làm của Tab
-        // "Bảng Chấm Công" Văn phòng (xem buildChamCongTableHead()) vì số ngày trong tháng thay
-        // đổi (28-31) nên không thể viết cố định trong HTML.
+        // [SỬA - CỘT TỔNG HỢP ĐỘNG] Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1
+        // cột cho MỖI ngày trong kỳ đang chọn (hiện số ngày + Thứ, VD "5\nT4") + 1 cột tổng hợp
+        // "Ngày công {Mã}" CHO MỖI mã công đang có trong "cctvDanhMuc" (VD "Ngày công B1", "Ngày
+        // công B3"...) — thay cho 3 cột cố định "Công DP"/"Công B1"/"Công B2" trước đây. Danh mục
+        // càng có nhiều/ít mã công thì bảng càng tự có thêm/bớt cột tương ứng, không cần sửa code
+        // (xem renderChamCongThuyenVienTable() bên dưới).
         function buildCctvTableHead() {
             let thead = document.getElementById("cctv-table-thead");
             if (!thead) return;
             let dayThs = (cctvDanhSachNgay || []).map(d =>
                 `<th style="min-width:34px; padding:4px 2px; ${d.isWeekend ? 'background:#f1f2f4;' : ''}" title="${d.isWeekend ? 'Cuối tuần' : 'Ngày làm việc'}">${d.ngay}<br><span style="font-weight:400; font-size:10px;">${escapeHtml(d.thu)}</span></th>`
             ).join("");
+            let tongHopThs = (cctvDanhMuc || []).map(dm =>
+                `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
+            ).join("");
             thead.innerHTML = `<tr>
                 <th class="cctv-col-sticky cctv-col-1">Họ Tên</th>
                 <th class="cctv-col-sticky cctv-col-2">Chức Danh</th>
                 ${dayThs}
-                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'DP' trong kỳ (bản ghi cụ thể hoặc mặc định theo chức danh)">Công DP</th>
-                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'B1' trong kỳ">Công B1</th>
-                <th style="min-width:60px; background:#eef4ff;" title="Tổng số ngày công 'B2' trong kỳ (bản ghi cụ thể hoặc mặc định theo chức danh)">Công B2</th>
+                ${tongHopThs}
             </tr>`;
         }
 
@@ -6978,21 +7029,123 @@
                     let delIcon = (editable && rec)
                         ? ` <a href="#" onclick="event.stopPropagation(); xoaChamCongThuyenVien('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${ngayStr}'); return false;" title="Xóa ngày công này"><i class="fa-solid fa-trash" style="font-size:10px; color:#d9534f;"></i></a>`
                         : "";
-                    return `<td style="${style}" title="${escapeHtml(titleParts.join(" — "))}"${clickAttr}><b>${escapeHtml(maHienThi)}</b>${fileIcon}${delIcon}</td>`;
+                    // [MỚI - "CHỌN NHIỀU Ô"] Chỉ hiện khi đang "Điều chỉnh" — 1 ô tick nhỏ ở góc,
+                    // bấm vào ô tick KHÔNG mở form (event.stopPropagation) mà chỉ đánh dấu chọn/bỏ
+                    // chọn ô này để sau đó áp dụng/xóa hàng loạt (xem toggleCctvOChon() bên dưới).
+                    let ochonKey = cctvOChonKey(c.hoTen, c.tau || "", ngayStr);
+                    let dangChon = cctvOChonMap.has(ochonKey);
+                    let checkboxHtml = editable
+                        ? ` <input type="checkbox" class="cctv-ochon-checkbox" ${dangChon ? "checked" : ""} style="position:absolute; top:1px; left:1px; width:12px; height:12px; cursor:pointer;"
+                              onclick="event.stopPropagation(); toggleCctvOChon('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}','${ngayStr}', this.checked)">`
+                        : "";
+                    let tdStyle = (editable ? 'position:relative; ' : '') + style + (dangChon ? ' outline:2px solid #2f6fed; background:#e3edff;' : '');
+                    return `<td style="${tdStyle}" title="${escapeHtml(titleParts.join(" — "))}"${clickAttr}>${checkboxHtml}<b>${escapeHtml(maHienThi)}</b>${fileIcon}${delIcon}</td>`;
                 }).join("");
-                // [MỚI - CỘT "CÔNG DP"/"CÔNG B1"/"CÔNG B2"] Lấy từ "cctvTongHop" server đã tính sẵn
-                // (CÙNG thứ tự với cctvCrewList — tra đúng theo idxGoc); nếu vì lý do nào đó chưa
-                // có (VD tải dữ liệu cũ trước khi có tính năng này) thì hiện "0" an toàn, không lỗi.
-                let tongHopDong = cctvTongHop[idxGoc] || { congDP: 0, congB1: 0, congB2: 0 };
+                // [SỬA - CỘT TỔNG HỢP ĐỘNG] Lấy từ "cctvTongHop" server đã tính sẵn (CÙNG thứ tự
+                // với cctvCrewList — tra đúng theo idxGoc), hiện 1 cột CHO MỖI mã công đang có
+                // trong "cctvDanhMuc"; nếu chưa có dữ liệu (VD tải dữ liệu cũ) thì hiện "0" an
+                // toàn, không lỗi.
+                let tongHopDong = cctvTongHop[idxGoc] || {};
+                let tongHopTds = (cctvDanhMuc || []).map(dm =>
+                    `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong[dm.ma] || 0}</td>`
+                ).join("");
                 return `<tr>
                     <td class="cctv-col-sticky cctv-col-1" title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
                     <td class="cctv-col-sticky cctv-col-2" title="${escapeHtml(c.chucDanh || "")}">${escapeHtml(c.chucDanh || "")}</td>
                     ${dayTds}
-                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congDP}</td>
-                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congB1}</td>
-                    <td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong.congB2}</td>
+                    ${tongHopTds}
                 </tr>`;
             }).join("");
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Tick/bỏ tick 1 ô ngày công vào tập hợp "cctvOChonMap" — chỉ thay
+        // đổi trạng thái chọn (KHÔNG gọi action nào tới server), rồi vẽ lại thanh công cụ nổi +
+        // (nếu cần) đánh dấu lại đúng viền/nền của ô đó trên bảng lưới. Có thể chọn CÙNG LÚC nhiều
+        // ô của NHIỀU thuyền viên khác nhau — không giới hạn trong 1 dòng/1 tàu.
+        function toggleCctvOChon(hoTen, tau, chucDanh, ngay, dangChon) {
+            let key = cctvOChonKey(hoTen, tau, ngay);
+            if (dangChon) {
+                cctvOChonMap.set(key, { hoTen: hoTen, tau: tau, chucDanh: chucDanh, ngay: ngay });
+            } else {
+                cctvOChonMap.delete(key);
+            }
+            capNhatThanhCongCuChonNhieuCctv();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Bỏ chọn TẤT CẢ các ô đang chọn — vẽ lại bảng để bỏ luôn viền/nền
+        // đánh dấu trên từng ô.
+        function boChonTatCctv() {
+            cctvOChonMap.clear();
+            renderChamCongThuyenVienTable();
+            capNhatThanhCongCuChonNhieuCctv();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Hiện/ẩn thanh công cụ nổi + cập nhật số ô đang chọn + đổ danh
+        // sách "Mã công" vào <select id="cctv-bulk-maloaicong"> (dùng LẠI đúng "cctvDanhMuc" đã
+        // tải sẵn, giống hệt cách làm với dropdown mã công của form sửa từng ô).
+        function capNhatThanhCongCuChonNhieuCctv() {
+            let box = document.getElementById("cctv-bulk-toolbar");
+            if (!box) return;
+            let soLuong = cctvOChonMap.size;
+            box.style.display = (cctvDieuChinhMode && soLuong > 0) ? "block" : "none";
+            let countEl = document.getElementById("cctv-bulk-count");
+            if (countEl) countEl.textContent = String(soLuong);
+            let sel = document.getElementById("cctv-bulk-maloaicong");
+            if (sel) {
+                let cur = sel.value;
+                sel.innerHTML = '<option value="">-- Chọn mã công --</option>' +
+                    (cctvDanhMuc || []).map(d => `<option value="${escapeHtml(d.ma)}">${escapeHtml(d.ma)}</option>`).join("");
+                sel.value = (cctvDanhMuc || []).some(d => d.ma === cur) ? cur : "";
+            }
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Khi chọn "Mã công" ở thanh công cụ nổi — nếu chọn đúng mã "DP",
+        // hiện thêm ô bắt buộc "Phân loại DP" (JDPO/SDPO), ẩn với mọi mã công khác. Server luôn
+        // kiểm tra lại bắt buộc chọn khi lưu hàng loạt (action "saveChamCongThuyenVienBulk"),
+        // không thể bị bỏ qua dù sửa giao diện.
+        function onCctvBulkMaLoaiCongChange() {
+            let sel = document.getElementById("cctv-bulk-maloaicong");
+            let group = document.getElementById("cctv-bulk-loaidp-group");
+            if (!sel || !group) return;
+            group.style.display = (String(sel.value || "").trim().toUpperCase() === "DP") ? "flex" : "none";
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô" - ÁP DỤNG HÀNG LOẠT] Ghi nhận/sửa NGAY LẬP TỨC 1 mã công cho TẤT
+        // CẢ các ô đang được tick chọn (action MỚI "saveChamCongThuyenVienBulk" — server tự kiểm
+        // tra lại quyền "SuaChamCongThuyenVien"/Admin + kỳ chưa chốt + mã công/LoaiDP hợp lệ,
+        // GIỐNG HỆT action đơn lẻ, không nới lỏng gì). Sau khi lưu thành công, tự bỏ chọn và tải
+        // lại dữ liệu để hiện đúng kết quả mới nhất.
+        async function apDungMaCongHangLoatCctv() {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
+            if (!cctvOChonMap.size) { alert("Vui lòng chọn ít nhất 1 ô ngày công."); return; }
+            let ma = document.getElementById("cctv-bulk-maloaicong").value;
+            if (!ma) { alert("Vui lòng chọn mã loại công cần áp dụng."); return; }
+            let loaiDP = "";
+            if (String(ma).trim().toUpperCase() === "DP") {
+                loaiDP = (document.getElementById("cctv-bulk-loaidp") || {}).value || "";
+                if (!loaiDP) { alert("Mã công \"DP\" cần chọn thêm Phân loại DP (JDPO hoặc SDPO)."); return; }
+            }
+            let ghiChu = document.getElementById("cctv-bulk-ghichu").value || "";
+            let items = Array.from(cctvOChonMap.values());
+            if (!confirm(`Áp dụng mã công "${ma}" cho ${items.length} ô đã chọn?`)) return;
+            let res = await callServerAction({ action: "saveChamCongThuyenVienBulk", items: items, maLoaiCong: ma, loaiDP: loaiDP, ghiChu: ghiChu });
+            if (!res || res.status === "ERROR") { alert("Lỗi ghi nhận hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvOChonMap.clear();
+            document.getElementById("cctv-bulk-ghichu").value = "";
+            await loadChamCongThuyenVienData();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô" - XÓA HÀNG LOẠT] Xóa TẤT CẢ các ô đang được tick chọn (action MỚI
+        // "deleteChamCongThuyenVienBulk" — cùng điều kiện quyền hạn/kỳ chốt như xóa từng ô).
+        async function xoaHangLoatCctv() {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi xóa ngày công."); return; }
+            if (!cctvOChonMap.size) { alert("Vui lòng chọn ít nhất 1 ô ngày công."); return; }
+            let items = Array.from(cctvOChonMap.values());
+            if (!confirm(`Xóa ngày công của ${items.length} ô đã chọn?`)) return;
+            let res = await callServerAction({ action: "deleteChamCongThuyenVienBulk", items: items });
+            if (!res || res.status === "ERROR") { alert("Lỗi xóa hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvOChonMap.clear();
+            await loadChamCongThuyenVienData();
         }
 
         // [SỬA - BỎ MÃ CÔNG MẶC ĐỊNH] Bấm vào 1 Ô ngày trên bảng lưới: nếu ngày đó ĐÃ có ghi nhận
