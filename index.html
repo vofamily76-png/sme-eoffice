@@ -1959,6 +1959,7 @@
                             <select id="cctv-form-chucdanh-ma" class="search-box" style="min-width:200px;">
                                 <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
                                 <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                                <option value="DP">DP (không phân loại Senior/Junior)</option>
                             </select>
                         </div>
                     </div>
@@ -2028,6 +2029,7 @@
                                 <option value="">-- Chọn mã --</option>
                                 <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
                                 <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                                <option value="DP">DP (không phân loại Senior/Junior)</option>
                             </select>
                         </div>
                         <div class="form-group" style="margin:0; flex:1; min-width:200px;">
@@ -7145,14 +7147,18 @@
         // và LƯU THÀNH CÔNG (dữ liệu ĐÃ được ghi đúng xuống Sheet), ô vẫn hiển thị lại "JDPO" như cũ
         // vì phần hiển thị (renderChamCongThuyenVienTable) lấy nhãn từ mã MẶC ĐỊNH thay vì lấy từ
         // ĐÚNG bản ghi đã lưu (rec.maLoaiCong) của riêng ngày đó — khiến người dùng tưởng là "không
-        // điều chỉnh được". Hàm MỚI này chuyển 1 mã CỤ THỂ ("DP-SDPO"/"DP-JDPO") thành nhãn ngắn gọn
-        // ("SDPO"/"JDPO") — dùng để hiển thị ĐÚNG giá trị đã lưu của TỪNG ngày (xem
+        // điều chỉnh được". Hàm MỚI này chuyển 1 mã CỤ THỂ ("DP-SDPO"/"DP-JDPO"/"DP") thành nhãn
+        // ngắn gọn ("SDPO"/"JDPO"/"DP") — dùng để hiển thị ĐÚNG giá trị đã lưu của TỪNG ngày (xem
         // renderChamCongThuyenVienTable() bên dưới: nay ưu tiên lấy "recPhu.maLoaiCong" của đúng
         // ngày đó, CHỈ khi ngày đó CHƯA có bản ghi riêng mới tạm hiện nhãn mặc định theo cấp bậc để
-        // gợi ý). KHÔNG đổi cách lưu/đọc dữ liệu ở Code.gs, chỉ sửa đúng chỗ hiển thị.
+        // gợi ý). KHÔNG đổi cách lưu/đọc dữ liệu ở Code.gs, chỉ sửa đúng chỗ hiển thị. [MỚI - THÊM
+        // MÃ "DP"] Nay chấp nhận thêm mã "DP" (không phân loại) -> hiển thị nguyên "DP".
         function cctvNhanTuMa(ma) {
             let m = String(ma || "").trim().toUpperCase();
-            return m === "DP-SDPO" ? "SDPO" : (m === "DP-JDPO" ? "JDPO" : "");
+            if (m === "DP-SDPO") return "SDPO";
+            if (m === "DP-JDPO") return "JDPO";
+            if (m === "DP") return "DP";
+            return "";
         }
 
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (1 cột "STT" + 2 cột cố định "Họ
@@ -7349,6 +7355,17 @@
                     let tongHopTdsPhu = (cctvDanhMuc || []).map(dm =>
                         `<td style="text-align:center; font-weight:600; background:#eafaf1;">${tongHopDongPhu[dm.ma] || 0}</td>`
                     ).join("");
+                    // [ĐÃ BỎ - "TICK Ở NHÃN CHỌN CẢ THÁNG"] Phiên bản trước có thử thêm 1 ô tick ở
+                    // ĐÂY (cột "Chức Danh" cố định của hàng phụ) để chọn/bỏ chọn CÙNG LÚC toàn bộ
+                    // các ngày trong kỳ — nhưng gây HIỂU NHẦM/TRẢI NGHIỆM SAI: người dùng chỉ muốn
+                    // bấm/tick 1 ô ngày cụ thể thì lại thấy nhiều ô khác cùng bị tick theo. NAY bỏ
+                    // hẳn khả năng "chọn cả hàng" này — ô nhãn "SDPO"/"JDPO" ở cột Chức Danh quay
+                    // lại là 1 nhãn TĨNH như trước (chỉ để hiển thị, không click/tick gì), mỗi Ô
+                    // NGÀY của hàng phụ (dayTdsPhu bên trên, mỗi ô có checkbox + onclick riêng —
+                    // toggleCctvOChonChucDanh()) hoạt động HOÀN TOÀN ĐỘC LẬP với nhau: bấm/tick ô
+                    // nào CHỈ chọn đúng ô đó, KHÔNG ảnh hưởng tới bất kỳ ô nào khác. Muốn đổi nhiều
+                    // ngày cùng lúc, người dùng tự tick TỪNG ô ngày muốn đổi rồi mới bấm "Áp dụng"
+                    // ở thanh công cụ nổi — không có phím tắt "chọn hết" nữa.
                     hangPhu = `<tr>
                         <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;" title="Công chức danh ${escapeHtml(maRank)}">${escapeHtml(nhanHang)}</td>
                         ${dayTdsPhu}
