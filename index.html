@@ -1951,21 +1951,19 @@
                             <label>Thuyền viên</label>
                             <input type="text" id="cctv-form-chucdanh-hoten" class="search-box" readonly disabled style="min-width:200px;">
                         </div>
-                        <!-- [SỬA THEO YÊU CẦU MỚI - ĐÃ XÓA Ô "NGÀY" KHỎI FORM] Trước đây ô này cho
-                             phép TỰ CHỌN/ĐỔI ngày ngay trong form (để mở được từ nhãn "SDPO"/"JDPO"
-                             không gắn sẵn ngày cụ thể). NAY bỏ hẳn ô "Ngày" khỏi giao diện: Ngày ghi
-                             nhận LUÔN lấy tự động đúng theo ô-ngày cụ thể mà người dùng đã bấm trên
-                             bảng lưới (xem clickCctvCellChucDanh()/moFormChucDanhChamCongThuyenVien()
-                             bên dưới) — không cần/không cho chọn lại trong form nữa. Theo đó, cách mở
-                             form bằng cách bấm THẲNG vào nhãn "SDPO"/"JDPO" ở cột "Chức Danh" (trước
-                             đây không gắn sẵn ngày) đã được BỎ — nhãn đó nay chỉ để HIỂN THỊ, không
-                             bấm mở form được nữa (xem biến "clickAttrNhan" ở renderChamCongThuyenVienTable()
-                             bên dưới). Input "Ngày" vẫn được GIỮ LẠI ở dạng ẩn (hidden, ĐÚNG NGUYÊN id
-                             cũ "cctv-form-chucdanh-ngay") để KHÔNG phải sửa lại các hàm JS đang đọc/
-                             ghi giá trị của nó (capNhatChucDanhFormTheoNgayHienTai(),
-                             luuChamCongThuyenVienChucDanh()...) — giá trị vẫn được JS tự gán đúng
-                             ngày của ô đã bấm y hệt trước, KHÔNG ảnh hưởng gì tới cách lưu/đọc dữ liệu
-                             ở Code.gs. -->
+                        <!-- [SỬA THEO YÊU CẦU MỚI - BỎ HẲN Ô "NGÀY" KHỎI FORM] Trước đây khi mở form
+                             từ nhãn "SDPO"/"JDPO" (không gắn sẵn 1 ngày cụ thể) phải hiện ô "Ngày" ở
+                             dạng chọn được để người dùng tự chọn, và Lưu bị CHẶN nếu chưa chọn — gây
+                             cảm giác "bắt buộc chọn Ngày trước khi lưu". NAY bỏ hẳn ô "Ngày" khỏi
+                             giao diện: mở form từ 1 ô-ngày cụ thể trên bảng lưới vẫn tự gán đúng ngày
+                             đó như trước; còn mở form từ nhãn "SDPO"/"JDPO" (không gắn sẵn ngày) thì
+                             NAY tự động gán sẵn "hôm nay" (hoặc ngày đầu kỳ đang xem nếu "hôm nay"
+                             không thuộc đúng kỳ) — xem moFormChucDanhChamCongThuyenVien() bên dưới —
+                             nên Lưu được NGAY, không cần thao tác chọn ngày nào cả. Input "Ngày" vẫn
+                             GIỮ LẠI ở dạng ẩn (hidden, ĐÚNG NGUYÊN id cũ "cctv-form-chucdanh-ngay")
+                             để KHÔNG phải sửa lại các hàm JS đang đọc/ghi giá trị của nó
+                             (capNhatChucDanhFormTheoNgayHienTai(), luuChamCongThuyenVienChucDanh()...),
+                             KHÔNG ảnh hưởng gì tới cách lưu/đọc dữ liệu ở Code.gs/bảo mật. -->
                         <input type="hidden" id="cctv-form-chucdanh-ngay">
                         <div class="form-group" style="margin:0;">
                             <label>Mã công chức danh</label>
@@ -7422,9 +7420,21 @@
                     // ô đó. Hàm clickCctvNhanChucDanh()/moFormChucDanhChamCongThuyenVien() vẫn được
                     // GIỮ NGUYÊN trong code (không xóa) để không ảnh hưởng gì khác, chỉ đơn giản
                     // không còn được gọi từ đây nữa.
-                    let clickAttrNhan = ` title="Công chức danh ${escapeHtml(maRank)}"`;
+                    // [MỞ LẠI - BẤM VÀO NHÃN "SDPO"/"JDPO" ĐỂ ĐIỀU CHỈNH] Theo yêu cầu, ô nhãn cố
+                    // định (sticky) ở cột "Chức Danh" của hàng phụ nay LẠI cho bấm được khi đang bật
+                    // "Điều chỉnh" — mở NGAY form "cctv-form-chucdanh-box" (clickCctvNhanChucDanh(),
+                    // hàm này vẫn được giữ nguyên trong code từ trước, chỉ nay được gọi lại ở đây) để
+                    // người dùng không cần cuộn ngang tới đúng cột ngày mới sửa được. Ô "Ngày" trong
+                    // form đã đổi lại thành ô chọn ngày HIỂN THỊ được (không còn ẩn) nên vẫn tự chọn
+                    // đúng ngày cần ghi nhận trước khi Lưu. KHÔNG đổi action/bảo mật gì (vẫn dùng
+                    // nguyên "saveChamCongThuyenVien"/"deleteChamCongThuyenVien" đã có).
+                    let nhanClickAttr = editable
+                        ? ` onclick="clickCctvNhanChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}',${idxGoc})"`
+                        : "";
+                    let nhanStyle = 'background:#f6fff8;' + (editable ? ' cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '');
+                    let clickAttrNhan = ` title="Công chức danh ${escapeHtml(maRank)}${editable ? ' — Bấm để điều chỉnh' : ''}"`;
                     hangPhu = `<tr>
-                        <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;"${clickAttrNhan}>${escapeHtml(nhanHang)}</td>
+                        <td class="cctv-col-sticky cctv-col-2" style="${nhanStyle}"${clickAttrNhan}${nhanClickAttr}>${escapeHtml(nhanHang)}</td>
                         ${dayTdsPhu}
                         ${tongHopTdsPhu}
                     </tr>`;
@@ -7682,10 +7692,16 @@
         // nếu ngày đó ĐÃ có bản ghi "Công chức danh" -> prefill đúng mã đã lưu + hiện nút "Xóa";
         // nếu CHƯA có -> mặc định chọn sẵn đúng mã theo cấp bậc (cctvMaChucDanhTheoRank(), chỉ để
         // GỢI Ý ban đầu cho đỡ phải chọn lại — người dùng vẫn đổi được sang mã còn lại trước khi
-        // lưu) + ẩn nút "Xóa". [SỬA - CHO PHÉP MỞ KHÔNG GẮN SẴN NGÀY] Tham số "ngayStr" nay có thể
-        // để RỖNG (gọi từ clickCctvNhanChucDanh() khi bấm thẳng vào nhãn "SDPO"/"JDPO") — khi đó ô
-        // "Ngày" để trống, người dùng tự chọn trước khi Lưu (luuChamCongThuyenVienChucDanh() sẽ
-        // chặn Lưu nếu chưa chọn ngày).
+        // lưu) + ẩn nút "Xóa". [SỬA THEO YÊU CẦU MỚI - TỰ GÁN NGÀY, KHÔNG BẮT CHỌN] Tham số
+        // "ngayStr" vẫn có thể để RỖNG (gọi từ clickCctvNhanChucDanh() khi bấm thẳng vào nhãn
+        // "SDPO"/"JDPO", không gắn sẵn 1 ngày cụ thể) — khi đó KHÔNG còn để ô "Ngày" trống chờ
+        // người dùng tự chọn nữa (ô này đã ẩn hẳn khỏi giao diện), mà TỰ ĐỘNG gán sẵn "hôm nay"
+        // (đúng định dạng "yyyy-MM-dd", giống cách dùng ở nơi khác trong file, VD dòng có
+        // "new Date().toISOString().slice(0, 10)") — nếu "hôm nay" nằm NGOÀI kỳ chấm công đang
+        // xem (VD đang xem lại 1 tháng trước/sau) thì tự gán ngày ĐẦU KỲ đang xem (mm.min) thay
+        // thế, để luôn có sẵn 1 ngày HỢP LỆ trong đúng kỳ, Lưu được NGAY không cần thao tác gì
+        // thêm. Server (action "saveChamCongThuyenVien") vẫn tự kiểm tra lại ngày hợp lệ/kỳ chưa
+        // chốt như cũ, không nới lỏng gì.
         function moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
             if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
             let box = document.getElementById("cctv-form-chucdanh-box");
@@ -7694,9 +7710,11 @@
             document.getElementById("cctv-form-chucdanh-hoten").value = hoTen;
             let ngayInput = document.getElementById("cctv-form-chucdanh-ngay");
             let mm = cctvKyMinMax();
-            ngayInput.min = mm.min || "";
-            ngayInput.max = mm.max || "";
-            ngayInput.value = ngayStr || "";
+            if (!ngayStr) {
+                let homNay = new Date().toISOString().slice(0, 10);
+                ngayStr = (mm.min && mm.max && (homNay < mm.min || homNay > mm.max)) ? (mm.min || homNay) : homNay;
+            }
+            ngayInput.value = ngayStr;
             cctvChucDanhDangSuaHoTen = hoTen; cctvChucDanhDangSuaTau = tau;
             cctvChucDanhDangSuaChucDanh = chucDanh; cctvChucDanhDangSuaIdxGoc = crewIdxGoc;
             capNhatChucDanhFormTheoNgayHienTai();
@@ -7716,11 +7734,13 @@
         // hợp lệ "DP-SDPO"/"DP-JDPO" — không thể bị bỏ qua dù sửa giao diện.
         async function luuChamCongThuyenVienChucDanh() {
             if (!cctvChucDanhDangSuaHoTen) return;
-            // [MỚI] Ô "Ngày" nay có thể để trống khi mở form từ nhãn "SDPO"/"JDPO" (không gắn sẵn
-            // 1 ngày cụ thể) -> bắt buộc kiểm tra lại đã chọn ngày chưa TRƯỚC khi lưu (trước đây
-            // luôn có sẵn ngày do bấm đúng 1 ô ngày cụ thể nên không cần kiểm tra riêng).
+            // [SỬA THEO YÊU CẦU MỚI] Ô "Ngày" (ẩn) nay LUÔN được tự gán sẵn giá trị hợp lệ ngay khi
+            // mở form (xem moFormChucDanhChamCongThuyenVien() ở trên — bấm 1 ô-ngày cụ thể thì lấy
+            // đúng ngày đó, bấm nhãn "SDPO"/"JDPO" thì tự lấy "hôm nay"/ngày đầu kỳ), nên người dùng
+            // không còn phải tự chọn Ngày trước khi Lưu nữa. Vẫn GIỮ LẠI kiểm tra rỗng dưới đây làm
+            // lớp an toàn dự phòng (không xóa để tránh lỡ lưu thiếu ngày do lỗi phát sinh khác).
             cctvChucDanhDangSuaNgay = document.getElementById("cctv-form-chucdanh-ngay").value || "";
-            if (!cctvChucDanhDangSuaNgay) { alert("Vui lòng chọn Ngày trước khi lưu."); return; }
+            if (!cctvChucDanhDangSuaNgay) { alert("Vui lòng thử lại (không xác định được ngày ghi nhận)."); return; }
             let ma = document.getElementById("cctv-form-chucdanh-ma").value;
             if (!ma) { alert("Vui lòng chọn mã công chức danh."); return; }
             let ghiChu = document.getElementById("cctv-form-chucdanh-ghichu").value || "";
