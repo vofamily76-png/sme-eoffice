@@ -1758,21 +1758,22 @@
                  có sẵn (Tab "Quản lý Đội tàu") — CHỈ ĐỌC, không sửa dữ liệu Sheet đó. -->
             <div id="page-chamcongthuyenvien" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</h2>
-                <!-- [SỬA - TÁCH MÃ "DP" THÀNH "DP-SDPO"/"DP-JDPO"] Trước đây chỉ có 1 mã công chức
-                     danh "DP" dùng chung, khi chọn phải chọn thêm ô "Phân loại DP" (JDPO/SDPO) mới
-                     lưu được. NAY tách thành 2 mã công CHỌN TRỰC TIẾP ngay ở ô "Mã công":
-                     "DP-SDPO" (Senior DPO) và "DP-JDPO" (Junior DPO) — không cần chọn thêm bước phụ
-                     nào nữa (xem CREWCHAMCONG_DANHMUC_BOSUNG_DPTACH_ ở Code.gs, tự động thêm 2 mã
-                     này vào Sheet "DanhMucLoaiCongThuyenVien" nếu chưa có, KHÔNG xóa/đổi mã "DP" cũ
-                     nếu Sheet đã có sẵn từ trước -> các bản ghi ngày công ĐÃ LƯU với mã "DP" (kèm
-                     Phân loại DP) vẫn hiển thị/tra cứu bình thường, không mất dữ liệu). -->
+                <!-- [SỬA THEO YÊU CẦU MỚI - ĐỔI MÃ "DP-SDPO"/"DP-JDPO" THÀNH "SDPO"/"JDPO"] Trước
+                     đây 2 mã công chức danh chọn trực tiếp ở ô "Mã công" là "DP-SDPO" (Senior DPO)
+                     và "DP-JDPO" (Junior DPO). NAY đổi thành 2 mã NGẮN GỌN "SDPO"/"JDPO" (bỏ tiền
+                     tố "DP-") — xem crewChamCongDoiTenMaDanhMucCu_()/CREWCHAMCONG_DANHMUC_BOSUNG_MOI_
+                     ở Code.gs: mã CŨ trong Sheet "DanhMucLoaiCongThuyenVien" được ĐỔI TÊN ngay tại
+                     đúng dòng cũ (không xóa/thêm dòng, không mất dữ liệu); các bản ghi ngày công ĐÃ
+                     LƯU trước đây với mã cũ vẫn hiển thị/tổng hợp đúng vào cột "Ngày công SDPO"/
+                     "Ngày công JDPO" mới (xem crewChamCongChuanHoaMaChucDanhCu_() ở Code.gs). -->
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
                     Ghi nhận ngày công của Thuyền viên (Đội tàu) theo Danh mục loại công riêng: <b>B1, B2, B3, B4,
-                    DP-SDPO, DP-JDPO, N, N1, N2, D</b>. Mã <b>DP-SDPO</b> (Senior DPO) và <b>DP-JDPO</b> (Junior
+                    SDPO, JDPO, N, N1, N2, D</b>. Mã <b>SDPO</b> (Senior DPO) và <b>JDPO</b> (Junior
                     DPO) là công chức danh — chọn trực tiếp ở ô "Mã công", không cần chọn thêm bước phụ nào khác.
                     Bấm vào từng ô ngày để ghi nhận/sửa lại mã công cụ thể. Dữ liệu được lưu trên Google Sheet
                     riêng, tách biệt hoàn toàn với Bảng Chấm Công của Văn phòng.
                 </p>
+
 
                 <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"; XÓA NÚT
                      "GHI NHẬN NGÀY CÔNG MỚI"] nút "Tải dữ liệu" đổi tên thành "Tải / Tính lại"
@@ -1950,25 +1951,34 @@
                             <label>Thuyền viên</label>
                             <input type="text" id="cctv-form-chucdanh-hoten" class="search-box" readonly disabled style="min-width:200px;">
                         </div>
-                        <div class="form-group" style="margin:0;">
-                            <label>Ngày</label>
-                            <!-- [SỬA - CHO CHỌN/ĐỔI NGÀY NGAY TRONG FORM] Trước đây ô này CHỈ ĐỌC
-                                 (chỉ hiện đúng ngày của ô vừa bấm) — nay cho phép TỰ CHỌN/ĐỔI ngày
-                                 ngay trong form, để có thể mở form này từ ô nhãn "SDPO"/"JDPO" ở
-                                 cột "Chức Danh" (không gắn với 1 ngày cụ thể nào) — xem
-                                 moFormChucDanhTuNhanChucDanh()/onCctvFormChucDanhNgayChange() bên
-                                 dưới. Khi bấm vào ĐÚNG 1 ô ngày cụ thể trên bảng lưới (hành vi CŨ),
-                                 ngày vẫn tự điền sẵn đúng ô đó như trước — người dùng vẫn có thể đổi
-                                 sang ngày khác nếu cần. Giới hạn min/max theo đúng kỳ đang chọn
-                                 (đặt ở onCctvFormChucDanhNgayChange...), server luôn tự kiểm tra
-                                 lại (không thể bị bỏ qua dù sửa giao diện). -->
-                            <input type="date" id="cctv-form-chucdanh-ngay" class="search-box" style="min-width:150px;" onchange="onCctvFormChucDanhNgayChange()">
-                        </div>
+                        <!-- [SỬA THEO YÊU CẦU MỚI - ĐÃ XÓA Ô "NGÀY" KHỎI FORM] Trước đây ô này cho
+                             phép TỰ CHỌN/ĐỔI ngày ngay trong form (để mở được từ nhãn "SDPO"/"JDPO"
+                             không gắn sẵn ngày cụ thể). NAY bỏ hẳn ô "Ngày" khỏi giao diện: Ngày ghi
+                             nhận LUÔN lấy tự động đúng theo ô-ngày cụ thể mà người dùng đã bấm trên
+                             bảng lưới (xem clickCctvCellChucDanh()/moFormChucDanhChamCongThuyenVien()
+                             bên dưới) — không cần/không cho chọn lại trong form nữa. Theo đó, cách mở
+                             form bằng cách bấm THẲNG vào nhãn "SDPO"/"JDPO" ở cột "Chức Danh" (trước
+                             đây không gắn sẵn ngày) đã được BỎ — nhãn đó nay chỉ để HIỂN THỊ, không
+                             bấm mở form được nữa (xem biến "clickAttrNhan" ở renderChamCongThuyenVienTable()
+                             bên dưới). Input "Ngày" vẫn được GIỮ LẠI ở dạng ẩn (hidden, ĐÚNG NGUYÊN id
+                             cũ "cctv-form-chucdanh-ngay") để KHÔNG phải sửa lại các hàm JS đang đọc/
+                             ghi giá trị của nó (capNhatChucDanhFormTheoNgayHienTai(),
+                             luuChamCongThuyenVienChucDanh()...) — giá trị vẫn được JS tự gán đúng
+                             ngày của ô đã bấm y hệt trước, KHÔNG ảnh hưởng gì tới cách lưu/đọc dữ liệu
+                             ở Code.gs. -->
+                        <input type="hidden" id="cctv-form-chucdanh-ngay">
                         <div class="form-group" style="margin:0;">
                             <label>Mã công chức danh</label>
+                            <!-- [SỬA THEO YÊU CẦU MỚI - ĐỔI MÃ "DP-SDPO"/"DP-JDPO" THÀNH "SDPO"/"JDPO"]
+                                 Bản ghi MỚI lưu từ nay dùng đúng 2 mã ngắn gọn "SDPO"/"JDPO" (bỏ tiền
+                                 tố "DP-"). Mã "DP" (không phân loại) GIỮ NGUYÊN không đổi. Server
+                                 (CREWCHAMCONG_MA_CHUCDANH_HOPLE_ ở Code.gs) vẫn tiếp tục CHẤP NHẬN cả
+                                 2 mã CŨ "DP-SDPO"/"DP-JDPO" để KHÔNG mất/ảnh hưởng các bản ghi ĐÃ LƯU
+                                 trước đây — xem cctvNhanTuMa()/cctvMaChucDanhTheoRank() bên dưới (đã
+                                 cập nhật để hiểu/hiển thị đúng cả mã cũ lẫn mã mới). -->
                             <select id="cctv-form-chucdanh-ma" class="search-box" style="min-width:200px;">
-                                <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
-                                <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                                <option value="SDPO">SDPO (Senior DPO)</option>
+                                <option value="JDPO">JDPO (Junior DPO)</option>
                                 <option value="DP">DP (không phân loại Senior/Junior)</option>
                             </select>
                         </div>
@@ -2037,8 +2047,8 @@
                             <label>Đổi thành</label>
                             <select id="cctv-bulk-chucdanh-ma" class="search-box" style="min-width:200px;">
                                 <option value="">-- Chọn mã --</option>
-                                <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
-                                <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                                <option value="SDPO">SDPO (Senior DPO)</option>
+                                <option value="JDPO">JDPO (Junior DPO)</option>
                                 <option value="DP">DP (không phân loại Senior/Junior)</option>
                             </select>
                         </div>
@@ -7149,19 +7159,23 @@
             let cd = String(chucDanh || "").trim().toLowerCase();
             return CCTV_CHUCDANH_CO_HANG_PHU.indexOf(cd) !== -1;
         }
-        // Trả về đúng mã công chức danh ("DP-SDPO"/"DP-JDPO") tương ứng cấp bậc — trống nếu chức
-        // danh không thuộc nhóm có hàng phụ (xem cctvCoHangChucDanh() ở trên).
+        // [SỬA - ĐỔI MÃ "DP-SDPO"/"DP-JDPO" THÀNH "SDPO"/"JDPO"] Trả về đúng mã công chức danh
+        // ("SDPO"/"JDPO") tương ứng cấp bậc — trống nếu chức danh không thuộc nhóm có hàng phụ
+        // (xem cctvCoHangChucDanh() ở trên). Đây là mã MỚI dùng để GỢI Ý/LƯU từ nay; các bản ghi
+        // CŨ đã lưu với mã "DP-SDPO"/"DP-JDPO" vẫn đọc/hiển thị đúng qua cctvNhanTuMa() bên dưới
+        // (đã cập nhật để hiểu cả 2 dạng mã, không mất dữ liệu cũ).
         function cctvMaChucDanhTheoRank(chucDanh) {
             let cd = String(chucDanh || "").trim().toLowerCase();
-            if (CCTV_CHUCDANH_MA_SDPO.indexOf(cd) !== -1) return "DP-SDPO";
-            if (CCTV_CHUCDANH_MA_JDPO.indexOf(cd) !== -1) return "DP-JDPO";
+            if (CCTV_CHUCDANH_MA_SDPO.indexOf(cd) !== -1) return "SDPO";
+            if (CCTV_CHUCDANH_MA_JDPO.indexOf(cd) !== -1) return "JDPO";
             return "";
         }
         // Nhãn ngắn gọn hiện ở cột "Chức Danh" của hàng phụ (thay vì lặp lại đúng chức danh chính,
-        // hiện luôn "SDPO"/"JDPO" cho gọn, giống mẫu bảng chấm công tay đã cung cấp).
+        // hiện luôn "SDPO"/"JDPO" cho gọn, giống mẫu bảng chấm công tay đã cung cấp). Từ khi mã đã
+        // được đổi thẳng thành "SDPO"/"JDPO", cctvMaChucDanhTheoRank() trả về ĐÚNG luôn nhãn cần
+        // hiện, không cần ánh xạ thêm.
         function cctvNhanHangChucDanh(chucDanh) {
-            let ma = cctvMaChucDanhTheoRank(chucDanh);
-            return ma === "DP-SDPO" ? "SDPO" : (ma === "DP-JDPO" ? "JDPO" : "");
+            return cctvMaChucDanhTheoRank(chucDanh);
         }
         // [MỚI - SỬA LỖI "Ô NGÀY CÔNG LUÔN HIỆN MẶC ĐỊNH THEO CẤP BẬC"] Trước đây mỗi Ô NGÀY của
         // hàng phụ "Công chức danh" LUÔN hiển thị nhãn MẶC ĐỊNH theo cấp bậc (cctvMaChucDanhTheoRank
@@ -7175,10 +7189,13 @@
         // ngày đó, CHỈ khi ngày đó CHƯA có bản ghi riêng mới tạm hiện nhãn mặc định theo cấp bậc để
         // gợi ý). KHÔNG đổi cách lưu/đọc dữ liệu ở Code.gs, chỉ sửa đúng chỗ hiển thị. [MỚI - THÊM
         // MÃ "DP"] Nay chấp nhận thêm mã "DP" (không phân loại) -> hiển thị nguyên "DP".
+        // [SỬA - ĐỔI MÃ "DP-SDPO"/"DP-JDPO" THÀNH "SDPO"/"JDPO"] Nay chấp nhận CẢ mã MỚI ("SDPO"/
+        // "JDPO", dùng cho bản ghi lưu từ nay) LẪN mã CŨ ("DP-SDPO"/"DP-JDPO", các bản ghi ĐÃ LƯU
+        // trước đây) — đảm bảo dữ liệu cũ vẫn hiển thị đúng, không bị mất/hiện sai.
         function cctvNhanTuMa(ma) {
             let m = String(ma || "").trim().toUpperCase();
-            if (m === "DP-SDPO") return "SDPO";
-            if (m === "DP-JDPO") return "JDPO";
+            if (m === "SDPO" || m === "DP-SDPO") return "SDPO";
+            if (m === "JDPO" || m === "DP-JDPO") return "JDPO";
             if (m === "DP") return "DP";
             return "";
         }
@@ -7395,9 +7412,17 @@
                     // clickCctvNhanChucDanh()/moFormChucDanhChamCongThuyenVien() bên trên) rồi chọn
                     // Mã công chức danh, bấm Lưu — vẫn dùng LẠI NGUYÊN action
                     // "saveChamCongThuyenVien", KHÔNG đổi bảo mật/quyền hạn.
-                    let clickAttrNhan = editable
-                        ? ` onclick="clickCctvNhanChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}',${idxGoc})" style="cursor:pointer;" title="Bấm để mở form điều chỉnh Công chức danh (chọn Ngày + SDPO/JDPO)"`
-                        : ` title="Công chức danh ${escapeHtml(maRank)}"`;
+                    // [SỬA THEO YÊU CẦU MỚI - BỎ CÁCH MỞ FORM BẰNG NHÃN "SDPO"/"JDPO"] Trước đây bấm
+                    // vào ô nhãn này (cột "Chức Danh") sẽ mở form KHÔNG gắn sẵn ngày, cần ô "Ngày"
+                    // trong form để tự chọn. Nay ô "Ngày" đã bị xóa khỏi form (xem
+                    // "cctv-form-chucdanh-box" ở trên) nên cách mở này không còn dùng được nữa — ô
+                    // nhãn CHỈ còn để HIỂN THỊ, không bấm mở form được. Muốn ghi nhận/sửa "Công chức
+                    // danh", người dùng bấm ĐÚNG vào ô-ngày cụ thể cần ghi nhận trên bảng lưới (xem
+                    // clickAttrPhu/clickCctvCellChucDanh() bên dưới) — ngày sẽ tự động lấy đúng theo
+                    // ô đó. Hàm clickCctvNhanChucDanh()/moFormChucDanhChamCongThuyenVien() vẫn được
+                    // GIỮ NGUYÊN trong code (không xóa) để không ảnh hưởng gì khác, chỉ đơn giản
+                    // không còn được gọi từ đây nữa.
+                    let clickAttrNhan = ` title="Công chức danh ${escapeHtml(maRank)}"`;
                     hangPhu = `<tr>
                         <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;"${clickAttrNhan}>${escapeHtml(nhanHang)}</td>
                         ${dayTdsPhu}
@@ -7542,7 +7567,7 @@
             if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
             if (!cctvOChonMapChucDanh.size) { alert("Vui lòng chọn ít nhất 1 ô \"Công chức danh\"."); return; }
             let ma = document.getElementById("cctv-bulk-chucdanh-ma").value;
-            if (!ma) { alert("Vui lòng chọn mã cần đổi (DP-SDPO hoặc DP-JDPO)."); return; }
+            if (!ma) { alert("Vui lòng chọn mã cần đổi (SDPO hoặc JDPO)."); return; }
             let ghiChu = document.getElementById("cctv-bulk-chucdanh-ghichu").value || "";
             let items = Array.from(cctvOChonMapChucDanh.values());
             if (!confirm(`Đổi "Công chức danh" thành "${ma}" cho ${items.length} ô đã chọn?`)) return;
