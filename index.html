@@ -241,6 +241,10 @@
         #cctv-table .cctv-col-0 { left: 0; width: 44px; min-width: 44px; max-width: 44px; text-align: center; }
         #cctv-table .cctv-col-1 { left: 44px; width: 170px; min-width: 170px; max-width: 170px; }
         #cctv-table .cctv-col-2 { left: 214px; width: 150px; min-width: 150px; max-width: 150px; }
+        /* [MỚI - CỘT "Kht"] Cột MỚI thêm ở CUỐI bảng (không cố định/sticky, chỉ cuộn ngang bình
+           thường như các cột ngày khác) — chỗ TRỐNG để nhân sự ký tay xác nhận, không phải ô nhập
+           liệu, không gắn dữ liệu/action nào (xem renderChamCongThuyenVienTable() bên dưới). */
+        #cctv-table .cctv-col-kht { min-width: 90px; }
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
@@ -7201,10 +7205,10 @@
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (1 cột "STT" + 2 cột cố định "Họ
         // Tên"/"Chức Danh" + 1 cột/ngày trong kỳ + 1 cột tổng hợp CHO MỖI mã công đang có trong
         // danh mục "cctvDanhMuc" — trước đây cố định 3 cột "Công DP"/"Công B1"/"Công B2", nay tự
-        // thay đổi theo đúng danh mục loại công thực tế) — dùng cho thuộc tính colspan của các
-        // dòng thông báo (VD "Không có dữ liệu...").
+        // thay đổi theo đúng danh mục loại công thực tế + 1 cột "Kht" (chỗ ký tên) MỚI thêm ở cuối
+        // bảng) — dùng cho thuộc tính colspan của các dòng thông báo (VD "Không có dữ liệu...").
         function cctvTongSoCot() {
-            return 3 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
+            return 4 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
         }
 
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1
@@ -7228,6 +7232,7 @@
                 <th class="cctv-col-sticky cctv-col-2">Chức Danh</th>
                 ${dayThs}
                 ${tongHopThs}
+                <th style="min-width:70px;" title="Ký tên nhận (Kht) — chỗ trống để nhân sự ký xác nhận, không phải ô nhập liệu">Kht</th>
             </tr>`;
         }
 
@@ -7262,6 +7267,12 @@
             // sắp xếp) — chỉ để HIỂN THỊ, không phải khóa/định danh dữ liệu nào (thứ tự có thể đổi
             // khi lọc tàu khác nhau, hoàn toàn bình thường).
             let cctvStt = 0;
+            // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] Gom tổng số công của TỪNG mã công (cctvDanhMuc), cộng
+            // dồn qua TẤT CẢ thuyền viên đang hiển thị (cả hàng chính "Công làm việc" LẪN hàng phụ
+            // "Công chức danh" nếu có) — dùng để dựng 1 dòng tổng ở cuối bảng (xem hangTongCongCot
+            // bên dưới, sau vòng lặp crewFiltered.map()). Chỉ CỘNG DỒN ở đây, KHÔNG đụng/đổi gì tới
+            // dữ liệu gốc cctvTongHopCongViec/cctvTongHopChucDanh đã tải sẵn.
+            let cctvTongCongTheoMa = {};
             tbody.innerHTML = crewFiltered.map(c => {
                 // Index của thuyền viên này trong cctvCrewList GỐC (chưa lọc) — dùng để chọn sẵn
                 // đúng người ở <select id="cctv-form-thuyenvien"> khi bấm vào 1 ô còn trống, và để
@@ -7330,12 +7341,22 @@
                 let tongHopTds = (cctvDanhMuc || []).map(dm =>
                     `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong[dm.ma] || 0}</td>`
                 ).join("");
+                // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] Cộng dồn số công của hàng CHÍNH (Công làm việc) vào
+                // tổng chung theo từng mã công — xem khai báo cctvTongCongTheoMa ở trên.
+                (cctvDanhMuc || []).forEach(dm => {
+                    cctvTongCongTheoMa[dm.ma] = (cctvTongCongTheoMa[dm.ma] || 0) + (tongHopDong[dm.ma] || 0);
+                });
+                // [MỚI - CỘT "Kht"] Ô trống để nhân sự KÝ TAY xác nhận (không phải ô nhập liệu, KHÔNG
+                // gắn action/lưu dữ liệu nào) — dùng chung 1 ô cho CẢ 2 hàng (chính + phụ) của CÙNG 1
+                // thuyền viên bằng rowspanAttr (giống hệt cột "STT"/"Họ Tên" ở trên).
+                let khtTd = `<td class="cctv-col-kht"${rowspanAttr}></td>`;
                 let hangChinh = `<tr>
                     <td class="cctv-col-sticky cctv-col-0"${rowspanAttr} style="text-align:center;">${cctvStt}</td>
                     <td class="cctv-col-sticky cctv-col-1"${rowspanAttr} title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
                     <td class="cctv-col-sticky cctv-col-2" title="${escapeHtml(c.chucDanh || "")}">${escapeHtml(c.chucDanh || "")}</td>
                     ${dayTds}
                     ${tongHopTds}
+                    ${khtTd}
                 </tr>`;
 
                 // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Chỉ dựng thêm khi chức danh
@@ -7392,6 +7413,14 @@
                     let tongHopTdsPhu = (cctvDanhMuc || []).map(dm =>
                         `<td style="text-align:center; font-weight:600; background:#eafaf1;">${tongHopDongPhu[dm.ma] || 0}</td>`
                     ).join("");
+                    // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] Cộng dồn thêm số công của hàng PHỤ (Công chức
+                    // danh SDPO/JDPO) vào ĐÚNG tổng chung theo từng mã công (đã cộng hàng chính ở
+                    // trên) — 1 mã công (VD "SDPO") có thể vừa xuất hiện ở hàng chính lẫn hàng phụ
+                    // của các thuyền viên khác nhau nên cần cộng gộp CẢ HAI mới ra đúng tổng toàn
+                    // bảng.
+                    (cctvDanhMuc || []).forEach(dm => {
+                        cctvTongCongTheoMa[dm.ma] = (cctvTongCongTheoMa[dm.ma] || 0) + (tongHopDongPhu[dm.ma] || 0);
+                    });
                     // [ĐÃ BỎ - "TICK Ở NHÃN CHỌN CẢ THÁNG"] Phiên bản trước có thử thêm 1 ô tick ở
                     // ĐÂY (cột "Chức Danh" cố định của hàng phụ) để chọn/bỏ chọn CÙNG LÚC toàn bộ
                     // các ngày trong kỳ — nhưng gây HIỂU NHẦM/TRẢI NGHIỆM SAI: người dùng chỉ muốn
@@ -7440,7 +7469,28 @@
                     </tr>`;
                 }
                 return hangChinh + hangPhu;
-            }).join("");
+            }).join("") + (() => {
+                // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] 1 dòng tổng ở cuối bảng: mỗi cột "Ngày công {Mã}"
+                // hiện tổng số công của TẤT CẢ thuyền viên đang hiển thị cho ĐÚNG mã đó (đã cộng dồn
+                // ở cctvTongCongTheoMa trong lúc dựng từng dòng phía trên) — CHỈ hiện số nếu tổng
+                // >= 1 (bằng 0 thì để Ô TRỐNG, không hiện số "0", theo đúng yêu cầu). Cột "Kht" và
+                // các cột ngày để trống (không có ý nghĩa tổng hợp). Đây CHỈ là dòng HIỂN THỊ tổng
+                // hợp (tính toán lại từ dữ liệu đã tải, KHÔNG lưu/ghi gì xuống Sheet, KHÔNG gọi thêm
+                // action nào), nên không ảnh hưởng gì tới dữ liệu hay bảo mật.
+                let ngayTrongCols = (cctvDanhSachNgay || []).map(() => '<td></td>').join("");
+                let tongCongCols = (cctvDanhMuc || []).map(dm => {
+                    let tong = cctvTongCongTheoMa[dm.ma] || 0;
+                    return `<td style="text-align:center; font-weight:700; background:#fff3cd;">${tong >= 1 ? tong : ""}</td>`;
+                }).join("");
+                return `<tr style="background:#fff8e1;">
+                    <td class="cctv-col-sticky cctv-col-0" style="font-weight:700;"></td>
+                    <td class="cctv-col-sticky cctv-col-1" style="font-weight:700;">Tổng cộng Công</td>
+                    <td class="cctv-col-sticky cctv-col-2" style="font-weight:700;"></td>
+                    ${ngayTrongCols}
+                    ${tongCongCols}
+                    <td class="cctv-col-kht"></td>
+                </tr>`;
+            })();
         }
 
         // [MỚI - "CHỌN NHIỀU Ô"] Tick/bỏ tick 1 ô ngày công vào tập hợp "cctvOChonMap" — chỉ thay
