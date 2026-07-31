@@ -1952,7 +1952,17 @@
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label>Ngày</label>
-                            <input type="text" id="cctv-form-chucdanh-ngay" class="search-box" readonly disabled style="min-width:120px;">
+                            <!-- [SỬA - CHO CHỌN/ĐỔI NGÀY NGAY TRONG FORM] Trước đây ô này CHỈ ĐỌC
+                                 (chỉ hiện đúng ngày của ô vừa bấm) — nay cho phép TỰ CHỌN/ĐỔI ngày
+                                 ngay trong form, để có thể mở form này từ ô nhãn "SDPO"/"JDPO" ở
+                                 cột "Chức Danh" (không gắn với 1 ngày cụ thể nào) — xem
+                                 moFormChucDanhTuNhanChucDanh()/onCctvFormChucDanhNgayChange() bên
+                                 dưới. Khi bấm vào ĐÚNG 1 ô ngày cụ thể trên bảng lưới (hành vi CŨ),
+                                 ngày vẫn tự điền sẵn đúng ô đó như trước — người dùng vẫn có thể đổi
+                                 sang ngày khác nếu cần. Giới hạn min/max theo đúng kỳ đang chọn
+                                 (đặt ở onCctvFormChucDanhNgayChange...), server luôn tự kiểm tra
+                                 lại (không thể bị bỏ qua dù sửa giao diện). -->
+                            <input type="date" id="cctv-form-chucdanh-ngay" class="search-box" style="min-width:150px;" onchange="onCctvFormChucDanhNgayChange()">
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label>Mã công chức danh</label>
@@ -7370,16 +7380,26 @@
                     // [ĐÃ BỎ - "TICK Ở NHÃN CHỌN CẢ THÁNG"] Phiên bản trước có thử thêm 1 ô tick ở
                     // ĐÂY (cột "Chức Danh" cố định của hàng phụ) để chọn/bỏ chọn CÙNG LÚC toàn bộ
                     // các ngày trong kỳ — nhưng gây HIỂU NHẦM/TRẢI NGHIỆM SAI: người dùng chỉ muốn
-                    // bấm/tick 1 ô ngày cụ thể thì lại thấy nhiều ô khác cùng bị tick theo. NAY bỏ
-                    // hẳn khả năng "chọn cả hàng" này — ô nhãn "SDPO"/"JDPO" ở cột Chức Danh quay
-                    // lại là 1 nhãn TĨNH như trước (chỉ để hiển thị, không click/tick gì), mỗi Ô
-                    // NGÀY của hàng phụ (dayTdsPhu bên trên, mỗi ô có checkbox + onclick riêng —
-                    // toggleCctvOChonChucDanh()) hoạt động HOÀN TOÀN ĐỘC LẬP với nhau: bấm/tick ô
-                    // nào CHỈ chọn đúng ô đó, KHÔNG ảnh hưởng tới bất kỳ ô nào khác. Muốn đổi nhiều
-                    // ngày cùng lúc, người dùng tự tick TỪNG ô ngày muốn đổi rồi mới bấm "Áp dụng"
-                    // ở thanh công cụ nổi — không có phím tắt "chọn hết" nữa.
+                    // bấm/tick 1 ô ngày cụ thể thì lại thấy nhiều ô khác cùng bị tick theo. Khả
+                    // năng "chọn cả hàng" (tick) đó vẫn KHÔNG được thêm lại.
+                    //
+                    // [MỚI - BẤM VÀO NHÃN "SDPO"/"JDPO" ĐỂ MỞ FORM ĐIỀU CHỈNH] Tuy nhiên, ô nhãn
+                    // này nằm ở cột "Chức Danh" ĐANG CỐ ĐỊNH (sticky) bên trái bảng, còn các ô
+                    // NGÀY thực sự bấm sửa được (dayTdsPhu ở trên) lại nằm bên phải, phải cuộn
+                    // ngang mới thấy — nhiều người dùng không biết phải cuộn ngang nên tưởng nhầm
+                    // "bấm vào SDPO/JDPO mà không có gì xảy ra" = không điều chỉnh được. NAY cho ô
+                    // nhãn này bấm được (chỉ khi đang bật "Điều chỉnh") để MỞ NGAY form
+                    // "cctv-form-chucdanh-box" — KHÁC với cơ chế "chọn cả tháng" đã bỏ ở trên: bấm
+                    // vào đây KHÔNG tick/đổi hàng loạt ô nào cả, chỉ mở form trống để người dùng TỰ
+                    // chọn đúng 1 Ngày cụ thể (ô "Ngày" trong form nay chọn được, xem
+                    // clickCctvNhanChucDanh()/moFormChucDanhChamCongThuyenVien() bên trên) rồi chọn
+                    // Mã công chức danh, bấm Lưu — vẫn dùng LẠI NGUYÊN action
+                    // "saveChamCongThuyenVien", KHÔNG đổi bảo mật/quyền hạn.
+                    let clickAttrNhan = editable
+                        ? ` onclick="clickCctvNhanChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}',${idxGoc})" style="cursor:pointer;" title="Bấm để mở form điều chỉnh Công chức danh (chọn Ngày + SDPO/JDPO)"`
+                        : ` title="Công chức danh ${escapeHtml(maRank)}"`;
                     hangPhu = `<tr>
-                        <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;" title="Công chức danh ${escapeHtml(maRank)}">${escapeHtml(nhanHang)}</td>
+                        <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;"${clickAttrNhan}>${escapeHtml(nhanHang)}</td>
                         ${dayTdsPhu}
                         ${tongHopTdsPhu}
                     </tr>`;
@@ -7575,26 +7595,86 @@
             moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, ngayStr, crewIdxGoc);
         }
 
+        // [MỚI - BẤM THẲNG VÀO NHÃN "SDPO"/"JDPO" Ở CỘT "CHỨC DANH" ĐỂ ĐIỀU CHỈNH] Trước đây ô
+        // nhãn cố định "SDPO"/"JDPO" ở đầu mỗi hàng phụ (cột "Chức Danh") chỉ để HIỂN THỊ, không
+        // bấm được — muốn điều chỉnh bắt buộc phải cuộn ngang tới đúng cột NGÀY cần đổi rồi mới
+        // bấm được, khiến nhiều người tưởng nhầm là "không điều chỉnh được" vì không thấy có gì
+        // để bấm ngay trong tầm mắt (đặc biệt trên bảng nhiều cột ngày, cột Chức Danh lại đang cố
+        // định/sticky ở đầu bảng). NAY cho phép bấm THẲNG vào đúng ô nhãn này (khi đang bật "Điều
+        // chỉnh") để mở CÙNG 1 form "cctv-form-chucdanh-box" như trước — chỉ khác là KHÔNG gắn sẵn
+        // 1 ngày cụ thể nào, người dùng tự chọn Ngày ngay trong form (xem ô "Ngày" nay là ô chọn
+        // ngày, có thể đổi được — trước đây chỉ đọc). Hoàn toàn dùng LẠI NGUYÊN 2 action có sẵn
+        // "saveChamCongThuyenVien"/"deleteChamCongThuyenVien", KHÔNG đổi bảo mật/quyền hạn gì.
+        function clickCctvNhanChucDanh(hoTen, tau, chucDanh, crewIdxGoc) {
+            if (!currentUserCanEditCrewChamCong || !cctvDieuChinhMode || cctvDaChot) return;
+            moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, "", crewIdxGoc);
+        }
+
+        // [MỚI] Trả về {min, max} (dạng "yyyy-MM-dd") của ĐÚNG kỳ chấm công (tháng/năm) đang chọn
+        // — dùng để giới hạn ô chọn "Ngày" trong form "Công chức danh" (không cho chọn nhầm sang
+        // tháng khác). Không có kỳ nào đang chọn (chưa tải dữ liệu) -> trả về rỗng (không giới hạn).
+        function cctvKyMinMax() {
+            let thang = cctvThangDangChon();
+            let soNgay = (cctvDanhSachNgay || []).length;
+            if (!thang || !soNgay) return { min: "", max: "" };
+            return { min: thang + "-01", max: thang + "-" + String(soNgay).padStart(2, "0") };
+        }
+
+        // [MỚI] Tra cứu lại bản ghi "Công chức danh" ĐÚNG theo giá trị NGÀY hiện đang hiện trong ô
+        // "Ngày" của form (đọc trực tiếp từ input, vì nay ô này có thể tự đổi được) — dùng chung
+        // cho lúc MỞ form lẫn lúc người dùng ĐỔI ngày ngay trong form đang mở (xem
+        // onCctvFormChucDanhNgayChange() bên dưới), để luôn hiện đúng Mã/Ghi chú/nút Xóa khớp với
+        // đúng ngày đang chọn. KHÔNG gọi thêm action nào tới server (chỉ tra trong cctvRecords đã
+        // tải sẵn).
+        function capNhatChucDanhFormTheoNgayHienTai() {
+            let ngayStr = document.getElementById("cctv-form-chucdanh-ngay").value || "";
+            cctvChucDanhDangSuaNgay = ngayStr;
+            let rec = ngayStr
+                ? cctvRecords.find(r => r.hoTen === cctvChucDanhDangSuaHoTen && (r.tau || "") === (cctvChucDanhDangSuaTau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH")
+                : null;
+            let selMa = document.getElementById("cctv-form-chucdanh-ma");
+            selMa.value = rec ? (rec.maLoaiCong || cctvMaChucDanhTheoRank(cctvChucDanhDangSuaChucDanh)) : cctvMaChucDanhTheoRank(cctvChucDanhDangSuaChucDanh);
+            document.getElementById("cctv-form-chucdanh-ghichu").value = rec ? (rec.ghiChu || "") : "";
+            let btnXoa = document.getElementById("cctv-form-chucdanh-btn-xoa");
+            if (btnXoa) btnXoa.style.display = rec ? "inline-flex" : "none";
+        }
+
+        // [MỚI] Người dùng tự đổi "Ngày" ngay trong form (ô chọn ngày, KHÔNG còn chỉ đọc như
+        // trước) -> tự tra lại đúng bản ghi của ngày mới chọn để hiện đúng Mã/Ghi chú/nút Xóa,
+        // tránh tình trạng lưu nhầm vào ngày cũ đã hiện sẵn trước đó.
+        function onCctvFormChucDanhNgayChange() {
+            let ngayInput = document.getElementById("cctv-form-chucdanh-ngay");
+            let mm = cctvKyMinMax();
+            if (mm.min && mm.max && ngayInput.value && (ngayInput.value < mm.min || ngayInput.value > mm.max)) {
+                alert("Vui lòng chọn ngày trong đúng kỳ chấm công đang xem (" + mm.min + " → " + mm.max + ").");
+                ngayInput.value = cctvChucDanhDangSuaNgay || "";
+                return;
+            }
+            capNhatChucDanhFormTheoNgayHienTai();
+        }
+
         // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Mở form nhỏ "cctv-form-chucdanh-box":
         // nếu ngày đó ĐÃ có bản ghi "Công chức danh" -> prefill đúng mã đã lưu + hiện nút "Xóa";
         // nếu CHƯA có -> mặc định chọn sẵn đúng mã theo cấp bậc (cctvMaChucDanhTheoRank(), chỉ để
         // GỢI Ý ban đầu cho đỡ phải chọn lại — người dùng vẫn đổi được sang mã còn lại trước khi
-        // lưu) + ẩn nút "Xóa".
+        // lưu) + ẩn nút "Xóa". [SỬA - CHO PHÉP MỞ KHÔNG GẮN SẴN NGÀY] Tham số "ngayStr" nay có thể
+        // để RỖNG (gọi từ clickCctvNhanChucDanh() khi bấm thẳng vào nhãn "SDPO"/"JDPO") — khi đó ô
+        // "Ngày" để trống, người dùng tự chọn trước khi Lưu (luuChamCongThuyenVienChucDanh() sẽ
+        // chặn Lưu nếu chưa chọn ngày).
         function moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
             if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
             let box = document.getElementById("cctv-form-chucdanh-box");
             if (!box) return;
             box.style.display = "block";
             document.getElementById("cctv-form-chucdanh-hoten").value = hoTen;
-            document.getElementById("cctv-form-chucdanh-ngay").value = ngayStr;
-            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
-            let selMa = document.getElementById("cctv-form-chucdanh-ma");
-            selMa.value = rec ? (rec.maLoaiCong || cctvMaChucDanhTheoRank(chucDanh)) : cctvMaChucDanhTheoRank(chucDanh);
-            document.getElementById("cctv-form-chucdanh-ghichu").value = rec ? (rec.ghiChu || "") : "";
-            let btnXoa = document.getElementById("cctv-form-chucdanh-btn-xoa");
-            if (btnXoa) btnXoa.style.display = rec ? "inline-flex" : "none";
-            cctvChucDanhDangSuaHoTen = hoTen; cctvChucDanhDangSuaTau = tau; cctvChucDanhDangSuaNgay = ngayStr;
+            let ngayInput = document.getElementById("cctv-form-chucdanh-ngay");
+            let mm = cctvKyMinMax();
+            ngayInput.min = mm.min || "";
+            ngayInput.max = mm.max || "";
+            ngayInput.value = ngayStr || "";
+            cctvChucDanhDangSuaHoTen = hoTen; cctvChucDanhDangSuaTau = tau;
             cctvChucDanhDangSuaChucDanh = chucDanh; cctvChucDanhDangSuaIdxGoc = crewIdxGoc;
+            capNhatChucDanhFormTheoNgayHienTai();
             box.scrollIntoView({ behavior: "smooth", block: "center" });
         }
 
@@ -7610,7 +7690,12 @@
         // tra lại quyền (canEditCrewChamCong), kỳ chưa chốt, VÀ mã công phải là 1 trong 2 giá trị
         // hợp lệ "DP-SDPO"/"DP-JDPO" — không thể bị bỏ qua dù sửa giao diện.
         async function luuChamCongThuyenVienChucDanh() {
-            if (!cctvChucDanhDangSuaHoTen || !cctvChucDanhDangSuaNgay) return;
+            if (!cctvChucDanhDangSuaHoTen) return;
+            // [MỚI] Ô "Ngày" nay có thể để trống khi mở form từ nhãn "SDPO"/"JDPO" (không gắn sẵn
+            // 1 ngày cụ thể) -> bắt buộc kiểm tra lại đã chọn ngày chưa TRƯỚC khi lưu (trước đây
+            // luôn có sẵn ngày do bấm đúng 1 ô ngày cụ thể nên không cần kiểm tra riêng).
+            cctvChucDanhDangSuaNgay = document.getElementById("cctv-form-chucdanh-ngay").value || "";
+            if (!cctvChucDanhDangSuaNgay) { alert("Vui lòng chọn Ngày trước khi lưu."); return; }
             let ma = document.getElementById("cctv-form-chucdanh-ma").value;
             if (!ma) { alert("Vui lòng chọn mã công chức danh."); return; }
             let ghiChu = document.getElementById("cctv-form-chucdanh-ghichu").value || "";
