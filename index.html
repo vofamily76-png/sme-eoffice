@@ -234,8 +234,13 @@
         }
         #cctv-table thead th.cctv-col-sticky { z-index: 4; background-color: #f2f2f2; }
         #cctv-table tr:hover td.cctv-col-sticky { background-color: #f9f9f9; }
-        #cctv-table .cctv-col-1 { left: 0; width: 170px; min-width: 170px; max-width: 170px; }
-        #cctv-table .cctv-col-2 { left: 170px; width: 150px; min-width: 150px; max-width: 150px; }
+        /* [MỚI - CỘT "STT"] Thêm 1 cột cố định MỚI ở ĐẦU bảng đánh số thứ tự thuyền viên đang
+           hiển thị (xem buildCctvTableHead()/renderChamCongThuyenVienTable() bên dưới) -> 2 cột
+           cố định cũ "Họ Tên"/"Chức Danh" dịch sang phải thêm đúng bề rộng cột "STT" (44px),
+           KHÔNG đổi độ rộng/nội dung của 2 cột đó. */
+        #cctv-table .cctv-col-0 { left: 0; width: 44px; min-width: 44px; max-width: 44px; text-align: center; }
+        #cctv-table .cctv-col-1 { left: 44px; width: 170px; min-width: 170px; max-width: 170px; }
+        #cctv-table .cctv-col-2 { left: 214px; width: 150px; min-width: 150px; max-width: 150px; }
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
@@ -823,7 +828,36 @@
                         </div>
                         <div class="input-group">
                             <label>Chức vụ / Chức danh</label>
+                            <!-- [MỚI - DANH SÁCH CHỨC DANH MẶC ĐỊNH CHO "THUYỀN VIÊN ĐỘI TÀU"] Vẫn LÀ Ô NHẬP
+                                 CHỮ TỰ DO (KHÔNG đổi thành <select>, KHÔNG giới hạn giá trị được phép nhập) —
+                                 chỉ gắn thêm thuộc tính "list" trỏ tới <datalist id="list-crew-position"> bên
+                                 dưới để GỢI Ý sẵn các chức danh Thuyền viên phổ biến khi Phân loại đối tượng =
+                                 "Thuyền viên Đội tàu" (xem handleFormFieldsSwitch() ở index.html). Nhân sự Văn
+                                 phòng (mọi Phòng ban khác) KHÔNG gắn "list" này, giữ nguyên hành vi gõ tự do
+                                 như cũ. KHÔNG đổi tên id/cách đọc-ghi giá trị (vẫn "inp-position" ->
+                                 "position" như cũ) nên KHÔNG ảnh hưởng dữ liệu nhân sự đã lưu. -->
                             <input type="text" id="inp-position" placeholder="Ví dụ: Thuyền trưởng / Kế toán viên">
+                            <datalist id="list-crew-position">
+                                <option value="Thuyền trưởng">
+                                <option value="Thuyền trưởng thực tập">
+                                <option value="Sỹ quan boong">
+                                <option value="Đại phó">
+                                <option value="Đại phó thực tập">
+                                <option value="Máy Trưởng">
+                                <option value="Máy 2">
+                                <option value="Máy 3">
+                                <option value="Máy 4">
+                                <option value="Eto">
+                                <option value="Thợ máy chính">
+                                <option value="Thuyền phó nhất">
+                                <option value="Thuyền phó hai">
+                                <option value="Thuyền phó ba">
+                                <option value="Thủy Thủ Trưởng">
+                                <option value="Thủy thủ">
+                                <option value="Phó hai thực tập">
+                                <option value="Thợ máy">
+                                <option value="Cấp dưỡng">
+                            </datalist>
                         </div>
                         <div class="input-group date-join-group">
                             <label id="lbl-date-join">Ngày vào làm</label>
@@ -1724,13 +1758,20 @@
                  có sẵn (Tab "Quản lý Đội tàu") — CHỈ ĐỌC, không sửa dữ liệu Sheet đó. -->
             <div id="page-chamcongthuyenvien" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</h2>
+                <!-- [SỬA - TÁCH MÃ "DP" THÀNH "DP-SDPO"/"DP-JDPO"] Trước đây chỉ có 1 mã công chức
+                     danh "DP" dùng chung, khi chọn phải chọn thêm ô "Phân loại DP" (JDPO/SDPO) mới
+                     lưu được. NAY tách thành 2 mã công CHỌN TRỰC TIẾP ngay ở ô "Mã công":
+                     "DP-SDPO" (Senior DPO) và "DP-JDPO" (Junior DPO) — không cần chọn thêm bước phụ
+                     nào nữa (xem CREWCHAMCONG_DANHMUC_BOSUNG_DPTACH_ ở Code.gs, tự động thêm 2 mã
+                     này vào Sheet "DanhMucLoaiCongThuyenVien" nếu chưa có, KHÔNG xóa/đổi mã "DP" cũ
+                     nếu Sheet đã có sẵn từ trước -> các bản ghi ngày công ĐÃ LƯU với mã "DP" (kèm
+                     Phân loại DP) vẫn hiển thị/tra cứu bình thường, không mất dữ liệu). -->
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
                     Ghi nhận ngày công của Thuyền viên (Đội tàu) theo Danh mục loại công riêng: <b>B1, B2, B3, B4,
-                    DP, N, N1, N2, D</b>. Mã <b>DP</b> là công chức danh — khi chọn sẽ cần chọn thêm phân loại
-                    <b>JDPO</b> hoặc <b>SDPO</b>. Bảng chấm công tự động mặc định mã <b>DP</b> cho <b>Thuyền
-                    trưởng</b>/<b>Đại phó</b> và mã <b>B2</b> cho các chức danh còn lại ở mọi ngày (bấm vào từng ô
-                    để ghi nhận/sửa lại cụ thể nếu cần). Dữ liệu được lưu trên Google Sheet riêng, tách biệt hoàn
-                    toàn với Bảng Chấm Công của Văn phòng.
+                    DP-SDPO, DP-JDPO, N, N1, N2, D</b>. Mã <b>DP-SDPO</b> (Senior DPO) và <b>DP-JDPO</b> (Junior
+                    DPO) là công chức danh — chọn trực tiếp ở ô "Mã công", không cần chọn thêm bước phụ nào khác.
+                    Bấm vào từng ô ngày để ghi nhận/sửa lại mã công cụ thể. Dữ liệu được lưu trên Google Sheet
+                    riêng, tách biệt hoàn toàn với Bảng Chấm Công của Văn phòng.
                 </p>
 
                 <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"; XÓA NÚT
@@ -1854,12 +1895,17 @@
                             <input type="text" id="cctv-form-tenloaicong" class="search-box" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
                         </div>
                     </div>
-                    <!-- [MỚI - MÃ CÔNG "DP"] "DP" là công chức danh (Thuyền trưởng/Đại phó) — khi
-                         chọn mã "DP" ở trên, CHỈ hiện ô này để bắt buộc chọn thêm phân loại cụ thể
-                         "JDPO" (Junior DPO) hoặc "SDPO" (Senior DPO); ẩn với mọi mã công khác (xem
-                         onCctvMaLoaiCongChange()). Server luôn kiểm tra lại bắt buộc phải chọn
-                         đúng 1 trong 2 giá trị này khi lưu (action "saveChamCongThuyenVien"),
-                         không thể bị bỏ qua dù sửa giao diện. -->
+                    <!-- [MÃ CÔNG "DP" CŨ - GIỮ LẠI ĐỂ TƯƠNG THÍCH NGƯỢC] "DP" là mã công chức danh
+                         cũ (Thuyền trưởng/Đại phó) — khi chọn mã "DP" ở trên, CHỈ hiện ô này để bắt
+                         buộc chọn thêm phân loại cụ thể "JDPO" (Junior DPO) hoặc "SDPO" (Senior
+                         DPO); ẩn với mọi mã công khác (xem onCctvMaLoaiCongChange()). [SỬA - TÁCH
+                         MÃ "DP"] Nay đã có 2 mã công MỚI chọn trực tiếp "DP-SDPO"/"DP-JDPO" (không
+                         cần ô này) — ô "Phân loại DP" bên dưới CHỈ còn hiện lên khi người dùng chọn
+                         đúng mã "DP" cũ (nếu Sheet "DanhMucLoaiCongThuyenVien" vẫn còn giữ mã này
+                         từ trước), giữ nguyên để không ảnh hưởng các bản ghi ngày công ĐÃ LƯU trước
+                         đây. Server luôn kiểm tra lại bắt buộc phải chọn đúng 1 trong 2 giá trị này
+                         khi lưu với mã "DP" (action "saveChamCongThuyenVien"), không thể bị bỏ qua
+                         dù sửa giao diện. -->
                     <div class="form-group" id="cctv-form-loaidp-group" style="display:none;">
                         <label>Phân loại DP <span style="color:#d9534f;">*</span></label>
                         <select id="cctv-form-loaidp" class="search-box" style="max-width:200px;">
@@ -3111,6 +3157,14 @@
         // Code.gs), cùng thứ tự/độ dài với "cctvCrewList" (tra theo đúng index gốc, KHÔNG theo
         // index đã lọc theo tàu — xem renderChamCongThuyenVienTable()).
         let cctvTongHop = [];
+        // [MỚI - HÀNG "CÔNG CHỨC DANH"] 2 mảng tổng hợp MỚI, tách riêng theo đúng "LoaiBanGhi":
+        // "cctvTongHopCongViec" CHỈ đếm bản ghi hàng chính (LoaiBanGhi rỗng), "cctvTongHopChucDanh"
+        // CHỈ đếm bản ghi hàng phụ (LoaiBanGhi = "CHUCDANH") — dùng cho đúng cột tổng hợp của TỪNG
+        // hàng khi 1 thuyền viên có 2 hàng (xem renderChamCongThuyenVienTable()). "cctvTongHop" cũ
+        // ở trên VẪN GIỮ NGUYÊN (tổng hợp gộp CẢ 2 loại, không đổi cách tính) để không ảnh hưởng
+        // bất kỳ nơi nào khác lỡ còn tham chiếu.
+        let cctvTongHopCongViec = [];
+        let cctvTongHopChucDanh = [];
         // [MỚI - "CHỐT BẢNG CHẤM CÔNG"/"ĐIỀU CHỈNH"] cctvDaChot = true khi kỳ đang chọn đã được
         // chốt (khóa) — Server luôn tự kiểm tra lại (KHÔNG thể bị bỏ qua dù sửa giao diện), biến
         // này CHỈ dùng để ẩn/hiện nút bấm cho gọn giao diện. cctvDieuChinhMode = true khi đang bật
@@ -6589,6 +6643,8 @@
             cctvDanhMuc = res.danhMuc || [];
             cctvDanhSachNgay = res.danhSachNgay || [];
             cctvTongHop = res.tongHop || [];
+            cctvTongHopCongViec = res.tongHopCongViec || [];
+            cctvTongHopChucDanh = res.tongHopChucDanh || [];
             // [BẢO MẬT] Server luôn kiểm tra lại quyền ở MỌI action ghi dữ liệu — cờ "canEdit" trả
             // về đây chỉ dùng để ẩn/hiện nút bấm cho gọn giao diện, không phải là lớp bảo mật.
             currentUserCanEditCrewChamCong = !!res.canEdit;
@@ -6707,38 +6763,65 @@
             let wb = XLSX.utils.book_new();
             taus.forEach(tau => {
                 let crewOfTau = cctvCrewList.filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
-                let headerThuRow = ["", ""];
-                let headerNgayRow = ["Họ và tên", "Chức vụ"];
+                // [MỚI - CỘT "STT"] Thêm cột đầu tiên đánh số thứ tự (theo đúng thứ tự thuyền viên
+                // trong sheet Excel của tàu này — KHÔNG liên quan tới thứ tự trên Sheet dữ liệu).
+                let headerThuRow = ["", "", ""];
+                let headerNgayRow = ["STT", "Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
                 (cctvDanhMuc || []).forEach(() => headerThuRow.push(""));
                 headerNgayRow.push(...(cctvDanhMuc || []).map(dm => "Ngày công " + dm.ma));
                 headerNgayRow.push("Ghi chú");
                 let aoa = [headerThuRow, headerNgayRow];
+                let sttXuat = 0;
                 crewOfTau.forEach(c => {
+                    sttXuat++;
                     let idxGoc = cctvCrewList.indexOf(c);
-                    let row = [c.hoTen, c.chucDanh || ""];
+                    // [MỚI - HÀNG "CÔNG CHỨC DANH"] Hàng CHÍNH ("Công làm việc") CHỈ lấy đúng bản
+                    // ghi có "loaiBanGhi" RỖNG — GIỐNG HỆT bộ lọc đang dùng ở
+                    // renderChamCongThuyenVienTable(), để không lẫn với bản ghi của hàng phụ.
+                    let row = [sttXuat, c.hoTen, c.chucDanh || ""];
                     let ghiChuList = [];
                     ngayList.forEach(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr);
+                        let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
                         let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                         if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
                         row.push(maHienThi);
                         if (rec && rec.ghiChu) ghiChuList.push("Ngày " + d.ngay + ": " + rec.ghiChu);
                     });
-                    let tongHopDong = cctvTongHop[idxGoc] || {};
+                    let tongHopDong = (cctvTongHopCongViec && cctvTongHopCongViec[idxGoc]) || cctvTongHop[idxGoc] || {};
                     row.push(...(cctvDanhMuc || []).map(dm => tongHopDong[dm.ma] || 0));
                     row.push(ghiChuList.join("; "));
                     aoa.push(row);
+
+                    // [MỚI - HÀNG "CÔNG CHỨC DANH"] Xuất thêm 1 dòng phụ ngay bên dưới cho đúng
+                    // chức danh thuộc nhóm CCTV_CHUCDANH_CO_HANG_PHU — CHỈ lấy bản ghi "loaiBanGhi"
+                    // = "CHUCDANH", giống hệt hàng phụ trên giao diện web.
+                    if (cctvCoHangChucDanh(c.chucDanh)) {
+                        let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
+                        let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
+                        let rowPhu = ["", "", nhanHang];
+                        let ghiChuListPhu = [];
+                        ngayList.forEach(d => {
+                            let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                            let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                            rowPhu.push(recPhu ? maRank : "");
+                            if (recPhu && recPhu.ghiChu) ghiChuListPhu.push("Ngày " + d.ngay + ": " + recPhu.ghiChu);
+                        });
+                        let tongHopDongPhu = (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {};
+                        rowPhu.push(...(cctvDanhMuc || []).map(dm => tongHopDongPhu[dm.ma] || 0));
+                        rowPhu.push(ghiChuListPhu.join("; "));
+                        aoa.push(rowPhu);
+                    }
                 });
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
-                let cols = [{ wch: 24 }, { wch: 16 }];
+                let cols = [{ wch: 6 }, { wch: 24 }, { wch: 16 }];
                 ngayList.forEach(() => cols.push({ wch: 6 }));
                 (cctvDanhMuc || []).forEach(() => cols.push({ wch: 10 }));
                 cols.push({ wch: 30 });
                 ws['!cols'] = cols;
-                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
-                ws['!freeze'] = { xSplit: 2, ySplit: 2 };
+                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+                ws['!freeze'] = { xSplit: 3, ySplit: 2 };
                 // Tên sheet tối đa 31 ký tự, không chứa ký tự đặc biệt Excel không cho phép.
                 let sheetName = String(tau).replace(/[\[\]\*\/\\\?:]/g, "_").substring(0, 31) || "Tau";
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -6932,13 +7015,46 @@
             return CCTV_CHUCDANH_MAC_DINH_DP.includes(cd) ? "DP" : "B2";
         }
 
-        // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (2 cột cố định "Họ Tên"/"Chức
-        // Danh" + 1 cột/ngày trong kỳ + 1 cột tổng hợp CHO MỖI mã công đang có trong danh mục
-        // "cctvDanhMuc" — trước đây cố định 3 cột "Công DP"/"Công B1"/"Công B2", nay tự thay đổi
-        // theo đúng danh mục loại công thực tế) — dùng cho thuộc tính colspan của các dòng thông
-        // báo (VD "Không có dữ liệu...").
+        // [MỚI - HÀNG "CÔNG CHỨC DANH"] Các chức danh sau đây, ngoài hàng chính "Công làm việc"
+        // (giữ NGUYÊN VẸN mọi hành vi/cách ghi nhận như trước — không đổi gì), còn được hiện thêm
+        // 1 hàng PHỤ ngay bên dưới để ghi nhận ĐỘC LẬP "Công chức danh" (DP-SDPO/DP-JDPO) — cho
+        // phép 1 thuyền viên trong CÙNG 1 ngày vừa có "Công làm việc" (VD B2), vừa có "Công chức
+        // danh" (VD DP-SDPO) mà không đè lên nhau (2 bản ghi RIÊNG BIỆT trên Sheet, phân biệt bằng
+        // cột MỚI "LoaiBanGhi" — xem CREWCHAMCONG_HEADERS/action "saveChamCongThuyenVien" ở
+        // Code.gs). Thuyền trưởng/Thuyền trưởng thực tập -> mã "DP-SDPO"; Đại phó/Đại phó thực
+        // tập/Sỹ quan boong -> mã "DP-JDPO". Chức danh không thuộc danh sách này thì KHÔNG có hàng
+        // phụ, hiển thị/hoạt động y nguyên như trước (1 hàng/thuyền viên).
+        var CCTV_CHUCDANH_CO_HANG_PHU = [
+            "thuyền trưởng", "thuyền trưởng thực tập", "đại phó", "đại phó thực tập", "sỹ quan boong"
+        ];
+        var CCTV_CHUCDANH_MA_SDPO = ["thuyền trưởng", "thuyền trưởng thực tập"];
+        var CCTV_CHUCDANH_MA_JDPO = ["đại phó", "đại phó thực tập", "sỹ quan boong"];
+        function cctvCoHangChucDanh(chucDanh) {
+            let cd = String(chucDanh || "").trim().toLowerCase();
+            return CCTV_CHUCDANH_CO_HANG_PHU.indexOf(cd) !== -1;
+        }
+        // Trả về đúng mã công chức danh ("DP-SDPO"/"DP-JDPO") tương ứng cấp bậc — trống nếu chức
+        // danh không thuộc nhóm có hàng phụ (xem cctvCoHangChucDanh() ở trên).
+        function cctvMaChucDanhTheoRank(chucDanh) {
+            let cd = String(chucDanh || "").trim().toLowerCase();
+            if (CCTV_CHUCDANH_MA_SDPO.indexOf(cd) !== -1) return "DP-SDPO";
+            if (CCTV_CHUCDANH_MA_JDPO.indexOf(cd) !== -1) return "DP-JDPO";
+            return "";
+        }
+        // Nhãn ngắn gọn hiện ở cột "Chức Danh" của hàng phụ (thay vì lặp lại đúng chức danh chính,
+        // hiện luôn "SDPO"/"JDPO" cho gọn, giống mẫu bảng chấm công tay đã cung cấp).
+        function cctvNhanHangChucDanh(chucDanh) {
+            let ma = cctvMaChucDanhTheoRank(chucDanh);
+            return ma === "DP-SDPO" ? "SDPO" : (ma === "DP-JDPO" ? "JDPO" : "");
+        }
+
+        // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (1 cột "STT" + 2 cột cố định "Họ
+        // Tên"/"Chức Danh" + 1 cột/ngày trong kỳ + 1 cột tổng hợp CHO MỖI mã công đang có trong
+        // danh mục "cctvDanhMuc" — trước đây cố định 3 cột "Công DP"/"Công B1"/"Công B2", nay tự
+        // thay đổi theo đúng danh mục loại công thực tế) — dùng cho thuộc tính colspan của các
+        // dòng thông báo (VD "Không có dữ liệu...").
         function cctvTongSoCot() {
-            return 2 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
+            return 3 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
         }
 
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1
@@ -6957,6 +7073,7 @@
                 `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
             ).join("");
             thead.innerHTML = `<tr>
+                <th class="cctv-col-sticky cctv-col-0">STT</th>
                 <th class="cctv-col-sticky cctv-col-1">Họ Tên</th>
                 <th class="cctv-col-sticky cctv-col-2">Chức Danh</th>
                 ${dayThs}
@@ -6991,18 +7108,33 @@
 
             let thang = cctvThangDangChon();
             let editable = currentUserCanEditCrewChamCong && cctvDieuChinhMode && !cctvDaChot;
+            // [MỚI - CỘT "STT"] Đánh số thứ tự theo ĐÚNG danh sách đang hiển thị (đã lọc theo tàu +
+            // sắp xếp) — chỉ để HIỂN THỊ, không phải khóa/định danh dữ liệu nào (thứ tự có thể đổi
+            // khi lọc tàu khác nhau, hoàn toàn bình thường).
+            let cctvStt = 0;
             tbody.innerHTML = crewFiltered.map(c => {
                 // Index của thuyền viên này trong cctvCrewList GỐC (chưa lọc) — dùng để chọn sẵn
                 // đúng người ở <select id="cctv-form-thuyenvien"> khi bấm vào 1 ô còn trống, và để
                 // tra đúng dòng "cctvTongHop" tương ứng (server trả về CÙNG thứ tự với cctvCrewList).
                 let idxGoc = cctvCrewList.indexOf(c);
+                cctvStt++;
+                // [MỚI - HÀNG "CÔNG CHỨC DANH"] Chức danh thuộc nhóm CCTV_CHUCDANH_CO_HANG_PHU thì
+                // hiện thêm 1 hàng PHỤ ngay bên dưới (xem cctvCoHangChucDanh() ở trên) -> cột "STT"
+                // và "Họ Tên" dùng rowspan="2" để gộp chung 2 hàng của CÙNG 1 thuyền viên (giống
+                // đúng mẫu bảng chấm công tay đã cung cấp).
+                let coHangPhu = cctvCoHangChucDanh(c.chucDanh);
+                let rowspanAttr = coHangPhu ? ' rowspan="2"' : '';
+
                 // [SỬA - BỎ MÃ CÔNG MẶC ĐỊNH] Ngày CHƯA có bản ghi cụ thể nào -> để TRỐNG (không
                 // còn tự hiện "DP"/"B2" theo chức danh nữa) — người dùng khi bật "Điều chỉnh" phải
                 // tự bấm vào ô và chọn đúng mã công cho ngày đó (VD nhân sự không làm việc ngày đó
-                // thì cứ để trống, không cần ghi gì).
+                // thì cứ để trống, không cần ghi gì). [MỚI - HÀNG "CÔNG CHỨC DANH"] Hàng CHÍNH này
+                // ("Công làm việc") CHỈ lấy đúng bản ghi có "LoaiBanGhi" RỖNG (r.loaiBanGhi||"" ===
+                // "") — bản ghi của hàng PHỤ "Công chức danh" (LoaiBanGhi = "CHUCDANH") KHÔNG lẫn
+                // vào đây, để 2 hàng của CÙNG 1 ngày hoạt động HOÀN TOÀN độc lập với nhau.
                 let dayTds = (cctvDanhSachNgay || []).map(d => {
                     let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr);
+                    let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
                     let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                     let maInfo = cctvDanhMuc.find(x => x.ma === maHienThi);
                     let titleParts = [];
@@ -7041,20 +7173,61 @@
                     let tdStyle = (editable ? 'position:relative; ' : '') + style + (dangChon ? ' outline:2px solid #2f6fed; background:#e3edff;' : '');
                     return `<td style="${tdStyle}" title="${escapeHtml(titleParts.join(" — "))}"${clickAttr}>${checkboxHtml}<b>${escapeHtml(maHienThi)}</b>${fileIcon}${delIcon}</td>`;
                 }).join("");
-                // [SỬA - CỘT TỔNG HỢP ĐỘNG] Lấy từ "cctvTongHop" server đã tính sẵn (CÙNG thứ tự
-                // với cctvCrewList — tra đúng theo idxGoc), hiện 1 cột CHO MỖI mã công đang có
-                // trong "cctvDanhMuc"; nếu chưa có dữ liệu (VD tải dữ liệu cũ) thì hiện "0" an
-                // toàn, không lỗi.
-                let tongHopDong = cctvTongHop[idxGoc] || {};
+                // [SỬA - CỘT TỔNG HỢP ĐỘNG] Lấy từ "cctvTongHopCongViec" server đã tính sẵn CHỈ cho
+                // đúng hàng "Công làm việc" (LoaiBanGhi rỗng) — nếu server cũ chưa trả về (an toàn
+                // ngược), tự rơi về "cctvTongHop" (tổng hợp gộp như trước) để không lỗi.
+                let tongHopDong = (cctvTongHopCongViec && cctvTongHopCongViec[idxGoc]) || cctvTongHop[idxGoc] || {};
                 let tongHopTds = (cctvDanhMuc || []).map(dm =>
                     `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong[dm.ma] || 0}</td>`
                 ).join("");
-                return `<tr>
-                    <td class="cctv-col-sticky cctv-col-1" title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
+                let hangChinh = `<tr>
+                    <td class="cctv-col-sticky cctv-col-0"${rowspanAttr} style="text-align:center;">${cctvStt}</td>
+                    <td class="cctv-col-sticky cctv-col-1"${rowspanAttr} title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
                     <td class="cctv-col-sticky cctv-col-2" title="${escapeHtml(c.chucDanh || "")}">${escapeHtml(c.chucDanh || "")}</td>
                     ${dayTds}
                     ${tongHopTds}
                 </tr>`;
+
+                // [MỚI - HÀNG "CÔNG CHỨC DANH"] Chỉ dựng thêm khi chức danh thuộc nhóm có hàng phụ.
+                // Mỗi ô ngày ở hàng này là 1 NÚT BẤM ĐƠN GIẢN (không mở form): bấm 1 lần để GHI
+                // NHẬN đúng mã công chức danh theo cấp bậc (DP-SDPO/DP-JDPO — xem
+                // cctvMaChucDanhTheoRank()); bấm lại lần nữa (ô đã có dữ liệu) để XÓA — dùng LẠI
+                // NGUYÊN 2 action có sẵn "saveChamCongThuyenVien"/"deleteChamCongThuyenVien" (chỉ
+                // gửi kèm "loaiBanGhi: 'CHUCDANH'" để server lưu thành 1 bản ghi RIÊNG, tách biệt
+                // hoàn toàn với bản ghi "Công làm việc" của cùng ngày đó — xem
+                // clickCctvCellChucDanh() bên dưới). KHÔNG có ô tick "chọn nhiều"/nút xóa/đính kèm
+                // file riêng cho hàng này (giữ đơn giản, đúng đủ nhu cầu "công chức danh").
+                let hangPhu = "";
+                if (coHangPhu) {
+                    let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
+                    let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
+                    let dayTdsPhu = (cctvDanhSachNgay || []).map(d => {
+                        let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                        let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                        let coGhiNhan = !!recPhu;
+                        let titlePhu = coGhiNhan
+                            ? ("Công chức danh: " + maRank + (recPhu.ghiChu ? (" — Ghi chú: " + recPhu.ghiChu) : ""))
+                            : ("Chưa ghi nhận Công chức danh " + maRank + " (ô trống)");
+                        if (editable) titlePhu += " — Bấm để " + (coGhiNhan ? "xóa" : "ghi nhận");
+                        let stylePhu = 'text-align:center; ' + (d.isWeekend ? 'background:#eafaf1; ' : 'background:#f4fff7; ') +
+                            (coGhiNhan ? '' : 'color:#bbb; ') +
+                            (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '');
+                        let clickAttrPhu = editable
+                            ? ` onclick="clickCctvCellChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}','${ngayStr}',${idxGoc})"`
+                            : "";
+                        return `<td style="${stylePhu}" title="${escapeHtml(titlePhu)}"${clickAttrPhu}><b>${coGhiNhan ? escapeHtml(maRank) : ""}</b></td>`;
+                    }).join("");
+                    let tongHopDongPhu = (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {};
+                    let tongHopTdsPhu = (cctvDanhMuc || []).map(dm =>
+                        `<td style="text-align:center; font-weight:600; background:#eafaf1;">${tongHopDongPhu[dm.ma] || 0}</td>`
+                    ).join("");
+                    hangPhu = `<tr>
+                        <td class="cctv-col-sticky cctv-col-2" style="background:#f6fff8;" title="Công chức danh ${escapeHtml(maRank)}">${escapeHtml(nhanHang)}</td>
+                        ${dayTdsPhu}
+                        ${tongHopTdsPhu}
+                    </tr>`;
+                }
+                return hangChinh + hangPhu;
             }).join("");
         }
 
@@ -7156,12 +7329,41 @@
         // action "saveChamCongThuyenVien").
         function clickCctvCell(hoTen, tau, ngayStr, crewIdxGoc) {
             if (!currentUserCanEditCrewChamCong || !cctvDieuChinhMode || cctvDaChot) return;
-            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr);
+            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
             if (rec) {
                 suaChamCongThuyenVien(hoTen, tau, ngayStr);
             } else {
                 moFormChamCongThuyenVien(crewIdxGoc, ngayStr, "");
             }
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH"] Bấm vào 1 ô của hàng phụ "Công chức danh" (chỉ có ở các
+        // chức danh thuộc CCTV_CHUCDANH_CO_HANG_PHU — xem renderChamCongThuyenVienTable()): ô đó
+        // CHƯA có dữ liệu -> ghi nhận NGAY đúng mã công chức danh theo cấp bậc (DP-SDPO/DP-JDPO,
+        // xem cctvMaChucDanhTheoRank()), không cần mở form; ô ĐÃ có dữ liệu -> xóa. Cả 2 thao tác
+        // đều dùng LẠI NGUYÊN 2 action có sẵn "saveChamCongThuyenVien"/"deleteChamCongThuyenVien",
+        // chỉ gửi kèm tham số MỚI "loaiBanGhi: 'CHUCDANH'" để Server lưu thành 1 bản ghi RIÊNG
+        // (cột MỚI "LoaiBanGhi" trên Sheet) — KHÔNG đụng/đè lên bản ghi "Công làm việc" của cùng
+        // ngày đó (bản ghi đó có "LoaiBanGhi" rỗng). Server luôn tự kiểm tra lại quyền
+        // (canEditCrewChamCong), kỳ chưa chốt, VÀ đúng mã công khớp với cấp bậc — không thể bị bỏ
+        // qua dù sửa giao diện.
+        async function clickCctvCellChucDanh(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
+            if (!currentUserCanEditCrewChamCong || !cctvDieuChinhMode || cctvDaChot) return;
+            let ma = cctvMaChucDanhTheoRank(chucDanh);
+            if (!ma) return; // an toàn — không xảy ra vì hàng này chỉ dựng cho đúng chức danh phù hợp
+            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+            if (rec) {
+                if (!confirm(`Xóa "Công chức danh" (${ma}) ngày ${ngayStr} của "${hoTen}"?`)) return;
+                let res = await callServerAction({ action: "deleteChamCongThuyenVien", hoTen: hoTen, tau: tau, ngay: ngayStr, loaiBanGhi: "CHUCDANH" });
+                if (!res || res.status === "ERROR") { alert("Lỗi: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            } else {
+                let res = await callServerAction({
+                    action: "saveChamCongThuyenVien", hoTen: hoTen, tau: tau, chucDanh: chucDanh,
+                    ngay: ngayStr, maLoaiCong: ma, loaiBanGhi: "CHUCDANH"
+                });
+                if (!res || res.status === "ERROR") { alert("Lỗi ghi nhận: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            }
+            await loadChamCongThuyenVienData();
         }
 
         // [SỬA - XÓA NÚT "GHI NHẬN NGÀY CÔNG MỚI"] Thêm tham số TÙY CHỌN thứ 3 (prefillMa) để có
@@ -7199,7 +7401,7 @@
         }
 
         function suaChamCongThuyenVien(hoTen, tau, ngay) {
-            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === tau && r.ngay === ngay);
+            let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === tau && r.ngay === ngay && (r.loaiBanGhi || "") === "");
             if (!rec) return;
             moFormChamCongThuyenVien();
             let idx = cctvCrewList.findIndex(c => c.hoTen === hoTen && (c.tau || "") === tau);
@@ -10636,6 +10838,22 @@
         }
 
         function handleFormFieldsSwitch(selectedValue) {
+            // [MỚI - GỢI Ý CHỨC DANH MẶC ĐỊNH] Ô "Chức vụ / Chức danh" (#inp-position) VẪN LÀ ô
+            // nhập chữ tự do như cũ — chỉ gắn thêm/gỡ thuộc tính "list" trỏ tới
+            // <datalist id="list-crew-position"> (xem markup ở trên) để gợi ý sẵn các chức danh
+            // Thuyền viên phổ biến khi chọn "Thuyền viên Đội tàu"; gỡ ra khi chọn Phòng ban Văn
+            // phòng để không gợi ý nhầm. Không giới hạn/ép giá trị nhập, không đổi cách lưu.
+            let positionInput = document.getElementById("inp-position");
+            if (positionInput) {
+                if (selectedValue === "CREW_SHIP") {
+                    positionInput.setAttribute("list", "list-crew-position");
+                    positionInput.placeholder = "Chọn hoặc nhập chức danh (VD: Thuyền trưởng, Đại phó...)";
+                } else {
+                    positionInput.removeAttribute("list");
+                    positionInput.placeholder = "Ví dụ: Thuyền trưởng / Kế toán viên";
+                }
+            }
+
             if (selectedValue === "CREW_SHIP") {
                 document.querySelectorAll(".id-group, .select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
                 document.querySelectorAll(".email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
