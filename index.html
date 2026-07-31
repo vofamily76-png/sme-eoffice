@@ -2006,6 +2006,40 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - HÀNG "CÔNG CHỨC DANH" (SDPO/JDPO) - "CHỌN NHIỀU Ô" ĐỂ ĐỔI HÀNG LOẠT]
+                     Thanh công cụ nổi RIÊNG cho hàng phụ "Công chức danh" — giống HỆT cách làm của
+                     thanh công cụ "cctv-bulk-toolbar" ở trên (dành cho hàng chính "Công làm việc"),
+                     chỉ khác: mã áp dụng CHỈ có 2 lựa chọn cố định "DP-SDPO"/"DP-JDPO" (đúng 2 mã
+                     hợp lệ của hàng này — xem CREWCHAMCONG_MA_CHUCDANH_HOPLE_ ở Code.gs). CHỈ hiện
+                     khi đang bật "Điều chỉnh" VÀ có ít nhất 1 ô của hàng "Công chức danh" đã được
+                     tick chọn (xem cctvOChonMapChucDanh, toggleCctvOChonChucDanh() bên dưới). Bấm
+                     "Áp dụng" để đổi chức danh (SDPO/JDPO) NGAY LẬP TỨC cho TẤT CẢ các ô đã chọn —
+                     dùng LẠI NGUYÊN action có sẵn "saveChamCongThuyenVienBulk" (chỉ gửi kèm mỗi ô
+                     "loaiBanGhi: 'CHUCDANH'"), KHÔNG cần thêm action mới, KHÔNG đổi bảo mật/phân
+                     quyền (Server vẫn tự kiểm tra lại quyền "SuaChamCongThuyenVien"/Admin + kỳ chưa
+                     chốt + mã công đúng "DP-SDPO"/"DP-JDPO" — xem apDungMaCongHangLoatCctvChucDanh()
+                     bên dưới). -->
+                <div id="cctv-bulk-toolbar-chucdanh" class="admin-box" style="display:none; position:sticky; bottom:10px; z-index:5; border-left:5px solid #2e7d32; background:#eafaf1; box-shadow:0 2px 10px rgba(0,0,0,0.15); margin-top:16px;">
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="font-weight:600; color:#2e7d32;"><i class="fa-solid fa-square-check"></i> Đã chọn <span id="cctv-bulk-chucdanh-count">0</span> ô "Công chức danh"</div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Đổi thành</label>
+                            <select id="cctv-bulk-chucdanh-ma" class="search-box" style="min-width:200px;">
+                                <option value="">-- Chọn mã --</option>
+                                <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
+                                <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex:1; min-width:200px;">
+                            <label>Ghi chú (áp dụng chung, không bắt buộc)</label>
+                            <input type="text" id="cctv-bulk-chucdanh-ghichu" class="search-box" maxlength="500" placeholder="Ghi chú thêm (nếu có)">
+                        </div>
+                        <button class="btn btn-success" style="width:auto;" onclick="apDungMaCongHangLoatCctvChucDanh()"><i class="fa-solid fa-check-double"></i> Áp dụng</button>
+                        <button class="btn btn-danger" style="width:auto;" onclick="xoaHangLoatCctvChucDanh()"><i class="fa-solid fa-trash"></i> Xóa các ô đã chọn</button>
+                        <button class="btn" style="width:auto;" onclick="boChonTatCctvChucDanh()"><i class="fa-solid fa-xmark"></i> Bỏ chọn</button>
+                    </div>
+                </div>
+
                 <!-- [SỬA - BẢNG DẠNG LƯỚI THEO NGÀY] Trước đây bảng này liệt kê TỪNG DÒNG là 1
                      bản ghi ngày công đã lưu (Họ và tên/Chức vụ/Tàu/Ngày làm việc/Mã loại
                      công/Ghi chú/File đính kèm/Cập nhật) — nên khi kỳ CHƯA có bản ghi nào, bảng
@@ -3228,6 +3262,16 @@
         // xoaHangLoatCctv() bên dưới).
         let cctvOChonMap = new Map();
         function cctvOChonKey(hoTen, tau, ngay) { return hoTen + "|" + (tau || "") + "|" + ngay; }
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô"] TÁCH RIÊNG hoàn toàn khỏi "cctvOChonMap"
+        // ở trên (vốn chỉ dùng cho hàng chính "Công làm việc") — vì 2 hàng của CÙNG 1 ngày là 2
+        // bản ghi RIÊNG BIỆT trên Sheet (phân biệt bằng "LoaiBanGhi"), nên phải tick chọn/áp dụng/
+        // xóa hàng loạt ĐỘC LẬP với nhau (không thể gộp chung 1 Map vì cùng 1 khóa "hoTen|tau|ngay"
+        // có thể vừa được tick ở hàng chính, vừa được tick ở hàng phụ). Mỗi phần tử là 1 object
+        // { hoTen, tau, chucDanh, ngay, loaiBanGhi: "CHUCDANH" } — dùng LẠI NGUYÊN 2 action có sẵn
+        // "saveChamCongThuyenVienBulk"/"deleteChamCongThuyenVienBulk" ở Code.gs (đã hỗ trợ sẵn
+        // "loaiBanGhi" theo từng ô — xem apDungMaCongHangLoatCctvChucDanh()/
+        // xoaHangLoatCctvChucDanh() bên dưới), KHÔNG cần sửa gì ở Code.gs.
+        let cctvOChonMapChucDanh = new Map();
         // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH (TRƯỜNG HỢP ĐẶC BIỆT)] true = tài khoản đang đăng nhập
         // KHÔNG có quyền "SuaChamCong" nhưng ĐÃ được người quản lý BẬT cờ cho phép tự điều chỉnh
         // ĐÚNG dòng của chính mình (xem action "toggleTuDieuChinhChamCong"/"getChamCongData" ở
@@ -6699,6 +6743,7 @@
             cctvDaChot = !!res.daChot;
             cctvDieuChinhMode = false;
             cctvOChonMap.clear();
+            cctvOChonMapChucDanh.clear();
             capNhatBoLocTauChamCongThuyenVien();
             capNhatDropdownThuyenVienChamCongThuyenVien();
             capNhatDropdownMaLoaiCongChamCongThuyenVien();
@@ -6743,6 +6788,7 @@
             }
             renderChamCongThuyenVienTable();
             capNhatThanhCongCuChonNhieuCctv();
+            capNhatThanhCongCuChonNhieuCctvChucDanh();
         }
 
         // [MỚI - "ĐIỀU CHỈNH"] Bật/tắt chế độ cho phép sửa/xóa từng dòng + ghi nhận ngày công mới
@@ -6751,7 +6797,7 @@
         function toggleChamCongThuyenVienDieuChinh() {
             if (!currentUserCanEditCrewChamCong || cctvDaChot) return;
             cctvDieuChinhMode = !cctvDieuChinhMode;
-            if (!cctvDieuChinhMode) cctvOChonMap.clear();
+            if (!cctvDieuChinhMode) { cctvOChonMap.clear(); cctvOChonMapChucDanh.clear(); }
             capNhatNutChotDieuChinhCctv();
         }
 
@@ -7093,6 +7139,21 @@
             let ma = cctvMaChucDanhTheoRank(chucDanh);
             return ma === "DP-SDPO" ? "SDPO" : (ma === "DP-JDPO" ? "JDPO" : "");
         }
+        // [MỚI - SỬA LỖI "Ô NGÀY CÔNG LUÔN HIỆN MẶC ĐỊNH THEO CẤP BẬC"] Trước đây mỗi Ô NGÀY của
+        // hàng phụ "Công chức danh" LUÔN hiển thị nhãn MẶC ĐỊNH theo cấp bậc (cctvMaChucDanhTheoRank
+        // của chức danh, VD "JDPO" cho Đại phó) — dù người dùng đã bấm vào ô, chọn đổi sang "SDPO"
+        // và LƯU THÀNH CÔNG (dữ liệu ĐÃ được ghi đúng xuống Sheet), ô vẫn hiển thị lại "JDPO" như cũ
+        // vì phần hiển thị (renderChamCongThuyenVienTable) lấy nhãn từ mã MẶC ĐỊNH thay vì lấy từ
+        // ĐÚNG bản ghi đã lưu (rec.maLoaiCong) của riêng ngày đó — khiến người dùng tưởng là "không
+        // điều chỉnh được". Hàm MỚI này chuyển 1 mã CỤ THỂ ("DP-SDPO"/"DP-JDPO") thành nhãn ngắn gọn
+        // ("SDPO"/"JDPO") — dùng để hiển thị ĐÚNG giá trị đã lưu của TỪNG ngày (xem
+        // renderChamCongThuyenVienTable() bên dưới: nay ưu tiên lấy "recPhu.maLoaiCong" của đúng
+        // ngày đó, CHỈ khi ngày đó CHƯA có bản ghi riêng mới tạm hiện nhãn mặc định theo cấp bậc để
+        // gợi ý). KHÔNG đổi cách lưu/đọc dữ liệu ở Code.gs, chỉ sửa đúng chỗ hiển thị.
+        function cctvNhanTuMa(ma) {
+            let m = String(ma || "").trim().toUpperCase();
+            return m === "DP-SDPO" ? "SDPO" : (m === "DP-JDPO" ? "JDPO" : "");
+        }
 
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Tổng số cột của bảng lưới (1 cột "STT" + 2 cột cố định "Họ
         // Tên"/"Chức Danh" + 1 cột/ngày trong kỳ + 1 cột tổng hợp CHO MỖI mã công đang có trong
@@ -7253,17 +7314,36 @@
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                         let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
                         let coGhiNhan = !!recPhu;
+                        // [SỬA - HIỆN ĐÚNG GIÁ TRỊ ĐÃ LƯU CHO TỪNG NGÀY] Ngày ĐÃ có bản ghi riêng ->
+                        // LUÔN hiện đúng mã đã lưu của ngày đó (recPhu.maLoaiCong, VD "SDPO" nếu
+                        // người dùng đã đổi sang Senior DPO cho ngày này) — KHÔNG còn hiện cố định
+                        // theo mặc định cấp bậc nữa (đây chính là lý do trước đây nhìn giống như
+                        // "không điều chỉnh được": lưu thành công nhưng ô vẫn hiện nhãn cũ theo cấp
+                        // bậc). Ngày CHƯA có bản ghi -> vẫn để TRỐNG như trước (không tự điền gì).
+                        let nhanNgay = coGhiNhan ? (cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : "";
                         let titlePhu = coGhiNhan
-                            ? ("Công chức danh: " + maRank + (recPhu.ghiChu ? (" — Ghi chú: " + recPhu.ghiChu) : ""))
-                            : ("Chưa ghi nhận Công chức danh " + maRank + " (ô trống)");
-                        if (editable) titlePhu += " — Bấm để mở form " + (coGhiNhan ? "sửa/xóa" : "ghi nhận") + " (chọn được SDPO hoặc JDPO)";
-                        let stylePhu = 'text-align:center; ' + (d.isWeekend ? 'background:#eafaf1; ' : 'background:#f4fff7; ') +
+                            ? ("Công chức danh: " + (recPhu.maLoaiCong || maRank) + (recPhu.ghiChu ? (" — Ghi chú: " + recPhu.ghiChu) : ""))
+                            : ("Chưa ghi nhận Công chức danh (mặc định gợi ý " + maRank + ", ô trống)");
+                        if (editable) titlePhu += " — Bấm để mở form " + (coGhiNhan ? "sửa/xóa" : "ghi nhận") + " (chọn được SDPO hoặc JDPO), hoặc tick ô vuông để đổi hàng loạt nhiều ô cùng lúc";
+                        // [MỚI - "CHỌN NHIỀU Ô" CHO HÀNG "CÔNG CHỨC DANH"] Giống HỆT cơ chế tick chọn
+                        // của hàng chính "Công làm việc" ở trên (checkboxHtml/toggleCctvOChon), chỉ
+                        // khác dùng Map RIÊNG "cctvOChonMapChucDanh" + hàm "toggleCctvOChonChucDanh()"
+                        // để không lẫn với lựa chọn của hàng chính. Bấm vào ô tick KHÔNG mở form
+                        // (event.stopPropagation).
+                        let ochonKeyPhu = cctvOChonKey(c.hoTen, c.tau || "", ngayStr);
+                        let dangChonPhu = cctvOChonMapChucDanh.has(ochonKeyPhu);
+                        let checkboxHtmlPhu = editable
+                            ? ` <input type="checkbox" class="cctv-ochon-checkbox" ${dangChonPhu ? "checked" : ""} style="position:absolute; top:1px; left:1px; width:12px; height:12px; cursor:pointer;"
+                                  onclick="event.stopPropagation(); toggleCctvOChonChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}','${ngayStr}', this.checked)">`
+                            : "";
+                        let stylePhu = (editable ? 'position:relative; ' : '') + 'text-align:center; ' + (d.isWeekend ? 'background:#eafaf1; ' : 'background:#f4fff7; ') +
                             (coGhiNhan ? '' : 'color:#bbb; ') +
-                            (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '');
+                            (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '') +
+                            (dangChonPhu ? ' outline:2px solid #2e7d32; background:#c8f0d4;' : '');
                         let clickAttrPhu = editable
                             ? ` onclick="clickCctvCellChucDanh('${escapeHtml(c.hoTen).replace(/'/g, "\\'")}','${escapeHtml(c.tau || "").replace(/'/g, "\\'")}','${escapeHtml(c.chucDanh || "").replace(/'/g, "\\'")}','${ngayStr}',${idxGoc})"`
                             : "";
-                        return `<td style="${stylePhu}" title="${escapeHtml(titlePhu)}"${clickAttrPhu}><b>${coGhiNhan ? escapeHtml(maRank) : ""}</b></td>`;
+                        return `<td style="${stylePhu}" title="${escapeHtml(titlePhu)}"${clickAttrPhu}>${checkboxHtmlPhu}<b>${escapeHtml(nhanNgay)}</b></td>`;
                     }).join("");
                     let tongHopDongPhu = (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {};
                     let tongHopTdsPhu = (cctvDanhMuc || []).map(dm =>
@@ -7366,6 +7446,75 @@
             let res = await callServerAction({ action: "deleteChamCongThuyenVienBulk", items: items });
             if (!res || res.status === "ERROR") { alert("Lỗi xóa hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
             cctvOChonMap.clear();
+            await loadChamCongThuyenVienData();
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô"] Tick/bỏ tick 1 ô của hàng phụ "Công chức
+        // danh" vào tập hợp RIÊNG "cctvOChonMapChucDanh" — hoàn toàn ĐỘC LẬP với "cctvOChonMap" của
+        // hàng chính (xem toggleCctvOChon() ở trên). Có thể chọn CÙNG LÚC nhiều ô của NHIỀU thuyền
+        // viên khác nhau.
+        function toggleCctvOChonChucDanh(hoTen, tau, chucDanh, ngay, dangChon) {
+            let key = cctvOChonKey(hoTen, tau, ngay);
+            if (dangChon) {
+                cctvOChonMapChucDanh.set(key, { hoTen: hoTen, tau: tau, chucDanh: chucDanh, ngay: ngay, loaiBanGhi: "CHUCDANH" });
+            } else {
+                cctvOChonMapChucDanh.delete(key);
+            }
+            capNhatThanhCongCuChonNhieuCctvChucDanh();
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô"] Bỏ chọn TẤT CẢ các ô hàng phụ đang chọn.
+        function boChonTatCctvChucDanh() {
+            cctvOChonMapChucDanh.clear();
+            renderChamCongThuyenVienTable();
+            capNhatThanhCongCuChonNhieuCctvChucDanh();
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô"] Hiện/ẩn thanh công cụ nổi riêng + cập nhật
+        // số ô đang chọn — giống HỆT capNhatThanhCongCuChonNhieuCctv() ở trên nhưng dành cho
+        // "cctv-bulk-toolbar-chucdanh"/"cctvOChonMapChucDanh".
+        function capNhatThanhCongCuChonNhieuCctvChucDanh() {
+            let box = document.getElementById("cctv-bulk-toolbar-chucdanh");
+            if (!box) return;
+            let soLuong = cctvOChonMapChucDanh.size;
+            box.style.display = (cctvDieuChinhMode && soLuong > 0) ? "block" : "none";
+            let countEl = document.getElementById("cctv-bulk-chucdanh-count");
+            if (countEl) countEl.textContent = String(soLuong);
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô" - ÁP DỤNG HÀNG LOẠT] Đổi NGAY LẬP TỨC mã
+        // "DP-SDPO"/"DP-JDPO" cho TẤT CẢ các ô hàng phụ đang được tick chọn — dùng LẠI NGUYÊN action
+        // có sẵn "saveChamCongThuyenVienBulk" (server đã hỗ trợ sẵn "loaiBanGhi" theo từng ô, tự
+        // kiểm tra lại quyền "SuaChamCongThuyenVien"/Admin + kỳ chưa chốt + chức danh thuộc nhóm hợp
+        // lệ + mã công đúng "DP-SDPO"/"DP-JDPO", KHÔNG thể bị bỏ qua dù sửa giao diện — xem action
+        // "saveChamCongThuyenVienBulk" ở Code.gs). Sau khi lưu thành công, tự bỏ chọn và tải lại dữ
+        // liệu để hiện đúng kết quả mới nhất.
+        async function apDungMaCongHangLoatCctvChucDanh() {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
+            if (!cctvOChonMapChucDanh.size) { alert("Vui lòng chọn ít nhất 1 ô \"Công chức danh\"."); return; }
+            let ma = document.getElementById("cctv-bulk-chucdanh-ma").value;
+            if (!ma) { alert("Vui lòng chọn mã cần đổi (DP-SDPO hoặc DP-JDPO)."); return; }
+            let ghiChu = document.getElementById("cctv-bulk-chucdanh-ghichu").value || "";
+            let items = Array.from(cctvOChonMapChucDanh.values());
+            if (!confirm(`Đổi "Công chức danh" thành "${ma}" cho ${items.length} ô đã chọn?`)) return;
+            let res = await callServerAction({ action: "saveChamCongThuyenVienBulk", items: items, maLoaiCong: ma, loaiDP: "", ghiChu: ghiChu });
+            if (!res || res.status === "ERROR") { alert("Lỗi ghi nhận hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvOChonMapChucDanh.clear();
+            document.getElementById("cctv-bulk-chucdanh-ghichu").value = "";
+            await loadChamCongThuyenVienData();
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" - "CHỌN NHIỀU Ô" - XÓA HÀNG LOẠT] Xóa TẤT CẢ các ô hàng phụ
+        // đang được tick chọn — dùng LẠI NGUYÊN action có sẵn "deleteChamCongThuyenVienBulk" (cùng
+        // điều kiện quyền hạn/kỳ chốt như xóa từng ô/xóa hàng loạt của hàng chính).
+        async function xoaHangLoatCctvChucDanh() {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi xóa ngày công."); return; }
+            if (!cctvOChonMapChucDanh.size) { alert("Vui lòng chọn ít nhất 1 ô \"Công chức danh\"."); return; }
+            let items = Array.from(cctvOChonMapChucDanh.values());
+            if (!confirm(`Xóa "Công chức danh" của ${items.length} ô đã chọn?`)) return;
+            let res = await callServerAction({ action: "deleteChamCongThuyenVienBulk", items: items });
+            if (!res || res.status === "ERROR") { alert("Lỗi xóa hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            cctvOChonMapChucDanh.clear();
             await loadChamCongThuyenVienData();
         }
 
