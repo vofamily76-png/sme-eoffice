@@ -1932,6 +1932,47 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Trước đây bấm vào 1 ô của hàng
+                     phụ "Công chức danh" sẽ TỰ ĐỘNG ghi/xóa đúng mã theo cấp bậc (Thuyền
+                     trưởng/Thuyền trưởng thực tập -> "DP-SDPO"; Đại phó/Đại phó thực tập/Sỹ quan
+                     boong -> "DP-JDPO"), KHÔNG cho chọn khác. NAY hiện form nhỏ này để người dùng
+                     TỰ CHỌN đúng 1 trong 2 mã "DP-SDPO"/"DP-JDPO" cho từng ngày (mặc định chọn sẵn
+                     theo cấp bậc để đỡ phải chọn lại, nhưng có thể đổi sang mã còn lại nếu cần —
+                     VD Đại phó tạm thời đảm nhiệm vai trò Senior DPO 1 ngày cụ thể) — xem
+                     moFormChucDanhChamCongThuyenVien()/luuChamCongThuyenVienChucDanh() bên dưới.
+                     Server luôn kiểm tra lại bắt buộc đúng 1 trong 2 mã này (action
+                     "saveChamCongThuyenVien" với "loaiBanGhi": "CHUCDANH"), không thể bị bỏ qua dù
+                     sửa giao diện. -->
+                <div class="admin-box" id="cctv-form-chucdanh-box" style="display:none; border-top:4px solid #2e7d32; margin-top:16px;">
+                    <h3 style="margin-top:0;">Ghi nhận "Công chức danh"</h3>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Thuyền viên</label>
+                            <input type="text" id="cctv-form-chucdanh-hoten" class="search-box" readonly disabled style="min-width:200px;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Ngày</label>
+                            <input type="text" id="cctv-form-chucdanh-ngay" class="search-box" readonly disabled style="min-width:120px;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Mã công chức danh</label>
+                            <select id="cctv-form-chucdanh-ma" class="search-box" style="min-width:200px;">
+                                <option value="DP-SDPO">DP-SDPO (Senior DPO)</option>
+                                <option value="DP-JDPO">DP-JDPO (Junior DPO)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Ghi chú (không bắt buộc)</label>
+                        <input type="text" id="cctv-form-chucdanh-ghichu" class="search-box" maxlength="500" placeholder="Ghi chú thêm (nếu có)">
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-success" onclick="luuChamCongThuyenVienChucDanh()"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+                        <button class="btn btn-danger" id="cctv-form-chucdanh-btn-xoa" style="width:auto; display:none;" onclick="xoaChamCongThuyenVienChucDanhTuForm()"><i class="fa-solid fa-trash"></i> Xóa</button>
+                        <button class="btn" style="width:auto;" onclick="dongFormChucDanhChamCongThuyenVien()">Hủy</button>
+                    </div>
+                </div>
+
                 <!-- [MỚI - "CHỌN NHIỀU Ô" ĐỂ GHI NHẬN/XÓA HÀNG LOẠT] Thanh công cụ nổi, CHỈ hiện khi
                      đang bật "Điều chỉnh" VÀ có ít nhất 1 ô đã được tick chọn trên bảng lưới (xem
                      cctvOChonMap, toggleCctvOChon() bên dưới) — cho phép chọn 1 "Mã công" rồi bấm
@@ -3173,6 +3214,11 @@
         let cctvDaChot = false;
         let cctvDieuChinhMode = false;
         let cctvDangSuaHoTen = null, cctvDangSuaTau = null, cctvDangSuaNgay = null;
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Theo dõi RIÊNG bản ghi "Công chức danh"
+        // đang mở để sửa (form "cctv-form-chucdanh-box") — TÁCH BIỆT hoàn toàn với
+        // cctvDangSuaHoTen/Tau/Ngay ở trên (dành cho hàng "Công làm việc" chính), tránh nhầm lẫn
+        // khi cả 2 form có thể từng được mở trong cùng phiên làm việc.
+        let cctvChucDanhDangSuaHoTen = null, cctvChucDanhDangSuaTau = null, cctvChucDanhDangSuaNgay = null, cctvChucDanhDangSuaChucDanh = null, cctvChucDanhDangSuaIdxGoc = null;
         // [MỚI - "CHỌN NHIỀU Ô" ĐỂ GHI NHẬN/XÓA HÀNG LOẠT] Tập hợp các ô ngày công ĐANG được tick
         // chọn trên bảng lưới (chỉ hoạt động khi đang bật "Điều chỉnh" — cctvDieuChinhMode). Mỗi
         // phần tử là 1 object { hoTen, tau, chucDanh, ngay } — key duy nhất dùng để tick/bỏ tick
@@ -6682,7 +6728,7 @@
                     ? '<i class="fa-solid fa-check"></i> Đang điều chỉnh (bấm để tắt)'
                     : '<i class="fa-solid fa-sliders"></i> Điều chỉnh';
             }
-            if (!cctvDieuChinhMode) dongFormChamCongThuyenVien();
+            if (!cctvDieuChinhMode) { dongFormChamCongThuyenVien(); dongFormChucDanhChamCongThuyenVien(); }
 
             if (badge) {
                 if (!thang) {
@@ -7188,15 +7234,17 @@
                     ${tongHopTds}
                 </tr>`;
 
-                // [MỚI - HÀNG "CÔNG CHỨC DANH"] Chỉ dựng thêm khi chức danh thuộc nhóm có hàng phụ.
-                // Mỗi ô ngày ở hàng này là 1 NÚT BẤM ĐƠN GIẢN (không mở form): bấm 1 lần để GHI
-                // NHẬN đúng mã công chức danh theo cấp bậc (DP-SDPO/DP-JDPO — xem
-                // cctvMaChucDanhTheoRank()); bấm lại lần nữa (ô đã có dữ liệu) để XÓA — dùng LẠI
+                // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Chỉ dựng thêm khi chức danh
+                // thuộc nhóm có hàng phụ. Mỗi ô ngày ở hàng này bấm vào sẽ MỞ FORM nhỏ
+                // "cctv-form-chucdanh-box" (xem clickCctvCellChucDanh()/
+                // moFormChucDanhChamCongThuyenVien() bên dưới) để người dùng TỰ CHỌN đúng 1 trong
+                // 2 mã "DP-SDPO"/"DP-JDPO" — KHÔNG còn tự động ghi/xóa CỐ ĐỊNH theo cấp bậc ngay
+                // khi bấm nữa (mặc định chỉ GỢI Ý sẵn theo cấp bậc trong form cho tiện). Dùng LẠI
                 // NGUYÊN 2 action có sẵn "saveChamCongThuyenVien"/"deleteChamCongThuyenVien" (chỉ
                 // gửi kèm "loaiBanGhi: 'CHUCDANH'" để server lưu thành 1 bản ghi RIÊNG, tách biệt
-                // hoàn toàn với bản ghi "Công làm việc" của cùng ngày đó — xem
-                // clickCctvCellChucDanh() bên dưới). KHÔNG có ô tick "chọn nhiều"/nút xóa/đính kèm
-                // file riêng cho hàng này (giữ đơn giản, đúng đủ nhu cầu "công chức danh").
+                // hoàn toàn với bản ghi "Công làm việc" của cùng ngày đó). KHÔNG có ô tick "chọn
+                // nhiều"/đính kèm file riêng cho hàng này (giữ đơn giản, đúng đủ nhu cầu "công
+                // chức danh").
                 let hangPhu = "";
                 if (coHangPhu) {
                     let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
@@ -7208,7 +7256,7 @@
                         let titlePhu = coGhiNhan
                             ? ("Công chức danh: " + maRank + (recPhu.ghiChu ? (" — Ghi chú: " + recPhu.ghiChu) : ""))
                             : ("Chưa ghi nhận Công chức danh " + maRank + " (ô trống)");
-                        if (editable) titlePhu += " — Bấm để " + (coGhiNhan ? "xóa" : "ghi nhận");
+                        if (editable) titlePhu += " — Bấm để mở form " + (coGhiNhan ? "sửa/xóa" : "ghi nhận") + " (chọn được SDPO hoặc JDPO)";
                         let stylePhu = 'text-align:center; ' + (d.isWeekend ? 'background:#eafaf1; ' : 'background:#f4fff7; ') +
                             (coGhiNhan ? '' : 'color:#bbb; ') +
                             (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '');
@@ -7337,32 +7385,81 @@
             }
         }
 
-        // [MỚI - HÀNG "CÔNG CHỨC DANH"] Bấm vào 1 ô của hàng phụ "Công chức danh" (chỉ có ở các
-        // chức danh thuộc CCTV_CHUCDANH_CO_HANG_PHU — xem renderChamCongThuyenVienTable()): ô đó
-        // CHƯA có dữ liệu -> ghi nhận NGAY đúng mã công chức danh theo cấp bậc (DP-SDPO/DP-JDPO,
-        // xem cctvMaChucDanhTheoRank()), không cần mở form; ô ĐÃ có dữ liệu -> xóa. Cả 2 thao tác
-        // đều dùng LẠI NGUYÊN 2 action có sẵn "saveChamCongThuyenVien"/"deleteChamCongThuyenVien",
-        // chỉ gửi kèm tham số MỚI "loaiBanGhi: 'CHUCDANH'" để Server lưu thành 1 bản ghi RIÊNG
-        // (cột MỚI "LoaiBanGhi" trên Sheet) — KHÔNG đụng/đè lên bản ghi "Công làm việc" của cùng
-        // ngày đó (bản ghi đó có "LoaiBanGhi" rỗng). Server luôn tự kiểm tra lại quyền
-        // (canEditCrewChamCong), kỳ chưa chốt, VÀ đúng mã công khớp với cấp bậc — không thể bị bỏ
-        // qua dù sửa giao diện.
-        async function clickCctvCellChucDanh(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
+        // [SỬA - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Trước đây bấm vào 1 ô của hàng phụ
+        // "Công chức danh" (chỉ có ở các chức danh thuộc CCTV_CHUCDANH_CO_HANG_PHU — xem
+        // renderChamCongThuyenVienTable()) sẽ TỰ ĐỘNG ghi/xóa CỐ ĐỊNH đúng mã theo cấp bậc, KHÔNG
+        // cho chọn khác. NAY bấm vào ô sẽ MỞ FORM nhỏ "cctv-form-chucdanh-box" (xem
+        // moFormChucDanhChamCongThuyenVien() bên dưới) để người dùng TỰ CHỌN đúng 1 trong 2 mã
+        // "DP-SDPO"/"DP-JDPO" rồi bấm "Lưu" (mặc định chọn sẵn theo cấp bậc cho tiện, nhưng có thể
+        // đổi sang mã còn lại) — KHÔNG còn tự động ghi/xóa NGAY khi bấm vào ô nữa.
+        function clickCctvCellChucDanh(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
             if (!currentUserCanEditCrewChamCong || !cctvDieuChinhMode || cctvDaChot) return;
-            let ma = cctvMaChucDanhTheoRank(chucDanh);
-            if (!ma) return; // an toàn — không xảy ra vì hàng này chỉ dựng cho đúng chức danh phù hợp
+            moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, ngayStr, crewIdxGoc);
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Mở form nhỏ "cctv-form-chucdanh-box":
+        // nếu ngày đó ĐÃ có bản ghi "Công chức danh" -> prefill đúng mã đã lưu + hiện nút "Xóa";
+        // nếu CHƯA có -> mặc định chọn sẵn đúng mã theo cấp bậc (cctvMaChucDanhTheoRank(), chỉ để
+        // GỢI Ý ban đầu cho đỡ phải chọn lại — người dùng vẫn đổi được sang mã còn lại trước khi
+        // lưu) + ẩn nút "Xóa".
+        function moFormChucDanhChamCongThuyenVien(hoTen, tau, chucDanh, ngayStr, crewIdxGoc) {
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi ghi nhận thêm ngày công."); return; }
+            let box = document.getElementById("cctv-form-chucdanh-box");
+            if (!box) return;
+            box.style.display = "block";
+            document.getElementById("cctv-form-chucdanh-hoten").value = hoTen;
+            document.getElementById("cctv-form-chucdanh-ngay").value = ngayStr;
             let rec = cctvRecords.find(r => r.hoTen === hoTen && (r.tau || "") === (tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
-            if (rec) {
-                if (!confirm(`Xóa "Công chức danh" (${ma}) ngày ${ngayStr} của "${hoTen}"?`)) return;
-                let res = await callServerAction({ action: "deleteChamCongThuyenVien", hoTen: hoTen, tau: tau, ngay: ngayStr, loaiBanGhi: "CHUCDANH" });
-                if (!res || res.status === "ERROR") { alert("Lỗi: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
-            } else {
-                let res = await callServerAction({
-                    action: "saveChamCongThuyenVien", hoTen: hoTen, tau: tau, chucDanh: chucDanh,
-                    ngay: ngayStr, maLoaiCong: ma, loaiBanGhi: "CHUCDANH"
-                });
-                if (!res || res.status === "ERROR") { alert("Lỗi ghi nhận: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
-            }
+            let selMa = document.getElementById("cctv-form-chucdanh-ma");
+            selMa.value = rec ? (rec.maLoaiCong || cctvMaChucDanhTheoRank(chucDanh)) : cctvMaChucDanhTheoRank(chucDanh);
+            document.getElementById("cctv-form-chucdanh-ghichu").value = rec ? (rec.ghiChu || "") : "";
+            let btnXoa = document.getElementById("cctv-form-chucdanh-btn-xoa");
+            if (btnXoa) btnXoa.style.display = rec ? "inline-flex" : "none";
+            cctvChucDanhDangSuaHoTen = hoTen; cctvChucDanhDangSuaTau = tau; cctvChucDanhDangSuaNgay = ngayStr;
+            cctvChucDanhDangSuaChucDanh = chucDanh; cctvChucDanhDangSuaIdxGoc = crewIdxGoc;
+            box.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        function dongFormChucDanhChamCongThuyenVien() {
+            let box = document.getElementById("cctv-form-chucdanh-box");
+            if (box) box.style.display = "none";
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Lưu đúng mã đã CHỌN (không còn ép cố
+        // định theo cấp bậc) — dùng LẠI NGUYÊN action có sẵn "saveChamCongThuyenVien", chỉ gửi
+        // kèm "loaiBanGhi: 'CHUCDANH'" để Server lưu thành 1 bản ghi RIÊNG (cột "LoaiBanGhi" trên
+        // Sheet), KHÔNG đụng/đè lên bản ghi "Công làm việc" của cùng ngày đó. Server luôn tự kiểm
+        // tra lại quyền (canEditCrewChamCong), kỳ chưa chốt, VÀ mã công phải là 1 trong 2 giá trị
+        // hợp lệ "DP-SDPO"/"DP-JDPO" — không thể bị bỏ qua dù sửa giao diện.
+        async function luuChamCongThuyenVienChucDanh() {
+            if (!cctvChucDanhDangSuaHoTen || !cctvChucDanhDangSuaNgay) return;
+            let ma = document.getElementById("cctv-form-chucdanh-ma").value;
+            if (!ma) { alert("Vui lòng chọn mã công chức danh."); return; }
+            let ghiChu = document.getElementById("cctv-form-chucdanh-ghichu").value || "";
+            let res = await callServerAction({
+                action: "saveChamCongThuyenVien",
+                hoTen: cctvChucDanhDangSuaHoTen, tau: cctvChucDanhDangSuaTau, chucDanh: cctvChucDanhDangSuaChucDanh,
+                ngay: cctvChucDanhDangSuaNgay, maLoaiCong: ma, loaiBanGhi: "CHUCDANH", ghiChu: ghiChu
+            });
+            if (!res || res.status === "ERROR") { alert("Lỗi ghi nhận: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            dongFormChucDanhChamCongThuyenVien();
+            await loadChamCongThuyenVienData();
+        }
+
+        // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Xóa bản ghi "Công chức danh" đang sửa —
+        // dùng LẠI NGUYÊN action có sẵn "deleteChamCongThuyenVien", chỉ gửi kèm
+        // "loaiBanGhi: 'CHUCDANH'" để CHỈ xóa đúng dòng này (KHÔNG đụng dòng "Công làm việc" của
+        // cùng ngày đó).
+        async function xoaChamCongThuyenVienChucDanhTuForm() {
+            if (!cctvChucDanhDangSuaHoTen || !cctvChucDanhDangSuaNgay) return;
+            if (cctvDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi xóa ngày công."); return; }
+            if (!confirm(`Xóa "Công chức danh" ngày ${cctvChucDanhDangSuaNgay} của "${cctvChucDanhDangSuaHoTen}"?`)) return;
+            let res = await callServerAction({
+                action: "deleteChamCongThuyenVien", hoTen: cctvChucDanhDangSuaHoTen, tau: cctvChucDanhDangSuaTau,
+                ngay: cctvChucDanhDangSuaNgay, loaiBanGhi: "CHUCDANH"
+            });
+            if (!res || res.status === "ERROR") { alert("Lỗi: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            dongFormChucDanhChamCongThuyenVien();
             await loadChamCongThuyenVienData();
         }
 
