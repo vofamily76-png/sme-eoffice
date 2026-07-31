@@ -6783,6 +6783,18 @@
                 } else if (cctvDaChot) {
                     badge.innerHTML = '<i class="fa-solid fa-lock"></i> Đã chốt — dữ liệu được khóa, không thể ghi nhận/sửa/xóa thêm cho tới khi "Mở lại".';
                     badge.style.color = "#2e7d32";
+                } else if (!currentUserCanEditCrewChamCong) {
+                    // [MỚI - THÔNG BÁO RÕ NGUYÊN NHÂN KHÔNG THẤY NÚT "ĐIỀU CHỈNH"] Tài khoản XEM
+                    // được bảng (đã qua kiểm tra quyền "XemChamCongThuyenVien" ở tab này) nhưng
+                    // CHƯA được cấp riêng quyền "SuaChamCongThuyenVien" (Thêm/Sửa/Xóa ngày công) —
+                    // đây là quyền RIÊNG, TÁCH BIỆT với quyền "SuaChamCong" của Bảng Chấm Công Văn
+                    // phòng, nên có tài khoản sửa được bên Văn phòng nhưng không sửa được ở đây là
+                    // ĐÚNG THIẾT KẾ, không phải lỗi. Hiện rõ nguyên nhân + cách khắc phục ngay trên
+                    // giao diện thay vì để trống, tránh gây hiểu nhầm "không sửa được". KHÔNG thay
+                    // đổi bất kỳ điều kiện phân quyền/bảo mật nào đã có — server vẫn luôn tự kiểm
+                    // tra lại (canEditCrewChamCong), đây chỉ là dòng chữ giải thích.
+                    badge.innerHTML = '<i class="fa-solid fa-circle-info"></i> Tài khoản của bạn chỉ đang có quyền <b>XEM</b> Bảng Chấm Công Thuyền Viên, chưa có quyền <b>Sửa</b> (đây là quyền RIÊNG, tách biệt với quyền sửa Bảng Chấm Công Văn phòng). Liên hệ Admin vào "Quản Lý Tài Khoản" → tick ô "Thêm/Sửa/Xóa ngày công" ở mục Bảng Chấm Công Thuyền Viên cho tài khoản này.';
+                    badge.style.color = "#b8860b";
                 } else {
                     badge.innerHTML = 'Đang tính (tự động cập nhật)';
                     badge.style.color = "#b8860b";
