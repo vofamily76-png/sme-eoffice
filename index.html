@@ -1697,6 +1697,29 @@
                 </div>
             </div>
 
+            <!-- [MỚI - MỤC "CÁC YÊU CẦU PHÊ DUYỆT" (Bảng Chấm Công Thuyền Viên) - NÚT "XEM TRƯỚC"]
+                 Modal hiện lại đúng "Bảng chấm công" (dạng lưới, GIỐNG HỆT bảng sẽ có trong file
+                 PDF sau khi duyệt — dùng lại NGUYÊN VẸN hàm cctvXayDungBangChamCongHtml_ đang
+                 chạy đúng ở xuatPdfCctvDmlcDuyet()/exportChamCongThuyenVienToExcel(), KHÔNG tính
+                 toán khác đi) CÙNG với link file đính kèm (nếu yêu cầu CÓ gửi kèm) — để người
+                 ĐƯỢC CHỌN LÀM NGƯỜI PHÊ DUYỆT xem trước được nội dung ngay trong trang, trước khi
+                 bấm "Đồng ý"/"Không đồng ý", KHÔNG bắt buộc phải tải file đính kèm (vốn nay là TÙY
+                 CHỌN, có thể không có) mới xem được dữ liệu chấm công. CHỈ ĐỌC dữ liệu qua đúng
+                 action "getChamCongThuyenVienData" đã có sẵn (dùng chung quyền
+                 "XemChamCongThuyenVien" như bảng đang hiển thị/nút "Xuất Excel"/"Tải file" PDF —
+                 KHÔNG phải action mới, KHÔNG cấp thêm quyền gì), KHÔNG ghi/sửa/xóa bất kỳ dữ liệu
+                 nào — xem xemTruocBangChamCongCctvDmlcUI() bên dưới. -->
+            <div id="cctv-preview-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+                <div class="login-box" style="max-width:96vw; width:1150px; max-height:92vh; overflow-y:auto;">
+                    <h2><i class="fa-solid fa-eye"></i> Xem trước Bảng chấm công thuyền viên</h2>
+                    <p id="cctv-preview-info" style="color:#555; font-size:13.5px; margin-top:-6px;"></p>
+                    <div id="cctv-preview-body" style="font-size:12.5px;"></div>
+                    <div style="display:flex; gap:10px; margin-top:14px;">
+                        <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeCctvPreviewModal()">Đóng</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- [MỚI - NÚT "ĐIỀU CHỈNH"] Hộp thoại chọn loại công cần đổi sang cho 1 ô ngày cụ thể.
                  Chỉ mở được khi đã bật nút "Điều chỉnh" và click vào 1 ô còn mở khóa sửa (xem
                  renderChamCongTable/openChamCongAdjustModal/submitChamCongAdjust bên dưới). -->
@@ -7372,6 +7395,12 @@
                 // hẳn yêu cầu này — action MỚI "xoaDanhMucLoaiCongThuyenVienDuyet", chỉ người gửi
                 // hoặc Admin mới thấy/dùng được nút này, xem xoaCctvDmlcDuyetUI() bên dưới).
                 let thaoTacHtml = "";
+                // [MỚI - NÚT "XEM TRƯỚC"] Hiện cho MỌI yêu cầu đang thấy được ở bảng này (đã tự
+                // giới hạn đúng theo action "getDanhMucLoaiCongThuyenVienDuyetList" — chỉ người
+                // gửi/người phê duyệt/Admin mới thấy dòng này) để xem trước "Bảng chấm công"
+                // NGAY TRONG TRANG, không cần tải file — đặc biệt hữu ích cho người ĐANG CHỜ
+                // DUYỆT (canDecide) để xem trước nội dung TRƯỚC KHI bấm "Đồng ý"/"Không đồng ý".
+                thaoTacHtml += `<button class="btn btn-primary btn-sm" onclick="xemTruocBangChamCongCctvDmlcUI('${r.id}')" title="Xem trước bảng chấm công (không cần tải file)"><i class="fa-solid fa-eye"></i> Xem trước</button>`;
                 if (canDecide) {
                     thaoTacHtml += `<button class="btn btn-success btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
                         <button class="btn btn-danger btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>`;
@@ -7785,6 +7814,66 @@
             } finally {
                 if (container.parentNode) document.body.removeChild(container);
             }
+        }
+
+        // [MỚI - MỤC "CÁC YÊU CẦU PHÊ DUYỆT" - NÚT "XEM TRƯỚC"] Mở modal "cctv-preview-modal"
+        // hiện lại "Bảng chấm công" (dạng lưới, GIỐNG HỆT bảng sẽ có trong file PDF sau khi
+        // duyệt) CÙNG link file đính kèm (nếu yêu cầu CÓ gửi kèm) — để người ĐƯỢC CHỌN LÀM NGƯỜI
+        // PHÊ DUYỆT xem trước được nội dung ngay trong trang, TRƯỚC KHI bấm "Đồng ý"/"Không đồng
+        // ý", không bắt buộc phải có/tải file đính kèm (vốn nay là TÙY CHỌN) mới xem được dữ liệu
+        // chấm công. DÙNG LẠI NGUYÊN VẸN cctvXayDungBangChamCongHtml_ (đang chạy đúng ở
+        // xuatPdfCctvDmlcDuyet()) và action "getChamCongThuyenVienData" đã có sẵn (CHỈ ĐỌC, dùng
+        // chung quyền "XemChamCongThuyenVien" như nút "Tải file"/"Xuất Excel" — KHÔNG phải action
+        // mới, KHÔNG cấp thêm quyền gì, KHÔNG ghi/sửa/xóa bất kỳ dữ liệu nào, KHÔNG đụng biến
+        // toàn cục cctvCrewList/cctvRecords/... đang hiển thị trên màn hình chính).
+        async function xemTruocBangChamCongCctvDmlcUI(id) {
+            let r = (cctvDmlcDuyetData || []).find(x => x.id === id);
+            if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
+
+            let modal = document.getElementById("cctv-preview-modal");
+            let infoEl = document.getElementById("cctv-preview-info");
+            let bodyEl = document.getElementById("cctv-preview-body");
+            if (!modal || !infoEl || !bodyEl) return;
+
+            infoEl.innerHTML = `Mã yêu cầu: <b>${escapeHtml(r.id || "")}</b> — Người gửi: <b>${escapeHtml(r.nguoiGui || "")}</b> — Kỳ chấm công: <b>${escapeHtml(cctvThangHienThi_(r.thang))}</b>` +
+                (r.fileId ? ` — <a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File đính kèm")}</a>` : "");
+            bodyEl.innerHTML = '<p style="color:#999; text-align:center; padding:20px 0;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải bảng chấm công...</p>';
+            modal.style.display = "flex";
+
+            // Ưu tiên đúng "Kỳ chấm công" đã lưu ở yêu cầu (r.thang); nếu yêu cầu quá cũ chưa lưu
+            // kỳ (r.thang rỗng) thì tạm dùng kỳ đang chọn trên màn hình, y hệt xuatPdfCctvDmlcDuyet().
+            let thangBang = r.thang || cctvThangDangChon();
+            if (!thangBang) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Yêu cầu này chưa lưu "Kỳ chấm công" (dữ liệu cũ) và trên màn hình cũng chưa chọn kỳ nào. Vui lòng chọn 1 kỳ ở ô "Kỳ chấm công (tháng/năm)" rồi xem lại.</p>';
+                return;
+            }
+
+            let dCrew = [], dRecords = [], dDanhMuc = [], dTongHopCongViec = [], dTongHopChucDanh = [];
+            try {
+                let dataRes = await callServerAction({ action: "getChamCongThuyenVienData", thang: thangBang });
+                if (!dataRes || dataRes.status === "ERROR") throw new Error((dataRes && dataRes.message) || "Không tải được dữ liệu chấm công.");
+                dCrew = dataRes.crew || []; dRecords = dataRes.records || []; dDanhMuc = dataRes.danhMuc || [];
+                dTongHopCongViec = dataRes.tongHopCongViec || []; dTongHopChucDanh = dataRes.tongHopChucDanh || [];
+            } catch (err) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">❌ Không tải được bảng chấm công: ' + escapeHtml(err.message || String(err)) + '</p>';
+                return;
+            }
+
+            let dsTau = [...new Set((dCrew || []).map(c => c.tau || "(Chưa rõ tàu)"))].sort();
+            if (!dsTau.length) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào cho kỳ "' + escapeHtml(thangBang) + '".</p>';
+                return;
+            }
+            bodyEl.innerHTML = dsTau.map(tau => `
+                <div style="margin-top:14px;">
+                    <p style="font-weight:bold; margin:0 0 4px 0;"><i class="fa-solid fa-ship"></i> Tàu: ${escapeHtml(tau)}</p>
+                    <div style="overflow-x:auto;">${cctvXayDungBangChamCongHtml_(tau, thangBang, dCrew, dRecords, dDanhMuc, dTongHopCongViec, dTongHopChucDanh)}</div>
+                </div>`).join("");
+        }
+
+        function closeCctvPreviewModal() {
+            let modal = document.getElementById("cctv-preview-modal");
+            if (modal) modal.style.display = "none";
         }
 
         // Trả về mã kỳ (tháng/năm, dạng "yyyy-MM") đang chọn ở ô "Kỳ chấm công".
