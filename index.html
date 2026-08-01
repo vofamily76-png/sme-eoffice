@@ -7386,7 +7386,7 @@
                 return `<tr>
                     <td>${escapeHtml(formatNgayGuiHienThi_(r.ngayGui))}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
-                    <td>${escapeHtml(r.thang || "—")}</td>
+                    <td>${escapeHtml(r.thang ? cctvThangHienThi_(r.thang) : "—")}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
                     <td>${(r.nguoiPheDuyet || []).map(u => escapeHtml(u)).join(", ")}</td>
@@ -7439,6 +7439,18 @@
         // và trả về { thangSo, nam, nhan } để hiện lên dòng "BẢNG CHẤM CÔNG THÁNG ... NĂM ..." của
         // PDF. Nếu không đúng định dạng (dữ liệu cũ/thiếu) thì vẫn hiện tạm nguyên chuỗi gốc, KHÔNG
         // làm lỗi/chặn việc xuất file.
+        // [MỚI - HIỂN THỊ "KỲ CHẤM CÔNG" DỄ ĐỌC HƠN] Nhận vào "thang" dạng "yyyy-MM" (r.thang, đã
+        // được server chuẩn hóa đúng định dạng này — xem fmtKyThangOut_ ở Code.gs) và trả về
+        // chuỗi "Tháng MM/yyyy" để hiện ở bảng "Các yêu cầu phê duyệt" và dòng "Kỳ chấm công"
+        // trong file PDF, THAY VÌ hiện nguyên chuỗi "yyyy-MM" khó đọc như trước. Nếu dữ liệu
+        // trống/không đúng định dạng (yêu cầu cũ chưa lưu kỳ) thì vẫn hiện tạm nguyên chuỗi gốc
+        // (hoặc "(không ghi)"), KHÔNG làm lỗi/chặn hiển thị.
+        function cctvThangHienThi_(thang) {
+            let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
+            if (!m) return thang ? String(thang) : "(không ghi)";
+            return "Tháng " + m[2] + "/" + m[1];
+        }
+
         function cctvPhanTichThangNam_(thang) {
             let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
             if (!m) return { thangSo: "", nam: "", nhan: thang ? pdfText(thang) : "(chưa chọn kỳ)" };
@@ -7681,7 +7693,7 @@
                 <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                     <tr>
                         <td style="padding:2px 0; width:50%;">Mã yêu cầu: <b>${pdfText(r.id || "")}</b></td>
-                        <td style="padding:2px 0;">Kỳ chấm công: <b>${pdfText(r.thang || "(không ghi)")}</b></td>
+                        <td style="padding:2px 0;">Kỳ chấm công: <b>${pdfText(cctvThangHienThi_(r.thang))}</b></td>
                     </tr>
                     <tr>
                         <td style="padding:2px 0;">Người gửi: <b>${pdfText(r.nguoiGui || "")}</b></td>
