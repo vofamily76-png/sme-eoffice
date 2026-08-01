@@ -1871,15 +1871,15 @@
                     <div style="margin-top:18px; border-top:1px solid #dbe4fb; padding-top:12px;">
                         <h4 style="margin:0 0 10px 0; font-size:14px;"><i class="fa-solid fa-list-ul" style="color:#2f6fed;"></i> Các yêu cầu phê duyệt</h4>
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="min-width:640px;">
+                            <table class="data-table" style="min-width:720px;">
                                 <thead>
                                     <tr>
-                                        <th>Ngày gửi</th><th>Người gửi</th><th>Ghi chú</th>
+                                        <th>Ngày gửi</th><th>Người gửi</th><th>Kỳ chấm công</th><th>Ghi chú</th>
                                         <th>File</th><th>Người phê duyệt</th><th>Trạng thái</th><th>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody id="cctv-dmlc-duyet-tbody">
-                                    <tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
+                                    <tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -3904,8 +3904,77 @@
             // 4) Thông báo bật "Điều chỉnh" Bảng Chấm Công từ tài khoản "Người nhận" khác.
             items = items.concat(getChamCongThongBaoNotificationItems_());
 
+            // 5) [MỚI] Yêu cầu "Phê duyệt bảng chấm công thuyền viên" đang chờ mình duyệt (Tab
+            //    "Bảng Chấm Công Thuyền Viên" > mục "Danh mục loại công") — hiện lên chuông thông
+            //    báo NGAY khi người gửi gửi yêu cầu tới mình, y hệt cách làm với đơn nghỉ phép ở
+            //    mục (2) ngay trên (dùng chung getPendingCctvDmlcApprovalsForMe()).
+            getPendingCctvDmlcApprovalsForMe().forEach(r => {
+                items.push({
+                    tab: "chamcongthuyenvien",
+                    sortKey: cctvDmlcSortKey_(r.ngayGui),
+                    icon: "fa-ship",
+                    color: "#2f6fed",
+                    title: "Yêu cầu phê duyệt bảng chấm công thuyền viên",
+                    desc: (r.nguoiGui ? ("Người gửi: " + r.nguoiGui) : "") + (r.thang ? (" — Kỳ: " + r.thang) : ""),
+                    onClick: function () { switchPage("chamcongthuyenvien"); }
+                });
+            });
+
             items.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
             return items;
+        }
+
+        // Đếm/lọc các yêu cầu "Phê duyệt bảng chấm công thuyền viên" đang thực sự CHỜ tài khoản
+        // đang đăng nhập bấm Đồng ý/Không đồng ý (bỏ qua yêu cầu mình đã xử lý rồi hoặc đã chốt
+        // Từ chối/Đã duyệt) — dùng CHUNG kỹ thuật với getPendingLeaveApprovalsForMe() ở trên.
+        function getPendingCctvDmlcApprovalsForMe() {
+            if (!currentUsername) return [];
+            return (cctvDmlcDuyetData || []).filter(r => {
+                if (!(r.nguoiPheDuyet || []).includes(currentUsername)) return false;
+                if (r.trangThaiChung !== "Chờ duyệt") return false;
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                return !myStatus || myStatus.status === "cho_duyet";
+            });
+        }
+
+        // [SỬA LỖI - "NGÀY GỬI" ĐÔI KHI HIỂN THỊ DẠNG ISO KHÓ ĐỌC, VD "2026-08-01T06:15:00.000Z"]
+        // Server (fmtDateTimeVNOut_ ở Code.gs) đã cố định dạng lại "Ngày gửi" về "dd/MM/yyyy
+        // HH:mm:ss" trước khi trả cho giao diện, nhưng với những dòng dữ liệu CŨ (ghi từ trước khi
+        // có bản sửa ở server) hoặc trường hợp trình duyệt tự nối thêm định dạng khi truyền dữ liệu,
+        // giá trị nhận được đôi khi vẫn còn ở dạng chuỗi ISO gốc. Hàm này CHỈ ĐỊNH DẠNG LẠI để HIỂN
+        // THỊ đúng "dd/MM/yyyy HH:mm:ss" theo giờ Việt Nam (Asia/Ho_Chi_Minh) — hoàn toàn ở phía
+        // trình duyệt, KHÔNG gọi thêm API nào, KHÔNG đụng/đổi bất kỳ dữ liệu gốc nào trên Sheet.
+        // Nếu chuỗi đã đúng định dạng Việt Nam sẵn ("dd/MM/yyyy...") thì giữ nguyên, không xử lý gì
+        // thêm. Dùng ở CẢ 2 chỗ đang hiển thị "Ngày gửi": bảng "Các yêu cầu phê duyệt"
+        // (renderCctvDmlcDuyetList) và phiếu PDF (xuatPdfCctvDmlcDuyet).
+        function formatNgayGuiHienThi_(v) {
+            let s = String(v || "").trim();
+            if (!s) return "";
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) return s; // đã đúng định dạng VN
+            if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+                let d = new Date(s);
+                if (!isNaN(d.getTime())) {
+                    try {
+                        let parts = new Intl.DateTimeFormat("en-GB", {
+                            timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric",
+                            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+                        }).formatToParts(d);
+                        let get = t => (parts.find(p => p.type === t) || {}).value || "00";
+                        return get("day") + "/" + get("month") + "/" + get("year") + " " + get("hour") + ":" + get("minute") + ":" + get("second");
+                    } catch (e) { /* trình duyệt không hỗ trợ Intl timeZone -> rơi về trả nguyên chuỗi bên dưới */ }
+                }
+            }
+            return s;
+        }
+
+        // Chuyển "Ngày gửi" dạng "dd/MM/yyyy HH:mm:ss" (server trả về) sang dạng có thể SO SÁNH
+        // CHUỖI đúng thứ tự thời gian ("yyyy-MM-dd HH:mm:ss") — chỉ dùng để SẮP XẾP chuông thông
+        // báo theo đúng thời điểm gửi thực tế, KHÔNG đổi cách hiển thị "Ngày gửi" ở bảng.
+        function cctvDmlcSortKey_(ngayGui) {
+            let s = String(ngayGui || "");
+            let m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ ]+(.*)$/);
+            if (!m) return s;
+            return m[3] + "-" + m[2] + "-" + m[1] + " " + m[4];
         }
 
         // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Nguồn thông báo thứ 4: 1 tài khoản "Người nhận"
@@ -5497,6 +5566,11 @@
             currentUserCanEditCrewChamCong = canEditCrewChamCong;
             let elMenuCrewChamCong = document.getElementById("menu-chamcongthuyenvien");
             if (elMenuCrewChamCong) elMenuCrewChamCong.style.display = canViewCrewChamCong ? "flex" : "none";
+            // [MỚI - CHUÔNG THÔNG BÁO] Tải sẵn ngay danh sách "Các yêu cầu phê duyệt" (Bảng Chấm
+            // Công Thuyền Viên) ngay sau khi đăng nhập — y hệt cách loadLeaveRequests() đã làm
+            // cho Tab "Đăng ký nghỉ phép" — để chuông thông báo hiện đúng ngay cả khi CHƯA vào
+            // hẳn Tab "Bảng Chấm Công Thuyền Viên" (xem getNotificationItems() bên dưới).
+            if (canViewCrewChamCong) loadCctvDmlcDuyetList();
             // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Cập nhật ngay giao diện khối "Xuất bảng
             // chấm công ra Excel" theo đúng quyền vừa xác định ở trên (xem capNhatChamCongExportUI()).
             capNhatChamCongExportUI();
@@ -6922,51 +6996,92 @@
             if (!cctvCrewList.length) { alert("Chưa có dữ liệu để xuất. Vui lòng chọn kỳ và bấm \"Tải / Tính lại\" trước."); return; }
 
             let thang = (document.getElementById("cctv-period-input") || {}).value || "";
-            let ngayList = [];
+            let ngayListFull = [];
             let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
             if (m) {
                 let nam = parseInt(m[1], 10), thangSo = parseInt(m[2], 10);
                 let soNgay = new Date(nam, thangSo, 0).getDate();
                 let thuTen = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
                 for (let d = 1; d <= soNgay; d++) {
-                    ngayList.push({ ngay: d, thu: thuTen[new Date(nam, thangSo - 1, d).getDay()] });
+                    ngayListFull.push({ ngay: d, thu: thuTen[new Date(nam, thangSo - 1, d).getDay()] });
                 }
             }
-            if (!ngayList.length) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi xuất."); return; }
+            if (!ngayListFull.length) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi xuất."); return; }
 
             let taus = [...new Set(cctvCrewList.map(c => c.tau || "(Chưa rõ tàu)"))].sort();
             let wb = XLSX.utils.book_new();
             taus.forEach(tau => {
                 let crewOfTau = cctvCrewList.filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
+
+                // [MỚI - CHỈ HIỆN CỘT NGÀY CÔNG MÀ THUYỀN VIÊN CÓ LÀM VIỆC] Bảng lưới theo ngày
+                // NAY chỉ còn hiện đúng những cột ngày mà ÍT NHẤT 1 thuyền viên của tàu này CÓ ghi
+                // nhận công (có "Mã loại công", bản ghi bất kỳ hàng chính/hàng phụ) trong đúng kỳ
+                // đang xuất — bỏ hẳn cột những ngày mà CẢ tàu không ai có công để bảng gọn, dễ đọc
+                // hơn (thay vì luôn hiện đủ mọi ngày trong tháng như trước). KHÔNG đụng/mất dữ liệu
+                // gốc trên Sheet: đây chỉ là lọc CỘT khi xuất Excel, dữ liệu đầy đủ (kể cả những
+                // ngày không có công) vẫn xem lại được bình thường trên giao diện web (Tab "Bảng
+                // Chấm Công Thuyền Viên").
+                let ngayList = ngayListFull.filter(d => {
+                    let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                    return crewOfTau.some(c => cctvRecords.some(r =>
+                        r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.maLoaiCong || "")
+                    ));
+                });
+
                 // [MỚI - CỘT "STT"] Thêm cột đầu tiên đánh số thứ tự (theo đúng thứ tự thuyền viên
                 // trong sheet Excel của tàu này — KHÔNG liên quan tới thứ tự trên Sheet dữ liệu).
+
+                // [MỚI - GOM SẴN DỮ LIỆU TỔNG HỢP THEO MÃ CÔNG] Dùng LẠI đúng dữ liệu server đã
+                // tính sẵn "cctvTongHopCongViec" (tổng số công theo TỪNG mã của hàng "Công làm
+                // việc") + "cctvTongHopChucDanh" (của hàng phụ "Công chức danh", nếu có) — CHỈ ĐỌC
+                // LẠI, KHÔNG tính toán khác đi so với đúng những gì đang hiện trên giao diện web ở
+                // renderChamCongThuyenVienTable(). Dùng để: (1) biết mã công nào tàu này THỰC SỰ
+                // có dữ liệu trong kỳ (để chỉ đưa đúng những cột đó vào file, bỏ hẳn cột mã công
+                // không có thông tin gì), và (2) dựng dòng "Tổng cộng Công" ở cuối bảng.
+                let tongTheoCrew = crewOfTau.map(c => {
+                    let idxGoc = cctvCrewList.indexOf(c);
+                    return {
+                        chinh: (cctvTongHopCongViec && cctvTongHopCongViec[idxGoc]) || (cctvTongHop && cctvTongHop[idxGoc]) || {},
+                        phu: (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {}
+                    };
+                });
+                let tongTheoMa = {};
+                crewOfTau.forEach((c, i) => {
+                    (cctvDanhMuc || []).forEach(dm => {
+                        let n = (tongTheoCrew[i].chinh[dm.ma] || 0) +
+                            (cctvCoHangChucDanh(c.chucDanh) ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                        if (n) tongTheoMa[dm.ma] = (tongTheoMa[dm.ma] || 0) + n;
+                    });
+                });
+                // [MỚI - CHỈ HIỆN CỘT MÃ CÔNG CÓ DỮ LIỆU] Bỏ hẳn cột "Công {mã}" nào mà CẢ tàu
+                // không ai có công trong kỳ đang xuất (tổng = 0) — theo đúng yêu cầu "không hiện
+                // các cột khác khi không có thông tin".
+                let danhMucCoDuLieu = (cctvDanhMuc || []).filter(dm => (tongTheoMa[dm.ma] || 0) > 0);
+
                 let headerThuRow = ["", "", ""];
                 let headerNgayRow = ["STT", "Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
-                (cctvDanhMuc || []).forEach(() => headerThuRow.push(""));
-                headerNgayRow.push(...(cctvDanhMuc || []).map(dm => "Ngày công " + dm.ma));
-                headerNgayRow.push("Ghi chú");
+                danhMucCoDuLieu.forEach(dm => { headerThuRow.push(""); headerNgayRow.push("Công " + dm.ma); });
                 let aoa = [headerThuRow, headerNgayRow];
                 let sttXuat = 0;
-                crewOfTau.forEach(c => {
+                crewOfTau.forEach((c, i) => {
                     sttXuat++;
-                    let idxGoc = cctvCrewList.indexOf(c);
                     // [MỚI - HÀNG "CÔNG CHỨC DANH"] Hàng CHÍNH ("Công làm việc") CHỈ lấy đúng bản
                     // ghi có "loaiBanGhi" RỖNG — GIỐNG HỆT bộ lọc đang dùng ở
                     // renderChamCongThuyenVienTable(), để không lẫn với bản ghi của hàng phụ.
                     let row = [sttXuat, c.hoTen, c.chucDanh || ""];
-                    let ghiChuList = [];
                     ngayList.forEach(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                         let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
                         let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                         if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
                         row.push(maHienThi);
-                        if (rec && rec.ghiChu) ghiChuList.push("Ngày " + d.ngay + ": " + rec.ghiChu);
                     });
-                    let tongHopDong = (cctvTongHopCongViec && cctvTongHopCongViec[idxGoc]) || cctvTongHop[idxGoc] || {};
-                    row.push(...(cctvDanhMuc || []).map(dm => tongHopDong[dm.ma] || 0));
-                    row.push(ghiChuList.join("; "));
+                    // [MỚI - CỘT "NGÀY CÔNG {MÃ}" NỐI NGAY SAU BẢNG NGÀY] Hiện đúng tổng số công
+                    // của người này theo TỪNG mã (hàng "Công làm việc") — giống hệt cột tổng hợp
+                    // đang hiện sẵn trên giao diện web (kể cả hiện số 0 khi người đó không có công
+                    // ở mã đó, đúng như trên web).
+                    danhMucCoDuLieu.forEach(dm => row.push(tongTheoCrew[i].chinh[dm.ma] || 0));
                     aoa.push(row);
 
                     // [MỚI - HÀNG "CÔNG CHỨC DANH"] Xuất thêm 1 dòng phụ ngay bên dưới cho đúng
@@ -6976,24 +7091,29 @@
                         let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
                         let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
                         let rowPhu = ["", "", nhanHang];
-                        let ghiChuListPhu = [];
                         ngayList.forEach(d => {
                             let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                             let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
                             rowPhu.push(recPhu ? maRank : "");
-                            if (recPhu && recPhu.ghiChu) ghiChuListPhu.push("Ngày " + d.ngay + ": " + recPhu.ghiChu);
                         });
-                        let tongHopDongPhu = (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {};
-                        rowPhu.push(...(cctvDanhMuc || []).map(dm => tongHopDongPhu[dm.ma] || 0));
-                        rowPhu.push(ghiChuListPhu.join("; "));
+                        danhMucCoDuLieu.forEach(dm => rowPhu.push(tongTheoCrew[i].phu[dm.ma] || 0));
                         aoa.push(rowPhu);
                     }
                 });
+
+                // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Y hệt dòng tổng đang hiện sẵn cuối
+                // bảng trên giao diện web: mỗi cột "Công {mã}" hiện tổng số công của TẤT CẢ thuyền
+                // viên tàu này cho đúng mã đó (đã cộng dồn ở "tongTheoMa" phía trên) — chỉ hiện số
+                // khi tổng >= 1 (bằng 0 để trống, không hiện "0"), các cột ngày để trống.
+                let tongRow = ["", "Tổng cộng Công", ""];
+                ngayList.forEach(() => tongRow.push(""));
+                danhMucCoDuLieu.forEach(dm => tongRow.push(tongTheoMa[dm.ma] || ""));
+                aoa.push(tongRow);
+
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
+                let maxCols = 3 + ngayList.length + danhMucCoDuLieu.length;
                 let cols = [{ wch: 6 }, { wch: 24 }, { wch: 16 }];
-                ngayList.forEach(() => cols.push({ wch: 6 }));
-                (cctvDanhMuc || []).forEach(() => cols.push({ wch: 10 }));
-                cols.push({ wch: 30 });
+                for (let ci = 3; ci < maxCols; ci++) cols.push({ wch: 10 });
                 ws['!cols'] = cols;
                 ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
                 ws['!freeze'] = { xSplit: 3, ySplit: 2 };
@@ -7194,7 +7314,10 @@
             let result = await callServerAction({
                 action: "guiDuyetDanhMucLoaiCongThuyenVien",
                 fileName: fileChon ? fileChon.name : "", mimeType: fileChon ? (fileChon.type || "application/octet-stream") : "",
-                fileData: base64Data, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu
+                fileData: base64Data, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu,
+                // [MỚI] Gắn kèm đúng "Kỳ chấm công" đang chọn ở ô lọc phía trên (nếu có) để hiện
+                // lại trong bảng "Các yêu cầu phê duyệt" và trong file PDF xuất ra sau khi duyệt.
+                thang: cctvThangDangChon()
             });
             if (result && result.status === "SUCCESS") {
                 if (ok) { ok.innerText = "Đã gửi yêu cầu phê duyệt thành công tới " + nguoiPheDuyet.length + " người phê duyệt."; ok.style.display = "block"; }
@@ -7217,6 +7340,11 @@
             let result = await callServerAction({ action: "getDanhMucLoaiCongThuyenVienDuyetList" });
             if (result && result.status === "SUCCESS") cctvDmlcDuyetData = result.list || [];
             renderCctvDmlcDuyetList();
+            // [MỚI - CHUÔNG THÔNG BÁO] Cập nhật lại ngay chuông thông báo chung mỗi khi danh sách
+            // yêu cầu phê duyệt này thay đổi (y hệt cách loadLeaveRequests() đang cập nhật lại
+            // updateNhanViecBadge()) — để những yêu cầu đang CHỜ tài khoản đang đăng nhập duyệt
+            // hiện ra ở chuông thông báo NGAY, không cần vào hẳn Tab "Bảng Chấm Công Thuyền Viên".
+            if (typeof updateNotificationBell === "function") updateNotificationBell();
         }
 
         // Vẽ lại bảng các yêu cầu phê duyệt "Danh mục loại công" (Thuyền viên). Chỉ hiện 2 nút
@@ -7227,7 +7355,7 @@
             let tbody = document.getElementById("cctv-dmlc-duyet-tbody");
             if (!tbody) return;
             if (!cctvDmlcDuyetData.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
                 return;
             }
             let list = cctvDmlcDuyetData.slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
@@ -7235,18 +7363,35 @@
                 let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
                 let canDecide = (r.nguoiPheDuyet || []).includes(currentUsername) &&
                     r.trangThaiChung === "Chờ duyệt" && (!myStatus || myStatus.status === "cho_duyet");
-                let mauTrangThai = r.trangThaiChung === "Đã duyệt" ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let daDuyet = r.trangThaiChung === "Đã duyệt";
+                let coTheXoa = (r.nguoiGui === currentUsername) || (currentUser && currentUser.role === "Admin");
+                let mauTrangThai = daDuyet ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                // [MỚI] Sau khi "Đã duyệt", hiện thêm 2 nút "Tải file" (xuất PDF khổ A4 ngang gồm
+                // thông tin bảng chấm công + người phê duyệt — xem xuatPdfCctvDmlcDuyet() bên
+                // dưới, KHÔNG gọi thêm API nào, KHÔNG lưu thêm gì lên Drive) và "Xóa file" (xóa
+                // hẳn yêu cầu này — action MỚI "xoaDanhMucLoaiCongThuyenVienDuyet", chỉ người gửi
+                // hoặc Admin mới thấy/dùng được nút này, xem xoaCctvDmlcDuyetUI() bên dưới).
+                let thaoTacHtml = "";
+                if (canDecide) {
+                    thaoTacHtml += `<button class="btn btn-success btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                        <button class="btn btn-danger btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>`;
+                }
+                if (daDuyet) {
+                    thaoTacHtml += `<button class="btn btn-primary btn-sm" onclick="xuatPdfCctvDmlcDuyet('${r.id}')" title="Tải file PDF (khổ A4 ngang)"><i class="fa-solid fa-file-pdf"></i> Tải file</button>`;
+                }
+                if (coTheXoa) {
+                    thaoTacHtml += `<button class="btn btn-danger btn-sm" onclick="xoaCctvDmlcDuyetUI('${r.id}')" title="Xóa yêu cầu này"><i class="fa-solid fa-trash"></i> Xóa file</button>`;
+                }
+                if (!thaoTacHtml) thaoTacHtml = '<span style="color:#ccc;">—</span>';
                 return `<tr>
-                    <td>${escapeHtml(r.ngayGui || "")}</td>
+                    <td>${escapeHtml(formatNgayGuiHienThi_(r.ngayGui))}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${escapeHtml(r.thang || "—")}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
                     <td>${(r.nguoiPheDuyet || []).map(u => escapeHtml(u)).join(", ")}</td>
                     <td><b style="color:${mauTrangThai};">${escapeHtml(r.trangThaiChung || "")}</b></td>
-                    <td>${canDecide ? `
-                        <button class="btn btn-success btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
-                        <button class="btn btn-danger btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
-                    ` : '<span style="color:#ccc;">—</span>'}</td>
+                    <td style="white-space:nowrap;">${thaoTacHtml}</td>
                 </tr>`;
             }).join("");
         }
@@ -7270,6 +7415,150 @@
                 return;
             }
             await loadCctvDmlcDuyetList();
+        }
+
+        // [MỚI - NÚT "XÓA FILE"] Xóa hẳn 1 yêu cầu phê duyệt "Phê duyệt bảng chấm công thuyền
+        // viên" (action MỚI "xoaDanhMucLoaiCongThuyenVienDuyet") — CHỈ người đã gửi yêu cầu (hoặc
+        // Admin) mới thấy nút này (xem renderCctvDmlcDuyetList() ở trên), SERVER vẫn luôn kiểm
+        // tra lại quyền này. KHÔNG đụng/xóa bất kỳ dữ liệu ngày công nào đã ghi nhận trên Bảng
+        // Chấm Công Thuyền Viên — chỉ xóa đúng 1 dòng yêu cầu phê duyệt này.
+        async function xoaCctvDmlcDuyetUI(id) {
+            if (!confirm("Xác nhận XÓA yêu cầu phê duyệt này? Thao tác không thể hoàn tác.")) return;
+            let result = await callServerAction({ action: "xoaDanhMucLoaiCongThuyenVienDuyet", id: id });
+            if (!result || result.status === "ERROR") {
+                alert("❌ " + ((result && result.message) || "Có lỗi xảy ra khi xóa yêu cầu."));
+                return;
+            }
+            cctvDmlcDuyetData = cctvDmlcDuyetData.filter(x => x.id !== id);
+            renderCctvDmlcDuyetList();
+            updateNotificationBell();
+        }
+
+        // [MỚI - NÚT "TẢI FILE"] Dựng 1 mẫu "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN" khổ A4
+        // NGANG (landscape) gồm thông tin yêu cầu (kỳ chấm công, người gửi, ngày gửi, ghi chú) và
+        // xác nhận của TỪNG người phê duyệt (Họ tên, Chức danh, Trạng thái, Ngày giờ phê duyệt),
+        // NGAY TẠI TRÌNH DUYỆT rồi xuất thành file .pdf tải về máy — dùng CHUNG kỹ thuật jsPDF +
+        // html2canvas (đã nạp sẵn ở đầu trang) và các hàm hỗ trợ pdfText()/boDauTiengViet() y hệt
+        // xuatPdfDonNghiPhep() của Tab "Đăng ký nghỉ phép". KHÔNG gọi thêm API nào tới server,
+        // KHÔNG lưu thêm gì lên Drive, KHÔNG đổi dữ liệu/cơ chế bảo mật — chỉ đọc lại đúng dữ liệu
+        // đã tải sẵn trong cctvDmlcDuyetData. Chỉ dùng được khi yêu cầu đã "Đã duyệt".
+        async function xuatPdfCctvDmlcDuyet(id) {
+            let r = (cctvDmlcDuyetData || []).find(x => x.id === id);
+            if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
+            if (r.trangThaiChung !== "Đã duyệt") { alert("Yêu cầu này chưa được duyệt xong."); return; }
+            if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
+                alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
+            }
+
+            let approverList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
+                ? r.nguoiPheDuyetInfo
+                : (r.nguoiPheDuyet || []).map(u => ({ username: u, hoTen: "", chucDanh: "" }));
+            let approverRows = approverList.map((a, idx) => {
+                let st = (r.trangThaiTungNguoi || {})[a.username] || { status: "cho_duyet" };
+                let trangThaiText = st.status === "dong_y" ? "Đồng ý" : (st.status === "tu_choi" ? "Không đồng ý" : "Chưa xử lý");
+                return `<tr>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${idx + 1}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(resolveApproverDisplayName(a))}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(a.chucDanh || "")}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${trangThaiText}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(st.thoiGian || "")}</td>
+                </tr>`;
+            }).join("");
+
+            let pdfLogoSrc = (document.querySelector(".sidebar-logo") || document.querySelector(".login-logo") || {}).src || "";
+            let pdfLogoHtml = pdfLogoSrc ? `<img src="${pdfLogoSrc}" style="height:60px; width:auto; object-fit:contain;">` : "<div></div>";
+
+            let html = `
+            <div style="width:1000px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
+                <div style="display:flex; align-items:center; margin-bottom:14px;">
+                    <div style="width:120px;">${pdfLogoHtml}</div>
+                    <div style="flex:1; text-align:center; font-size:20px; font-weight:bold; margin-right:120px;">PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN</div>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                    <tr>
+                        <td style="padding:2px 0; width:50%;">Mã yêu cầu: <b>${pdfText(r.id || "")}</b></td>
+                        <td style="padding:2px 0;">Kỳ chấm công: <b>${pdfText(r.thang || "(không ghi)")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:2px 0;">Người gửi: <b>${pdfText(r.nguoiGui || "")}</b></td>
+                        <td style="padding:2px 0;">Ngày gửi: <b>${pdfText(formatNgayGuiHienThi_(r.ngayGui))}</b></td>
+                    </tr>
+                    <tr><td style="padding:2px 0;" colspan="2">Ghi chú: <b>${pdfText(r.ghiChu || "(không ghi)")}</b></td></tr>
+                    ${r.fileName ? `<tr><td style="padding:2px 0;" colspan="2">File đính kèm: <b>${pdfText(r.fileName)}</b></td></tr>` : ""}
+                </table>
+                <p style="margin-top:6px;">Trạng thái chung: <b style="color:#2e7d32;">${pdfText(r.trangThaiChung || "")}</b></p>
+
+                <p style="margin-top:18px; font-weight:bold;">Xác nhận của người phê duyệt:</p>
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th style="border:1px solid #333; padding:6px;">STT</th>
+                            <th style="border:1px solid #333; padding:6px;">Họ tên</th>
+                            <th style="border:1px solid #333; padding:6px;">Chức danh</th>
+                            <th style="border:1px solid #333; padding:6px;">Xác nhận</th>
+                            <th style="border:1px solid #333; padding:6px;">Ngày giờ phê duyệt</th>
+                        </tr>
+                    </thead>
+                    <tbody>${approverRows}</tbody>
+                </table>
+                <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Phiếu được xuất tự động từ Hệ thống quản lý nhân sự - Mã yêu cầu: ${pdfText(r.id || "")}</p>
+            </div>`;
+
+            let container = document.createElement("div");
+            container.style.position = "fixed";
+            container.style.left = "-10000px";
+            container.style.top = "0";
+            container.innerHTML = html;
+            document.body.appendChild(container);
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const canvas = await html2canvas(container.firstElementChild, {
+                    scale: 2, useCORS: true, backgroundColor: "#ffffff"
+                });
+                let pdfImgQuality = 0.92;
+                let imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                const PDF_TARGET_BYTES = 900 * 1024;
+                while (imgData.length * 0.75 > PDF_TARGET_BYTES && pdfImgQuality > 0.5) {
+                    pdfImgQuality -= 0.05;
+                    imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                }
+
+                // [KHỔ A4 NGANG] Khác với mẫu "Đơn xin nghỉ phép" (khổ dọc "p"), phiếu này dùng
+                // khổ A4 NGANG ("l" - landscape) theo đúng yêu cầu, để đủ chỗ hiển thị bảng xác
+                // nhận nhiều người phê duyệt trên 1 hàng ngang.
+                const doc = new jsPDF("l", "pt", "a4");
+                const margin = 20;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const usableWidth = pageWidth - margin * 2;
+                const usableHeight = pageHeight - margin * 2;
+                const imgWidth = usableWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                if (imgHeight <= usableHeight) {
+                    doc.addImage(imgData, "JPEG", margin, margin, imgWidth, imgHeight);
+                } else {
+                    let heightLeft = imgHeight;
+                    let renderedHeight = 0;
+                    let isFirstPage = true;
+                    while (heightLeft > 0) {
+                        if (!isFirstPage) doc.addPage();
+                        doc.addImage(imgData, "JPEG", margin, margin - renderedHeight, imgWidth, imgHeight);
+                        renderedHeight += usableHeight;
+                        heightLeft -= usableHeight;
+                        isFirstPage = false;
+                    }
+                }
+
+                let fileName = "PheDuyetChamCongThuyenVien_" + boDauTiengViet(r.thang || "").trim().replace(/\s+/g, "_") + "_" + r.id + ".pdf";
+                doc.save(fileName);
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi khi xuất PDF!");
+            } finally {
+                if (container.parentNode) document.body.removeChild(container);
+            }
         }
 
         // Trả về mã kỳ (tháng/năm, dạng "yyyy-MM") đang chọn ở ô "Kỳ chấm công".
