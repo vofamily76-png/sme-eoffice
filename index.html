@@ -1826,45 +1826,34 @@
                     <div id="cctv-status-badge" style="margin-top:10px; font-size:13px; font-weight:600;"></div>
                 </div>
 
-                <!-- [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây chỉ là 1 bảng 2 cột (Mã công/Tên
-                     loại công) mang tính tra cứu, không thao tác được gì. NAY đổi thành 1 form
-                     ngắn gọn, giống HỆT mục "Danh mục loại công" ở Tab "Bảng Chấm Công" của Văn
-                     phòng: chọn "Mã công" (dữ liệu lấy nguyên từ cctvDanhMuc đã tải sẵn cùng
-                     loadChamCongThuyenVienData() — KHÔNG gọi thêm action nào, KHÔNG đổi gì cách
-                     đọc Sheet "DanhMucLoaiCongThuyenVien") -> "Tên loại công" tương ứng TỰ HIỆN
-                     RA (xem onCctvDmlcMaChange() bên dưới, thuần xử lý ở FE); có thể đính kèm 1
-                     file, chọn 1 hoặc nhiều "Người nhận" rồi bấm "Gửi file" để GỬI EMAIL NGAY kèm
-                     file cho từng người (action MỚI "guiFileDanhMucLoaiCongThuyenVien" ở Code.gs,
-                     TÁCH BIỆT hoàn toàn với action "guiFileDanhMucLoaiCong" của Văn phòng và với
-                     ngày công/thuyền viên cụ thể nào) — xem renderCctvDanhMucForm()/
-                     onCctvDmlcMaChange()/populateCctvDmlcNguoiNhanList()/submitCctvDmlcGuiFile()
-                     bên dưới. Không mất dữ liệu: Sheet "DanhMucLoaiCongThuyenVien" và toàn bộ
-                     logic đọc danh mục hiện có KHÔNG bị đụng tới; không đổi phân quyền: mục này
-                     vẫn dùng CHUNG điều kiện quyền XEM Bảng Chấm Công Thuyền Viên
+                <!-- [SỬA - MỤC "DANH MỤC LOẠI CÔNG" - THEO YÊU CẦU MỚI] Đã BỎ HẲN 2 trường "Mã
+                     công"/"Tên loại công" (không còn gắn với 1 mã công cụ thể nào — Sheet
+                     "DanhMucLoaiCongThuyenVien" và toàn bộ logic đọc danh mục ở nơi khác trong hệ
+                     thống KHÔNG bị đụng tới, không mất dữ liệu). "Người nhận file" đã đổi thành
+                     "Người phê duyệt" — hoạt động y hệt cơ chế phê duyệt của Tab "Đăng ký nghỉ
+                     phép": đính kèm 1 file, ghi chú (nếu cần), chọn 1 hoặc nhiều "Người phê
+                     duyệt" rồi bấm "Gửi yêu cầu phê duyệt" -> tạo 1 yêu cầu "Chờ duyệt" (action
+                     MỚI "guiDuyetDanhMucLoaiCongThuyenVien" ở Code.gs, TÁCH BIỆT hoàn toàn với
+                     Tab "Đăng ký nghỉ phép" và với action "guiFileDanhMucLoaiCong" của Văn
+                     phòng); người phê duyệt bấm "Đồng ý"/"Không đồng ý" ngay bên dưới (action MỚI
+                     "decideDanhMucLoaiCongThuyenVienDuyet") — xem renderCctvDanhMucForm()/
+                     populateCctvDmlcNguoiNhanList()/submitCctvDmlcGuiFile()/loadCctvDmlcDuyetList()/
+                     renderCctvDmlcDuyetList()/decideCctvDmlcDuyetUI() bên dưới. Không đổi phân
+                     quyền: mục này vẫn dùng CHUNG điều kiện quyền XEM Bảng Chấm Công Thuyền Viên
                      (canViewCrewChamCong = "XemChamCongThuyenVien" hoặc Admin) như cả Tab. -->
                 <div class="admin-box" style="border-left: 5px solid #2f6fed; background:#f5f8ff; margin-top:16px;">
-                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Danh mục loại công</h4>
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-list-check" style="color:#2f6fed;"></i> Phê duyệt bảng chấm công thuyền viên</h4>
                     <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
                         <i class="fa-solid fa-circle-info" style="color:#2f6fed;"></i>
-                        Chọn "Mã công" để xem tên loại công tương ứng, đính kèm file, ghi chú (nếu cần) và chọn "Người nhận" để gửi ngay — người nhận sẽ nhận được qua email.
+                        Đính kèm file (nếu cần), ghi chú (nếu cần) và chọn "Người phê duyệt" rồi gửi — yêu cầu chỉ được xem là "Đã duyệt" khi TẤT CẢ người phê duyệt đã chọn đều bấm "Đồng ý" (giống cơ chế phê duyệt ở Tab "Đăng ký nghỉ phép").
                     </p>
                     <div class="input-group">
-                        <label>Mã công</label>
-                        <select id="cctv-dmlc-ma-select" onchange="onCctvDmlcMaChange()">
-                            <option value="">-- Chọn mã công --</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>Tên loại công</label>
-                        <input type="text" id="cctv-dmlc-ten" readonly disabled placeholder="Tự hiện ra sau khi chọn Mã công ở trên">
-                    </div>
-                    <div class="input-group">
-                        <label>Đính kèm file</label>
+                        <label>Đính kèm file <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — đính kèm nếu cần thiết)</span></label>
                         <input type="file" id="cctv-dmlc-file">
                     </div>
                     <div class="input-group">
-                        <label>Người nhận file <span style="color:#d9534f;">*</span></label>
-                        <div class="checkbox-dropdown-list" id="cctv-dmlc-recipient-list" style="max-height:140px;"></div>
+                        <label>Người phê duyệt <span style="color:#d9534f;">*</span></label>
+                        <div class="checkbox-dropdown-list" id="cctv-dmlc-approver-list" style="max-height:140px;"></div>
                     </div>
                     <div class="input-group">
                         <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc — ghi thêm nội dung nếu cần thiết)</span></label>
@@ -1873,8 +1862,28 @@
                     <div id="cctv-dmlc-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div id="cctv-dmlc-success" style="color:#2e7d32; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <button type="button" class="btn" style="width:auto;" onclick="submitCctvDmlcGuiFile()">
-                        <i class="fa-solid fa-paper-plane"></i> Gửi file
+                        <i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu phê duyệt
                     </button>
+
+                    <!-- [MỚI] Danh sách các yêu cầu phê duyệt mà tài khoản đang đăng nhập được
+                         phép thấy (chính mình đã gửi, hoặc mình được chọn làm người phê duyệt).
+                         Nếu đang CHỜ mình duyệt, hiện thêm 2 nút "Đồng ý"/"Không đồng ý". -->
+                    <div style="margin-top:18px; border-top:1px solid #dbe4fb; padding-top:12px;">
+                        <h4 style="margin:0 0 10px 0; font-size:14px;"><i class="fa-solid fa-list-ul" style="color:#2f6fed;"></i> Các yêu cầu phê duyệt</h4>
+                        <div style="overflow-x:auto;">
+                            <table class="data-table" style="min-width:640px;">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày gửi</th><th>Người gửi</th><th>Ghi chú</th>
+                                        <th>File</th><th>Người phê duyệt</th><th>Trạng thái</th><th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cctv-dmlc-duyet-tbody">
+                                    <tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- [MỚI] Form thêm/sửa 1 ngày công thuyền viên -->
@@ -7014,48 +7023,25 @@
             if (loaiDPGroup) loaiDPGroup.style.display = (maChon === "DP") ? "" : "none";
         }
 
-        // [SỬA - MỤC "DANH MỤC LOẠI CÔNG"] Trước đây vẽ thành 1 bảng tra cứu chỉ đọc
-        // (renderCctvDanhMucTable, ĐÃ THAY THẾ). Nay chỉ cần đổ danh sách "Mã công" vào
-        // <select id="cctv-dmlc-ma-select"> — "Tên loại công" tương ứng được lấy lại từ ĐÚNG
-        // cctvDanhMuc đã tải sẵn (KHÔNG gọi thêm action nào) mỗi khi người dùng đổi lựa chọn,
-        // xem onCctvDmlcMaChange() bên dưới. Đồng thời tải sẵn danh sách "Người nhận file"
-        // (action RIÊNG "getChamCongThuyenVienNguoiNhanList", TÁCH BIỆT với danh sách "Người
-        // nhận" của Bảng Chấm Công Văn phòng).
+        // [SỬA - MỤC "DANH MỤC LOẠI CÔNG" - THEO YÊU CẦU MỚI] Đã BỎ 2 trường "Mã công"/"Tên
+        // loại công" (không còn <select id="cctv-dmlc-ma-select">/<input id="cctv-dmlc-ten">
+        // nữa) — hàm này nay chỉ còn tải sẵn danh sách "Người phê duyệt" và danh sách các yêu
+        // cầu phê duyệt đã có. Vẫn được gọi ở ĐÚNG những chỗ trước đây gọi renderCctvDanhMucForm()
+        // (loadChamCongThuyenVienData()) nên KHÔNG cần sửa gì thêm ở nơi khác.
         function renderCctvDanhMucForm() {
-            let sel = document.getElementById("cctv-dmlc-ma-select");
-            if (!sel) return;
-            let cur = sel.value;
-            if (!cctvDanhMuc.length) {
-                sel.innerHTML = '<option value="">-- Chưa có dữ liệu danh mục loại công --</option>';
-            } else {
-                sel.innerHTML = '<option value="">-- Chọn mã công --</option>' +
-                    cctvDanhMuc.map(d => `<option value="${escapeHtml(d.ma)}">${escapeHtml(d.ma)}</option>`).join("");
-            }
-            sel.value = cctvDanhMuc.some(d => d.ma === cur) ? cur : "";
-            onCctvDmlcMaChange();
             populateCctvDmlcNguoiNhanList();
+            loadCctvDmlcDuyetList();
         }
 
-        // [MỚI] Khi người dùng chọn 1 "Mã công" ở <select id="cctv-dmlc-ma-select">, tự hiện
-        // "Tên loại công" tương ứng ở ô chỉ đọc <input id="cctv-dmlc-ten"> — tra thẳng trong
-        // cctvDanhMuc đã tải sẵn, không gọi thêm action nào tới server.
-        function onCctvDmlcMaChange() {
-            let sel = document.getElementById("cctv-dmlc-ma-select");
-            let tenInput = document.getElementById("cctv-dmlc-ten");
-            if (!sel || !tenInput) return;
-            let maChon = String(sel.value || "").trim().toUpperCase();
-            let dong = (cctvDanhMuc || []).find(d => String(d.ma || "").trim().toUpperCase() === maChon);
-            tenInput.value = dong ? (dong.ten || "") : "";
-        }
-
-        // [MỚI - MỤC "NGƯỜI NHẬN FILE"] Đổ danh sách username vào khối checkbox nhiều lựa chọn
-        // "cctv-dmlc-recipient-list" — dùng action RIÊNG "getChamCongThuyenVienNguoiNhanList"
-        // (quyền "XemChamCongThuyenVien" hoặc Admin), TÁCH BIỆT hoàn toàn với danh sách "Người
-        // nhận" của Bảng Chấm Công Văn phòng (populateChamCongNguoiNhanList/
-        // "getChamCongNguoiNhanList", quyền "XemChamCong").
+        // [SỬA - "NGƯỜI NHẬN FILE" -> "NGƯỜI PHÊ DUYỆT"] Đổ danh sách username vào khối checkbox
+        // nhiều lựa chọn "cctv-dmlc-approver-list" — VẪN dùng ĐÚNG action "getChamCongThuyenVienNguoiNhanList"
+        // đã có sẵn (quyền "XemChamCongThuyenVien" hoặc Admin, TÁCH BIỆT hoàn toàn với danh sách
+        // "Người nhận" của Bảng Chấm Công Văn phòng) — chỉ đổi cách DÙNG danh sách này ở FE (từ
+        // "người nhận file qua email" sang "người phê duyệt"), KHÔNG đổi/thêm action nào ở
+        // Code.gs cho phần này.
         let cctvNguoiNhanUsernames = [];
         async function populateCctvDmlcNguoiNhanList() {
-            let box = document.getElementById("cctv-dmlc-recipient-list");
+            let box = document.getElementById("cctv-dmlc-approver-list");
             if (!box) return;
             if (!cctvNguoiNhanUsernames.length) {
                 let result = await callServerAction({ action: "getChamCongThuyenVienNguoiNhanList" });
@@ -7066,62 +7052,125 @@
             ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
         }
 
-        // [MỚI - MỤC "DANH MỤC LOẠI CÔNG" (THUYỀN VIÊN) - GỬI FILE] Đọc file đính kèm thành
-        // base64 (CÙNG kỹ thuật/giới hạn dung lượng đang dùng cho mục tương ứng của Văn phòng),
-        // gửi lên action MỚI "guiFileDanhMucLoaiCongThuyenVien" — server tự upload lên Drive
-        // (riêng tư) + gửi email NGAY tới từng "Người nhận" đã chọn, không liên quan tới ngày
-        // công/thuyền viên cụ thể nào, TÁCH BIỆT hoàn toàn với "guiFileDanhMucLoaiCong" của Văn
-        // phòng.
+        // [SỬA - GỬI YÊU CẦU PHÊ DUYỆT] Đọc file đính kèm thành base64 (CÙNG kỹ thuật/giới hạn
+        // dung lượng như trước), gửi lên action MỚI "guiDuyetDanhMucLoaiCongThuyenVien" — server
+        // tự upload lên Drive (riêng tư) + tạo 1 yêu cầu "Chờ duyệt" + gửi email NGAY tới từng
+        // "Người phê duyệt" đã chọn, không còn gắn với "Mã công" nào, TÁCH BIỆT hoàn toàn với
+        // "guiFileDanhMucLoaiCong" của Văn phòng và với Tab "Đăng ký nghỉ phép".
         async function submitCctvDmlcGuiFile() {
             let err = document.getElementById("cctv-dmlc-error");
             let ok = document.getElementById("cctv-dmlc-success");
             if (err) err.style.display = "none";
             if (ok) ok.style.display = "none";
 
-            let maChon = document.getElementById("cctv-dmlc-ma-select").value;
-            if (!maChon) {
-                if (err) { err.innerText = "Vui lòng chọn \"Mã công\"."; err.style.display = "block"; }
-                return;
-            }
+            // [SỬA - "ĐÍNH KÈM FILE" KHÔNG CÒN BẮT BUỘC] File đính kèm nay là TÙY CHỌN — chỉ đọc/
+            // gửi file khi người dùng CÓ chọn file; nếu không chọn file vẫn cho phép gửi yêu cầu
+            // phê duyệt bình thường (server tự xử lý trường hợp không có file, xem action
+            // "guiDuyetDanhMucLoaiCongThuyenVien" ở Code.gs).
             let fileInput = document.getElementById("cctv-dmlc-file");
             let fileChon = fileInput && fileInput.files && fileInput.files[0];
-            if (!fileChon) {
-                if (err) { err.innerText = "Vui lòng chọn file đính kèm."; err.style.display = "block"; }
-                return;
-            }
-            if (fileChon.size > 15 * 1024 * 1024) {
+            if (fileChon && fileChon.size > 15 * 1024 * 1024) {
                 if (err) { err.innerText = "File quá lớn (giới hạn 15MB)."; err.style.display = "block"; }
                 return;
             }
-            let nguoiNhan = Array.from(document.querySelectorAll("#cctv-dmlc-recipient-list input:checked")).map(i => i.value);
-            if (!nguoiNhan.length) {
-                if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người nhận\"."; err.style.display = "block"; }
+            let nguoiPheDuyet = Array.from(document.querySelectorAll("#cctv-dmlc-approver-list input:checked")).map(i => i.value);
+            if (!nguoiPheDuyet.length) {
+                if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người phê duyệt\"."; err.style.display = "block"; }
                 return;
             }
             let ghiChuInput = document.getElementById("cctv-dmlc-ghichu");
             let ghiChu = ghiChuInput ? ghiChuInput.value.trim() : "";
 
-            let base64Data = await new Promise((resolve, reject) => {
-                let reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(",")[1]);
-                reader.onerror = () => reject(new Error("Không thể đọc file."));
-                reader.readAsDataURL(fileChon);
-            }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return null; });
-            if (base64Data === null) return;
+            let base64Data = null;
+            if (fileChon) {
+                base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(fileChon);
+                }).catch(e => { if (err) { err.innerText = e.message; err.style.display = "block"; } return undefined; });
+                if (base64Data === undefined) return;
+            }
 
             let result = await callServerAction({
-                action: "guiFileDanhMucLoaiCongThuyenVien", ma: maChon,
-                fileName: fileChon.name, mimeType: fileChon.type || "application/octet-stream",
-                fileData: base64Data, nguoiNhan: nguoiNhan, ghiChu: ghiChu
+                action: "guiDuyetDanhMucLoaiCongThuyenVien",
+                fileName: fileChon ? fileChon.name : "", mimeType: fileChon ? (fileChon.type || "application/octet-stream") : "",
+                fileData: base64Data, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu
             });
             if (result && result.status === "SUCCESS") {
-                if (ok) { ok.innerText = "Đã gửi file thành công tới " + (result.daGui || 0) + "/" + (result.tongSo || nguoiNhan.length) + " người nhận."; ok.style.display = "block"; }
+                if (ok) { ok.innerText = "Đã gửi yêu cầu phê duyệt thành công tới " + nguoiPheDuyet.length + " người phê duyệt."; ok.style.display = "block"; }
                 if (fileInput) fileInput.value = "";
                 if (ghiChuInput) ghiChuInput.value = "";
+                document.querySelectorAll("#cctv-dmlc-approver-list input:checked").forEach(i => i.checked = false);
+                loadCctvDmlcDuyetList();
             } else if (err) {
-                err.innerText = (result && result.message) || "Không thể gửi file.";
+                err.innerText = (result && result.message) || "Không thể gửi yêu cầu phê duyệt.";
                 err.style.display = "block";
             }
+        }
+
+        // [MỚI - DANH SÁCH YÊU CẦU PHÊ DUYỆT] Tải danh sách yêu cầu phê duyệt mà tài khoản đang
+        // đăng nhập được phép thấy (action MỚI "getDanhMucLoaiCongThuyenVienDuyetList") rồi vẽ
+        // lại bảng — y hệt cơ chế đang dùng cho loadLeaveRequests()/renderMyLeaveTable() của Tab
+        // "Đăng ký nghỉ phép", nhưng TÁCH BIỆT hoàn toàn (dữ liệu riêng, không lẫn nhau).
+        let cctvDmlcDuyetData = [];
+        async function loadCctvDmlcDuyetList() {
+            let result = await callServerAction({ action: "getDanhMucLoaiCongThuyenVienDuyetList" });
+            if (result && result.status === "SUCCESS") cctvDmlcDuyetData = result.list || [];
+            renderCctvDmlcDuyetList();
+        }
+
+        // Vẽ lại bảng các yêu cầu phê duyệt "Danh mục loại công" (Thuyền viên). Chỉ hiện 2 nút
+        // "Đồng ý"/"Không đồng ý" ở đúng yêu cầu mà CHÍNH tài khoản đang đăng nhập được chọn làm
+        // "Người phê duyệt" VÀ đang thực sự còn "Chờ duyệt" (chưa tự mình xử lý) — Server vẫn LUÔN
+        // kiểm tra lại quyền này, đây chỉ là ẩn/hiện cho gọn giao diện.
+        function renderCctvDmlcDuyetList() {
+            let tbody = document.getElementById("cctv-dmlc-duyet-tbody");
+            if (!tbody) return;
+            if (!cctvDmlcDuyetData.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                return;
+            }
+            let list = cctvDmlcDuyetData.slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
+            tbody.innerHTML = list.map(r => {
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                let canDecide = (r.nguoiPheDuyet || []).includes(currentUsername) &&
+                    r.trangThaiChung === "Chờ duyệt" && (!myStatus || myStatus.status === "cho_duyet");
+                let mauTrangThai = r.trangThaiChung === "Đã duyệt" ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                return `<tr>
+                    <td>${escapeHtml(r.ngayGui || "")}</td>
+                    <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                    <td>${(r.nguoiPheDuyet || []).map(u => escapeHtml(u)).join(", ")}</td>
+                    <td><b style="color:${mauTrangThai};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                    <td>${canDecide ? `
+                        <button class="btn btn-success btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                        <button class="btn btn-danger btn-sm" onclick="decideCctvDmlcDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+                    ` : '<span style="color:#ccc;">—</span>'}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        // Xử lý bấm "Đồng ý"/"Không đồng ý" trên 1 yêu cầu phê duyệt "Danh mục loại công" (Thuyền
+        // viên) — "Không đồng ý" BẮT BUỘC phải nhập lý do (server cũng tự kiểm tra lại, không thể
+        // bỏ qua dù gọi thẳng API), y hệt decideLeaveRequestUI() của Tab "Đăng ký nghỉ phép".
+        async function decideCctvDmlcDuyetUI(id, decision) {
+            let lyDo = "";
+            if (decision === "reject") {
+                lyDo = prompt("Vui lòng nhập lý do KHÔNG đồng ý yêu cầu này:", "");
+                if (lyDo === null) return; // người dùng bấm Hủy
+                lyDo = lyDo.trim();
+                if (!lyDo) { alert("Bạn cần nhập lý do khi chọn \"Không đồng ý\"."); return; }
+            } else {
+                if (!confirm("Xác nhận ĐỒNG Ý yêu cầu phê duyệt này?")) return;
+            }
+            let result = await callServerAction({ action: "decideDanhMucLoaiCongThuyenVienDuyet", id: id, decision: decision, lyDo: lyDo });
+            if (!result || result.status === "ERROR") {
+                alert("❌ " + ((result && result.message) || "Có lỗi xảy ra khi xử lý yêu cầu."));
+                return;
+            }
+            await loadCctvDmlcDuyetList();
         }
 
         // Trả về mã kỳ (tháng/năm, dạng "yyyy-MM") đang chọn ở ô "Kỳ chấm công".
