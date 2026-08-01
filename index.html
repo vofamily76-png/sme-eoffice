@@ -7434,20 +7434,217 @@
             updateNotificationBell();
         }
 
+        // [MỚI - CHUỖI HIỂN THỊ "KỲ CHẤM CÔNG"] Nhận vào "thang" dạng "yyyy-MM" (đúng định dạng ô
+        // input type="month" đang dùng ở "cctv-period-input" / lưu trong yêu cầu phê duyệt "r.thang")
+        // và trả về { thangSo, nam, nhan } để hiện lên dòng "BẢNG CHẤM CÔNG THÁNG ... NĂM ..." của
+        // PDF. Nếu không đúng định dạng (dữ liệu cũ/thiếu) thì vẫn hiện tạm nguyên chuỗi gốc, KHÔNG
+        // làm lỗi/chặn việc xuất file.
+        function cctvPhanTichThangNam_(thang) {
+            let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
+            if (!m) return { thangSo: "", nam: "", nhan: thang ? pdfText(thang) : "(chưa chọn kỳ)" };
+            return { thangSo: m[2], nam: m[1], nhan: "THÁNG " + m[2] + " NĂM " + m[1] };
+        }
+
+        // [MỚI - "BẢNG CHẤM CÔNG" DẠNG LƯỚI CHO FILE PDF PHÊ DUYỆT] Dựng lại đúng 1 bảng chấm công
+        // (dạng lưới: 1 dòng/thuyền viên, mỗi cột là 1 ngày trong kỳ + các cột "Công {mã}" tổng hợp)
+        // CHO 1 TÀU cụ thể, dùng làm HTML để chèn vào file PDF "Phiếu phê duyệt bảng chấm công
+        // thuyền viên" — DÙNG LẠI NGUYÊN VẸN cách gom/lọc dữ liệu đang chạy đúng ở
+        // exportChamCongThuyenVienToExcel() (chỉ hiện cột ngày/cột mã công NÀO thực sự có dữ liệu,
+        // cùng hàng phụ "Công chức danh" và hàng "Tổng cộng Công" ở cuối) để bảng trong PDF hiển thị
+        // GIỐNG HỆT file Excel đã xuất — CHỈ ĐỌC lại dữ liệu truyền vào (dCrew/dRecords/dDanhMuc/
+        // dTongHopCongViec/dTongHopChucDanh), KHÔNG tính toán khác đi, KHÔNG gọi thêm action nào,
+        // KHÔNG sửa/mất bất kỳ dữ liệu ngày công nào đã lưu.
+        function cctvXayDungBangChamCongHtml_(tau, thang, dCrew, dRecords, dDanhMuc, dTongHopCongViec, dTongHopChucDanh) {
+            let crewOfTau = (dCrew || []).filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
+            if (!crewOfTau.length) return '<p style="color:#999;">(Tàu này chưa có thuyền viên nào trong Sheet "Đội tàu")</p>';
+
+            let ngayListFull = [];
+            let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
+            if (m) {
+                let nam = parseInt(m[1], 10), thangSo = parseInt(m[2], 10);
+                let soNgay = new Date(nam, thangSo, 0).getDate();
+                let thuTen = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+                for (let d = 1; d <= soNgay; d++) {
+                    ngayListFull.push({ ngay: d, thu: thuTen[new Date(nam, thangSo - 1, d).getDay()] });
+                }
+            }
+            if (!ngayListFull.length) return '<p style="color:#999;">(Chưa xác định được kỳ chấm công để dựng bảng)</p>';
+
+            let ngayList = ngayListFull.filter(d => {
+                let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                return crewOfTau.some(c => (dRecords || []).some(r =>
+                    r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.maLoaiCong || "")
+                ));
+            });
+            if (!ngayList.length) ngayList = ngayListFull;
+
+            let tongTheoCrew = crewOfTau.map(c => {
+                let idxGoc = (dCrew || []).indexOf(c);
+                return {
+                    chinh: (dTongHopCongViec && dTongHopCongViec[idxGoc]) || {},
+                    phu: (dTongHopChucDanh && dTongHopChucDanh[idxGoc]) || {}
+                };
+            });
+            let tongTheoMa = {};
+            crewOfTau.forEach((c, i) => {
+                (dDanhMuc || []).forEach(dm => {
+                    let n = (tongTheoCrew[i].chinh[dm.ma] || 0) +
+                        (cctvCoHangChucDanh(c.chucDanh) ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                    if (n) tongTheoMa[dm.ma] = (tongTheoMa[dm.ma] || 0) + n;
+                });
+            });
+            let danhMucCoDuLieu = (dDanhMuc || []).filter(dm => (tongTheoMa[dm.ma] || 0) > 0);
+
+            let theadHtml = `<tr style="background:#f0f0f0;">
+                    <th style="border:1px solid #333; padding:3px;">STT</th>
+                    <th style="border:1px solid #333; padding:3px;">Họ và tên</th>
+                    <th style="border:1px solid #333; padding:3px;">Chức vụ</th>
+                    ${ngayList.map(d => `<th style="border:1px solid #333; padding:2px; min-width:20px;">${d.ngay}<br><span style="font-weight:normal; font-size:8px;">${d.thu}</span></th>`).join("")}
+                    ${danhMucCoDuLieu.map(dm => `<th style="border:1px solid #333; padding:2px; min-width:26px;">Công ${pdfText(dm.ma)}</th>`).join("")}
+                </tr>`;
+
+            let bodyRows = "";
+            let sttXuat = 0;
+            crewOfTau.forEach((c, i) => {
+                sttXuat++;
+                let coHangPhu = cctvCoHangChucDanh(c.chucDanh);
+                let rowspanAttr = coHangPhu ? ' rowspan="2"' : '';
+                let dayTds = ngayList.map(d => {
+                    let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                    let rec = (dRecords || []).find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
+                    let maHienThi = rec ? (rec.maLoaiCong || "") : "";
+                    if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
+                    return `<td style="border:1px solid #333; padding:2px; text-align:center;">${pdfText(maHienThi)}</td>`;
+                }).join("");
+                let tongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].chinh[dm.ma] || 0}</td>`).join("");
+                bodyRows += `<tr>
+                        <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${sttXuat}</td>
+                        <td style="border:1px solid #333; padding:2px;"${rowspanAttr}>${pdfText(c.hoTen)}</td>
+                        <td style="border:1px solid #333; padding:2px;">${pdfText(c.chucDanh || "")}</td>
+                        ${dayTds}
+                        ${tongTds}
+                    </tr>`;
+
+                if (coHangPhu) {
+                    let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
+                    let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
+                    let dayTdsPhu = ngayList.map(d => {
+                        let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
+                        let recPhu = (dRecords || []).find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                        return `<td style="border:1px solid #333; padding:2px; text-align:center;">${recPhu ? pdfText(maRank) : ""}</td>`;
+                    }).join("");
+                    let tongTdsPhu = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].phu[dm.ma] || 0}</td>`).join("");
+                    bodyRows += `<tr>
+                            <td style="border:1px solid #333; padding:2px;">${pdfText(nhanHang)}</td>
+                            ${dayTdsPhu}
+                            ${tongTdsPhu}
+                        </tr>`;
+                }
+            });
+
+            let tongRowTds = ngayList.map(() => `<td style="border:1px solid #333; padding:2px;"></td>`).join("");
+            let tongRowTongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoMa[dm.ma] || ""}</td>`).join("");
+
+            return `<table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
+                    <thead>${theadHtml}</thead>
+                    <tbody>${bodyRows}
+                        <tr style="background:#f5f5f5; font-weight:bold;">
+                            <td style="border:1px solid #333; padding:2px;" colspan="2">Tổng cộng Công</td>
+                            <td style="border:1px solid #333; padding:2px;"></td>
+                            ${tongRowTds}
+                            ${tongRowTongTds}
+                        </tr>
+                    </tbody>
+                </table>`;
+        }
+
         // [MỚI - NÚT "TẢI FILE"] Dựng 1 mẫu "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN" khổ A4
-        // NGANG (landscape) gồm thông tin yêu cầu (kỳ chấm công, người gửi, ngày gửi, ghi chú) và
-        // xác nhận của TỪNG người phê duyệt (Họ tên, Chức danh, Trạng thái, Ngày giờ phê duyệt),
-        // NGAY TẠI TRÌNH DUYỆT rồi xuất thành file .pdf tải về máy — dùng CHUNG kỹ thuật jsPDF +
-        // html2canvas (đã nạp sẵn ở đầu trang) và các hàm hỗ trợ pdfText()/boDauTiengViet() y hệt
-        // xuatPdfDonNghiPhep() của Tab "Đăng ký nghỉ phép". KHÔNG gọi thêm API nào tới server,
-        // KHÔNG lưu thêm gì lên Drive, KHÔNG đổi dữ liệu/cơ chế bảo mật — chỉ đọc lại đúng dữ liệu
-        // đã tải sẵn trong cctvDmlcDuyetData. Chỉ dùng được khi yêu cầu đã "Đã duyệt".
+        // NGANG (landscape) gồm: (1) tiêu đề công ty (SEAHORSE MARINE AND ENERGY JSC / CÔNG TY CỔ
+        // PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ / BẢNG CHẤM CÔNG THÁNG.../NĂM...), (2) BẢNG CHẤM CÔNG
+        // dạng lưới giống hệt file Excel đã xuất (xem cctvXayDungBangChamCongHtml_() ở trên) — theo
+        // đúng tàu đang được lọc ở ô "Lọc theo tàu" (nếu chưa lọc tàu nào thì xuất LẦN LƯỢT từng tàu,
+        // giống cách mỗi tàu 1 sheet của file Excel), (3) dòng "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN
+        // VIÊN TÀU ..." ngay dưới mỗi bảng, và (4) thông tin yêu cầu phê duyệt + xác nhận của TỪNG
+        // người phê duyệt như cũ. NGAY TẠI TRÌNH DUYỆT rồi xuất thành file .pdf tải về máy — dùng
+        // CHUNG kỹ thuật jsPDF + html2canvas (đã nạp sẵn ở đầu trang) và các hàm hỗ trợ pdfText()/
+        // boDauTiengViet() y hệt xuatPdfDonNghiPhep() của Tab "Đăng ký nghỉ phép". KHÔNG lưu thêm gì
+        // lên Drive, KHÔNG đổi dữ liệu/cơ chế bảo mật — chỉ đọc lại dữ liệu đã có (cctvDmlcDuyetData)
+        // và (MỚI) tải lại đúng dữ liệu chấm công của ĐÚNG kỳ "r.thang" qua action "getChamCongThuyenVienData"
+        // đã có sẵn (dùng CHUNG quyền "XemChamCongThuyenVien" như bảng đang hiển thị/nút "Xuất Excel",
+        // KHÔNG phải action mới, KHÔNG cấp thêm quyền gì) để bảng trong PDF LUÔN đúng kỳ của yêu cầu
+        // này — kết quả CHỈ lưu ở biến CỤC BỘ, KHÔNG ghi đè lên cctvCrewList/cctvRecords/... đang
+        // hiển thị trên màn hình. Chỉ dùng được khi yêu cầu đã "Đã duyệt".
         async function xuatPdfCctvDmlcDuyet(id) {
             let r = (cctvDmlcDuyetData || []).find(x => x.id === id);
             if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
             if (r.trangThaiChung !== "Đã duyệt") { alert("Yêu cầu này chưa được duyệt xong."); return; }
             if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
                 alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
+            }
+
+            // [MỚI - ĐỘ TIN CẬY] Tải lại đúng dữ liệu chấm công của kỳ "thangBang" (KHÔNG đụng
+            // biến toàn cục đang hiển thị trên màn hình) để đảm bảo bảng chấm công trong PDF luôn
+            // khớp đúng kỳ, dù người dùng đang xem 1 kỳ/tàu khác trên màn hình. [SỬA - LUÔN THỬ
+            // TẢI, KHÔNG CHỈ KHI CÓ "r.thang"] Trước đây CHỈ gọi tải khi "r.thang" có giá trị — với
+            // những yêu cầu phê duyệt CŨ được gửi từ trước khi có trường "thang" (r.thang rỗng),
+            // bảng sẽ không tải được gì và PDF bị thiếu bảng chấm công. NAY luôn thử tải theo kỳ
+            // tốt nhất đang có (ưu tiên "r.thang", nếu rỗng thì tạm dùng đúng kỳ đang chọn trên màn
+            // hình "cctv-period-input") — nếu tải lỗi (mất mạng, quyền thay đổi giữa chừng...) thì
+            // mới tự động dùng tạm dữ liệu đang có sẵn trên màn hình để KHÔNG chặn việc xuất file.
+            let thangBang = r.thang || cctvThangDangChon();
+            let dCrew = cctvCrewList, dRecords = cctvRecords, dDanhMuc = cctvDanhMuc,
+                dTongHopCongViec = cctvTongHopCongViec, dTongHopChucDanh = cctvTongHopChucDanh;
+            if (thangBang) {
+                try {
+                    let dataRes = await callServerAction({ action: "getChamCongThuyenVienData", thang: thangBang });
+                    if (dataRes && dataRes.status !== "ERROR") {
+                        dCrew = dataRes.crew || [];
+                        dRecords = dataRes.records || [];
+                        dDanhMuc = dataRes.danhMuc || [];
+                        dTongHopCongViec = dataRes.tongHopCongViec || [];
+                        dTongHopChucDanh = dataRes.tongHopChucDanh || [];
+                    } else {
+                        console.error("xuatPdfCctvDmlcDuyet: getChamCongThuyenVienData trả lỗi:", dataRes && dataRes.message);
+                    }
+                } catch (fetchErr) {
+                    console.error("xuatPdfCctvDmlcDuyet: lỗi khi tải dữ liệu chấm công:", fetchErr);
+                }
+            }
+
+            // Tàu để dựng bảng chấm công: ưu tiên đúng tàu đang lọc trên màn hình (ô "Lọc theo
+            // tàu") — coi là "tàu hiện tại"; nếu đang để "Tất cả các tàu" thì xuất LẦN LƯỢT từng
+            // tàu đang có thuyền viên (giống cách file Excel tách riêng 1 sheet/tàu).
+            let tauDangLoc = (document.getElementById("cctv-tau-filter") || {}).value || "";
+            let dsTau = tauDangLoc ? [tauDangLoc] : [...new Set((dCrew || []).map(c => c.tau || "(Chưa rõ tàu)"))].sort();
+            let thangNam = cctvPhanTichThangNam_(thangBang);
+
+            // [MỚI - CHẨN ĐOÁN] Nếu không xác định được kỳ NÀO (cả "r.thang" lẫn kỳ đang chọn trên
+            // màn hình đều trống) hoặc không có tàu/thuyền viên nào, hiện rõ 1 dòng thông báo NGAY
+            // TRONG file PDF thay vì để trống lặng lẽ — giúp biết ngay lý do thiếu bảng thay vì phải
+            // đoán (VD do yêu cầu quá cũ chưa lưu kỳ, do Sheet "Đội tàu" chưa có thuyền viên...).
+            // [SỬA - TÁCH RIÊNG DÒNG "PHIẾU PHÊ DUYỆT..." VÀ BẢNG LƯỚI] Theo yêu cầu mới nhất: dòng
+            // tiêu đề "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN TÀU ..." nay chuyển LÊN TRÊN, nằm
+            // NGAY DƯỚI dòng "BẢNG CHẤM CÔNG THÁNG .../NĂM..." (trong khối tiêu đề công ty) — CÒN
+            // bảng chấm công dạng lưới (bảng chi tiết từng ngày công) vẫn giữ NGUYÊN ở DƯỚI CÙNG
+            // file PDF (sau bảng "Xác nhận của người phê duyệt") như đã sửa ở lần trước. Vì vậy tách
+            // thành 2 biến riêng: "phieuTitleHtml" (dòng tiêu đề, chèn lên khối đầu trang) và
+            // "bangChamCongLuoiHtml" (bảng lưới, chèn ở cuối trang) — KHÔNG đổi cách tính/dữ liệu gì.
+            let phieuTitleHtml, bangChamCongLuoiHtml;
+            if (!thangBang) {
+                phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Không dựng được bảng chấm công: yêu cầu phê duyệt này chưa lưu "Kỳ chấm công" (dữ liệu cũ) và trên màn hình cũng chưa chọn kỳ nào. Vui lòng chọn 1 kỳ ở ô "Kỳ chấm công (tháng/năm)" rồi bấm "Tải file" lại.</p>';
+                bangChamCongLuoiHtml = "";
+            } else if (!dsTau.length) {
+                phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào cho kỳ "' + pdfText(thangBang) + '". Vui lòng kiểm tra lại Sheet "Đội tàu" và bộ lọc "Lọc theo tàu".</p>';
+                bangChamCongLuoiHtml = "";
+            } else {
+                phieuTitleHtml = dsTau.map(tau =>
+                    `<p style="text-align:center; font-weight:bold; font-size:15px; margin:6px 0 0 0; text-transform:uppercase;">PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN TÀU ${pdfText(tau)}</p>`
+                ).join("");
+                bangChamCongLuoiHtml = dsTau.map(tau => `
+                    <div style="margin-top:16px;">
+                        ${dsTau.length > 1 ? `<p style="font-weight:bold; margin:0 0 4px 0;">Tàu: ${pdfText(tau)}</p>` : ""}
+                        ${cctvXayDungBangChamCongHtml_(tau, thangBang, dCrew, dRecords, dDanhMuc, dTongHopCongViec, dTongHopChucDanh)}
+                    </div>`).join("");
             }
 
             let approverList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
@@ -7469,11 +7666,18 @@
             let pdfLogoHtml = pdfLogoSrc ? `<img src="${pdfLogoSrc}" style="height:60px; width:auto; object-fit:contain;">` : "<div></div>";
 
             let html = `
-            <div style="width:1000px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
-                <div style="display:flex; align-items:center; margin-bottom:14px;">
+            <div style="width:1300px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
+                <div style="display:flex; align-items:center; margin-bottom:6px;">
                     <div style="width:120px;">${pdfLogoHtml}</div>
-                    <div style="flex:1; text-align:center; font-size:20px; font-weight:bold; margin-right:120px;">PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN</div>
+                    <div style="flex:1; text-align:center; margin-right:120px;">
+                        <div style="font-size:17px; font-weight:bold; letter-spacing:0.5px;">SEAHORSE MARINE AND ENERGY JSC</div>
+                        <div style="font-size:16px; font-weight:bold; margin-top:2px;">CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ</div>
+                        <div style="font-size:15px; font-weight:bold; margin-top:6px; text-transform:uppercase;">BẢNG CHẤM CÔNG ${thangNam.nhan}</div>
+                        ${phieuTitleHtml}
+                    </div>
                 </div>
+
+                <p style="margin-top:20px; font-weight:bold;">Thông tin yêu cầu phê duyệt:</p>
                 <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
                     <tr>
                         <td style="padding:2px 0; width:50%;">Mã yêu cầu: <b>${pdfText(r.id || "")}</b></td>
@@ -7501,6 +7705,16 @@
                     </thead>
                     <tbody>${approverRows}</tbody>
                 </table>
+
+                <!-- [SỬA - BẢNG LƯỚI CHẤM CÔNG NẰM DƯỚI CÙNG] Bảng chấm công dạng lưới (chi tiết
+                     từng ngày công) nằm SAU bảng "Xác nhận của người phê duyệt" ở trên, tức là ở
+                     DƯỚI CÙNG của file PDF. Dòng tiêu đề "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN
+                     VIÊN TÀU ..." đã được TÁCH RIÊNG và chuyển LÊN TRÊN (nằm ngay dưới dòng "BẢNG
+                     CHẤM CÔNG THÁNG.../NĂM..." ở khối tiêu đề công ty đầu trang — xem biến
+                     "phieuTitleHtml" ở trên). Chỉ đổi VỊ TRÍ hiển thị, KHÔNG đổi nội dung/dữ liệu/
+                     cách tính. -->
+                ${bangChamCongLuoiHtml}
+
                 <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Phiếu được xuất tự động từ Hệ thống quản lý nhân sự - Mã yêu cầu: ${pdfText(r.id || "")}</p>
             </div>`;
 
