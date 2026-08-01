@@ -1886,6 +1886,31 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - MỤC "NGƯỜI PHÊ DUYỆT", CHỈ HIỆN VỚI TÀI KHOẢN ADMIN] Admin chọn 1 danh
+                     sách CON trong TẤT CẢ tài khoản -> danh sách này sẽ là DUY NHẤT được phép hiện
+                     ra ở ô "Người phê duyệt" của mục "Phê duyệt bảng chấm công thuyền viên" ở
+                     trên, cho MỌI tài khoản (mục đích: người dùng gửi bảng chấm công chỉ được
+                     chọn đúng những người Admin đã chỉ định làm người phê duyệt). Để TRỐNG (không
+                     chọn ai) = KHÔNG giới hạn, giữ nguyên hành vi CŨ (cho chọn TẤT CẢ tài khoản
+                     khác). Dữ liệu lưu ở Sheet RIÊNG MỚI "CaiDatNguoiPheDuyetChamCongThuyenVien"
+                     (xem saveChamCongThuyenVienNguoiPheDuyetSettings ở Code.gs), TÁCH BIỆT HOÀN
+                     TOÀN với "CaiDatNguoiNhanChamCong" (mục "Người nhận" của Bảng Chấm Công Văn
+                     phòng) và với "CaiDatPheDuyet" (mục "Người được phê duyệt" ở Tab "Đăng ký nghỉ
+                     phép") — KHÔNG đụng tới sheet/dữ liệu nào khác, KHÔNG đổi quyền hạn hiện có
+                     (chỉ giới hạn DANH SÁCH được PHÉP CHỌN ở ô "Người phê duyệt", không cấp/gỡ
+                     quyền phê duyệt của ai — server vẫn luôn kiểm tra lại đúng người được CHỌN ở
+                     từng yêu cầu cụ thể khi bấm "Đồng ý"/"Không đồng ý", xem action
+                     "decideDanhMucLoaiCongThuyenVienDuyet"). -->
+                <div class="admin-box" id="cctv-admin-pheduyet-settings-box" style="border-left: 5px solid #37474f; background:#f5f5f5; margin-top:16px; display:none;">
+                    <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-user-shield" style="color:#37474f;"></i> Người phê duyệt <small style="font-weight:normal; color:#888; font-size:12px;">(chỉ Admin thấy mục này)</small></h4>
+                    <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                        Chọn những tài khoản được phép hiện ra ở ô "Người phê duyệt" của mục "Phê duyệt bảng chấm công thuyền viên" ở trên (áp dụng cho mọi tài khoản khi gửi bảng chấm công đi duyệt). Để trống = không giới hạn, cho chọn tất cả tài khoản như cũ.
+                    </p>
+                    <div class="checkbox-dropdown-list" id="cctv-admin-pheduyet-settings-list" style="max-height:220px;"></div>
+                    <button class="btn" style="width:auto; margin-top:8px; background:#37474f;" onclick="saveCtvNguoiPheDuyetSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình "Người phê duyệt"</button>
+                    <span id="cctv-admin-pheduyet-settings-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
+                </div>
+
                 <!-- [MỚI] Form thêm/sửa 1 ngày công thuyền viên -->
                 <div class="admin-box" id="cctv-form-box" style="display:none; border-top:4px solid var(--primary-color); margin-top:16px;">
                     <h3 style="margin-top:0;">Ghi nhận ngày công</h3>
@@ -3236,6 +3261,14 @@
         // hình "Người nhận" — KHÔNG phải nơi thật sự quyết định quyền (server luôn tự kiểm tra
         // lại ở action "suaNgayChamCong"/"getChamCongData").
         let approvedChamCongDieuChinhList = [];
+        // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - MỤC "NGƯỜI PHÊ DUYỆT", CHỈ ADMIN CẤU HÌNH]
+        // Danh sách username Admin đã chọn để giới hạn lựa chọn ở ô "Người phê duyệt" của mục
+        // "Phê duyệt bảng chấm công thuyền viên" (rỗng = CHƯA cấu hình gì -> mọi tài khoản vẫn
+        // được chọn TẤT CẢ tài khoản khác như cũ) — TÁCH BIỆT hoàn toàn với
+        // "approvedChamCongNguoiNhanList" ở trên (Bảng Chấm Công Văn phòng) và với
+        // "approvedApproversList" (Tab "Đăng ký nghỉ phép"). Xem populateCctvDmlcNguoiNhanList()/
+        // populateAdminCtvNguoiPheDuyetSettingsList()/saveCtvNguoiPheDuyetSettings() bên dưới.
+        let approvedCtvNguoiPheDuyetList = [];
         let gvRemovedFileIds = []; // fileId các file đính kèm bị gỡ khi đang sửa 1 công việc
         // [TAB "CHỮ KÝ SỐ"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
         // SIGNATURE_SPREADSHEET_ID/SIGNATURE_FOLDER_ID ở code.gs) — không nằm trong getData
@@ -3636,6 +3669,11 @@
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
+                // [MỚI - MỤC "NGƯỜI PHÊ DUYỆT" - BẢNG CHẤM CÔNG THUYỀN VIÊN, CHỈ ADMIN CẤU HÌNH]
+                // Danh sách username Admin đã chọn để giới hạn ô "Người phê duyệt" ở mục "Phê
+                // duyệt bảng chấm công thuyền viên" (rỗng = Admin chưa cấu hình gì). TÁCH BIỆT
+                // hoàn toàn với "approvedChamCongNguoiNhan" ở trên (Bảng Chấm Công Văn phòng).
+                if (data.approvedChamCongThuyenVienNguoiPheDuyet !== undefined) approvedCtvNguoiPheDuyetList = data.approvedChamCongThuyenVienNguoiPheDuyet;
                 if (data.chamCongThongBaoCuaToi !== undefined) chamCongThongBaoCuaToi = data.chamCongThongBaoCuaToi;
                 // [MỚI - LIÊN KẾT "NGƯỜI NHẬN" <-> QUYỀN TỰ ĐIỀU CHỈNH THEO TỪNG TÀI KHOẢN] Chỉ
                 // Admin nhận được trường này từ server (xem buildSystemData ở Code.gs).
@@ -7028,28 +7066,89 @@
         // nữa) — hàm này nay chỉ còn tải sẵn danh sách "Người phê duyệt" và danh sách các yêu
         // cầu phê duyệt đã có. Vẫn được gọi ở ĐÚNG những chỗ trước đây gọi renderCctvDanhMucForm()
         // (loadChamCongThuyenVienData()) nên KHÔNG cần sửa gì thêm ở nơi khác.
+        // [SỬA - MỤC "NGƯỜI PHÊ DUYỆT" CÓ CẤU HÌNH RIÊNG CHO ADMIN] Thêm hiển thị/tải khối cấu
+        // hình "Người phê duyệt" (chỉ Admin thấy) ngay khi vào mục này.
         function renderCctvDanhMucForm() {
             populateCctvDmlcNguoiNhanList();
             loadCctvDmlcDuyetList();
+            let adminBox = document.getElementById("cctv-admin-pheduyet-settings-box");
+            if (adminBox) {
+                adminBox.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
+                if (currentUser && currentUser.role === "Admin") populateAdminCtvNguoiPheDuyetSettingsList();
+            }
         }
 
         // [SỬA - "NGƯỜI NHẬN FILE" -> "NGƯỜI PHÊ DUYỆT"] Đổ danh sách username vào khối checkbox
         // nhiều lựa chọn "cctv-dmlc-approver-list" — VẪN dùng ĐÚNG action "getChamCongThuyenVienNguoiNhanList"
         // đã có sẵn (quyền "XemChamCongThuyenVien" hoặc Admin, TÁCH BIỆT hoàn toàn với danh sách
-        // "Người nhận" của Bảng Chấm Công Văn phòng) — chỉ đổi cách DÙNG danh sách này ở FE (từ
-        // "người nhận file qua email" sang "người phê duyệt"), KHÔNG đổi/thêm action nào ở
-        // Code.gs cho phần này.
+        // "Người nhận" của Bảng Chấm Công Văn phòng). [SỬA - MỚI] Action này nay đọc từ Sheet
+        // RIÊNG "CaiDatNguoiPheDuyetChamCongThuyenVien" (do Admin cấu hình ở khối
+        // "cctv-admin-pheduyet-settings-box" bên trên) thay vì dùng chung cấu hình "Người nhận"
+        // của Bảng Chấm Công Văn phòng như trước — xem action "getChamCongThuyenVienNguoiNhanList"
+        // ở Code.gs. Luôn tải LẠI (không cache) mỗi lần mở mục này để Admin vừa lưu cấu hình xong
+        // là các tài khoản khác thấy đúng danh sách mới ngay, không cần tải lại cả trang.
         let cctvNguoiNhanUsernames = [];
         async function populateCctvDmlcNguoiNhanList() {
             let box = document.getElementById("cctv-dmlc-approver-list");
             if (!box) return;
-            if (!cctvNguoiNhanUsernames.length) {
-                let result = await callServerAction({ action: "getChamCongThuyenVienNguoiNhanList" });
-                if (result && result.status === "SUCCESS") cctvNguoiNhanUsernames = result.usernames || [];
-            }
+            let result = await callServerAction({ action: "getChamCongThuyenVienNguoiNhanList" });
+            if (result && result.status === "SUCCESS") cctvNguoiNhanUsernames = result.usernames || [];
             box.innerHTML = cctvNguoiNhanUsernames.map(u =>
                 `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}"> ${escapeHtml(u)}</label>`
-            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào khác trong hệ thống.</div>';
+            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào được phép chọn làm "Người phê duyệt". Liên hệ Admin để được cấu hình.</div>';
+        }
+
+        // [MỚI - MỤC "NGƯỜI PHÊ DUYỆT", CHỈ HIỆN VỚI ADMIN] Vẽ checkbox cho TẤT CẢ tài khoản
+        // hiện có (lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin — không gọi thêm action mới để
+        // liệt kê tài khoản), tick sẵn đúng những tài khoản đang nằm trong
+        // "approvedCtvNguoiPheDuyetList" (tải sẵn qua loadFromCloud/getData, xem action
+        // "getData"/buildSystemData ở Code.gs). Dùng CHUNG kỹ thuật với
+        // populateAdminChamCongNguoiNhanSettingsList() của Bảng Chấm Công Văn phòng, nhưng TÁCH
+        // BIỆT hoàn toàn (không lẫn 2 danh sách/2 sheet với nhau).
+        function populateAdminCtvNguoiPheDuyetSettingsList() {
+            let box = document.getElementById("cctv-admin-pheduyet-settings-list");
+            if (!box || !currentUser || currentUser.role !== "Admin") return;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u => {
+                let daChon = (approvedCtvNguoiPheDuyetList || []).includes(u);
+                let uAttr = escapeHtml(u);
+                return `<div class="checkbox-item">` +
+                    `<label style="margin:0; cursor:pointer;"><input type="checkbox" class="cctv-pd-user" value="${uAttr}" ${daChon ? "checked" : ""}> ${uAttr}</label>` +
+                    `</div>`;
+            }).join("");
+        }
+
+        // Lưu lại danh sách "Người phê duyệt" mà Admin vừa chọn (action RIÊNG
+        // "saveChamCongThuyenVienNguoiPheDuyetSettings", chỉ Admin gọi được — server đã tự kiểm
+        // tra qua requireAuth(data, isAdmin), xem Code.gs). Gửi mảng RỖNG (bỏ chọn hết) = Admin
+        // chủ động xóa cấu hình, quay lại cho chọn TẤT CẢ tài khoản như cũ.
+        async function saveCtvNguoiPheDuyetSettings() {
+            let box = document.getElementById("cctv-admin-pheduyet-settings-list");
+            if (!box) return;
+            let statusEl = document.getElementById("cctv-admin-pheduyet-settings-status");
+            let usernames = Array.from(box.querySelectorAll(".cctv-pd-user:checked")).map(i => i.value);
+            let ok = await pushToCloud({ action: "saveChamCongThuyenVienNguoiPheDuyetSettings", usernames: usernames });
+            if (ok) {
+                approvedCtvNguoiPheDuyetList = usernames;
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở ô \"Người phê duyệt\").")
+                        : "✅ Đã lưu (KHÔNG giới hạn — cho chọn tất cả tài khoản như cũ).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                }
+                // Tải lại ngay khung "Người phê duyệt" ở mục gửi yêu cầu để Admin thấy đúng kết
+                // quả sau khi lưu, không cần tải lại cả trang.
+                populateCctvDmlcNguoiNhanList();
+            } else if (statusEl) {
+                statusEl.style.color = "#d9534f";
+                statusEl.innerText = "⚠️ Lỗi lưu cấu hình.";
+                setTimeout(() => { statusEl.innerText = ""; }, 5000);
+            }
         }
 
         // [SỬA - GỬI YÊU CẦU PHÊ DUYỆT] Đọc file đính kèm thành base64 (CÙNG kỹ thuật/giới hạn
