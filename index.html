@@ -7640,10 +7640,22 @@
         // KHÔNG phải action mới, KHÔNG cấp thêm quyền gì) để bảng trong PDF LUÔN đúng kỳ của yêu cầu
         // này — kết quả CHỈ lưu ở biến CỤC BỘ, KHÔNG ghi đè lên cctvCrewList/cctvRecords/... đang
         // hiển thị trên màn hình. Chỉ dùng được khi yêu cầu đã "Đã duyệt".
-        async function xuatPdfCctvDmlcDuyet(id) {
+        // [SỬA - THÊM THAM SỐ "boQuaKiemTraDaDuyet"] Trước đây hàm này LUÔN bắt buộc yêu cầu phải
+        // ở trạng thái "Đã duyệt" mới cho tải PDF — đúng cho nút "Tải file" chính ở bảng "Các yêu
+        // cầu phê duyệt" (file PDF chính thức, có bảng "Xác nhận của người phê duyệt" dùng lưu
+        // trữ/đối chiếu sau khi duyệt xong). NHƯNG khi gọi từ mục "Xem trước" (nút "Tải file
+        // (PDF)" trong modal — xem taiFileXemTruocCctvDmlc() bên dưới), người phê duyệt cần tải
+        // được ngay CẢ KHI yêu cầu CHƯA duyệt xong, để xem/lưu lại bảng chấm công trước khi quyết
+        // định Đồng ý/Không đồng ý — nếu không sẽ luôn bị chặn bởi thông báo "Yêu cầu này chưa
+        // được duyệt xong". NAY thêm tham số "boQuaKiemTraDaDuyet" (mặc định false/không truyền,
+        // GIỮ NGUYÊN hành vi cũ cho nút "Tải file" chính) — CHỈ khi gọi với giá trị "true" (từ
+        // modal Xem trước) mới bỏ qua điều kiện này. KHÔNG đổi bất kỳ điều kiện phân quyền
+        // (requireAuth/canDecide) nào khác — nội dung PDF vẫn hiện đúng "Trạng thái chung" thực
+        // tế của yêu cầu (VD "Chờ duyệt"), KHÔNG giả mạo thành "Đã duyệt".
+        async function xuatPdfCctvDmlcDuyet(id, boQuaKiemTraDaDuyet) {
             let r = (cctvDmlcDuyetData || []).find(x => x.id === id);
             if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
-            if (r.trangThaiChung !== "Đã duyệt") { alert("Yêu cầu này chưa được duyệt xong."); return; }
+            if (!boQuaKiemTraDaDuyet && r.trangThaiChung !== "Đã duyệt") { alert("Yêu cầu này chưa được duyệt xong."); return; }
             if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
                 alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
             }
@@ -7910,7 +7922,7 @@
         // đổi bảo mật/quyền hạn.
         async function taiFileXemTruocCctvDmlc() {
             if (!cctvPreviewCurrentId) { alert("Không xác định được yêu cầu đang xem trước."); return; }
-            await xuatPdfCctvDmlcDuyet(cctvPreviewCurrentId);
+            await xuatPdfCctvDmlcDuyet(cctvPreviewCurrentId, true);
         }
 
         function closeCctvPreviewModal() {
