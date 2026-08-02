@@ -3310,6 +3310,12 @@
         let currentUserCanViewCrewChamCong = false;
         let currentUserCanEditCrewChamCong = false;
         let cctvCrewList = [];
+        // [MỚI - GIỚI HẠN THEO TÀU] null = không giới hạn (xem/thao tác được TẤT CẢ đội tàu,
+        // hành vi cũ). Mảng = CHỈ đúng những tàu Admin đã cấp cho tài khoản đang đăng nhập —
+        // server LUÔN tự lọc lại dữ liệu trả về theo đúng danh sách này (xem
+        // getChamCongThuyenVienData), biến này ở FE CHỈ dùng để hiển thị đúng bộ lọc/thông báo,
+        // KHÔNG phải lớp bảo mật.
+        let cctvAllowedVessels = null;
         let cctvRecords = [];
         let cctvDanhMuc = [];
         // [MỚI - BẢNG DẠNG LƯỚI THEO NGÀY] Danh sách các ngày (kèm Thứ/cờ cuối tuần) của kỳ đang
@@ -3530,7 +3536,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -4765,7 +4771,36 @@
             renderUserListViewForAdmin();
         }
 
+        // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
+        // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
+        // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
+        // cộng/trừ đúng 1 phần tử) lên server qua action RIÊNG "setChamCongThuyenVienTauScope" —
+        // chỉ ghi đúng cột 30 của sheet "TaiKhoan", không đụng quyền Xem/Sửa hay dữ liệu nào
+        // khác của tài khoản đó. Bỏ tick HẾT toàn bộ tàu = gỡ giới hạn (xem lại được TẤT CẢ).
+        async function toggleUserChamCongThuyenVienTauScope(username, vessel, checked) {
+            if (!userDatabase[username]) return;
+            let current = Array.isArray(userDatabase[username].chamCongThuyenVienTauDuocXem) ? userDatabase[username].chamCongThuyenVienTauDuocXem.slice() : [];
+            if (checked) {
+                if (!current.includes(vessel)) current.push(vessel);
+            } else {
+                current = current.filter(x => x !== vessel);
+            }
+            let ok = await pushToCloud({ action: "setChamCongThuyenVienTauScope", username: username, vessels: current });
+            if (ok) {
+                userDatabase[username].chamCongThuyenVienTauDuocXem = current;
+                saveLocalCache();
+                // Nếu Admin vừa sửa giới hạn của CHÍNH tài khoản đang đăng nhập -> cập nhật lại
+                // ngay dữ liệu Bảng Chấm Công Thuyền Viên đang hiển thị (nếu có).
+                if (username === currentUsername) {
+                    await loadFromCloud(false);
+                }
+            } else {
+                alert(`⚠️ Không thể cập nhật giới hạn tàu cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
 
+        // [TAB "GIAO VIỆC"] Bật/tắt quyền "Được giao việc" (ai được phép TẠO công việc giao cho
         // việc giao cho người khác) của 1 tài khoản. Xem danh sách công việc MẶC ĐỊNH BẬT cho
         // mọi tài khoản (không điều khiển được ở đây). Dùng action RIÊNG
         // "setTaskAssignPermission" (chỉ ghi đúng cột 20 của sheet "TaiKhoan", không đụng các
@@ -5148,6 +5183,33 @@
                     </span>`;
                 }
 
+                // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Chỉ hiện khi tài
+                // khoản này ĐANG được cấp quyền "Xem tab" (cctvXChecked). Admin chọn những tàu
+                // mà "u" được phép xem/thao tác — server sẽ chỉ trả về/cho sửa đúng những tàu
+                // này (nếu bỏ trống toàn bộ = không giới hạn, giữ nguyên hành vi cũ: xem được
+                // TẤT CẢ đội tàu). Dùng action RIÊNG "setChamCongThuyenVienTauScope" (chỉ ghi
+                // đúng cột 30 của sheet "TaiKhoan").
+                let cctvVesselControl = "";
+                if (u !== "admin" && userDatabase[u].xemChamCongThuyenVien) {
+                    let curVessels = userDatabase[u].chamCongThuyenVienTauDuocXem || [];
+                    let vesselsHtml = (vessels && vessels.length)
+                        ? vessels.map(v => {
+                            let safeV = escapeHtml(v);
+                            let checked = curVessels.includes(v) ? "checked" : "";
+                            return `<label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer; margin-right:10px;">
+                                <input type="checkbox" style="width:auto;" value="${safeV}" ${checked} onchange="toggleUserChamCongThuyenVienTauScope('${safeU}', '${safeV}', this.checked)"> ${safeV}
+                            </label>`;
+                        }).join('')
+                        : '<span style="color:#aaa;">— Chưa có tàu nào trong danh mục —</span>';
+                    cctvVesselControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                        <i class="fa-solid fa-anchor" title="Giới hạn theo tàu"></i>
+                        <span style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                            <span style="color:#888;">Chỉ cho phép xem/thao tác đúng các tàu được chọn (bỏ trống = không giới hạn, xem được tất cả đội tàu):</span>
+                            <span style="display:flex; flex-wrap:wrap;">${vesselsHtml}</span>
+                        </span>
+                    </span>`;
+                }
+
                 // ---------- TAB "Thông tin User": thông tin tài khoản cơ bản + thao tác quản trị ----------
                 // Không còn hiển thị mật khẩu (kể cả dạng che) — mật khẩu không tồn tại ở phía client nữa.
                 usersHtml += `<div class="admusr-row">
@@ -5192,6 +5254,7 @@
                         ${gvControl}
                         ${ccControl}
                         ${cctvControl}
+                        ${cctvVesselControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
                         <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -5309,7 +5372,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -5431,7 +5494,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [] };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -6900,6 +6963,10 @@
             cctvCrewList = res.crew || [];
             cctvRecords = res.records || [];
             cctvDanhMuc = res.danhMuc || [];
+            // [MỚI - GIỚI HẠN THEO TÀU] null = không giới hạn; mảng = đúng danh sách tàu được
+            // Admin cấp cho tài khoản đang đăng nhập (server đã tự lọc "crew"/"records" ở trên
+            // theo đúng danh sách này rồi — đây chỉ để cập nhật lại bộ lọc/thông báo ở FE).
+            cctvAllowedVessels = Array.isArray(res.allowedVessels) ? res.allowedVessels : null;
             cctvDanhSachNgay = res.danhSachNgay || [];
             cctvTongHop = res.tongHop || [];
             cctvTongHopCongViec = res.tongHopCongViec || [];
@@ -7178,7 +7245,11 @@
             let sel = document.getElementById("cctv-tau-filter");
             if (!sel) return;
             let cur = sel.value;
-            let taus = [...new Set((vessels || []).filter(t => t))].sort();
+            // [MỚI - GIỚI HẠN THEO TÀU] Tài khoản bị Admin giới hạn (cctvAllowedVessels khác
+            // null) -> bộ lọc CHỈ hiện đúng những tàu được cấp, KHÔNG hiện các tàu khác trong
+            // danh mục chung "vessels" (dù server đã tự lọc dữ liệu trả về, tránh gây hiểu nhầm
+            // khi người dùng chọn 1 tàu ngoài phạm vi rồi thấy bảng trống không rõ lý do).
+            let taus = [...new Set((cctvAllowedVessels || vessels || []).filter(t => t))].sort();
             sel.innerHTML = '<option value="">Tất cả các tàu</option>' +
                 taus.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
             sel.value = taus.includes(cur) ? cur : "";
