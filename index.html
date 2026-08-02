@@ -1715,6 +1715,7 @@
                     <p id="cctv-preview-info" style="color:#555; font-size:13.5px; margin-top:-6px;"></p>
                     <div id="cctv-preview-body" style="font-size:12.5px;"></div>
                     <div style="display:flex; gap:10px; margin-top:14px;">
+                        <button class="btn btn-primary" style="width:auto; flex-grow:1;" onclick="taiFileXemTruocCctvDmlc()"><i class="fa-solid fa-download"></i> Tải file (PDF)</button>
                         <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeCctvPreviewModal()">Đóng</button>
                     </div>
                 </div>
@@ -7081,8 +7082,13 @@
                 // các cột khác khi không có thông tin".
                 let danhMucCoDuLieu = (cctvDanhMuc || []).filter(dm => (tongTheoMa[dm.ma] || 0) > 0);
 
-                let headerThuRow = ["", "", ""];
-                let headerNgayRow = ["STT", "Họ và tên", "Chức vụ"];
+                // [MỚI - THÊM CỘT "MÃ NHÂN VIÊN"] Theo yêu cầu mới, thêm cột "Mã nhân viên" (MSNV)
+                // ngay sau cột "STT" trong file Excel — lấy từ c.msnv (nay đã có sẵn từ
+                // layDanhSachThuyenVienChoChamCong_() ở Code.gs, đọc từ cột MỚI "MSNV" của Sheet
+                // "Đội tàu"). Hàng phụ "Công chức danh" để trống ô này (không có MSNV riêng, cùng
+                // 1 thuyền viên với hàng chính ngay phía trên).
+                let headerThuRow = ["", "", "", ""];
+                let headerNgayRow = ["STT", "Mã nhân viên", "Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
                 danhMucCoDuLieu.forEach(dm => { headerThuRow.push(""); headerNgayRow.push("Công " + dm.ma); });
                 let aoa = [headerThuRow, headerNgayRow];
@@ -7092,7 +7098,7 @@
                     // [MỚI - HÀNG "CÔNG CHỨC DANH"] Hàng CHÍNH ("Công làm việc") CHỈ lấy đúng bản
                     // ghi có "loaiBanGhi" RỖNG — GIỐNG HỆT bộ lọc đang dùng ở
                     // renderChamCongThuyenVienTable(), để không lẫn với bản ghi của hàng phụ.
-                    let row = [sttXuat, c.hoTen, c.chucDanh || ""];
+                    let row = [sttXuat, c.msnv || "", c.hoTen, c.chucDanh || ""];
                     ngayList.forEach(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                         let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
@@ -7113,11 +7119,22 @@
                     if (cctvCoHangChucDanh(c.chucDanh)) {
                         let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
                         let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
-                        let rowPhu = ["", "", nhanHang];
+                        let rowPhu = ["", "", "", nhanHang];
                         ngayList.forEach(d => {
                             let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                             let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
-                            rowPhu.push(recPhu ? maRank : "");
+                            // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE EXCEL HIỆN SAI MÃ] TRƯỚC ĐÂY
+                            // luôn hiện CỐ ĐỊNH "maRank" (mã suy ra từ CẤP BẬC/chức danh, VD luôn
+                            // "SDPO" cho Thuyền trưởng) bất kể ngày đó THỰC SỰ đã lưu mã gì — khiến
+                            // Excel hiển thị SAI so với đúng mã đã lưu (VD trên giao diện web ngày đó
+                            // đang hiện "DP" vì recPhu.maLoaiCong lưu là "DP", nhưng Excel lại tự ý
+                            // đổi thành "SDPO"/"JDPO" theo cấp bậc). NAY sửa lại dùng ĐÚNG mã đã lưu
+                            // của ngày đó (cctvNhanTuMa(recPhu.maLoaiCong)) — CHỈ khi mã đó không rõ
+                            // ràng (hàm trả về rỗng) mới tạm dùng "maRank" làm dự phòng — GIỐNG HỆT
+                            // logic đang chạy đúng ở renderChamCongThuyenVienTable() trên giao diện
+                            // web (biến "nhanNgay"), để Excel LUÔN khớp đúng những gì đang hiển thị
+                            // trên bảng. KHÔNG đụng/đổi dữ liệu gốc đã lưu trên Sheet.
+                            rowPhu.push(recPhu ? (cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : "");
                         });
                         danhMucCoDuLieu.forEach(dm => rowPhu.push(tongTheoCrew[i].phu[dm.ma] || 0));
                         aoa.push(rowPhu);
@@ -7128,18 +7145,18 @@
                 // bảng trên giao diện web: mỗi cột "Công {mã}" hiện tổng số công của TẤT CẢ thuyền
                 // viên tàu này cho đúng mã đó (đã cộng dồn ở "tongTheoMa" phía trên) — chỉ hiện số
                 // khi tổng >= 1 (bằng 0 để trống, không hiện "0"), các cột ngày để trống.
-                let tongRow = ["", "Tổng cộng Công", ""];
+                let tongRow = ["", "", "Tổng cộng Công", ""];
                 ngayList.forEach(() => tongRow.push(""));
                 danhMucCoDuLieu.forEach(dm => tongRow.push(tongTheoMa[dm.ma] || ""));
                 aoa.push(tongRow);
 
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
-                let maxCols = 3 + ngayList.length + danhMucCoDuLieu.length;
-                let cols = [{ wch: 6 }, { wch: 24 }, { wch: 16 }];
-                for (let ci = 3; ci < maxCols; ci++) cols.push({ wch: 10 });
+                let maxCols = 4 + ngayList.length + danhMucCoDuLieu.length;
+                let cols = [{ wch: 6 }, { wch: 14 }, { wch: 24 }, { wch: 16 }];
+                for (let ci = 4; ci < maxCols; ci++) cols.push({ wch: 10 });
                 ws['!cols'] = cols;
-                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-                ws['!freeze'] = { xSplit: 3, ySplit: 2 };
+                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+                ws['!freeze'] = { xSplit: 4, ySplit: 2 };
                 // Tên sheet tối đa 31 ký tự, không chứa ký tự đặc biệt Excel không cho phép.
                 let sheetName = String(tau).replace(/[\[\]\*\/\\\?:]/g, "_").substring(0, 31) || "Tau";
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -7538,6 +7555,7 @@
 
             let theadHtml = `<tr style="background:#f0f0f0;">
                     <th style="border:1px solid #333; padding:3px;">STT</th>
+                    <th style="border:1px solid #333; padding:3px;">Mã nhân viên</th>
                     <th style="border:1px solid #333; padding:3px;">Họ và tên</th>
                     <th style="border:1px solid #333; padding:3px;">Chức vụ</th>
                     ${ngayList.map(d => `<th style="border:1px solid #333; padding:2px; min-width:20px;">${d.ngay}<br><span style="font-weight:normal; font-size:8px;">${d.thu}</span></th>`).join("")}
@@ -7560,6 +7578,7 @@
                 let tongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].chinh[dm.ma] || 0}</td>`).join("");
                 bodyRows += `<tr>
                         <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${sttXuat}</td>
+                        <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${pdfText(c.msnv || "")}</td>
                         <td style="border:1px solid #333; padding:2px;"${rowspanAttr}>${pdfText(c.hoTen)}</td>
                         <td style="border:1px solid #333; padding:2px;">${pdfText(c.chucDanh || "")}</td>
                         ${dayTds}
@@ -7572,7 +7591,13 @@
                     let dayTdsPhu = ngayList.map(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
                         let recPhu = (dRecords || []).find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
-                        return `<td style="border:1px solid #333; padding:2px; text-align:center;">${recPhu ? pdfText(maRank) : ""}</td>`;
+                        // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE PDF HIỆN SAI MÃ] Cùng lỗi/cùng
+                    // cách sửa với file Excel ở exportChamCongThuyenVienToExcel() (xem giải thích
+                    // đầy đủ ở đó): trước đây luôn hiện CỐ ĐỊNH "maRank" theo cấp bậc bất kể ngày đó
+                    // THỰC SỰ đã lưu mã gì — NAY dùng đúng mã đã lưu của ngày đó qua cctvNhanTuMa(),
+                    // chỉ dự phòng về "maRank" khi không xác định được, để PDF LUÔN khớp đúng với
+                    // giao diện web đang hiển thị.
+                    return `<td style="border:1px solid #333; padding:2px; text-align:center;">${recPhu ? pdfText(cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : ""}</td>`;
                     }).join("");
                     let tongTdsPhu = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].phu[dm.ma] || 0}</td>`).join("");
                     bodyRows += `<tr>
@@ -7590,7 +7615,7 @@
                     <thead>${theadHtml}</thead>
                     <tbody>${bodyRows}
                         <tr style="background:#f5f5f5; font-weight:bold;">
-                            <td style="border:1px solid #333; padding:2px;" colspan="2">Tổng cộng Công</td>
+                            <td style="border:1px solid #333; padding:2px;" colspan="3">Tổng cộng Công</td>
                             <td style="border:1px solid #333; padding:2px;"></td>
                             ${tongRowTds}
                             ${tongRowTongTds}
@@ -7826,9 +7851,15 @@
         // chung quyền "XemChamCongThuyenVien" như nút "Tải file"/"Xuất Excel" — KHÔNG phải action
         // mới, KHÔNG cấp thêm quyền gì, KHÔNG ghi/sửa/xóa bất kỳ dữ liệu nào, KHÔNG đụng biến
         // toàn cục cctvCrewList/cctvRecords/... đang hiển thị trên màn hình chính).
+        // [MỚI - NÚT "TẢI FILE" Ở MODAL XEM TRƯỚC] Lưu lại đúng "Mã yêu cầu" (id) đang mở ở modal
+        // "cctv-preview-modal" (xem xemTruocBangChamCongCctvDmlcUI() bên dưới) để nút "Tải file
+        // (PDF)" trong modal biết đúng yêu cầu nào cần tải — xem taiFileXemTruocCctvDmlc().
+        let cctvPreviewCurrentId = "";
+
         async function xemTruocBangChamCongCctvDmlcUI(id) {
             let r = (cctvDmlcDuyetData || []).find(x => x.id === id);
             if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
+            cctvPreviewCurrentId = id;
 
             let modal = document.getElementById("cctv-preview-modal");
             let infoEl = document.getElementById("cctv-preview-info");
@@ -7871,9 +7902,23 @@
                 </div>`).join("");
         }
 
+        // [MỚI - NÚT "TẢI FILE (PDF)" Ở MODAL XEM TRƯỚC] Cho phép tải PDF NGAY từ màn hình xem
+        // trước, không cần đóng modal rồi tìm lại nút "Tải file" ở bảng "Các yêu cầu phê duyệt".
+        // TÁI SỬ DỤNG NGUYÊN VẸN hàm xuatPdfCctvDmlcDuyet() đã có sẵn (dùng đúng "Mã yêu cầu"
+        // đang mở ở modal, lưu tại cctvPreviewCurrentId khi mở modal — xem
+        // xemTruocBangChamCongCctvDmlcUI() ở trên) — KHÔNG tạo action/luồng tải file mới, KHÔNG
+        // đổi bảo mật/quyền hạn.
+        async function taiFileXemTruocCctvDmlc() {
+            if (!cctvPreviewCurrentId) { alert("Không xác định được yêu cầu đang xem trước."); return; }
+            await xuatPdfCctvDmlcDuyet(cctvPreviewCurrentId);
+        }
+
         function closeCctvPreviewModal() {
             let modal = document.getElementById("cctv-preview-modal");
             if (modal) modal.style.display = "none";
+            // Dọn lại "Mã yêu cầu" đang lưu tạm khi đóng modal, tránh nút "Tải file (PDF)" lỡ tải
+            // NHẦM yêu cầu của lần xem trước trước đó nếu người dùng bấm lại khi modal đã đóng.
+            cctvPreviewCurrentId = "";
         }
 
         // Trả về mã kỳ (tháng/năm, dạng "yyyy-MM") đang chọn ở ô "Kỳ chấm công".
@@ -12062,8 +12107,13 @@
             }
 
             if (selectedValue === "CREW_SHIP") {
-                document.querySelectorAll(".id-group, .select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
-                document.querySelectorAll(".email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
+                // [MỚI - THÊM "MÃ NHÂN VIÊN (MSNV)" CHO THUYỀN VIÊN ĐỘI TÀU] Trước đây ô này
+                // (".id-group") bị ẩn khi chọn "Thuyền viên Đội tàu" (chỉ dùng cho Nhân sự Văn
+                // phòng). Theo yêu cầu mới, NAY vẫn hiện ô này để nhập MSNV cho thuyền viên —
+                // xem thêm phần lưu (data.msnv), hiển thị lại khi sửa, và cột "MSNV" mới thêm ở
+                // Sheet "Đội tàu" (ensureColumnHeader(sheet, 11, "MSNV") — xem Code.gs).
+                document.querySelectorAll(".select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
+                document.querySelectorAll(".id-group, .email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
                 // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động, thông tin ngân hàng, liên hệ khẩn
                 // cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
@@ -14301,6 +14351,11 @@
 
                 let obj = {
                     name: name,
+                    // [MỚI - THÊM "MÃ NHÂN VIÊN (MSNV)" CHO THUYỀN VIÊN ĐỘI TÀU] Gửi kèm giá trị
+                    // đã nhập ở ô "inp-msnv" (nay đã hiện cho "Thuyền viên Đội tàu" — xem
+                    // handleFormFieldsSwitch() ở trên) — server lưu vào cột MỚI "MSNV" (cột 11)
+                    // của Sheet "Đội tàu", KHÔNG đụng/đổi các cột dữ liệu khác đã có.
+                    msnv: document.getElementById("inp-msnv").value.trim(),
                     dob: document.getElementById("inp-dob").value,
                     vessel: document.getElementById("inp-vessel").value,
                     position: document.getElementById("inp-position").value.trim(),
@@ -14448,6 +14503,7 @@
                 handleFormFieldsSwitch("CREW_SHIP");
                 document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Sửa thuyền viên: ${d.name}`;
                 document.getElementById("inp-name").value = d.name || "";
+                document.getElementById("inp-msnv").value = d.msnv || "";
                 document.getElementById("inp-dob").value = d.dob || "";
                 document.getElementById("inp-vessel").value = d.vessel || "";
                 document.getElementById("inp-position").value = d.position || "";
