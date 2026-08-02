@@ -798,6 +798,14 @@
                 <div class="table-controls">
                     <input type="text" id="search-crew" class="search-box" oninput="debouncedFilterCrewTable()" placeholder="Tìm theo tên, MSNV, chức danh...">
                     <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="max-width: 250px;"></select>
+                    <!-- [MỚI - CHUYỂN NHÂN VIÊN SANG TÀU KHÁC] Chỉ hiện với tài khoản có quyền
+                         sửa dữ liệu Đội tàu (Admin/ReadWrite — cùng điều kiện với nút Sửa/Xóa ở
+                         mỗi dòng, xem renderCrewTable()) — ẩn/hiện qua id "btn-crew-transfer",
+                         xử lý ở applyUserPermissions()/renderCrewTable() giống các nút quản trị
+                         khác, KHÔNG đổi cơ chế phân quyền hiện có. -->
+                    <button id="btn-crew-transfer" class="btn btn-sm" style="display:none; width:auto;" onclick="openCrewTransferModal()" title="Chuyển 1 thuyền viên đang có trong danh sách sang công tác ở tàu khác">
+                        <i class="fa-solid fa-right-left"></i> Chuyển tàu
+                    </button>
                 </div>
                 <table id="tbl-crew">
                     <thead><tr><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th class="admin-action-header">Thao tác</th></tr></thead>
@@ -3042,6 +3050,38 @@
 
             <div style="display:flex; gap:10px; margin-top:16px;">
                 <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeLeaveNotificationModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - CHUYỂN NHÂN VIÊN SANG TÀU KHÁC] Modal nhỏ, gọn: chỉ cần
+         chọn 1 thuyền viên (trong danh sách đang tải — crewData) + chọn tàu muốn chuyển đến, bấm
+         "Xác nhận" là xong — KHÔNG cần mở lại toàn bộ form "Sửa" đầy đủ như trước. Xử lý ở
+         confirmCrewTransfer() bên dưới: dùng LẠI NGUYÊN action "saveCrew" đã có sẵn (server tìm
+         đúng dòng theo Họ tên rồi ghi đè — xem action "saveCrew" ở Code.gs), chỉ đổi đúng 1
+         trường "vessel", giữ NGUYÊN mọi trường dữ liệu khác (Ngày sinh, Chức danh, MSNV, Ngày
+         xuống tàu, Số tháng, Điện thoại, Email, Tình trạng làm việc...) — KHÔNG mất dữ liệu,
+         KHÔNG đổi cơ chế phân quyền/bảo mật (vẫn yêu cầu đúng quyền Admin/ReadWrite như mọi thao
+         tác sửa Đội tàu khác). -->
+    <div id="crew-transfer-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+        <div class="login-box" style="max-width: 460px;">
+            <h2><i class="fa-solid fa-right-left"></i> Chuyển nhân viên sang tàu khác</h2>
+            <div class="input-group" style="margin-top:14px;">
+                <label>Chọn nhân viên (thuyền viên)</label>
+                <select id="crew-transfer-staff" class="search-box" onchange="onCrewTransferStaffChange()" style="width:100%;"></select>
+            </div>
+            <div class="input-group" style="margin-top:10px;">
+                <label>Đang công tác tại tàu</label>
+                <input type="text" id="crew-transfer-current-vessel" class="search-box" style="width:100%; background:#f1f2f4; color:#666;" disabled>
+            </div>
+            <div class="input-group" style="margin-top:10px;">
+                <label>Chuyển đến tàu</label>
+                <select id="crew-transfer-target-vessel" class="search-box" style="width:100%;"></select>
+            </div>
+            <div id="crew-transfer-error" style="color:#c0392b; font-size:13px; margin-top:8px; display:none;"></div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeCrewTransferModal()">Hủy</button>
+                <button class="btn btn-success" style="width:auto; flex-grow:1;" onclick="confirmCrewTransfer()"><i class="fa-solid fa-check"></i> Xác nhận chuyển tàu</button>
             </div>
         </div>
     </div>
@@ -13203,6 +13243,8 @@
 
         function renderCrewTable() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            let btnCrewTransfer = document.getElementById("btn-crew-transfer");
+            if (btnCrewTransfer) btnCrewTransfer.style.display = canEdit ? "" : "none";
             let htmlCrew = crewData.map((c, idx) => `
                 <tr>
                     <td><b>${escapeHtml(c.name)}</b></td>
@@ -14796,6 +14838,91 @@
                 let matchVessel = (vessel === "Tất cả" || c.vessel === vessel);
                 if(rows[idx]) rows[idx].style.display = (matchSearch && matchVessel) ? "" : "none";
             });
+        }
+
+        // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - CHUYỂN NHÂN VIÊN SANG TÀU KHÁC] Mở modal, đổ dữ liệu
+        // 2 ô chọn: "Chọn nhân viên" (toàn bộ crewData ĐANG hiển thị ở trình duyệt — vốn dĩ đã
+        // được server tự lọc đúng theo giới hạn tàu của tài khoản đang đăng nhập, nếu có — xem
+        // tính năng "Giới hạn theo tàu" đã thêm trước đó) và "Chuyển đến tàu" (toàn bộ danh mục
+        // "vessels"). KHÔNG gọi thêm action nào tới server ở bước mở modal này.
+        function openCrewTransferModal() {
+            let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
+            if (!canEdit) { alert("⚠️ Bạn không có quyền chuyển tàu cho thuyền viên."); return; }
+            if (!crewData.length) { alert("Chưa có thuyền viên nào trong danh sách."); return; }
+
+            let staffSel = document.getElementById("crew-transfer-staff");
+            // Sắp xếp theo tên cho dễ tìm, nhưng vẫn giữ đúng "idx" GỐC trong crewData (KHÔNG
+            // theo thứ tự đã sắp xếp) để chuyển tàu/lưu đúng dòng dữ liệu.
+            let order = crewData.map((c, idx) => idx).sort((a, b) =>
+                (crewData[a].name || "").localeCompare(crewData[b].name || ""));
+            staffSel.innerHTML = order.map(idx => {
+                let c = crewData[idx];
+                let label = c.name + (c.msnv ? ` (${c.msnv})` : "") + " — Đang ở tàu: " + (c.vessel || "(chưa rõ)");
+                return `<option value="${idx}">${escapeHtml(label)}</option>`;
+            }).join('');
+
+            let targetSel = document.getElementById("crew-transfer-target-vessel");
+            targetSel.innerHTML = (vessels || []).map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+
+            document.getElementById("crew-transfer-error").style.display = "none";
+            onCrewTransferStaffChange();
+            document.getElementById("crew-transfer-modal").style.display = "flex";
+        }
+
+        function closeCrewTransferModal() {
+            document.getElementById("crew-transfer-modal").style.display = "none";
+        }
+
+        // Hiện lại đúng tàu HIỆN TẠI của nhân viên vừa chọn (chỉ để tham khảo, ô này luôn khóa
+        // không cho sửa trực tiếp) — và tự chọn sẵn 1 tàu ĐÍCH khác tàu hiện tại (nếu danh mục
+        // có từ 2 tàu trở lên) cho tiện, người dùng vẫn có thể tự đổi lại trước khi xác nhận.
+        function onCrewTransferStaffChange() {
+            let idx = parseInt(document.getElementById("crew-transfer-staff").value);
+            let c = crewData[idx];
+            if (!c) return;
+            document.getElementById("crew-transfer-current-vessel").value = c.vessel || "(chưa rõ)";
+            let targetSel = document.getElementById("crew-transfer-target-vessel");
+            let otherOption = Array.from(targetSel.options).find(o => o.value !== (c.vessel || ""));
+            if (otherOption) targetSel.value = otherOption.value;
+        }
+
+        // Xác nhận chuyển tàu: xây dựng lại NGUYÊN VẸN object của thuyền viên đang chọn (giữ hết
+        // mọi trường dữ liệu đã có — Ngày sinh, Chức danh, MSNV, Ngày xuống tàu, Số tháng, Điện
+        // thoại, Email, Tình trạng làm việc, Ngày nghỉ việc...), CHỈ đổi đúng 1 trường "vessel"
+        // rồi gửi qua LẠI action "saveCrew" đã có sẵn (server tự tìm đúng dòng theo Họ tên và ghi
+        // đè — xem action "saveCrew" ở Code.gs) — hoàn toàn KHÔNG có action/cơ chế bảo mật mới
+        // nào được thêm, dùng chung 100% với luồng "Sửa" đã có, chỉ rút gọn thao tác cho người
+        // dùng (không cần mở form đầy đủ chỉ để đổi 1 trường tàu).
+        async function confirmCrewTransfer() {
+            let errBox = document.getElementById("crew-transfer-error");
+            errBox.style.display = "none";
+
+            let idx = parseInt(document.getElementById("crew-transfer-staff").value);
+            let c = crewData[idx];
+            if (!c) { errBox.textContent = "⚠️ Vui lòng chọn nhân viên."; errBox.style.display = "block"; return; }
+
+            let newVessel = document.getElementById("crew-transfer-target-vessel").value;
+            if (!newVessel) { errBox.textContent = "⚠️ Vui lòng chọn tàu muốn chuyển đến."; errBox.style.display = "block"; return; }
+            if (newVessel === (c.vessel || "")) { errBox.textContent = "⚠️ Tàu đích phải khác tàu đang công tác hiện tại."; errBox.style.display = "block"; return; }
+
+            let obj = Object.assign({}, c, { vessel: newVessel });
+            let ok = await pushToCloud(Object.assign({ action: "saveCrew", type: "crew" }, obj));
+            if (!ok) {
+                errBox.textContent = "❌ Không thể lưu (kiểm tra quyền Admin/ReadWrite hoặc kết nối mạng).";
+                errBox.style.display = "block";
+                return;
+            }
+
+            crewData[idx] = obj;
+            saveLocalCache();
+            renderCrewTable();
+            filterCrewTable();
+            // Cập nhật lại ô lọc "filter-vessel" và các nơi khác đang dùng chung "vessels"/
+            // "crewData" (VD Tab "Bảng Chấm Công Thuyền Viên") — dùng LẠI hàm updateSystemData()
+            // đã có sẵn, KHÔNG gọi thêm action mới nào.
+            updateSystemData();
+            closeCrewTransferModal();
+            alert(`✔️ Đã chuyển "${c.name}" sang tàu "${newVessel}".`);
         }
 
         async function addDept() {
