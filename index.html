@@ -7255,7 +7255,22 @@
             }
             if (!ngayListFull.length) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi xuất."); return; }
 
+            // [SỬA LỖI - XUẤT EXCEL LUÔN RA HẾT TẤT CẢ CÁC TÀU, KHÔNG THEO ĐÚNG TÀU ĐANG LỌC]
+            // TRƯỚC ĐÂY hàm này luôn tự lấy TOÀN BỘ các tàu đang có mặt trong "cctvCrewList" để
+            // tạo 1 sheet Excel cho MỖI tàu — hoàn toàn KHÔNG đọc giá trị đang chọn ở bộ lọc "Tên
+            // tàu" phía trên bảng (id "cctv-tau-filter"), nên dù tài khoản Admin hay tài khoản
+            // user khác đã chọn đúng 1 tàu cụ thể để xem, khi bấm "Xuất bảng chấm công ra Excel"
+            // vẫn ra ĐỦ sheet của MỌI tàu (kể cả tàu không liên quan đang xem). NAY sửa lại: đọc
+            // ĐÚNG giá trị đang chọn ở "cctv-tau-filter" — nếu đang chọn 1 tàu cụ thể (khác "Tất cả
+            // các tàu", giá trị rỗng) thì CHỈ xuất ĐÚNG 1 sheet của tàu đó; nếu đang để "Tất cả các
+            // tàu" thì vẫn giữ NGUYÊN hành vi cũ (xuất đủ mọi tàu, mỗi tàu 1 sheet). KHÔNG đổi dữ
+            // liệu, KHÔNG đổi quyền hạn: dữ liệu nguồn "cctvCrewList" vẫn do server tự lọc đúng
+            // phạm vi tàu được cấp cho tài khoản đang đăng nhập như trước (xem getCrewChamCongVesselScope_
+            // ở Code.gs) — đây chỉ là sửa lại đúng theo LỰA CHỌN đang hiển thị trên giao diện.
+            let cctvTauDangLoc = (document.getElementById("cctv-tau-filter") || {}).value || "";
             let taus = [...new Set(cctvCrewList.map(c => c.tau || "(Chưa rõ tàu)"))].sort();
+            if (cctvTauDangLoc) taus = taus.filter(t => t === cctvTauDangLoc);
+            if (!taus.length) { alert("Không có dữ liệu thuyền viên của tàu \"" + cctvTauDangLoc + "\" để xuất."); return; }
             let wb = XLSX.utils.book_new();
             taus.forEach(tau => {
                 let crewOfTau = cctvCrewList.filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
