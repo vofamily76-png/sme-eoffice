@@ -3377,6 +3377,42 @@
         // KHÔNG phải lớp bảo mật.
         let cctvAllowedVessels = null;
         let cctvRecords = [];
+
+        // [SỬA LỖI - MẤT DỮ LIỆU CHẤM CÔNG SAU KHI "CHUYỂN TÀU"] NGUYÊN NHÂN: mọi nơi hiển thị/
+        // tổng hợp/xuất Excel-PDF của Bảng Chấm Công Thuyền Viên trước đây luôn so khớp 1 bản ghi
+        // ngày công với 1 thuyền viên bằng ĐÚNG "Họ tên + Tàu HIỆN TẠI" (c.tau — đọc trực tiếp,
+        // LUÔN LÀ tàu MỚI NHẤT từ Sheet "Đội tàu"). Nhưng "tau" lưu trên MỖI bản ghi ngày công lại
+        // là tàu TẠI THỜI ĐIỂM ngày công đó được ghi nhận (lưu cố định trên Sheet
+        // "BangChamCongThuyenVien", không tự đổi theo). Sau khi 1 thuyền viên được CHUYỂN sang
+        // tàu khác (Tab "Quản lý đội tàu"), "c.tau" đổi ngay sang tàu MỚI, còn các ngày công ĐÃ
+        // GHI NHẬN TRƯỚC ĐÓ (khi còn ở tàu CŨ) vẫn giữ nguyên "tau" là tàu CŨ trên Sheet — khiến
+        // điều kiện so khớp "tau bản ghi === tau hiện tại" SAI với TOÀN BỘ những ngày công cũ đó,
+        // làm bảng/Excel/PDF xuất ra bị THIẾU hẳn những ngày đã chấm công trước khi chuyển tàu —
+        // dù dữ liệu gốc vẫn còn NGUYÊN VẸN, không hề bị xóa/mất trên Sheet.
+        //
+        // CÁCH SỬA: 2 hàm dùng CHUNG dưới đây thay thế cho MỌI chỗ trước đây tự viết điều kiện so
+        // khớp "r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "")" rải rác ở nhiều nơi (bảng
+        // trên giao diện web, xuất Excel, xuất PDF) — ưu tiên tìm bản ghi khớp ĐÚNG tàu hiện tại
+        // trước (giữ nguyên độ chính xác cho trường hợp bình thường, kể cả khi 2 thuyền viên
+        // KHÁC NHAU trùng tên nhau ở 2 tàu khác nhau); nếu KHÔNG tìm thấy mới tìm tiếp theo ĐÚNG
+        // Họ tên + Ngày (bất kể bản ghi đó đang lưu tàu nào) — để "vớt" lại đúng những ngày công
+        // cũ bị "kẹt" dưới tên tàu trước khi chuyển. Đây CHỈ là sửa cách SO KHỚP lúc hiển thị/
+        // tổng hợp/xuất file — KHÔNG đụng/sửa/xóa bất kỳ dữ liệu nào đã lưu trên Sheet, KHÔNG đổi
+        // action hay cơ chế phân quyền/bảo mật nào đang có.
+        function cctvTimBanGhiTheoNgay(records, c, ngayStr, loaiBanGhi) {
+            let want = loaiBanGhi || "";
+            let khopDungTau = records.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === want);
+            if (khopDungTau) return khopDungTau;
+            return records.find(r => r.hoTen === c.hoTen && r.ngay === ngayStr && (r.loaiBanGhi || "") === want);
+        }
+        // Kiểm tra "ngày này CÓ dữ liệu công hay không" cho 1 thuyền viên (không phân biệt loại
+        // bản ghi "Công làm việc"/"Công chức danh") — dùng để quyết định có đưa cột "Ngày X" vào
+        // bảng/Excel/PDF hay không (chỉ hiện cột ngày có dữ liệu). Cùng nguyên tắc ưu tiên tàu
+        // hiện tại / rồi mới tới bất kỳ tàu nào như trên.
+        function cctvCoBanGhiTheoNgay(records, c, ngayStr) {
+            return records.some(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.maLoaiCong || "")) ||
+                records.some(r => r.hoTen === c.hoTen && r.ngay === ngayStr && (r.maLoaiCong || ""));
+        }
         let cctvDanhMuc = [];
         // [MỚI - BẢNG DẠNG LƯỚI THEO NGÀY] Danh sách các ngày (kèm Thứ/cờ cuối tuần) của kỳ đang
         // chọn — server trả về sẵn (res.danhSachNgay, dùng LẠI cùng hàm sinhDanhSachNgayTrongThang_
@@ -7234,9 +7270,7 @@
                 // Chấm Công Thuyền Viên").
                 let ngayList = ngayListFull.filter(d => {
                     let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    return crewOfTau.some(c => cctvRecords.some(r =>
-                        r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.maLoaiCong || "")
-                    ));
+                    return crewOfTau.some(c => cctvCoBanGhiTheoNgay(cctvRecords, c, ngayStr));
                 });
 
                 // [MỚI - CỘT "STT"] Thêm cột đầu tiên đánh số thứ tự (theo đúng thứ tự thuyền viên
@@ -7288,7 +7322,7 @@
                     let row = [sttXuat, c.msnv || "", c.hoTen, c.chucDanh || ""];
                     ngayList.forEach(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
+                        let rec = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "");
                         let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                         if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
                         row.push(maHienThi);
@@ -7309,7 +7343,7 @@
                         let rowPhu = ["", "", "", nhanHang];
                         ngayList.forEach(d => {
                             let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                            let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                            let recPhu = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "CHUCDANH");
                             // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE EXCEL HIỆN SAI MÃ] TRƯỚC ĐÂY
                             // luôn hiện CỐ ĐỊNH "maRank" (mã suy ra từ CẤP BẬC/chức danh, VD luôn
                             // "SDPO" cho Thuyền trưởng) bất kể ngày đó THỰC SỰ đã lưu mã gì — khiến
@@ -7721,9 +7755,7 @@
 
             let ngayList = ngayListFull.filter(d => {
                 let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                return crewOfTau.some(c => (dRecords || []).some(r =>
-                    r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.maLoaiCong || "")
-                ));
+                return crewOfTau.some(c => cctvCoBanGhiTheoNgay(dRecords || [], c, ngayStr));
             });
             if (!ngayList.length) ngayList = ngayListFull;
 
@@ -7761,7 +7793,7 @@
                 let rowspanAttr = coHangPhu ? ' rowspan="2"' : '';
                 let dayTds = ngayList.map(d => {
                     let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    let rec = (dRecords || []).find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
+                    let rec = cctvTimBanGhiTheoNgay(dRecords || [], c, ngayStr, "");
                     let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                     if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
                     return `<td style="border:1px solid #333; padding:2px; text-align:center;">${pdfText(maHienThi)}</td>`;
@@ -7781,7 +7813,7 @@
                     let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
                     let dayTdsPhu = ngayList.map(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let recPhu = (dRecords || []).find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                        let recPhu = cctvTimBanGhiTheoNgay(dRecords || [], c, ngayStr, "CHUCDANH");
                         // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE PDF HIỆN SAI MÃ] Cùng lỗi/cùng
                     // cách sửa với file Excel ở exportChamCongThuyenVienToExcel() (xem giải thích
                     // đầy đủ ở đó): trước đây luôn hiện CỐ ĐỊNH "maRank" theo cấp bậc bất kể ngày đó
@@ -8298,7 +8330,7 @@
                 // vào đây, để 2 hàng của CÙNG 1 ngày hoạt động HOÀN TOÀN độc lập với nhau.
                 let dayTds = (cctvDanhSachNgay || []).map(d => {
                     let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    let rec = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "");
+                    let rec = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "");
                     let maHienThi = rec ? (rec.maLoaiCong || "") : "";
                     let maInfo = cctvDanhMuc.find(x => x.ma === maHienThi);
                     let titleParts = [];
@@ -8380,7 +8412,7 @@
                     let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
                     let dayTdsPhu = (cctvDanhSachNgay || []).map(d => {
                         let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let recPhu = cctvRecords.find(r => r.hoTen === c.hoTen && (r.tau || "") === (c.tau || "") && r.ngay === ngayStr && (r.loaiBanGhi || "") === "CHUCDANH");
+                        let recPhu = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "CHUCDANH");
                         let coGhiNhan = !!recPhu;
                         // [SỬA - HIỆN ĐÚNG GIÁ TRỊ ĐÃ LƯU CHO TỪNG NGÀY] Ngày ĐÃ có bản ghi riêng ->
                         // LUÔN hiện đúng mã đã lưu của ngày đó (recPhu.maLoaiCong, VD "SDPO" nếu
