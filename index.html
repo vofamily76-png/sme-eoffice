@@ -1913,12 +1913,12 @@
                             <table class="data-table" style="min-width:720px;">
                                 <thead>
                                     <tr>
-                                        <th>Ngày gửi</th><th>Người gửi</th><th>Kỳ chấm công</th><th>Ghi chú</th>
+                                        <th>Ngày gửi</th><th>Người gửi</th><th>Tàu</th><th>Kỳ chấm công</th><th>Ghi chú</th>
                                         <th>File</th><th>Người phê duyệt</th><th>Trạng thái</th><th>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody id="cctv-dmlc-duyet-tbody">
-                                    <tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
+                                    <tr><td colspan="9" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -7577,6 +7577,19 @@
                 if (err) { err.innerText = "Vui lòng chọn ít nhất 1 \"Người phê duyệt\"."; err.style.display = "block"; }
                 return;
             }
+            // [SỬA LỖI - MỖI YÊU CẦU PHÊ DUYỆT CHỈ THUỘC ĐÚNG 1 TÀU] TRƯỚC ĐÂY yêu cầu phê duyệt
+            // KHÔNG gắn với tàu nào cả -> khi xem trước/xuất PDF, hệ thống phải "đoán" tàu (hiện
+            // LẪN TẤT CẢ các tàu có dữ liệu trong kỳ, hoặc dùng tạm đúng bộ lọc đang chọn trên màn
+            // hình TẠI THỜI ĐIỂM TẢI FILE — có thể khác lúc gửi) -> hiển thị/PDF bị lẫn nhiều tàu
+            // dù người dùng chỉ gửi yêu cầu cho 1 tàu. NAY: BẮT BUỘC phải đang chọn ĐÚNG 1 tàu cụ
+            // thể ở ô "Lọc theo tàu" (không được để "Tất cả các tàu") trước khi gửi — server cũng
+            // LUÔN tự kiểm tra lại điều kiện này (xem action "guiDuyetDanhMucLoaiCongThuyenVien"),
+            // không thể bị bỏ qua dù gọi thẳng API.
+            let tauChonGui = (document.getElementById("cctv-tau-filter") || {}).value || "";
+            if (!tauChonGui) {
+                if (err) { err.innerText = "Vui lòng chọn ĐÚNG 1 tàu ở ô \"Lọc theo tàu\" (phía trên, không để \"Tất cả các tàu\") trước khi gửi yêu cầu phê duyệt — mỗi yêu cầu chỉ được xin duyệt cho 1 tàu."; err.style.display = "block"; }
+                return;
+            }
             let ghiChuInput = document.getElementById("cctv-dmlc-ghichu");
             let ghiChu = ghiChuInput ? ghiChuInput.value.trim() : "";
 
@@ -7597,10 +7610,13 @@
                 fileData: base64Data, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu,
                 // [MỚI] Gắn kèm đúng "Kỳ chấm công" đang chọn ở ô lọc phía trên (nếu có) để hiện
                 // lại trong bảng "Các yêu cầu phê duyệt" và trong file PDF xuất ra sau khi duyệt.
-                thang: cctvThangDangChon()
+                thang: cctvThangDangChon(),
+                // [MỚI - GẮN ĐÚNG 1 TÀU VÀO YÊU CẦU] Xem giải thích đầy đủ ở đoạn kiểm tra
+                // "tauChonGui" phía trên — mỗi yêu cầu chỉ xin duyệt cho ĐÚNG 1 tàu.
+                tau: tauChonGui
             });
             if (result && result.status === "SUCCESS") {
-                if (ok) { ok.innerText = "Đã gửi yêu cầu phê duyệt thành công tới " + nguoiPheDuyet.length + " người phê duyệt."; ok.style.display = "block"; }
+                if (ok) { ok.innerText = "Đã gửi yêu cầu phê duyệt (tàu " + tauChonGui + ") thành công tới " + nguoiPheDuyet.length + " người phê duyệt."; ok.style.display = "block"; }
                 if (fileInput) fileInput.value = "";
                 if (ghiChuInput) ghiChuInput.value = "";
                 document.querySelectorAll("#cctv-dmlc-approver-list input:checked").forEach(i => i.checked = false);
@@ -7635,7 +7651,7 @@
             let tbody = document.getElementById("cctv-dmlc-duyet-tbody");
             if (!tbody) return;
             if (!cctvDmlcDuyetData.length) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
                 return;
             }
             let list = cctvDmlcDuyetData.slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
@@ -7672,6 +7688,7 @@
                 return `<tr>
                     <td>${escapeHtml(formatNgayGuiHienThi_(r.ngayGui))}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${r.tau ? escapeHtml(r.tau) : '<span style="color:#c00;" title="Yêu cầu cũ chưa lưu tàu">— (chưa rõ)</span>'}</td>
                     <td>${escapeHtml(r.thang ? cctvThangHienThi_(r.thang) : "—")}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
@@ -7927,17 +7944,22 @@
                 }
             }
 
-            // Tàu để dựng bảng chấm công: ưu tiên đúng tàu đang lọc trên màn hình (ô "Lọc theo
-            // tàu") — coi là "tàu hiện tại"; nếu đang để "Tất cả các tàu" thì xuất LẦN LƯỢT từng
-            // tàu đang có thuyền viên (giống cách file Excel tách riêng 1 sheet/tàu).
-            let tauDangLoc = (document.getElementById("cctv-tau-filter") || {}).value || "";
-            let dsTau = tauDangLoc ? [tauDangLoc] : [...new Set((dCrew || []).map(c => c.tau || "(Chưa rõ tàu)"))].sort();
+            // [SỬA LỖI - PDF CHỈ ĐƯỢC HIỆN ĐÚNG 1 TÀU CỦA YÊU CẦU] TRƯỚC ĐÂY tàu để dựng bảng
+            // chấm công được lấy TẠM theo đúng bộ lọc "Lọc theo tàu" đang chọn SẴN TRÊN MÀN HÌNH
+            // tại thời điểm bấm "Tải file" — có thể KHÁC với tàu lúc gửi yêu cầu (VD người dùng đã
+            // đổi bộ lọc sang tàu khác, hoặc để "Tất cả các tàu"), nên PDF xuất ra bị lẫn SAI/NHIỀU
+            // tàu dù yêu cầu chỉ xin duyệt cho 1 tàu. NAY: LUÔN dùng đúng "r.tau" đã lưu lại lúc
+            // gửi yêu cầu (xem action "guiDuyetDanhMucLoaiCongThuyenVien"/cột "Tau" ở Code.gs),
+            // KHÔNG phụ thuộc bộ lọc đang chọn trên màn hình nữa. Yêu cầu CŨ (gửi từ trước khi có
+            // cột "Tau", r.tau rỗng) -> báo rõ lý do trong chính file PDF thay vì âm thầm hiện lẫn
+            // nhiều tàu như trước.
+            let dsTau = r.tau ? [r.tau] : [];
             let thangNam = cctvPhanTichThangNam_(thangBang);
 
             // [MỚI - CHẨN ĐOÁN] Nếu không xác định được kỳ NÀO (cả "r.thang" lẫn kỳ đang chọn trên
             // màn hình đều trống) hoặc không có tàu/thuyền viên nào, hiện rõ 1 dòng thông báo NGAY
             // TRONG file PDF thay vì để trống lặng lẽ — giúp biết ngay lý do thiếu bảng thay vì phải
-            // đoán (VD do yêu cầu quá cũ chưa lưu kỳ, do Sheet "Đội tàu" chưa có thuyền viên...).
+            // đoán (VD do yêu cầu quá cũ chưa lưu kỳ/tàu, do Sheet "Đội tàu" chưa có thuyền viên...).
             // [SỬA - TÁCH RIÊNG DÒNG "PHIẾU PHÊ DUYỆT..." VÀ BẢNG LƯỚI] Theo yêu cầu mới nhất: dòng
             // tiêu đề "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG THUYỀN VIÊN TÀU ..." nay chuyển LÊN TRÊN, nằm
             // NGAY DƯỚI dòng "BẢNG CHẤM CÔNG THÁNG .../NĂM..." (trong khối tiêu đề công ty) — CÒN
@@ -7950,7 +7972,10 @@
                 phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Không dựng được bảng chấm công: yêu cầu phê duyệt này chưa lưu "Kỳ chấm công" (dữ liệu cũ) và trên màn hình cũng chưa chọn kỳ nào. Vui lòng chọn 1 kỳ ở ô "Kỳ chấm công (tháng/năm)" rồi bấm "Tải file" lại.</p>';
                 bangChamCongLuoiHtml = "";
             } else if (!dsTau.length) {
-                phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào cho kỳ "' + pdfText(thangBang) + '". Vui lòng kiểm tra lại Sheet "Đội tàu" và bộ lọc "Lọc theo tàu".</p>';
+                phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Yêu cầu này được gửi từ trước khi hệ thống lưu lại "Tàu" xin phê duyệt nên không thể xác định đúng 1 tàu để xuất PDF. Vui lòng gửi lại yêu cầu MỚI (chọn đúng 1 tàu ở ô "Lọc theo tàu" trước khi gửi).</p>';
+                bangChamCongLuoiHtml = "";
+            } else if (!(dCrew || []).some(c => dsTau.indexOf(c.tau || "") !== -1)) {
+                phieuTitleHtml = '<p style="color:#c00; font-weight:bold; margin:6px 0 0 0; text-align:center;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào của tàu "' + pdfText(dsTau[0]) + '" cho kỳ "' + pdfText(thangBang) + '". Vui lòng kiểm tra lại Sheet "Đội tàu".</p>';
                 bangChamCongLuoiHtml = "";
             } else {
                 phieuTitleHtml = dsTau.map(tau =>
@@ -8116,7 +8141,7 @@
             let bodyEl = document.getElementById("cctv-preview-body");
             if (!modal || !infoEl || !bodyEl) return;
 
-            infoEl.innerHTML = `Mã yêu cầu: <b>${escapeHtml(r.id || "")}</b> — Người gửi: <b>${escapeHtml(r.nguoiGui || "")}</b> — Kỳ chấm công: <b>${escapeHtml(cctvThangHienThi_(r.thang))}</b>` +
+            infoEl.innerHTML = `Mã yêu cầu: <b>${escapeHtml(r.id || "")}</b> — Người gửi: <b>${escapeHtml(r.nguoiGui || "")}</b> — Tàu: <b>${escapeHtml(r.tau || "(chưa rõ)")}</b> — Kỳ chấm công: <b>${escapeHtml(cctvThangHienThi_(r.thang))}</b>` +
                 (r.fileId ? ` — <a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File đính kèm")}</a>` : "");
             bodyEl.innerHTML = '<p style="color:#999; text-align:center; padding:20px 0;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải bảng chấm công...</p>';
             modal.style.display = "flex";
@@ -8140,9 +8165,19 @@
                 return;
             }
 
-            let dsTau = [...new Set((dCrew || []).map(c => c.tau || "(Chưa rõ tàu)"))].sort();
-            if (!dsTau.length) {
-                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào cho kỳ "' + escapeHtml(thangBang) + '".</p>';
+            // [SỬA LỖI - CHỈ HIỆN ĐÚNG 1 TÀU CỦA YÊU CẦU] TRƯỚC ĐÂY dựng danh sách "dsTau" từ
+            // TẤT CẢ các tàu đang có thuyền viên trong đúng kỳ đó (không quan tâm yêu cầu này xin
+            // duyệt tàu nào) -> hiện LẪN nhiều tàu dù người dùng chỉ gửi yêu cầu cho 1 tàu. NAY:
+            // CHỈ dùng đúng "r.tau" đã lưu lại lúc gửi yêu cầu (xem action
+            // "guiDuyetDanhMucLoaiCongThuyenVien"/cột "Tau" ở Code.gs). Yêu cầu CŨ (gửi từ trước
+            // khi có cột "Tau", r.tau rỗng) -> báo rõ lý do thay vì âm thầm hiện lẫn nhiều tàu.
+            if (!r.tau) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Yêu cầu này được gửi từ trước khi hệ thống lưu lại "Tàu" xin phê duyệt nên không thể xác định đúng 1 tàu để hiển thị. Vui lòng gửi lại yêu cầu MỚI (chọn đúng 1 tàu ở ô "Lọc theo tàu" trước khi gửi) để xem trước chính xác.</p>';
+                return;
+            }
+            let dsTau = [r.tau];
+            if (!(dCrew || []).some(c => (c.tau || "") === r.tau)) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Không tìm thấy thuyền viên/dữ liệu nào của tàu "' + escapeHtml(r.tau) + '" cho kỳ "' + escapeHtml(thangBang) + '".</p>';
                 return;
             }
             bodyEl.innerHTML = dsTau.map(tau => `
