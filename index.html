@@ -1386,6 +1386,109 @@
                     </div>
                 </div>
 
+                <!-- ===== [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ"] =====
+                     Tính năng RIÊNG, TÁCH BIỆT hoàn toàn với khối "Nhập Kho/Xuất kho/Thanh lý" ở
+                     trên (khối đó KHÔNG bị đụng tới, giữ nguyên 100%) — mỗi yêu cầu hủy thiết bị
+                     PHẢI được (những) "Người phê duyệt" do Admin cấp quyền đồng ý hết mới coi là
+                     "Đã duyệt" (xem action "submitHuyThietBiRequest"/"decideHuyThietBiRequest" ở
+                     Code.gs). Chỉ tài khoản có quyền "Quản lý Thiết bị" (canManageEquipmentUI)
+                     mới thấy/dùng được khối tạo yêu cầu và bảng danh sách này; những tài khoản
+                     CHỈ được cấp quyền phê duyệt (không có quyền Quản lý Thiết bị) xử lý yêu cầu
+                     của mình ở Tab "Nhận Việc" — xem khối "nv-huytb-section". -->
+                <div class="admin-box" id="eq-huytb-box" style="border-top: 4px solid #c0392b; background:#fff5f5;">
+                    <h3><i class="fa-solid fa-dumpster-fire"></i> Hủy Thiết Bị</h3>
+                    <input type="hidden" id="inp-htb-id" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Mã số thiết bị</label>
+                            <input type="text" id="inp-htb-code" list="eq-all-code-list" placeholder="Nhập hoặc chọn mã thiết bị đã có" oninput="onHuyTbCodeChange()">
+                        </div>
+                        <div class="input-group">
+                            <label>Nhóm thiết bị</label>
+                            <select id="inp-htb-cat" onchange="onHuyTbCategoryChange()"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Loại chi tiết</label>
+                            <select id="inp-htb-subtype"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Tên thiết bị</label>
+                            <input type="text" id="inp-htb-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group">
+                            <label>Tình trạng thiết bị</label>
+                            <select id="inp-htb-status"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Đơn vị tính</label>
+                            <input type="text" id="inp-htb-unit" placeholder="Cái, Chiếc, Bộ..." value="Cái">
+                        </div>
+                        <div class="input-group">
+                            <label>Số lượng</label>
+                            <input type="number" id="inp-htb-qty" min="1" step="1" value="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày Hủy Thiết bị</label>
+                            <input type="date" id="inp-htb-date">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Lý do hủy</label>
+                            <textarea id="inp-htb-reason" rows="2" placeholder="Lý do hủy thiết bị..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group">
+                            <label>Đính kèm file</label>
+                            <input type="file" id="inp-htb-file" onchange="onHuyTbFileChange(this)">
+                            <div id="htb-file-current" style="font-size:12px; color:#666; margin-top:4px;"></div>
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Người phê duyệt <span style="font-weight:400; color:#888;">(chỉ hiện tài khoản đã được Admin cấp quyền)</span></label>
+                            <div id="htb-approver-checklist" style="display:flex; flex-wrap:wrap; gap:10px; max-height:110px; overflow:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;"></div>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <textarea id="inp-htb-note" rows="2" placeholder="Ghi chú thêm..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1; gap:10px;">
+                            <button type="button" class="btn" style="width:auto; background:#95a5a6; display:none;" id="btn-htb-cancel-edit" onclick="resetHuyThietBiForm()">Hủy sửa</button>
+                            <button type="button" class="btn btn-danger" style="width:auto;" id="btn-htb-submit" onclick="submitHuyThietBiRequestUI()">Gửi Yêu Cầu Hủy Thiết Bị ✔️</button>
+                        </div>
+                    </div>
+
+                    <!-- [CHỈ ADMIN] Phân quyền "Người được phê duyệt Hủy thiết bị" — y hệt cơ chế
+                         Admin đang dùng cho "Người được phê duyệt" của Tab "Đăng ký nghỉ phép",
+                         nhưng lưu ở sheet RIÊNG "CaiDatPheDuyetHuyTB" (KHÔNG dùng chung sheet). -->
+                    <div id="htb-admin-approver-settings-box" style="display:none; margin-top:18px; padding-top:14px; border-top:1px dashed #c0392b;">
+                        <h4 style="margin-bottom:8px;"><i class="fa-solid fa-user-shield"></i> [Chỉ Admin] Phân quyền "Người được phê duyệt Hủy thiết bị"</h4>
+                        <div id="htb-admin-approver-list" style="display:flex; flex-wrap:wrap; gap:10px; max-height:180px; overflow:auto; border:1px solid #ddd; border-radius:4px; padding:8px; background:#fff;"></div>
+                        <button type="button" class="btn btn-success" style="width:auto; margin-top:8px;" onclick="saveHuyThietBiApproverSettings()">Lưu phân quyền phê duyệt ✔️</button>
+                    </div>
+                </div>
+
+                <div class="admin-box" id="eq-huytb-list-box">
+                    <h3><i class="fa-solid fa-list-check"></i> Danh sách Yêu cầu Hủy Thiết Bị</h3>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-huytb">
+                        <thead><tr>
+                            <th>Mã yêu cầu</th><th>Mã TB</th><th>Tên thiết bị</th><th>Nhóm</th><th>Loại chi tiết</th>
+                            <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày hủy</th><th>Lý do hủy</th>
+                            <th>File đính kèm</th><th>Người phê duyệt</th><th>Trạng thái</th><th>Người tạo</th><th>Ghi chú</th>
+                            <th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-equipment" class="search-box" oninput="debouncedFilterEquipmentTable()" placeholder="Tìm theo mã, tên thiết bị, nhân viên...">
                     <select id="filter-eq-dept" class="search-box" onchange="onFilterEqDeptChange()" style="max-width: 220px;"></select>
@@ -2532,6 +2635,25 @@
                     </div>
                 </div>
 
+                <!-- [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ" - PHÊ DUYỆT] Chỉ hiện khi có ít
+                     nhất 1 yêu cầu hủy thiết bị đang chờ CHÍNH tài khoản này duyệt — kể cả những
+                     tài khoản KHÔNG có quyền "Quản lý Thiết bị" (chỉ được Admin cấp riêng quyền
+                     phê duyệt) cũng thấy được ở đây, y hệt cơ chế của khối "Đơn xin nghỉ phép chờ
+                     bạn duyệt" ở trên. Server đã tự lọc đúng yêu cầu có mình trong danh sách
+                     "Người phê duyệt" — không hiện yêu cầu của người khác không liên quan. -->
+                <div id="nv-huytb-section" style="display:none; margin-bottom:24px;">
+                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-dumpster-fire"></i> Yêu cầu hủy thiết bị chờ bạn duyệt</h3>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-nhanviec-huytb">
+                        <thead><tr>
+                            <th>Mã TB</th><th>Tên thiết bị</th><th>Tình trạng</th><th>SL</th><th>Ngày hủy</th>
+                            <th>Lý do hủy</th><th>File đính kèm</th><th>Người tạo</th><th>Trạng thái chung</th><th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
                 </div>
@@ -3334,6 +3456,18 @@
         // username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = CHƯA cấu hình gì,
         // mọi tài khoản vẫn được chọn TẤT CẢ tài khoản khác như trước — xem populateLeaveApproverList()).
         let approvedApproversList = [];
+        // [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ"] Danh sách yêu cầu hủy thiết bị liên
+        // quan tới tài khoản đang đăng nhập (đã tải qua action "getHuyThietBiRequests"). Mỗi
+        // phần tử: {id, maTB, nhomTB, loaiChiTiet, tenTB, tinhTrangTB, dvt, soLuong, ngayHuy,
+        // lyDoHuy, nguoiPheDuyet: [username...], trangThaiTungNguoi: {username:{status,lyDo,
+        // thoiGian}}, trangThaiChung, nguoiTao, ngayTao, ghiChu, fileName, fileId, fileUrl}.
+        let huyThietBiRequestsData = [];
+        // Danh sách username Admin ĐÃ cấp quyền phê duyệt Hủy thiết bị (rỗng = CHƯA có ai được
+        // phép — xem action "getHuyThietBiApprovers"/danhSachDuocPheDuyetHuyThietBi_ ở Code.gs).
+        let huyTbApproverUsernames = [];
+        // [CHỈ ADMIN THẤY/SỬA] Bản sao của huyTbApproverUsernames dùng để tick sẵn checkbox ở
+        // khối phân quyền Admin — CÙNG dữ liệu, tách biến riêng cho rõ ràng ngữ nghĩa.
+        let approvedHuyTBApproversList = [];
         // [TAB "BẢNG CHẤM CÔNG" - MỤC "NGƯỜI NHẬN", CHỈ ADMIN CẤU HÌNH] Danh sách username Admin
         // đã chọn để giới hạn lựa chọn ở mục "Người nhận" — TÁCH BIỆT hoàn toàn với
         // "approvedApproversList" ở trên (mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép").
@@ -3794,6 +3928,10 @@
                 // để vẫn nhận đúng mảng RỖNG khi Admin vừa bỏ chọn hết (xóa cấu hình), giống cách
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
+                // [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ" - "NGƯỜI ĐƯỢC PHÊ DUYỆT"] Danh
+                // sách username Admin đã cấp quyền phê duyệt Hủy thiết bị (rỗng = CHƯA có ai
+                // được phép — khác hành vi của "approvedApprovers" ở trên).
+                if (data.approvedHuyTBApprovers !== undefined) approvedHuyTBApproversList = data.approvedHuyTBApprovers;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
                 // [MỚI - MỤC "NGƯỜI PHÊ DUYỆT" - BẢNG CHẤM CÔNG THUYỀN VIÊN, CHỈ ADMIN CẤU HÌNH]
                 // Danh sách username Admin đã chọn để giới hạn ô "Người phê duyệt" ở mục "Phê
@@ -5856,6 +5994,25 @@
             // [MỤC THÔNG BÁO "NHÂN SỰ NGHỈ PHÉP" - TAB TỔNG QUAN] Tải sẵn số đếm/dữ liệu ngay
             // sau khi đăng nhập, để thẻ ở Bảng điều khiển tổng quan hiện đúng số ngay lần đầu.
             loadLeaveNotificationData();
+
+            // ==== [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ"] ==== Khối tạo yêu cầu/bảng danh
+            // sách CHỈ hiện với tài khoản có quyền "Quản lý Thiết bị" (canManageEquipmentUI, xem
+            // ở trên) — các tài khoản CHỈ được cấp quyền phê duyệt xử lý yêu cầu của mình ở Tab
+            // "Nhận Việc" (khối "nv-huytb-section", luôn tải dữ liệu bên dưới cho MỌI tài khoản
+            // đã đăng nhập, không phụ thuộc canManageEquipmentUI).
+            let htbBox = document.getElementById("eq-huytb-box");
+            let htbListBox = document.getElementById("eq-huytb-list-box");
+            if (htbBox) htbBox.style.display = canManageEquipmentUI ? "block" : "none";
+            if (htbListBox) htbListBox.style.display = canManageEquipmentUI ? "block" : "none";
+            if (canManageEquipmentUI) { fillHuyTbDropdowns(); populateHuyTbApproverChecklist(); }
+            // [MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT" - CHỈ ADMIN] Chỉ Admin mới thấy khối cấu hình này.
+            let htbAdminApproverBox = document.getElementById("htb-admin-approver-settings-box");
+            if (htbAdminApproverBox) {
+                htbAdminApproverBox.style.display = (currentUser.role === "Admin") ? "block" : "none";
+                if (currentUser.role === "Admin") populateHuyTbAdminApproverSettingsList();
+            }
+            loadHuyThietBiRequests();
+
 
             // [ẨN MÃ PHIÊN BẢN VỚI TÀI KHOẢN USER] Dòng "Build: ..." dưới nút "Đăng xuất" (mục
             // chẩn đoán kỹ thuật, chỉ hữu ích khi đối chiếu bản index.html/code.gs đang chạy) nay
@@ -10234,7 +10391,10 @@
             if (!badge) return;
             // [ĐƠN NGHỈ PHÉP] Badge "Nhận Việc" nay tính GỘP cả công việc chưa xem lẫn đơn nghỉ
             // phép đang chờ CHÍNH tài khoản này duyệt, để không ai bỏ sót đơn cần xử lý.
-            let n = countUnseenMyTasks() + countPendingLeaveApprovals();
+            // [MỤC "HỦY THIẾT BỊ" - TAB "NHẬN VIỆC"] Gộp thêm số yêu cầu hủy thiết bị đang chờ
+            // CHÍNH tài khoản này duyệt vào CHUNG 1 badge "Nhận Việc" — cùng cơ chế với đơn
+            // nghỉ phép ở trên, để không ai bỏ sót yêu cầu cần xử lý.
+            let n = countUnseenMyTasks() + countPendingLeaveApprovals() + countPendingHuyThietBiApprovals();
             if (n > 0) {
                 badge.style.display = "inline-block";
                 badge.innerText = n > 99 ? "99+" : String(n);
@@ -11178,6 +11338,379 @@
             } catch (err) {
                 console.error(err);
                 alert("Có lỗi xảy ra khi xử lý đơn nghỉ phép!");
+            }
+        }
+
+        /* ===== [TAB "QUẢN LÝ THIẾT BỊ" - MỤC "HỦY THIẾT BỊ"] =====
+           Toàn bộ hàm bên dưới ÁP DỤNG ĐÚNG cơ chế/kiểu-dáng đã dùng cho Tab "Đăng ký nghỉ
+           phép" ở trên (populateLeaveApproverList/loadLeaveRequests/renderMyLeaveTable/
+           renderLeaveApprovalSection/decideLeaveRequestUI...) — chỉ đổi tên biến/action cho
+           đúng ngữ cảnh "Hủy thiết bị", KHÔNG đụng tới bất kỳ hàm/biến nào của Tab "Đăng ký
+           nghỉ phép" hay bất kỳ tính năng nào khác đã có sẵn. */
+
+        // Đổ danh mục Nhóm thiết bị & Tình trạng cho form "Hủy Thiết Bị" (dùng lại đúng
+        // EQUIPMENT_TYPES/EQUIPMENT_STATUS đã có sẵn, KHÔNG tạo danh mục mới) — chỉ đổ 1 lần.
+        function fillHuyTbDropdowns() {
+            let catSel = document.getElementById("inp-htb-cat");
+            if (catSel && !catSel.options.length) {
+                catSel.innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                onHuyTbCategoryChange();
+            }
+            let statusSel = document.getElementById("inp-htb-status");
+            if (statusSel && !statusSel.options.length) {
+                statusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            }
+        }
+
+        // Đổi "Nhóm thiết bị" -> đổ lại danh sách "Loại chi tiết" tương ứng.
+        function onHuyTbCategoryChange() {
+            let catSel = document.getElementById("inp-htb-cat");
+            let subSel = document.getElementById("inp-htb-subtype");
+            if (!catSel || !subSel) return;
+            let subtypes = EQUIPMENT_CATEGORIES[catSel.value] || [];
+            subSel.innerHTML = subtypes.length
+                ? '<option value="">-- Chọn loại chi tiết --</option>' + subtypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
+                : '<option value="">(không có)</option>';
+        }
+
+        // [TIỆN ÍCH - KHÔNG BẮT BUỘC] Gõ đúng 1 Mã số thiết bị ĐÃ CÓ trong hệ thống (dùng lại
+        // "equipmentData" đã tải sẵn theo đúng quyền hiện có, KHÔNG gọi thêm API) -> tự đổ sẵn
+        // Nhóm/Loại chi tiết/Tên/Tình trạng/ĐVT để giảm thao tác nhập lại. Gõ mã KHÔNG có trong
+        // hệ thống vẫn được (VD thiết bị cũ chưa từng khai báo) — không bắt buộc phải khớp.
+        function onHuyTbCodeChange() {
+            let code = document.getElementById("inp-htb-code").value.trim();
+            if (!code) return;
+            let found = (equipmentData || []).find(e => (e.assetCode || "") === code);
+            if (!found) return;
+            let catSel = document.getElementById("inp-htb-cat");
+            if (catSel) { catSel.value = found.type || catSel.value; onHuyTbCategoryChange(); }
+            let subSel = document.getElementById("inp-htb-subtype");
+            if (subSel && found.chiTiet) subSel.value = found.chiTiet;
+            document.getElementById("inp-htb-name").value = found.name || "";
+            let statusSel = document.getElementById("inp-htb-status");
+            if (statusSel && found.status) statusSel.value = found.status;
+            document.getElementById("inp-htb-unit").value = found.unit || "Cái";
+        }
+
+        // [ĐÍNH KÈM FILE] Chỉ kiểm tra dung lượng ngay khi chọn file (CÙNG giới hạn 15MB đang
+        // dùng cho file đính kèm "Đăng ký nghỉ phép") — việc đọc base64 thực hiện lúc gửi yêu
+        // cầu (submitHuyThietBiRequestUI) để không giữ dữ liệu file nặng trong bộ nhớ lâu hơn
+        // cần thiết.
+        function onHuyTbFileChange(inputEl) {
+            let f = inputEl.files && inputEl.files[0];
+            if (f && f.size > 15 * 1024 * 1024) {
+                alert("File quá lớn (giới hạn 15MB).");
+                inputEl.value = "";
+            }
+        }
+
+        // Tải danh sách username được phép chọn làm "Người phê duyệt" (CHỈ những tài khoản
+        // Admin đã cấp quyền — action "getHuyThietBiApprovers") và vẽ thành checkbox nhiều lựa
+        // chọn, dùng lại đúng class "checkbox-item" đang có sẵn trong hệ thống.
+        async function populateHuyTbApproverChecklist() {
+            let box = document.getElementById("htb-approver-checklist");
+            if (!box || !currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let data = await callServerAction({ action: "getHuyThietBiApprovers" });
+                if (!data || data.status !== "SUCCESS") return;
+                huyTbApproverUsernames = data.usernames || [];
+                let checked = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+                box.innerHTML = huyTbApproverUsernames.map(u =>
+                    `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${checked.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+                ).join('') || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào được Admin cấp quyền phê duyệt Hủy thiết bị.</div>';
+            } catch (err) {
+                console.error("Lỗi tải danh sách người phê duyệt Hủy thiết bị:", err);
+            }
+        }
+
+        // [MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT" - CHỈ HIỆN VỚI ADMIN] Vẽ checkbox cho TẤT CẢ tài khoản
+        // hiện có (lấy lại từ "userDatabase" đã tải sẵn cho Admin), tick sẵn đúng những tài
+        // khoản đang nằm trong "approvedHuyTBApproversList" (đã tải sẵn qua loadFromCloud).
+        function populateHuyTbAdminApproverSettingsList() {
+            let box = document.getElementById("htb-admin-approver-list");
+            if (!box || !currentUser || currentUser.role !== "Admin") return;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${(approvedHuyTBApproversList || []).includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join('');
+        }
+
+        // Lưu lại danh sách "Người được phê duyệt Hủy thiết bị" Admin vừa chọn (action RIÊNG
+        // "saveHuyThietBiApproverSettings", chỉ Admin gọi được). Gửi mảng RỖNG = Admin chủ động
+        // thu hồi TOÀN BỘ quyền phê duyệt đã cấp trước đó (KHÔNG quay lại "cho phép tất cả").
+        async function saveHuyThietBiApproverSettings() {
+            let box = document.getElementById("htb-admin-approver-list");
+            if (!box) return;
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let ok = await pushToCloud({ action: "saveHuyThietBiApproverSettings", usernames: usernames });
+            if (ok) {
+                approvedHuyTBApproversList = usernames;
+                alert(usernames.length
+                    ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép phê duyệt Hủy thiết bị).")
+                    : "✅ Đã lưu (KHÔNG còn tài khoản nào được phép phê duyệt Hủy thiết bị).");
+                populateHuyTbApproverChecklist();
+            } else {
+                alert("❌ Lưu thất bại, vui lòng thử lại.");
+            }
+        }
+
+        // Gửi (tạo mới hoặc sửa lại, nếu đang có "inp-htb-id") 1 yêu cầu Hủy thiết bị.
+        async function submitHuyThietBiRequestUI() {
+            if (!currentUsername) { alert("Vui lòng đăng nhập lại!"); return; }
+            if (!isScriptUrlConfigured()) { alert("Cần kết nối Google Sheet để gửi yêu cầu hủy thiết bị!"); return; }
+
+            let editingId = document.getElementById("inp-htb-id").value.trim();
+            let maTB = document.getElementById("inp-htb-code").value.trim();
+            let tenTB = document.getElementById("inp-htb-name").value.trim();
+            let ngayHuy = document.getElementById("inp-htb-date").value;
+            let lyDoHuy = document.getElementById("inp-htb-reason").value.trim();
+            let nguoiPheDuyet = Array.from(document.querySelectorAll("#htb-approver-checklist input:checked")).map(i => i.value);
+
+            if (!maTB) { alert("Vui lòng nhập Mã số thiết bị."); return; }
+            if (!tenTB) { alert("Vui lòng nhập Tên thiết bị."); return; }
+            if (!ngayHuy) { alert("Vui lòng chọn Ngày Hủy Thiết bị."); return; }
+            if (!lyDoHuy) { alert("Vui lòng nhập Lý do hủy."); return; }
+            if (!nguoiPheDuyet.length) { alert("Vui lòng chọn ít nhất 1 Người phê duyệt."); return; }
+
+            let payload = {
+                action: "submitHuyThietBiRequest", authToken: authToken,
+                maTB: maTB,
+                nhomTB: document.getElementById("inp-htb-cat").value,
+                loaiChiTiet: document.getElementById("inp-htb-subtype").value,
+                tenTB: tenTB,
+                tinhTrangTB: document.getElementById("inp-htb-status").value,
+                dvt: document.getElementById("inp-htb-unit").value.trim(),
+                soLuong: document.getElementById("inp-htb-qty").value || "1",
+                ngayHuy: ngayHuy,
+                lyDoHuy: lyDoHuy,
+                ghiChu: document.getElementById("inp-htb-note").value.trim(),
+                nguoiPheDuyet: nguoiPheDuyet
+            };
+            if (editingId) payload.id = editingId;
+
+            // [ĐÍNH KÈM FILE] Tùy chọn — CÙNG kỹ thuật đang dùng cho "submitLeaveRequest".
+            let htbFileInput = document.getElementById("inp-htb-file");
+            let htbFile = htbFileInput ? htbFileInput.files[0] : null;
+            if (htbFile) {
+                if (htbFile.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+                let htbBase64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(htbFile);
+                }).catch(err => { alert(err.message); return null; });
+                if (htbBase64Data === null) return;
+                payload.fileName = htbFile.name;
+                payload.mimeType = htbFile.type || "application/octet-stream";
+                payload.fileData = htbBase64Data;
+            }
+
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                alert(editingId ? "✅ Đã cập nhật lại yêu cầu hủy thiết bị!" : "✅ Đã gửi yêu cầu hủy thiết bị! Yêu cầu sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
+                resetHuyThietBiForm();
+                await loadHuyThietBiRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi gửi yêu cầu hủy thiết bị!");
+            }
+        }
+
+        // [MỤC "THAO TÁC" > "SỬA"] Chỉ áp dụng cho yêu cầu do CHÍNH mình tạo và ĐANG "Chờ duyệt".
+        function editHuyThietBiRequestUI(id) {
+            let r = (huyThietBiRequestsData || []).find(x => x.id === id);
+            if (!r) return;
+            document.getElementById("inp-htb-id").value = r.id;
+            document.getElementById("inp-htb-code").value = r.maTB || "";
+            let catSel = document.getElementById("inp-htb-cat");
+            if (catSel) { catSel.value = r.nhomTB || catSel.value; onHuyTbCategoryChange(); }
+            let subSel = document.getElementById("inp-htb-subtype");
+            if (subSel && r.loaiChiTiet) subSel.value = r.loaiChiTiet;
+            document.getElementById("inp-htb-name").value = r.tenTB || "";
+            let statusSel = document.getElementById("inp-htb-status");
+            if (statusSel && r.tinhTrangTB) statusSel.value = r.tinhTrangTB;
+            document.getElementById("inp-htb-unit").value = r.dvt || "Cái";
+            document.getElementById("inp-htb-qty").value = r.soLuong || "1";
+            document.getElementById("inp-htb-date").value = r.ngayHuy || "";
+            document.getElementById("inp-htb-reason").value = r.lyDoHuy || "";
+            document.getElementById("inp-htb-note").value = r.ghiChu || "";
+            let fileHintEl = document.getElementById("htb-file-current");
+            if (fileHintEl) {
+                fileHintEl.innerHTML = r.fileId
+                    ? `Đang có file: <a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName)}', 'huyThietBi')">${escapeHtml(r.fileName || "File")}</a> (chọn file mới bên trên nếu muốn thay thế)`
+                    : "";
+            }
+            document.querySelectorAll("#htb-approver-checklist input").forEach(i => {
+                i.checked = (r.nguoiPheDuyet || []).includes(i.value);
+            });
+            document.getElementById("btn-htb-cancel-edit").style.display = "inline-block";
+            document.getElementById("btn-htb-submit").innerText = "Cập nhật Yêu Cầu Hủy Thiết Bị ✔️";
+            document.getElementById("eq-huytb-box").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        // Khôi phục form "Hủy Thiết Bị" về trạng thái tạo MỚI (không còn đang sửa).
+        function resetHuyThietBiForm() {
+            document.getElementById("inp-htb-id").value = "";
+            document.getElementById("inp-htb-code").value = "";
+            document.getElementById("inp-htb-name").value = "";
+            document.getElementById("inp-htb-unit").value = "Cái";
+            document.getElementById("inp-htb-qty").value = "1";
+            document.getElementById("inp-htb-date").value = "";
+            document.getElementById("inp-htb-reason").value = "";
+            document.getElementById("inp-htb-note").value = "";
+            let fileInput = document.getElementById("inp-htb-file");
+            if (fileInput) fileInput.value = "";
+            let fileHintEl = document.getElementById("htb-file-current");
+            if (fileHintEl) fileHintEl.innerHTML = "";
+            document.querySelectorAll("#htb-approver-checklist input:checked").forEach(i => i.checked = false);
+            let catSel = document.getElementById("inp-htb-cat");
+            if (catSel) { catSel.selectedIndex = 0; onHuyTbCategoryChange(); }
+            let statusSel = document.getElementById("inp-htb-status");
+            if (statusSel) statusSel.selectedIndex = 0;
+            document.getElementById("btn-htb-cancel-edit").style.display = "none";
+            document.getElementById("btn-htb-submit").innerText = "Gửi Yêu Cầu Hủy Thiết Bị ✔️";
+        }
+
+        // [MỤC "THAO TÁC" > "XÓA"] Chỉ CHÍNH người tạo (hoặc Admin) mới được xóa.
+        async function deleteHuyThietBiRequestUI(id) {
+            if (!confirm("Xác nhận XÓA VĨNH VIỄN yêu cầu hủy thiết bị này? Thao tác này không thể hoàn tác.")) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "deleteHuyThietBiRequest", authToken: authToken, id: id })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                if (document.getElementById("inp-htb-id").value.trim() === id) resetHuyThietBiForm();
+                await loadHuyThietBiRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi xóa yêu cầu hủy thiết bị!");
+            }
+        }
+
+        // Tải danh sách yêu cầu hủy thiết bị liên quan tới tài khoản đang đăng nhập, rồi vẽ lại
+        // cả 2 bảng liên quan ("Danh sách Yêu cầu Hủy Thiết Bị" ở tab "Quản lý Thiết bị" và
+        // "Yêu cầu hủy thiết bị chờ bạn duyệt" ở tab "Nhận Việc").
+        async function loadHuyThietBiRequests() {
+            if (!currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let data = await callServerAction({ action: "getHuyThietBiRequests" });
+                if (!data || data.status !== "SUCCESS") return;
+                huyThietBiRequestsData = data.list || [];
+                renderHuyThietBiTable();
+                renderHuyThietBiApprovalSection();
+                updateNhanViecBadge();
+            } catch (err) {
+                console.error("Lỗi tải danh sách yêu cầu hủy thiết bị:", err);
+            }
+        }
+
+        // Bảng "Danh sách Yêu cầu Hủy Thiết Bị" (tab "Quản lý Thiết bị") — CHỈ hiện với tài
+        // khoản có quyền "Quản lý Thiết bị" (khối cha "eq-huytb-list-box" đã bị ẩn với các tài
+        // khoản khác ở applyUserPermissions, hàm này vẫn có thể chạy an toàn dù khối đang ẩn).
+        function renderHuyThietBiTable() {
+            let tbody = document.querySelector("#tbl-huytb tbody");
+            if (!tbody) return;
+            let list = huyThietBiRequestsData || [];
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="16" style="text-align:center; color:#aaa;">Chưa có yêu cầu hủy thiết bị nào.</td></tr>';
+                return;
+            }
+            let colorMap = { "Chờ duyệt": "#f0ad4e", "Đã duyệt": "#27ae60", "Từ chối": "#c0392b" };
+            tbody.innerHTML = list.map(r => {
+                let canEditDelete = (r.trangThaiChung === "Chờ duyệt") && (r.nguoiTao === currentUsername || (currentUser && currentUser.role === "Admin"));
+                return `<tr>
+                <td>${escapeHtml(r.id || "")}</td><td>${escapeHtml(r.maTB || "")}</td><td>${escapeHtml(r.tenTB || "")}</td>
+                <td>${escapeHtml(r.nhomTB || "")}</td><td>${escapeHtml(r.loaiChiTiet || "")}</td>
+                <td>${escapeHtml(r.tinhTrangTB || "")}</td><td>${escapeHtml(r.dvt || "")}</td><td>${escapeHtml(String(r.soLuong || ""))}</td>
+                <td>${escapeHtml(formatDateDisplay(r.ngayHuy))}</td><td>${escapeHtml(r.lyDoHuy || "")}</td>
+                <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName)}', 'huyThietBi')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                <td>${escapeHtml((r.nguoiPheDuyet || []).join(", "))}</td>
+                <td><b style="color:${colorMap[r.trangThaiChung] || '#888'};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                <td>${escapeHtml(r.nguoiTao || "")}</td><td>${escapeHtml(r.ghiChu || "")}</td>
+                <td>${canEditDelete
+                    ? `<button class="btn btn-sm" style="width:auto;" onclick="editHuyThietBiRequestUI('${r.id}')"><i class="fa-solid fa-pen"></i> Sửa</button>
+                       <button class="btn btn-danger btn-sm" onclick="deleteHuyThietBiRequestUI('${r.id}')"><i class="fa-solid fa-trash"></i> Xóa</button>`
+                    : (currentUser && currentUser.role === "Admin" ? `<button class="btn btn-danger btn-sm" onclick="deleteHuyThietBiRequestUI('${r.id}')"><i class="fa-solid fa-trash"></i> Xóa</button>` : "")}
+                </td>
+            </tr>`;
+            }).join("");
+        }
+
+        // Những yêu cầu hủy thiết bị đang thực sự chờ CHÍNH tài khoản đang đăng nhập xử lý —
+        // CÙNG logic đang dùng cho "getPendingLeaveApprovalsForMe".
+        function getPendingHuyThietBiApprovalsForMe() {
+            if (!currentUsername) return [];
+            return (huyThietBiRequestsData || []).filter(r => {
+                if (!(r.nguoiPheDuyet || []).includes(currentUsername)) return false;
+                if (r.trangThaiChung !== "Chờ duyệt") return false;
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                return !myStatus || myStatus.status === "cho_duyet";
+            });
+        }
+
+        function countPendingHuyThietBiApprovals() {
+            return getPendingHuyThietBiApprovalsForMe().length;
+        }
+
+        // Mục "Yêu cầu hủy thiết bị chờ bạn duyệt" ở tab "Nhận Việc" — chỉ hiện khối này khi có
+        // ít nhất 1 yêu cầu đang thực sự chờ CHÍNH tài khoản đang đăng nhập xử lý (kể cả những
+        // tài khoản KHÔNG có quyền "Quản lý Thiết bị", chỉ được cấp riêng quyền phê duyệt).
+        function renderHuyThietBiApprovalSection() {
+            let section = document.getElementById("nv-huytb-section");
+            let tbody = document.querySelector("#tbl-nhanviec-huytb tbody");
+            if (!section || !tbody) return;
+            let list = getPendingHuyThietBiApprovalsForMe();
+            if (!list.length) { section.style.display = "none"; tbody.innerHTML = ""; return; }
+            section.style.display = "block";
+            tbody.innerHTML = list.map(r => `<tr>
+                <td>${escapeHtml(r.maTB || "")}</td><td>${escapeHtml(r.tenTB || "")}</td>
+                <td>${escapeHtml(r.tinhTrangTB || "")}</td><td>${escapeHtml(String(r.soLuong || ""))}</td>
+                <td>${escapeHtml(formatDateDisplay(r.ngayHuy))}</td><td>${escapeHtml(r.lyDoHuy || "")}</td>
+                <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName)}', 'huyThietBi')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                <td>${escapeHtml(r.nguoiTao || "")}</td>
+                <td><b style="color:#f0ad4e;">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                <td>
+                    <button class="btn btn-success btn-sm" onclick="decideHuyThietBiRequestUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                    <button class="btn btn-danger btn-sm" onclick="decideHuyThietBiRequestUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>
+                </td>
+            </tr>`).join("");
+        }
+
+        // Xử lý bấm "Đồng ý" / "Không đồng ý" trên 1 yêu cầu hủy thiết bị — "Không đồng ý"
+        // BẮT BUỘC phải nhập lý do (server cũng tự kiểm tra lại, không thể bỏ qua dù gọi thẳng
+        // API).
+        async function decideHuyThietBiRequestUI(id, decision) {
+            let lyDo = "";
+            if (decision === "reject") {
+                lyDo = prompt("Vui lòng nhập lý do KHÔNG đồng ý yêu cầu hủy thiết bị này:", "");
+                if (lyDo === null) return; // người dùng bấm Hủy
+                lyDo = lyDo.trim();
+                if (!lyDo) { alert("Bạn cần nhập lý do khi chọn \"Không đồng ý\"."); return; }
+            } else {
+                if (!confirm("Xác nhận ĐỒNG Ý yêu cầu hủy thiết bị này?")) return;
+            }
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "decideHuyThietBiRequest", authToken: authToken, id: id, decision: decision, lyDo: lyDo })
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                await loadHuyThietBiRequests();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi xử lý yêu cầu hủy thiết bị!");
             }
         }
 
