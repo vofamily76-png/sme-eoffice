@@ -3988,6 +3988,33 @@
             }
         }
 
+        // [MẢNG MỚI - CHỐNG LỖI "Failed to fetch" NGẪU NHIÊN] "Failed to fetch" là lỗi Ở TẦNG
+        // MẠNG (trình duyệt hoàn toàn KHÔNG nhận được phản hồi nào từ Google Apps Script) —
+        // KHÁC với lỗi do server trả về (data.status === "ERROR", vẫn hiện đúng nội dung lỗi
+        // như cũ). Nguyên nhân phổ biến nhất: Google Apps Script tạm thời phản hồi chậm/timeout
+        // (cold start, đang xử lý request khác, hoặc mạng chập chờn) — phần lớn trường hợp CHỈ
+        // cần thử lại là được. Hàm dùng chung này tự động thử lại 1 lần (sau 1.5 giây) TRƯỚC KHI
+        // báo lỗi cho người dùng, và thêm giới hạn thời gian chờ tối đa 25 giây/lần gọi (tránh
+        // treo vô thời hạn nếu Apps Script không phản hồi) — KHÔNG đổi bất kỳ logic nghiệp vụ/
+        // bảo mật nào, chỉ làm lớp gọi mạng bên ngoài ổn định hơn.
+        async function fetchWithRetry(url, options, retriesLeft) {
+            if (retriesLeft === undefined) retriesLeft = 1;
+            let controller = new AbortController();
+            let timeoutId = setTimeout(() => controller.abort(), 25000);
+            try {
+                let res = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+                clearTimeout(timeoutId);
+                return res;
+            } catch (err) {
+                clearTimeout(timeoutId);
+                if (retriesLeft > 0) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    return fetchWithRetry(url, options, retriesLeft - 1);
+                }
+                throw err;
+            }
+        }
+
         async function pushToCloud(payload) {
             if (!isScriptUrlConfigured()) {
                 console.warn("Chưa kết nối Cloud. Dữ liệu chỉ lưu local.");
@@ -4014,7 +4041,7 @@
                     payload.authToken = authToken;
                 }
 
-                let res = await fetch(SCRIPT_URL, {
+                let res = await fetchWithRetry(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
@@ -4023,7 +4050,20 @@
                 if (data.status === "ERROR") throw new Error(data.message);
                 return true;
             } catch (err) {
-                alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
+                // [CHẨN ĐOÁN RÕ HƠN] "Failed to fetch"/"AbortError" nghĩa là trình duyệt KHÔNG
+                // nhận được phản hồi nào từ Google Apps Script (lỗi mạng/timeout), khác hẳn với
+                // lỗi do server chủ động trả về (đã hiện đúng nội dung ở nhánh "throw new
+                // Error(data.message)" phía trên). Thêm gợi ý xử lý cụ thể để Admin không phải
+                // đoán, KHÔNG đổi hành vi trả về (vẫn return false như cũ).
+                let isNetworkErr = err.name === "AbortError" || /Failed to fetch|NetworkError|Load failed/i.test(err.message || "");
+                let hint = isNetworkErr
+                    ? "\n\n👉 Đây là lỗi MẠNG (trình duyệt không nhận được phản hồi từ Google Apps Script), không phải lỗi dữ liệu. Vui lòng kiểm tra:\n" +
+                      "• Kết nối Internet có ổn định không, thử tải lại trang (F5) rồi thao tác lại.\n" +
+                      "• Nếu vừa cập nhật code.gs: vào Apps Script → Triển khai → Quản lý phiên bản triển khai → sửa (✏️) → Phiên bản: Mới → Triển khai (chỉ Lưu trong Editor KHÔNG áp dụng code mới cho URL đang chạy).\n" +
+                      "• Mục \"Ai có quyền truy cập\" của bản triển khai Web App vẫn đang để đúng như trước (VD \"Bất kỳ ai\").\n" +
+                      "• Google Apps Script có thể đang tạm thời quá tải — hệ thống đã tự thử lại 1 lần, nếu vẫn lỗi vui lòng thử lại sau ít phút."
+                    : "";
+                alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message + hint);
                 console.error(err);
                 return false;
             } finally {
