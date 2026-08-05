@@ -2532,6 +2532,40 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - MỤC "CÁC YÊU CẦU ĐÃ PHÊ DUYỆT" - THUỘC TAB "NHẬN VIỆC"] Liệt kê lại
+                     TOÀN BỘ yêu cầu "Phê duyệt bảng chấm công thuyền viên" (mục "Danh mục loại
+                     công" ở Tab "Bảng Chấm Công Thuyền Viên") mà CHÍNH tài khoản đang đăng nhập đã
+                     TỰ MÌNH bấm "Đồng ý" (đúng theo "trạng thái CỦA RIÊNG mình" trong yêu cầu —
+                     r.trangThaiTungNguoi[currentUsername].status === "dong_y" — KHÔNG phải theo
+                     "Trạng thái chung" của cả yêu cầu, vì yêu cầu có thể còn đang chờ những người
+                     phê duyệt KHÁC xử lý). Dữ liệu lấy lại TỪ BIẾN "cctvDmlcDuyetData" ĐÃ CÓ SẴN
+                     (được tải qua action "getDanhMucLoaiCongThuyenVienDuyetList" đã có sẵn quyền
+                     phân quyền — CHỈ trả về yêu cầu do mình gửi/mình được chọn phê duyệt/Admin,
+                     xem action ở Code.gs) — KHÔNG gọi thêm action MỚI nào, KHÔNG đổi bảo mật:
+                     - Nút "Xem trước": hiện cho MỌI dòng (dùng lại xemTruocBangChamCongCctvDmlcUI()).
+                     - Nút "Tải file" (PDF): CHỈ hiện khi yêu cầu đã "Đã duyệt" (đủ mọi người phê
+                       duyệt đồng ý) — dùng lại ĐÚNG hàm xuatPdfCctvDmlcDuyet() đã có, KHÔNG tạo
+                       hàm xuất PDF mới, KHÔNG lưu thêm gì lên Drive.
+                     - Nút "Xóa file": dùng lại ĐÚNG action "xoaDanhMucLoaiCongThuyenVienDuyet" đã
+                       có — CHỈ hiện/dùng được khi CHÍNH tài khoản này là người GỬI yêu cầu hoặc là
+                       Admin (y hệt điều kiện "coTheXoa" ở bảng gốc của Tab "Bảng Chấm Công Thuyền
+                       Viên"), Server vẫn LUÔN tự kiểm tra lại quyền này — GIỮ NGUYÊN bảo mật hiện
+                       có, KHÔNG cấp thêm quyền xóa cho người phê duyệt thông thường (không phải
+                       người gửi/Admin) chỉ vì họ đã từng bấm "Đồng ý". -->
+                <div id="nv-cctv-approved-section" style="display:none; margin-bottom:24px;">
+                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-clipboard-check"></i> Các yêu cầu đã phê duyệt (Bảng Chấm Công Thuyền Viên)</h3>
+                    <p style="margin:0 0 10px 0; color:#666; font-size:13px;">Những yêu cầu "Phê duyệt bảng chấm công thuyền viên" mà <b>chính bạn đã bấm "Đồng ý"</b>.</p>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-nhanviec-cctv-approved">
+                        <thead><tr>
+                            <th>Ngày gửi</th><th>Người gửi</th><th>Tàu</th><th>Kỳ chấm công</th><th>Ghi chú</th>
+                            <th>File</th><th>Ngày tôi duyệt</th><th>Trạng thái chung</th><th>Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
                 </div>
@@ -6072,6 +6106,13 @@
                 // [ĐƠN NGHỈ PHÉP CHỜ DUYỆT] Tải lại dữ liệu mới nhất mỗi lần mở tab, để không bỏ
                 // sót đơn vừa được người khác gửi trong lúc mình chưa mở trang này.
                 loadLeaveRequests();
+                // [MỚI - MỤC "CÁC YÊU CẦU ĐÃ PHÊ DUYỆT"] Tải lại mới nhất danh sách yêu cầu "Phê
+                // duyệt bảng chấm công thuyền viên" mỗi lần mở tab "Nhận Việc" (dùng CHUNG đúng 1
+                // action đã có "getDanhMucLoaiCongThuyenVienDuyetList", KHÔNG gọi action mới) — để
+                // không bỏ sót yêu cầu mình vừa bấm "Đồng ý" ở nơi khác. Chỉ tải khi tài khoản có
+                // quyền xem Tab "Bảng Chấm Công Thuyền Viên" (currentUserCanViewCrewChamCong),
+                // KHÔNG gọi action nếu không có quyền (tránh lỗi/log thừa, Server cũng tự chặn).
+                if (currentUserCanViewCrewChamCong) loadCctvDmlcDuyetList(); else renderNvApprovedCctvList();
             }
             if (pageId === "leave") {
                 // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mở tab -> tải lại danh sách approver + đơn của mình.
@@ -7643,6 +7684,56 @@
             if (typeof updateNotificationBell === "function") updateNotificationBell();
         }
 
+        // [MỚI - TAB "NHẬN VIỆC" - MỤC "CÁC YÊU CẦU ĐÃ PHÊ DUYỆT"] Vẽ lại bảng con nằm ở Tab "Nhận
+        // Việc" — CHỈ liệt kê những yêu cầu "Phê duyệt bảng chấm công thuyền viên" mà CHÍNH tài
+        // khoản đang đăng nhập đã TỰ MÌNH bấm "Đồng ý" (không phụ thuộc trạng thái chung của cả
+        // yêu cầu, vì có thể còn người khác chưa xử lý). Đọc lại TỪ "cctvDmlcDuyetData" đã có sẵn
+        // (KHÔNG gọi thêm action nào) — gọi hàm này ngay sau mỗi lần renderCctvDmlcDuyetList() để
+        // luôn đồng bộ dữ liệu, xem lời gọi ở cuối renderCctvDmlcDuyetList() bên trên.
+        function renderNvApprovedCctvList() {
+            let wrap = document.getElementById("nv-cctv-approved-section");
+            let tbody = document.querySelector("#tbl-nhanviec-cctv-approved tbody");
+            if (!wrap || !tbody) return;
+            let list = (cctvDmlcDuyetData || []).filter(function (r) {
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                return myStatus && myStatus.status === "dong_y";
+            }).sort(function (a, b) {
+                // Mới duyệt gần đây nhất lên đầu.
+                let ta = ((a.trangThaiTungNguoi || {})[currentUsername] || {}).thoiGian || "";
+                let tb = ((b.trangThaiTungNguoi || {})[currentUsername] || {}).thoiGian || "";
+                return String(b.id || "").localeCompare(String(a.id || "")) || tb.localeCompare(ta);
+            });
+            if (!list.length) { wrap.style.display = "none"; tbody.innerHTML = ""; return; }
+            wrap.style.display = "block";
+            tbody.innerHTML = list.map(function (r) {
+                let daDuyet = r.trangThaiChung === "Đã duyệt";
+                // [BẢO MẬT - GIỮ NGUYÊN] CHỈ người GỬI yêu cầu hoặc Admin mới thấy/dùng được nút
+                // "Xóa file" — y hệt điều kiện "coTheXoa" ở bảng gốc (Tab "Bảng Chấm Công Thuyền
+                // Viên" > mục "Danh mục loại công"), Server vẫn LUÔN tự kiểm tra lại quyền này.
+                let coTheXoa = (r.nguoiGui === currentUsername) || (currentUser && currentUser.role === "Admin");
+                let mauTrangThai = daDuyet ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let myThoiGian = ((r.trangThaiTungNguoi || {})[currentUsername] || {}).thoiGian || "";
+                let thaoTacHtml = `<button class="btn btn-primary btn-sm" onclick="xemTruocBangChamCongCctvDmlcUI('${r.id}')" title="Xem trước bảng chấm công (không cần tải file)"><i class="fa-solid fa-eye"></i> Xem trước</button>`;
+                if (daDuyet) {
+                    thaoTacHtml += `<button class="btn btn-primary btn-sm" onclick="xuatPdfCctvDmlcDuyet('${r.id}')" title="Tải file PDF (khổ A4 ngang)"><i class="fa-solid fa-file-pdf"></i> Tải file</button>`;
+                }
+                if (coTheXoa) {
+                    thaoTacHtml += `<button class="btn btn-danger btn-sm" onclick="xoaCctvDmlcDuyetUI('${r.id}')" title="Xóa yêu cầu này"><i class="fa-solid fa-trash"></i> Xóa file</button>`;
+                }
+                return `<tr>
+                    <td>${escapeHtml(formatNgayGuiHienThi_(r.ngayGui))}</td>
+                    <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${r.tau ? escapeHtml(r.tau) : '<span style="color:#c00;" title="Yêu cầu cũ chưa lưu tàu">— (chưa rõ)</span>'}</td>
+                    <td>${escapeHtml(r.thang ? cctvThangHienThi_(r.thang) : "—")}</td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${r.fileId ? `<a href="javascript:void(0)" onclick="viewSecureFile('${r.fileId}', '${escapeHtml(r.fileName || "")}', 'cctvDmlcDuyet')" title="Xem/tải file đính kèm"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.fileName || "File")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                    <td>${escapeHtml(formatNgayGuiHienThi_(myThoiGian))}</td>
+                    <td><b style="color:${mauTrangThai};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                    <td style="white-space:nowrap;">${thaoTacHtml}</td>
+                </tr>`;
+            }).join("");
+        }
+
         // Vẽ lại bảng các yêu cầu phê duyệt "Danh mục loại công" (Thuyền viên). Chỉ hiện 2 nút
         // "Đồng ý"/"Không đồng ý" ở đúng yêu cầu mà CHÍNH tài khoản đang đăng nhập được chọn làm
         // "Người phê duyệt" VÀ đang thực sự còn "Chờ duyệt" (chưa tự mình xử lý) — Server vẫn LUÔN
@@ -7652,6 +7743,9 @@
             if (!tbody) return;
             if (!cctvDmlcDuyetData.length) {
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                // [MỚI] Vẫn phải vẽ lại mục "Các yêu cầu đã phê duyệt" ở Tab "Nhận Việc" (để tự ẩn
+                // đi khi danh sách rỗng) dù bảng chính ở đây không có dữ liệu.
+                renderNvApprovedCctvList();
                 return;
             }
             let list = cctvDmlcDuyetData.slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
@@ -7697,6 +7791,9 @@
                     <td style="white-space:nowrap;">${thaoTacHtml}</td>
                 </tr>`;
             }).join("");
+            // [MỚI] Đồng bộ lại mục "Các yêu cầu đã phê duyệt" ở Tab "Nhận Việc" mỗi khi bảng
+            // chính này được vẽ lại (dùng CHUNG đúng 1 nguồn dữ liệu "cctvDmlcDuyetData").
+            renderNvApprovedCctvList();
         }
 
         // Xử lý bấm "Đồng ý"/"Không đồng ý" trên 1 yêu cầu phê duyệt "Danh mục loại công" (Thuyền
