@@ -1182,9 +1182,21 @@
                             <label>Ngày phỏng vấn</label>
                             <input type="date" id="inp-td-ngayphongvan">
                         </div>
+                        <!-- [SỬA] "Người phỏng vấn" (nhập tay tự do) -> "Phòng phỏng vấn" (chọn từ đúng
+                             danh mục Phòng ban hiện có của hệ thống, y hệt "Phòng ban" ở trên - KHÔNG
+                             cho nhập tay tự do nữa). Field/khóa dữ liệu gửi lên server ("nguoiPhongVan")
+                             GIỮ NGUYÊN để KHÔNG đổi cấu trúc cột trên Google Sheet, KHÔNG mất dữ liệu
+                             cũ đã lưu trước đây (dữ liệu cũ vẫn hiển thị lại bình thường nếu trùng tên
+                             1 phòng ban hiện có, hoặc vẫn được giữ nguyên trong Sheet nếu không trùng). -->
                         <div class="input-group">
-                            <label>Người phỏng vấn</label>
-                            <input type="text" id="inp-td-nguoipv" placeholder="Tên người phụ trách phỏng vấn">
+                            <label>Phòng phỏng vấn</label>
+                            <select id="inp-td-nguoipv"><option value="">-- Chọn phòng phỏng vấn --</option></select>
+                        </div>
+                        <!-- [MỚI] "Ngày nhận việc" - ghi nhận ngày ứng viên chính thức nhận việc (thường
+                             điền sau khi đã "Chuyển nhân sự"), tách biệt hoàn toàn với "Ngày phỏng vấn". -->
+                        <div class="input-group">
+                            <label>Ngày nhận việc</label>
+                            <input type="date" id="inp-td-ngaynhanviec">
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>File CV đính kèm</label>
@@ -1194,6 +1206,17 @@
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>Ghi chú</label>
                             <input type="text" id="inp-td-ghichu" placeholder="Ghi chú thêm (nếu có)...">
+                        </div>
+                        <!-- [MỚI - CHỈ ADMIN THẤY] "Người đánh giá": Admin chọn 1 tài khoản user (trong
+                             danh sách tài khoản hiện có của hệ thống) để giao phụ trách đánh giá hồ sơ
+                             ứng viên này. Ẩn hoàn toàn với tài khoản không phải Admin (kể cả có quyền
+                             Sửa hồ sơ ứng viên) - xem toggleRecruitmentAdminFieldsVisibility(). Server
+                             cũng CHỈ chấp nhận cập nhật trường này khi người gọi action thực sự là
+                             Admin (xem saveRecruitmentCandidate ở Code.gs) - không thể bị bỏ qua dù gọi
+                             thẳng API. -->
+                        <div class="input-group" id="td-nguoidanhgia-group" style="display:none; grid-column: 1 / -1;">
+                            <label>Người đánh giá <span style="font-weight:400; color:#888; font-size:12px;">(chỉ Admin thấy/sửa được mục này)</span></label>
+                            <select id="inp-td-nguoidanhgia"><option value="">-- Chọn tài khoản phụ trách đánh giá --</option></select>
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:10px">
@@ -1217,8 +1240,9 @@
                     <thead><tr>
                         <th>Mã hồ sơ</th><th>Họ tên</th><th>SĐT</th><th>Email</th><th>Vị trí ứng tuyển</th>
                         <th>Phòng ban</th><th>Kênh tuyển dụng</th><th>Trạng thái</th><th>Ngày phỏng vấn</th>
-                        <th>Người phỏng vấn</th><th>CV</th><th>Ghi chú</th><th>Ngày tạo</th>
-                        <th>Đánh giá ứng viên</th>
+                        <th>Phòng phỏng vấn</th><th>Kết quả phỏng vấn</th><th>CV</th><th>Ghi chú</th><th>Ngày tạo</th>
+                        <th>Ngày nhận việc</th>
+                        <th>Đánh giá ứng viên</th><th>Người đánh giá (được giao)</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -5992,6 +6016,11 @@
             if (elMenuRecruitment) elMenuRecruitment.style.display = canViewHR ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
             if (tdFormBox) tdFormBox.style.display = canEditHRUI ? "block" : "none";
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN THẤY] Ẩn/hiện khối chọn "Người đánh giá"
+            // theo đúng Role đang đăng nhập (KHÔNG dùng quyền canEditHRUI - dù có quyền Sửa hồ
+            // sơ ứng viên, tài khoản không phải Admin vẫn KHÔNG thấy mục này).
+            let tdNguoiDanhGiaGroup = document.getElementById("td-nguoidanhgia-group");
+            if (tdNguoiDanhGiaGroup) tdNguoiDanhGiaGroup.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
             if (canViewHR) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
@@ -12417,6 +12446,8 @@
             recruitmentData = data.candidates || [];
             populateRecruitmentStatusSelect();
             populateRecruitmentDeptSelect();
+            populateRecruitmentInterviewRoomSelect();
+            populateRecruitmentNguoiDanhGiaSelect();
             renderRecruitmentTabs();
             renderRecruitmentTable();
         }
@@ -12435,6 +12466,39 @@
             let current = sel.value;
             sel.innerHTML = `<option value="">-- Chọn phòng ban --</option>` +
                 (depts || []).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            sel.value = current || "";
+        }
+
+        // [SỬA - "NGƯỜI PHỎNG VẤN" -> "PHÒNG PHỎNG VẤN"] Dùng lại ĐÚNG danh mục Phòng ban hiện có
+        // của hệ thống (biến "depts", y hệt populateRecruitmentDeptSelect() ở trên) để hiển thị
+        // cho chọn "Phòng phỏng vấn" — KHÔNG cho nhập tay tự do nữa. Field/khóa dữ liệu gửi lên
+        // server VẪN GIỮ NGUYÊN là "nguoiPhongVan" (KHÔNG đổi tên cột trên Google Sheet) nên dữ
+        // liệu "Người phỏng vấn" đã lưu từ trước hoàn toàn KHÔNG bị mất — nếu giá trị cũ trùng
+        // đúng tên 1 phòng ban hiện có thì vẫn tự hiển thị chọn sẵn, nếu không trùng thì hồ sơ đó
+        // xem như "chưa chọn phòng" trên form (giá trị cũ vẫn còn nguyên trong Sheet, không bị
+        // xóa/ghi đè cho tới khi người dùng chủ động Sửa và Lưu lại hồ sơ đó).
+        function populateRecruitmentInterviewRoomSelect() {
+            let sel = document.getElementById("inp-td-nguoipv");
+            if (!sel) return;
+            let current = sel.value;
+            sel.innerHTML = `<option value="">-- Chọn phòng phỏng vấn --</option>` +
+                (depts || []).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            sel.value = current || "";
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN THẤY/DÙNG] Danh sách tài khoản lấy lại từ
+        // "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm action mới để liệt kê tài khoản) —
+        // dùng CHUNG kỹ thuật với populateAdminCtvNguoiPheDuyetSettingsList() ở tính năng khác.
+        // Với tài khoản không phải Admin, userDatabase rỗng/không có -> select này cũng rỗng,
+        // nhưng khối chứa nó đã bị ẩn hoàn toàn (xem toggle ở applyPermissions), nên không ảnh
+        // hưởng gì tới trải nghiệm của tài khoản không phải Admin.
+        function populateRecruitmentNguoiDanhGiaSelect() {
+            let sel = document.getElementById("inp-td-nguoidanhgia");
+            if (!sel) return;
+            let current = sel.value;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            sel.innerHTML = `<option value="">-- Chọn tài khoản phụ trách đánh giá --</option>` +
+                allUsernames.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
             sel.value = current || "";
         }
 
@@ -12486,7 +12550,7 @@
             }
 
             if (rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ ứng viên nào.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="18" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ ứng viên nào.</td></tr>`;
                 return;
             }
 
@@ -12522,6 +12586,15 @@
                     }
                 }
 
+                // [MỚI - CỘT "KẾT QUẢ PHỎNG VẤN"] Chỉ HIỂN THỊ, tự động lấy đúng theo kết quả của
+                // cột "Đánh giá ứng viên" (r.ketQuaDanhGia) — KHÔNG phải 1 trường dữ liệu riêng,
+                // KHÔNG có nút bấm/chỉnh sửa riêng ở cột này, nên luôn đồng bộ 100% với "Đánh giá
+                // ứng viên": khi đánh giá "Đạt" thì cột này tự hiện "Đạt", đánh giá "Không đạt" thì
+                // tự hiện "Không đạt", chưa đánh giá thì hiện "-".
+                let ketQuaPhongVanCell = r.ketQuaDanhGia
+                    ? `<span class="td-badge ${r.ketQuaDanhGia === "Đạt" ? "td-badge-dat" : "td-badge-khongdat"}">${escapeHtml(r.ketQuaDanhGia)}</span>`
+                    : "-";
+
                 return `<tr>
                     <td>${escapeHtml(r.maHoSo)}</td>
                     <td>${escapeHtml(r.hoTen)}</td>
@@ -12533,10 +12606,13 @@
                     <td><span class="td-badge ${tdBadgeClass(r.trangThai)}">${escapeHtml(r.trangThai)}</span></td>
                     <td>${escapeHtml(r.ngayPhongVan ? formatDateDisplay(r.ngayPhongVan) : "")}</td>
                     <td>${escapeHtml(r.nguoiPhongVan || "")}</td>
+                    <td>${ketQuaPhongVanCell}</td>
                     <td>${cvCell}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${escapeHtml(r.ngayTao || "")}</td>
+                    <td>${escapeHtml(r.ngayNhanViec ? formatDateDisplay(r.ngayNhanViec) : "")}</td>
                     <td>${danhGiaCell || "-"}</td>
+                    <td>${escapeHtml(r.nguoiDuocGiaoDanhGia || "-")}</td>
                     <td>${actions || "-"}</td>
                 </tr>`;
             }).join('');
@@ -12552,10 +12628,14 @@
             document.getElementById("inp-td-kenh").value = "";
             document.getElementById("inp-td-trangthai").value = TUYENDUNG_STATUS_LIST_FE[0];
             document.getElementById("inp-td-ngayphongvan").value = "";
+            populateRecruitmentInterviewRoomSelect();
             document.getElementById("inp-td-nguoipv").value = "";
+            document.getElementById("inp-td-ngaynhanviec").value = "";
             document.getElementById("inp-td-ghichu").value = "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = "";
+            let elNguoiDanhGiaReset = document.getElementById("inp-td-nguoidanhgia");
+            if (elNguoiDanhGiaReset) { populateRecruitmentNguoiDanhGiaSelect(); elNguoiDanhGiaReset.value = ""; }
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "none";
         }
@@ -12585,10 +12665,14 @@
             document.getElementById("inp-td-kenh").value = r.kenhTuyenDung || "";
             document.getElementById("inp-td-trangthai").value = r.trangThai || TUYENDUNG_STATUS_LIST_FE[0];
             document.getElementById("inp-td-ngayphongvan").value = tdToDateInputValue(r.ngayPhongVan);
+            populateRecruitmentInterviewRoomSelect();
             document.getElementById("inp-td-nguoipv").value = r.nguoiPhongVan || "";
+            document.getElementById("inp-td-ngaynhanviec").value = tdToDateInputValue(r.ngayNhanViec);
             document.getElementById("inp-td-ghichu").value = r.ghiChu || "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = r.cvFileName ? ("CV hiện tại: " + r.cvFileName + " (chỉ chọn file mới nếu muốn thay thế)") : "";
+            let elNguoiDanhGiaEdit = document.getElementById("inp-td-nguoidanhgia");
+            if (elNguoiDanhGiaEdit) { populateRecruitmentNguoiDanhGiaSelect(); elNguoiDanhGiaEdit.value = r.nguoiDuocGiaoDanhGia || ""; }
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật hồ sơ ứng viên';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "inline-block";
             document.getElementById("tuyendung-form-box").scrollIntoView({ behavior: "smooth" });
@@ -12618,8 +12702,19 @@
                 trangThai: document.getElementById("inp-td-trangthai").value,
                 ngayPhongVan: document.getElementById("inp-td-ngayphongvan").value,
                 nguoiPhongVan: document.getElementById("inp-td-nguoipv").value.trim(),
+                ngayNhanViec: document.getElementById("inp-td-ngaynhanviec").value,
                 ghiChu: document.getElementById("inp-td-ghichu").value.trim()
             };
+
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN] CHỈ gửi trường này lên server khi tài khoản
+            // đang đăng nhập đúng là Admin (khối chứa input này cũng bị ẩn hoàn toàn với tài
+            // khoản không phải Admin — xem toggle ở applyPermissions). Server (Code.gs, hàm
+            // saveRecruitmentCandidate) VẪN TỰ kiểm tra lại đúng Role của người gọi action trước
+            // khi ghi giá trị này — không thể bị bỏ qua dù gọi thẳng API với Role giả mạo.
+            if (currentUser && currentUser.role === "Admin") {
+                let elNguoiDanhGiaSubmit = document.getElementById("inp-td-nguoidanhgia");
+                if (elNguoiDanhGiaSubmit) payload.nguoiDuocGiaoDanhGia = elNguoiDanhGiaSubmit.value;
+            }
 
             if (file) {
                 let base64Data = await new Promise((resolve, reject) => {
