@@ -3400,18 +3400,21 @@
         // res.json() nhưng phản hồi trả về KHÔNG PHẢI JSON mà là HTML (bắt đầu bằng ký tự "<").
         // Đây KHÔNG phải lỗi trong logic action/dữ liệu của code.gs (doGet/doPost ở đó đã tự bọc
         // try/catch và luôn trả JSON hợp lệ) — nguyên nhân hầu như luôn nằm ở TẦNG TRIỂN KHAI
-        // (deploy) của Google Apps Script, ví dụ:
-        //   1) Web App chưa được "Triển khai lại" (Deploy > Manage deployments > sửa (✏️) >
-        //      Version: New) sau khi code.gs thay đổi, hoặc URL đang lưu đã bị thu hồi/sai.
-        //   2) Quyền truy cập Web App không phải "Anyone"/"Anyone with Google account" -> Google
-        //      trả về trang HTML yêu cầu đăng nhập/xin quyền thay vì chạy doGet/doPost.
-        //   3) Apps Script tạm thời quá tải/giới hạn số lượt gọi (quota) -> Google trả trang lỗi
-        //      HTML của riêng Google (không phải trang do code.gs tạo ra).
-        // Hàm dùng chung dưới đây thay cho việc gọi thẳng res.json() ở khắp nơi: đọc phản hồi dạng
-        // text trước, thử parse JSON, và nếu thất bại thì ném ra 1 thông báo lỗi RÕ RÀNG, dễ hiểu
-        // (thay vì thông báo kỹ thuật khó hiểu "Unexpected token '<'") để Admin biết ngay hướng xử
-        // lý. KHÔNG thay đổi bất kỳ dữ liệu, action, hay cơ chế bảo mật/đăng nhập nào đang có —
-        // chỉ thay đổi cách ĐỌC phản hồi mạng cho an toàn/rõ ràng hơn.
+        // (deploy) của Google Apps Script. Hàm dùng chung dưới đây thay cho việc gọi thẳng
+        // res.json() ở khắp nơi: đọc phản hồi dạng text trước, thử parse JSON, và nếu thất bại
+        // thì ném ra 1 thông báo lỗi RÕ RÀNG, dễ hiểu (thay vì thông báo kỹ thuật khó hiểu
+        // "Unexpected token '<'") — PHÂN BIỆT RÕ theo đúng mã HTTP trả về để chỉ thẳng nguyên
+        // nhân (thay vì liệt kê chung chung mọi khả năng), để Admin biết ngay hướng xử lý:
+        //   - HTTP 404 ("Not found"): URL Web App ĐANG LƯU KHÔNG TỒN TẠI trên Google — do dán
+        //     sai URL, hoặc bản Triển khai (Deployment) tương ứng ĐÃ BỊ XÓA/thu hồi. Đây là
+        //     nguyên nhân CHẮC CHẮN NHẤT khi gặp mã 404 (khác với các mã khác bên dưới).
+        //   - HTTP 401/403 ("Unauthorized"/"Forbidden"), hoặc HTTP 200 nhưng nội dung là trang
+        //     đăng nhập Google: quyền truy cập Web App chưa đặt "Anyone"/"Bất kỳ ai".
+        //   - HTTP 500/503, hoặc các mã khác: Apps Script tạm thời lỗi/quá tải (quota), hoặc
+        //     code.gs vừa sửa nhưng CHƯA được Triển khai lại (Deploy > Quản lý phiên bản triển
+        //     khai > sửa ✏️ > Phiên bản: Mới > Triển khai).
+        // KHÔNG thay đổi bất kỳ dữ liệu, action, hay cơ chế bảo mật/đăng nhập nào đang có — chỉ
+        // thay đổi cách ĐỌC/CHẨN ĐOÁN phản hồi mạng cho an toàn/rõ ràng hơn.
         async function parseServerResponse(res) {
             let rawText = await res.text();
             try {
@@ -3419,13 +3422,29 @@
             } catch (parseErr) {
                 let trimmed = (rawText || "").trim();
                 if (trimmed.indexOf("<") === 0) {
-                    throw new Error(
-                        "Máy chủ Google Apps Script trả về trang HTML thay vì dữ liệu JSON (HTTP " + res.status + "). " +
-                        "Nguyên nhân thường gặp: (1) Web App chưa được Triển khai lại (Deploy > Quản lý phiên bản triển khai " +
-                        "> sửa ✏️ > Phiên bản: Mới > Triển khai) sau khi cập nhật code.gs; (2) Quyền truy cập Web App chưa đặt " +
-                        "\"Anyone\"/\"Bất kỳ ai\"; (3) URL Apps Script đã lưu không còn đúng/đã bị thu hồi. " +
-                        "Vui lòng kiểm tra lại trong Google Apps Script Editor rồi thử \"Đồng bộ lại\"."
-                    );
+                    let ly_do;
+                    if (res.status === 404) {
+                        ly_do = "URL Web App đang lưu KHÔNG TỒN TẠI trên Google (HTTP 404 - Not Found). Nguyên nhân " +
+                            "gần như chắc chắn: (1) URL đã dán bị SAI/gõ thiếu, hoặc (2) bản Triển khai (Deployment) " +
+                            "tương ứng với URL này ĐÃ BỊ XÓA/thu hồi trên Apps Script. Cách khắc phục: mở Google Apps " +
+                            "Script Editor của bạn → Triển khai (Deploy) → Quản lý phiên bản triển khai (Manage " +
+                            "deployments) → kiểm tra còn bản Web App đang hoạt động hay không (nếu không còn, bấm " +
+                            "Triển khai (Deploy) → New deployment để tạo bản MỚI) → COPY LẠI ĐÚNG \"Web app URL\" hiện " +
+                            "ra (kết thúc bằng /exec) → dán vào Tab Admin, mục \"Kết nối Google Sheet\" → bấm \"Lưu & " +
+                            "Đồng bộ ngay\".";
+                    } else if (res.status === 401 || res.status === 403) {
+                        ly_do = "Không đủ quyền truy cập Web App (HTTP " + res.status + "). Nguyên nhân thường gặp: " +
+                            "Quyền truy cập Web App chưa đặt \"Anyone\"/\"Bất kỳ ai\". Cách khắc phục: mở Google Apps " +
+                            "Script Editor → Triển khai (Deploy) → Quản lý phiên bản triển khai → sửa (✏️) bản đang " +
+                            "chạy → mục \"Ai có quyền truy cập\" (Who has access) chọn \"Anyone\"/\"Bất kỳ ai\" → Triển " +
+                            "khai lại.";
+                    } else {
+                        ly_do = "Máy chủ Google Apps Script trả về trang HTML thay vì dữ liệu JSON (HTTP " + res.status + "). " +
+                            "Nguyên nhân thường gặp: (1) Web App chưa được Triển khai lại (Deploy > Quản lý phiên bản " +
+                            "triển khai > sửa ✏️ > Phiên bản: Mới > Triển khai) sau khi cập nhật code.gs; (2) Apps " +
+                            "Script tạm thời quá tải/giới hạn số lượt gọi (quota) — thử lại sau ít phút.";
+                    }
+                    throw new Error(ly_do + " Sau khi kiểm tra/khắc phục xong, vui lòng thử \"Đồng bộ lại\".");
                 }
                 throw new Error("Không đọc được phản hồi từ máy chủ (không phải JSON hợp lệ, HTTP " + res.status + "). " + parseErr.message);
             }
