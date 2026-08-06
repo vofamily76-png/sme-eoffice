@@ -421,6 +421,13 @@
         .hr-badge-ok { background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb; }
         .hr-badge-expiring { background:#fff3cd; color:#8a6d3b; border:1px solid #ffe8a1; }
         .hr-badge-expired { background:#fde8e8; color:#b91c1c; border:1px solid #f5c2c2; }
+        /* [TAB "TUYỂN DỤNG"] Màu badge theo từng trạng thái hồ sơ ứng viên */
+        .td-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:bold; white-space:nowrap; }
+        .td-badge-moi { background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb; }
+        .td-badge-hen { background:#fff3cd; color:#8a6d3b; border:1px solid #ffe8a1; }
+        .td-badge-dat { background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; }
+        .td-badge-khongdat { background:#fde8e8; color:#b91c1c; border:1px solid #f5c2c2; }
+        .td-badge-nhanviec { background:#ede7f6; color:#5e35b1; border:1px solid #d1c4e9; }
         #hr-expiring-alert-box ul { list-style: none; }
         #hr-expiring-alert-box li { padding: 8px 10px; background:#fff; border-radius:4px; margin-bottom:6px; border-left:3px solid #e67e22; }
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY"] Lưới hiển thị Thứ 2 -> Chủ nhật */
@@ -613,6 +620,7 @@
                     <li class="menu-item" id="menu-internal-docs" onclick="switchPage('internal-docs')"><i class="fa-solid fa-file-shield"></i> Tài liệu văn bản nội bộ</li>
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
+                    <li class="menu-item" id="menu-recruitment" onclick="switchPage('recruitment')"><i class="fa-solid fa-user-tie"></i> Tuyển Dụng</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
@@ -1134,6 +1142,89 @@
                 </div>
             </div>
 
+            <div id="page-recruitment" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-user-tie"></i> Tuyển Dụng</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Quản lý hồ sơ ứng viên: tiếp nhận, hẹn phỏng vấn, đánh giá kết quả và theo dõi tới khi nhận việc. Dữ liệu và file CV đính kèm của tính năng này được lưu ở 1 Google Sheet + Google Drive RIÊNG, tách biệt hoàn toàn với dữ liệu Danh bạ/Nhân sự/Thiết bị. Dùng chung quyền "Quản Lý Nhân Sự" đã có sẵn (Xem/Sửa/Xóa).</p>
+
+                <div class="admin-box" id="tuyendung-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
+                    <h3 id="tuyendung-form-title"><i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới</h3>
+                    <input type="hidden" id="edit-mahoso-tuyendung" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Họ tên ứng viên *</label>
+                            <input type="text" id="inp-td-hoten" placeholder="Nguyễn Văn A">
+                        </div>
+                        <div class="input-group">
+                            <label>Số điện thoại</label>
+                            <input type="text" id="inp-td-sdt" placeholder="09xxxxxxxx">
+                        </div>
+                        <div class="input-group">
+                            <label>Email</label>
+                            <input type="email" id="inp-td-email" placeholder="ungvien@email.com">
+                        </div>
+                        <div class="input-group">
+                            <label>Vị trí ứng tuyển *</label>
+                            <input type="text" id="inp-td-vitri" placeholder="Ví dụ: Nhân viên Kế toán">
+                        </div>
+                        <div class="input-group">
+                            <label>Phòng ban</label>
+                            <select id="inp-td-phongban"><option value="">-- Chọn phòng ban --</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Kênh tuyển dụng</label>
+                            <input type="text" id="inp-td-kenh" placeholder="Ví dụ: VietnamWorks, Facebook, Giới thiệu...">
+                        </div>
+                        <div class="input-group">
+                            <label>Trạng thái hồ sơ</label>
+                            <select id="inp-td-trangthai"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày phỏng vấn</label>
+                            <input type="date" id="inp-td-ngayphongvan">
+                        </div>
+                        <div class="input-group">
+                            <label>Người phỏng vấn</label>
+                            <input type="text" id="inp-td-nguoipv" placeholder="Tên người phụ trách phỏng vấn">
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>File CV đính kèm</label>
+                            <input type="file" id="inp-td-file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                            <span id="td-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                        </div>
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Ghi chú</label>
+                            <input type="text" id="inp-td-ghichu" placeholder="Ghi chú thêm (nếu có)...">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button class="btn btn-success" style="width:auto;" onclick="submitRecruitmentCandidate()">Lưu hồ sơ ✔️</button>
+                            <button class="btn btn-danger" id="btn-cancel-edit-tuyendung" onclick="resetRecruitmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row" style="margin: 16px 0; align-items:flex-end;">
+                    <div class="input-group" style="grid-column: 1 / -1;">
+                        <input type="text" id="td-search" class="search-box" placeholder="🔍 Tìm theo tên, SĐT, email, vị trí ứng tuyển..." oninput="renderRecruitmentTable()">
+                    </div>
+                </div>
+
+                <div id="tuyendung-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin: 0 0 16px;"></div>
+
+                <div style="overflow-x:auto;">
+                <table id="tbl-tuyendung">
+                    <thead><tr>
+                        <th>Mã hồ sơ</th><th>Họ tên</th><th>SĐT</th><th>Email</th><th>Vị trí ứng tuyển</th>
+                        <th>Phòng ban</th><th>Kênh tuyển dụng</th><th>Trạng thái</th><th>Ngày phỏng vấn</th>
+                        <th>Người phỏng vấn</th><th>CV</th><th>Ghi chú</th><th>Ngày tạo</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+                </div>
+            </div>
+
             <div id="page-equipment" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</h2>
 
@@ -1384,6 +1475,100 @@
                             <button type="button" class="btn btn-success" style="width:auto;" onclick="saveEquipmentWarehouse()">Lưu Nhập Kho / Xuất kho / Thanh lý ✔️</button>
                         </div>
                     </div>
+                </div>
+
+                <!-- [MỚI - MỤC "HỦY THIẾT BỊ"] Khối RIÊNG để khai báo thiết bị bị hủy bỏ/tiêu hủy —
+                     LƯU Ở SHEET RIÊNG "ThietBiHuy" (action "saveEquipmentDisposal"/
+                     "deleteEquipmentDisposal" MỚI ở Code.gs), KHÔNG dùng chung/ghi đè sheet
+                     "ThietBi" đang có, nên KHÔNG đụng/mất dữ liệu cấp phát & lưu kho hiện có.
+                     Cùng mức quyền với phần còn lại của Tab (canManageEquipment ở Code.gs) —
+                     kiểm tra lại Ở SERVER, không thể bị bỏ qua dù gọi thẳng API. Gõ đúng Mã số
+                     thiết bị ĐÃ TỒN TẠI (trong equipmentData) sẽ tự đổ lại Nhóm/Loại chi tiết/
+                     Tên/Tình trạng/ĐVT/Số lượng hiện có để không phải gõ tay lại từ đầu. -->
+                <div class="admin-box" id="eq-disposal-box" style="border-top: 4px solid #c0392b; background:#fdf3f2;">
+                    <h3 id="eq-disposal-form-title"><i class="fa-solid fa-trash-can-arrow-up"></i> Hủy Thiết Bị</h3>
+                    <input type="hidden" id="edit-code-eq-disposal" value="">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Mã số thiết bị</label>
+                            <input type="text" id="inp-eq-disposal-code" list="eq-all-code-list" placeholder="Ví dụ: TB-001" oninput="onEqDisposalCodeChange()">
+                        </div>
+                        <div class="input-group">
+                            <label>Nhóm thiết bị</label>
+                            <select id="inp-eq-disposal-cat" onchange="onEqDisposalCategoryChange()"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Loại chi tiết</label>
+                            <select id="inp-eq-disposal-subtype"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Tên thiết bị</label>
+                            <input type="text" id="inp-eq-disposal-name" placeholder="Ví dụ: Laptop Dell Latitude 5420">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group">
+                            <label>Tình trạng thiết bị</label>
+                            <select id="inp-eq-disposal-status"></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Đơn vị tính</label>
+                            <input type="text" id="inp-eq-disposal-unit" placeholder="Cái, Chiếc, Bộ..." value="Cái">
+                        </div>
+                        <div class="input-group">
+                            <label>Số lượng</label>
+                            <input type="number" id="inp-eq-disposal-qty" min="1" step="1" value="1">
+                        </div>
+                        <div class="input-group">
+                            <label>Ngày Hủy Thiết bị</label>
+                            <input type="date" id="inp-eq-disposal-date">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Lý do hủy</label>
+                            <textarea id="inp-eq-disposal-reason" rows="2" placeholder="Ví dụ: Hỏng hóc không thể sửa chữa, hết thời hạn sử dụng..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group">
+                            <label>Người phê duyệt</label>
+                            <select id="inp-eq-disposal-approver"><option value="">-- Chưa chọn --</option></select>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px;">
+                        <div class="input-group">
+                            <label>Đính kèm file (biên bản hủy, hình ảnh...)</label>
+                            <input type="file" id="inp-eq-disposal-file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png">
+                            <small id="eq-disposal-current-file-hint" style="color:#888;"></small>
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label>Ghi chú</label>
+                            <textarea id="inp-eq-disposal-note" rows="2" placeholder="Ghi chú thêm..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button type="button" class="btn btn-success" style="width:auto;" onclick="saveEquipmentDisposal()">Lưu Hủy Thiết Bị ✔️</button>
+                            <button type="button" class="btn btn-danger" id="btn-cancel-edit-eq-disposal" onclick="resetEquipmentDisposalForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 24px 0 8px 0;"><i class="fa-solid fa-trash-can-arrow-up" style="color:#c0392b;"></i> Danh sách Thiết bị đã hủy</h3>
+                <div class="table-controls">
+                    <input type="text" id="search-eq-disposal" class="search-box" oninput="filterEquipmentDisposalTable()" placeholder="Tìm theo mã, tên thiết bị, lý do hủy...">
+                </div>
+                <div style="overflow-x:auto;">
+                <table id="tbl-equipment-disposal">
+                    <thead><tr>
+                        <th>Mã TB</th><th>Nhóm thiết bị</th><th>Loại chi tiết</th><th>Tên thiết bị</th>
+                        <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày hủy</th><th>Lý do hủy</th>
+                        <th>Đính kèm file</th><th>Người phê duyệt</th><th>Ghi chú</th>
+                        <th class="admin-action-header">Thao tác</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
                 </div>
 
                 <div class="table-controls">
@@ -3222,6 +3407,16 @@
         // Danh sách thiết bị: mỗi phần tử { assetCode, name, type, msnv, dept, status, unit, qty, dateReceived, dateReturn, location, note }.
         // Thiết bị có msnv rỗng ("") được xem là "Thiết bị lưu kho" (chưa cấp phát cho ai).
         let equipmentData = [];
+        // [MỚI - MỤC "HỦY THIẾT BỊ"] Danh sách thiết bị đã khai báo hủy: mỗi phần tử { assetCode,
+        // group, chiTiet, name, status, unit, qty, ngayHuy, reason, fileName, fileId, fileUrl,
+        // uploadDate, note }. Lưu Ở SHEET RIÊNG "ThietBiHuy" (xem THIETBIHUY_HEADERS/code.gs),
+        // TÁCH BIỆT với equipmentData ở trên — không đụng/mất dữ liệu cấp phát & lưu kho.
+        let equipmentDisposalData = [];
+        // [MOI - MUC "HUY THIET BI" - "NGUOI PHE DUYET"] Danh sach username duoc phep chon o
+        // o "Nguoi phe duyet" (lay tu action "getPheDuyetHuyThietBiList", chi Admin/tai khoan
+        // da duoc cap quyen "PheDuyetHuyThietBi" moi xuat hien). Tai lai moi lan mo Tab "Quan
+        // ly Thiet bi" - xem loadEquipmentDisposalApprovers().
+        let equipmentDisposalApprovers = [];
         // Danh mục thiết bị dạng 2 cấp: Nhóm thiết bị -> các Loại chi tiết trong nhóm đó.
         // Nhóm không có loại chi tiết (mảng rỗng) sẽ ẩn ô "Loại chi tiết" khi chọn.
         const EQUIPMENT_CATEGORIES = {
@@ -3237,7 +3432,7 @@
             "Thiết bị khác": []
         };
         const EQUIPMENT_TYPES = Object.keys(EQUIPMENT_CATEGORIES);
-        const EQUIPMENT_STATUS = ["Mới", "Đang sử dụng", "Cũ", "Hỏng - Chờ sửa", "Lưu kho", "Đã thanh lý"];
+        const EQUIPMENT_STATUS = ["Mới", "Đang sử dụng", "Cũ", "Hỏng - Chờ sửa", "Lưu kho", "Đã thanh lý", "Đã hủy"];
         // LƯU Ý BẢO MẬT: userDatabase KHÔNG còn lưu trường "password" của bất kỳ ai nữa.
         // Mật khẩu chỉ được xác thực ở server (Google Apps Script) qua action "login" /
         // "changeOwnPassword". Object này chỉ giữ role & quyền hồ sơ để vẽ giao diện.
@@ -3360,6 +3555,15 @@
         let signatureData = []; // mỗi phần tử đã có sẵn field "tabs" (server tính sẵn hồ sơ này thuộc Tab con nào)
         let signatureUsernames = []; // danh sách tài khoản để chọn "người ký"
         let currentUserCanViewChuKySo = false;
+        // [TAB "TUYỂN DỤNG"] Dữ liệu lấy riêng từ 1 Google Sheet + Google Drive KHÁC (xem
+        // RECRUITMENT_SPREADSHEET_ID/RECRUITMENT_FOLDER_ID ở code.gs) — không nằm trong getData
+        // chung, phải gọi riêng action "getRecruitmentData" (xem loadRecruitmentData()).
+        let recruitmentData = [];
+        const TUYENDUNG_STATUS_LIST_FE = ["Mới tiếp nhận", "Hẹn phỏng vấn", "Đạt", "Không đạt", "Đã nhận việc"];
+        let tdActiveTab = "Tất cả";
+        let currentUserCanViewRecruitment = false;
+        let currentUserCanEditRecruitment = false;
+        let currentUserCanDeleteRecruitment = false;
         let currentUserCanViewLichLamViec = false;
         let currentUserCanEditLichLamViec = false;
         // [TAB "BẢNG CHẤM CÔNG"]
@@ -3806,6 +4010,7 @@
                 if (data.approvedChamCongDieuChinh !== undefined) approvedChamCongDieuChinhList = data.approvedChamCongDieuChinh;
                 if (data.documents) documentsData = data.documents;
                 if (data.equipment) equipmentData = data.equipment;
+                if (data.equipmentDisposal) equipmentDisposalData = data.equipmentDisposal;
                 if (data.internalDocs) internalDocsData = data.internalDocs;
                 if (data.workSchedule) workScheduleData = data.workSchedule;
                 if (data.taskAssignments) taskAssignData = data.taskAssignments;
@@ -4867,6 +5072,22 @@
             renderUserListViewForAdmin();
         }
 
+        // [MOI - TAB "QUAN LY THIET BI" - MUC "HUY THIET BI" - "NGUOI PHE DUYET"] Bat/tat quyen
+        // duoc xuat hien o o chon "Nguoi phe duyet" cho 1 tai khoan. Dung action RIENG
+        // "setPheDuyetHuyThietBiPermission" (chi ghi dung cot 32 cua sheet "TaiKhoan"), KHONG
+        // dung/gop chung voi "eqView"/"eqManage" hay bat ky quyen nao khac cua tai khoan do.
+        async function toggleUserPheDuyetHuyThietBiPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setPheDuyetHuyThietBiPermission", username: username, pheDuyetHuyThietBi: checked });
+            if (ok) {
+                userDatabase[username].pheDuyetHuyThietBi = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
         // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
         // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
@@ -5105,6 +5326,7 @@
                 } else {
                     let eqVChecked = userDatabase[u].eqView ? "checked" : "";
                     let eqMChecked = userDatabase[u].eqManage ? "checked" : "";
+                    let eqPdChecked = userDatabase[u].pheDuyetHuyThietBi ? "checked" : "";
                     eqControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <i class="fa-solid fa-toolbox" title="Quản lý Thiết bị"></i>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
@@ -5112,6 +5334,9 @@
                         </label>
                         <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
                             <input type="checkbox" style="width:auto;" ${eqMChecked} onchange="toggleUserEquipmentPermission('${safeU}', 'eqManage', this.checked)"> Khai báo/Sửa/Xóa
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;" title="Được phép xuất hiện ở ô 'Người phê duyệt' của mục 'Hủy Thiết Bị'">
+                            <input type="checkbox" style="width:auto;" ${eqPdChecked} onchange="toggleUserPheDuyetHuyThietBiPermission('${safeU}', this.checked)"> Phê duyệt hủy thiết bị
                         </label>
                     </span>`;
                 }
@@ -5686,6 +5911,7 @@
             staffData = [];
             crewData = [];
             equipmentData = [];
+            equipmentDisposalData = [];
             internalDocsData = [];
             workScheduleData = [];
             taskAssignData = [];
@@ -5750,6 +5976,18 @@
             currentUserCanSeeContractAlert = canSeeContractAlert;
             currentUserCanViewResignedContacts = canViewResignedContacts;
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
+
+            // ==== [TAB "TUYỂN DỤNG"] Dùng lại ĐÚNG quyền "Quản Lý Nhân Sự" ở trên (KHÔNG thêm
+            // cột/quyền mới trong sheet "TaiKhoan"): Xem tab/danh sách = canViewHR, Thêm/Sửa
+            // hồ sơ = canEditHRUI, Xóa hồ sơ = canDeleteHRUI. ====
+            currentUserCanViewRecruitment = canViewHR;
+            currentUserCanEditRecruitment = canEditHRUI;
+            currentUserCanDeleteRecruitment = canDeleteHRUI;
+            let elMenuRecruitment = document.getElementById("menu-recruitment");
+            if (elMenuRecruitment) elMenuRecruitment.style.display = canViewHR ? "flex" : "none";
+            let tdFormBox = document.getElementById("tuyendung-form-box");
+            if (tdFormBox) tdFormBox.style.display = canEditHRUI ? "block" : "none";
+            if (canViewHR) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
             // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
@@ -12139,6 +12377,274 @@
             }
         }
 
+        /* ========== [TAB "TUYỂN DỤNG"] ==========
+           Dữ liệu lấy từ 1 Google Sheet + Google Drive RIÊNG (không nằm trong action "getData"
+           chung) — mọi lượt gọi đều dùng action riêng, và authToken vẫn được đính kèm để server
+           xác thực/kiểm tra quyền y hệt mọi action khác trong hệ thống (dùng lại ĐÚNG quyền
+           "Quản Lý Nhân Sự" đã có sẵn — KHÔNG có quyền riêng mới). */
+
+        // Gọi 1 action bất kỳ của Tuyển dụng và trả về TOÀN BỘ dữ liệu JSON (không chỉ true/false
+        // như pushToCloud) — cần thiết vì "getRecruitmentData"/"saveRecruitmentCandidate" phải
+        // trả về danh sách hồ sơ / mã hồ sơ mới tạo cho giao diện dùng tiếp.
+        async function callRecruitmentApi(payload) {
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return null; }
+            if (authToken && !payload.authToken) payload.authToken = authToken;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await res.json();
+                if (data.status === "ERROR") throw new Error(data.message);
+                return data;
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function loadRecruitmentData() {
+            if (!currentUserCanViewRecruitment || !isScriptUrlConfigured() || !authToken) return;
+            let data = await callRecruitmentApi({ action: "getRecruitmentData" });
+            if (!data) return;
+            recruitmentData = data.candidates || [];
+            populateRecruitmentStatusSelect();
+            populateRecruitmentDeptSelect();
+            renderRecruitmentTabs();
+            renderRecruitmentTable();
+        }
+
+        function populateRecruitmentStatusSelect() {
+            let sel = document.getElementById("inp-td-trangthai");
+            if (!sel) return;
+            sel.innerHTML = TUYENDUNG_STATUS_LIST_FE.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        }
+
+        // Danh mục Phòng ban lấy đúng từ biến "depts" (đã tải sẵn từ danh mục chung của hệ
+        // thống qua action "getData" — sheet "DanhMuc", loại "Dept") — KHÔNG cho nhập tay tự do.
+        function populateRecruitmentDeptSelect() {
+            let sel = document.getElementById("inp-td-phongban");
+            if (!sel) return;
+            let current = sel.value;
+            sel.innerHTML = `<option value="">-- Chọn phòng ban --</option>` +
+                (depts || []).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            sel.value = current || "";
+        }
+
+        function tdBadgeClass(status) {
+            switch (status) {
+                case "Mới tiếp nhận": return "td-badge-moi";
+                case "Hẹn phỏng vấn": return "td-badge-hen";
+                case "Đạt": return "td-badge-dat";
+                case "Không đạt": return "td-badge-khongdat";
+                case "Đã nhận việc": return "td-badge-nhanviec";
+                default: return "td-badge-moi";
+            }
+        }
+
+        function renderRecruitmentTabs() {
+            let wrap = document.getElementById("tuyendung-tabs");
+            if (!wrap) return;
+            let allTabs = ["Tất cả"].concat(TUYENDUNG_STATUS_LIST_FE);
+            wrap.innerHTML = allTabs.map(t => {
+                let count = (t === "Tất cả") ? recruitmentData.length : recruitmentData.filter(r => r.trangThai === t).length;
+                let active = (t === tdActiveTab);
+                return `<span onclick="setRecruitmentTab('${t.replace(/'/g, "\\'")}')"
+                    style="cursor:pointer; padding:7px 14px; border-radius:16px; font-size:13px; white-space:nowrap;
+                    border:1px solid ${active ? 'var(--secondary-color)' : '#ddd'};
+                    background:${active ? 'var(--secondary-color)' : '#f5f5f5'};
+                    color:${active ? '#fff' : '#444'};">${escapeHtml(t)} (${count})</span>`;
+            }).join('');
+        }
+
+        function setRecruitmentTab(tabName) {
+            tdActiveTab = tabName;
+            renderRecruitmentTabs();
+            renderRecruitmentTable();
+        }
+
+        function renderRecruitmentTable() {
+            let tbody = document.querySelector("#tbl-tuyendung tbody");
+            if (!tbody) return;
+            let rows = (tdActiveTab === "Tất cả") ? recruitmentData.slice() : recruitmentData.filter(r => r.trangThai === tdActiveTab);
+
+            let kw = (document.getElementById("td-search")?.value || "").trim().toLowerCase();
+            if (kw) {
+                rows = rows.filter(r =>
+                    (r.hoTen || "").toLowerCase().includes(kw) ||
+                    (r.sdt || "").toLowerCase().includes(kw) ||
+                    (r.email || "").toLowerCase().includes(kw) ||
+                    (r.viTriUngTuyen || "").toLowerCase().includes(kw)
+                );
+            }
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="14" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ ứng viên nào.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(r => {
+                let cvCell = r.cvFileId
+                    ? `<a href="#" onclick="viewRecruitmentFile('${r.cvFileId}', '${escapeHtml(r.cvFileName).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(r.cvFileName)}</a>`
+                    : "-";
+
+                let actions = "";
+                if (currentUserCanEditRecruitment) actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editRecruitmentCandidate('${r.maHoSo}')" title="Sửa hồ sơ này"><i class="fa-solid fa-pen"></i> Sửa</button> `;
+                if (currentUserCanDeleteRecruitment) actions += `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteRecruitmentRow('${r.maHoSo}')" title="Xóa hồ sơ này"><i class="fa-solid fa-trash"></i> Xóa</button> `;
+
+                return `<tr>
+                    <td>${escapeHtml(r.maHoSo)}</td>
+                    <td>${escapeHtml(r.hoTen)}</td>
+                    <td>${escapeHtml(r.sdt || "")}</td>
+                    <td>${escapeHtml(r.email || "")}</td>
+                    <td>${escapeHtml(r.viTriUngTuyen)}</td>
+                    <td>${escapeHtml(r.phongBan || "")}</td>
+                    <td>${escapeHtml(r.kenhTuyenDung || "")}</td>
+                    <td><span class="td-badge ${tdBadgeClass(r.trangThai)}">${escapeHtml(r.trangThai)}</span></td>
+                    <td>${escapeHtml(r.ngayPhongVan || "")}</td>
+                    <td>${escapeHtml(r.nguoiPhongVan || "")}</td>
+                    <td>${cvCell}</td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${escapeHtml(r.ngayTao || "")}</td>
+                    <td>${actions || "-"}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function resetRecruitmentForm() {
+            document.getElementById("edit-mahoso-tuyendung").value = "";
+            document.getElementById("inp-td-hoten").value = "";
+            document.getElementById("inp-td-sdt").value = "";
+            document.getElementById("inp-td-email").value = "";
+            document.getElementById("inp-td-vitri").value = "";
+            document.getElementById("inp-td-phongban").value = "";
+            document.getElementById("inp-td-kenh").value = "";
+            document.getElementById("inp-td-trangthai").value = TUYENDUNG_STATUS_LIST_FE[0];
+            document.getElementById("inp-td-ngayphongvan").value = "";
+            document.getElementById("inp-td-nguoipv").value = "";
+            document.getElementById("inp-td-ghichu").value = "";
+            document.getElementById("inp-td-file").value = "";
+            document.getElementById("td-current-file-hint").innerText = "";
+            document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới';
+            document.getElementById("btn-cancel-edit-tuyendung").style.display = "none";
+        }
+
+        // Chuyển ngày dạng "dd/MM/yyyy" (server trả về) hoặc "yyyy-MM-dd" sang định dạng input
+        // type="date" (yyyy-MM-dd) — không tự suy diễn nếu chuỗi rỗng/không hợp lệ.
+        function tdToDateInputValue(s) {
+            if (!s) return "";
+            let str = String(s).trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+            let m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+            return "";
+        }
+
+        function editRecruitmentCandidate(maHoSo) {
+            let r = recruitmentData.find(x => x.maHoSo === maHoSo);
+            if (!r) return;
+            if (!currentUserCanEditRecruitment) { alert("⚠️ Bạn không có quyền sửa hồ sơ ứng viên. Liên hệ Admin để được cấp quyền."); return; }
+            document.getElementById("edit-mahoso-tuyendung").value = r.maHoSo;
+            document.getElementById("inp-td-hoten").value = r.hoTen || "";
+            document.getElementById("inp-td-sdt").value = r.sdt || "";
+            document.getElementById("inp-td-email").value = r.email || "";
+            document.getElementById("inp-td-vitri").value = r.viTriUngTuyen || "";
+            populateRecruitmentDeptSelect();
+            document.getElementById("inp-td-phongban").value = r.phongBan || "";
+            document.getElementById("inp-td-kenh").value = r.kenhTuyenDung || "";
+            document.getElementById("inp-td-trangthai").value = r.trangThai || TUYENDUNG_STATUS_LIST_FE[0];
+            document.getElementById("inp-td-ngayphongvan").value = tdToDateInputValue(r.ngayPhongVan);
+            document.getElementById("inp-td-nguoipv").value = r.nguoiPhongVan || "";
+            document.getElementById("inp-td-ghichu").value = r.ghiChu || "";
+            document.getElementById("inp-td-file").value = "";
+            document.getElementById("td-current-file-hint").innerText = r.cvFileName ? ("CV hiện tại: " + r.cvFileName + " (chỉ chọn file mới nếu muốn thay thế)") : "";
+            document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật hồ sơ ứng viên';
+            document.getElementById("btn-cancel-edit-tuyendung").style.display = "inline-block";
+            document.getElementById("tuyendung-form-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        async function submitRecruitmentCandidate() {
+            if (!currentUserCanEditRecruitment) { alert("⚠️ Bạn không có quyền thêm/sửa hồ sơ ứng viên. Liên hệ Admin để được cấp quyền."); return; }
+            let maHoSo = document.getElementById("edit-mahoso-tuyendung").value;
+            let hoTen = document.getElementById("inp-td-hoten").value.trim();
+            let vitri = document.getElementById("inp-td-vitri").value.trim();
+            if (!hoTen) { alert("Vui lòng nhập Họ tên ứng viên!"); return; }
+            if (!vitri) { alert("Vui lòng nhập Vị trí ứng tuyển!"); return; }
+
+            let fileInput = document.getElementById("inp-td-file");
+            let file = fileInput.files[0];
+            if (file && file.size > 25 * 1024 * 1024) { alert("File CV quá lớn (giới hạn 25MB)."); return; }
+
+            let payload = {
+                action: "saveRecruitmentCandidate",
+                maHoSo: maHoSo || undefined,
+                hoTen: hoTen,
+                sdt: document.getElementById("inp-td-sdt").value.trim(),
+                email: document.getElementById("inp-td-email").value.trim(),
+                viTriUngTuyen: vitri,
+                phongBan: document.getElementById("inp-td-phongban").value,
+                kenhTuyenDung: document.getElementById("inp-td-kenh").value.trim(),
+                trangThai: document.getElementById("inp-td-trangthai").value,
+                ngayPhongVan: document.getElementById("inp-td-ngayphongvan").value,
+                nguoiPhongVan: document.getElementById("inp-td-nguoipv").value.trim(),
+                ghiChu: document.getElementById("inp-td-ghichu").value.trim()
+            };
+
+            if (file) {
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let data = await callRecruitmentApi(payload);
+            if (data) {
+                resetRecruitmentForm();
+                await loadRecruitmentData();
+                alert("✔️ Đã lưu hồ sơ ứng viên thành công.");
+            }
+        }
+
+        async function deleteRecruitmentRow(maHoSo) {
+            if (!currentUserCanDeleteRecruitment) { alert("⚠️ Bạn không có quyền xóa hồ sơ ứng viên. Liên hệ Admin để được cấp quyền."); return; }
+            if (!confirm("Xác nhận xóa hẳn hồ sơ ứng viên này (kể cả file CV đính kèm)?")) return;
+            let data = await callRecruitmentApi({ action: "deleteRecruitmentCandidate", maHoSo: maHoSo });
+            if (data) await loadRecruitmentData();
+        }
+
+        // Mở/tải file CV đính kèm của 1 hồ sơ ứng viên qua PROXY có kiểm tra quyền — file trên
+        // Drive KHÔNG được chia sẻ công khai, server tự xác nhận người gọi có quyền "Quản Lý
+        // Nhân Sự" (hrView) và fileId thực sự thuộc 1 hồ sơ ứng viên hay không.
+        async function viewRecruitmentFile(fileId, fileName) {
+            if (!fileId) { alert("⚠️ File này chưa có dữ liệu."); return; }
+            try {
+                showSyncBanner("Đang mở file...");
+                let data = await callRecruitmentApi({ action: "getRecruitmentFileContent", fileId: fileId });
+                if (!data) return;
+                let byteChars = atob(data.fileData);
+                let byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                let byteArray = new Uint8Array(byteNumbers);
+                let blob = new Blob([byteArray], { type: data.mimeType || "application/octet-stream" });
+                let blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) {
+                alert("❌ Không thể mở file \"" + (fileName || "") + "\": " + err.message);
+                console.error(err);
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
         // [MỚI - TỔNG QUAN] Khối "Chúc mừng sinh nhật": tính nhân viên (Văn phòng + Đội tàu)
         // ĐANG LÀM VIỆC có sinh nhật HÔM NAY hoặc trong vòng 7 ngày tới ("Tuần này"), dựa trên
         // staffData/crewData ĐÃ CÓ SẴN trong trình duyệt (không gọi thêm gì tới server).
@@ -12338,6 +12844,7 @@
             populateEquipmentFormOptions();
             populateGiaoViecFormOptions();
             renderEquipmentTable();
+            renderEquipmentDisposalTable();
             renderTaskAssignTable();
             renderMyTaskTable();
             updateNhanViecBadge();
@@ -13492,6 +13999,10 @@
                 setEquipmentWarehouseMode("in");
                 whModeEl.dataset.inited = "1";
             }
+
+            // [MỚI - MỤC "HỦY THIẾT BỊ"] Đổ danh mục Nhóm thiết bị/Tình trạng (chỉ 1 lần) — dùng
+            // chung datalist "eq-all-code-list" đã đổ ở trên (populateEquipmentAllCodeList).
+            fillEquipmentDisposalDropdowns();
         }
 
         // Chọn Phòng làm việc ở form khai báo -> lọc lại danh sách nhân viên chỉ còn người của phòng đó
@@ -14181,6 +14692,252 @@
             if (statusSel) statusSel.value = "Mới";
             setEquipmentWarehouseMode(document.getElementById("eq-wh-mode") ? (document.getElementById("eq-wh-mode").value || "in") : "in");
             populateEquipmentWarehouseCodeList();
+        }
+
+        /* ===== [MỚI - MỤC "HỦY THIẾT BỊ"] =====
+           Khối form RIÊNG, dùng action MỚI "saveEquipmentDisposal"/"deleteEquipmentDisposal" ở
+           Code.gs (lưu vào sheet RIÊNG "ThietBiHuy" — KHÔNG đụng/ghi đè sheet "ThietBi"), cùng
+           mức quyền "canManageEquipment" đang áp dụng cho toàn bộ Tab "Quản lý Thiết bị". */
+
+        // Đổ danh mục Nhóm thiết bị & Tình trạng cho form Hủy Thiết Bị (chỉ đổ 1 lần).
+        function fillEquipmentDisposalDropdowns() {
+            let catSel = document.getElementById("inp-eq-disposal-cat");
+            if (catSel && !catSel.options.length) {
+                catSel.innerHTML = EQUIPMENT_TYPES.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                onEqDisposalCategoryChange();
+            }
+            let statusSel = document.getElementById("inp-eq-disposal-status");
+            if (statusSel && !statusSel.options.length) {
+                statusSel.innerHTML = EQUIPMENT_STATUS.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+                statusSel.value = "Đã hủy";
+            }
+            let apvSel = document.getElementById("inp-eq-disposal-approver");
+            if (apvSel && apvSel.options.length <= 1) loadEquipmentDisposalApprovers();
+        }
+
+        // [MOI - MUC "HUY THIET BI" - "NGUOI PHE DUYET"] Tai danh sach username duoc phep chon
+        // lam "Nguoi phe duyet" (chi Admin/tai khoan da duoc cap quyen "PheDuyetHuyThietBi" -
+        // xem action "getPheDuyetHuyThietBiList" o Code.gs, kiem tra lai O SERVER khi luu nen
+        // khong the bi bo qua du sua thang HTML). Giu lai gia tri dang chon (neu co) sau khi
+        // do lai danh sach, tranh mat lua chon dang do khi dang sua 1 dong da co.
+        async function loadEquipmentDisposalApprovers() {
+            let sel = document.getElementById("inp-eq-disposal-approver");
+            if (!sel) return;
+            let keepValue = sel.value;
+            let result = await callServerAction({ action: "getPheDuyetHuyThietBiList" });
+            if (result && result.status === "SUCCESS") equipmentDisposalApprovers = result.usernames || [];
+            sel.innerHTML = '<option value="">-- Chưa chọn --</option>' +
+                equipmentDisposalApprovers.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+            if (keepValue && equipmentDisposalApprovers.includes(keepValue)) sel.value = keepValue;
+        }
+
+        // Đổi Nhóm thiết bị -> đổ lại danh sách Loại chi tiết tương ứng với nhóm đó.
+        function onEqDisposalCategoryChange() {
+            let catSel = document.getElementById("inp-eq-disposal-cat");
+            let subSel = document.getElementById("inp-eq-disposal-subtype");
+            if (!catSel || !subSel) return;
+            let subtypes = EQUIPMENT_CATEGORIES[catSel.value] || [];
+            subSel.innerHTML = subtypes.length
+                ? '<option value="">-- Chọn loại chi tiết --</option>' + subtypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
+                : '<option value="">(không có)</option>';
+        }
+
+        // Gõ đúng 1 Mã số thiết bị ĐÃ TỒN TẠI (trong equipmentData, dùng LẠI đúng datalist
+        // "eq-all-code-list" đã có) -> tự động đổ lại Nhóm/Loại chi tiết/Tên/Tình trạng/ĐVT/Số
+        // lượng hiện có của thiết bị đó lên form, để không phải gõ tay lại từ đầu. Mã CHƯA có
+        // trong hệ thống -> không đổi gì (vẫn cho phép khai báo hủy thủ công 1 thiết bị không có
+        // sẵn trong danh sách cấp phát/lưu kho, VD thiết bị cũ chưa từng được khai báo).
+        function onEqDisposalCodeChange() {
+            let codeEl = document.getElementById("inp-eq-disposal-code");
+            let code = codeEl ? codeEl.value.trim() : "";
+            if (!code) return;
+            let d = equipmentData.find(item => String(item.assetCode || "").trim().toLowerCase() === code.toLowerCase());
+            if (!d) return;
+            fillEquipmentDisposalDropdowns();
+            document.getElementById("inp-eq-disposal-cat").value = d.type || EQUIPMENT_TYPES[0];
+            onEqDisposalCategoryChange();
+            if (d.chiTiet) document.getElementById("inp-eq-disposal-subtype").value = d.chiTiet;
+            document.getElementById("inp-eq-disposal-name").value = d.name || "";
+            document.getElementById("inp-eq-disposal-status").value = "Đã hủy";
+            document.getElementById("inp-eq-disposal-unit").value = d.unit || "Cái";
+            document.getElementById("inp-eq-disposal-qty").value = d.qty || 1;
+        }
+
+        // Lưu (thêm mới hoặc cập nhật nếu Mã số ĐÃ có trong "ThietBiHuy") 1 lượt khai báo hủy thiết
+        // bị. Nếu có chọn file đính kèm mới, chuyển sang Base64 rồi gửi kèm (server tự tải lên
+        // Drive ở chế độ RIÊNG TƯ và chuyển file cũ — nếu có — vào Thùng rác, y hệt cơ chế đang
+        // dùng cho "saveInternalDocument").
+        async function saveEquipmentDisposal() {
+            let editCode = document.getElementById("edit-code-eq-disposal").value;
+            let code = editCode || document.getElementById("inp-eq-disposal-code").value.trim();
+            let name = document.getElementById("inp-eq-disposal-name").value.trim();
+            let ngayHuy = document.getElementById("inp-eq-disposal-date").value;
+            if (!code || !name) { alert("⚠️ Vui lòng điền đầy đủ Mã số thiết bị và Tên thiết bị."); return; }
+            if (!ngayHuy) { alert("⚠️ Vui lòng chọn Ngày hủy thiết bị."); return; }
+            if (!isScriptUrlConfigured()) { alert("Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return; }
+
+            if (!editCode && equipmentDisposalData.some(item => String(item.assetCode || "").trim().toLowerCase() === code.toLowerCase())) {
+                alert("⚠️ Mã số thiết bị này đã có trong danh sách Hủy Thiết Bị. Vui lòng sửa lượt khai báo hiện có thay vì thêm mới.");
+                return;
+            }
+
+            let payload = {
+                action: "saveEquipmentDisposal",
+                assetCode: code,
+                name: name,
+                group: document.getElementById("inp-eq-disposal-cat").value,
+                chiTiet: document.getElementById("inp-eq-disposal-subtype").value,
+                status: document.getElementById("inp-eq-disposal-status").value,
+                unit: document.getElementById("inp-eq-disposal-unit").value.trim(),
+                qty: parseFloat(document.getElementById("inp-eq-disposal-qty").value) || 1,
+                ngayHuy: ngayHuy,
+                reason: document.getElementById("inp-eq-disposal-reason").value.trim(),
+                note: document.getElementById("inp-eq-disposal-note").value.trim(),
+                approver: document.getElementById("inp-eq-disposal-approver") ? document.getElementById("inp-eq-disposal-approver").value : ""
+            };
+
+            let fileInput = document.getElementById("inp-eq-disposal-file");
+            let file = fileInput ? fileInput.files[0] : null;
+            if (file) {
+                if (file.size > 15 * 1024 * 1024) { alert("File quá lớn (giới hạn 15MB)."); return; }
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let ok = await pushToCloud(payload);
+            if (ok) {
+                await loadFromCloud(true);
+                resetEquipmentDisposalForm();
+                updateSystemData();
+                alert("✔️ Đã lưu thông tin Hủy Thiết Bị lên hệ thống.");
+            }
+        }
+
+        async function startEditEquipmentDisposal(idx) {
+            let d = equipmentDisposalData[idx];
+            if (!d) return;
+            fillEquipmentDisposalDropdowns();
+            document.getElementById("edit-code-eq-disposal").value = d.assetCode;
+            document.getElementById("eq-disposal-form-title").innerHTML =
+                `<i class="fa-solid fa-pen" style="color:orange;"></i> Sửa khai báo hủy: ${escapeHtml(d.name)}`;
+            document.getElementById("inp-eq-disposal-code").value = d.assetCode || "";
+            document.getElementById("inp-eq-disposal-cat").value = d.group || EQUIPMENT_TYPES[0];
+            onEqDisposalCategoryChange();
+            if (d.chiTiet) document.getElementById("inp-eq-disposal-subtype").value = d.chiTiet;
+            document.getElementById("inp-eq-disposal-name").value = d.name || "";
+            document.getElementById("inp-eq-disposal-status").value = d.status || "Đã hủy";
+            document.getElementById("inp-eq-disposal-unit").value = d.unit || "Cái";
+            document.getElementById("inp-eq-disposal-qty").value = d.qty || 1;
+            document.getElementById("inp-eq-disposal-date").value = toDateInputValue(d.ngayHuy);
+            document.getElementById("inp-eq-disposal-reason").value = d.reason || "";
+            document.getElementById("inp-eq-disposal-note").value = d.note || "";
+            // [MOI - "NGUOI PHE DUYET"] Dam bao danh sach da tai xong roi moi gan lai gia tri
+            // dang chon cua dong nay (tranh truong hop dropdown con rong do dang tai bat dong bo).
+            await loadEquipmentDisposalApprovers();
+            let apvSel = document.getElementById("inp-eq-disposal-approver");
+            if (apvSel) apvSel.value = d.approver || "";
+            document.getElementById("inp-eq-disposal-file").value = "";
+            document.getElementById("eq-disposal-current-file-hint").innerText = d.fileName
+                ? `File hiện tại: ${d.fileName} (chỉ chọn file mới nếu muốn thay thế)`
+                : "Chưa có file nào được tải lên.";
+            document.getElementById("btn-cancel-edit-eq-disposal").style.display = "inline-block";
+            document.getElementById("eq-disposal-box").scrollIntoView({ behavior: "smooth" });
+        }
+
+        function resetEquipmentDisposalForm() {
+            document.getElementById("edit-code-eq-disposal").value = "";
+            document.getElementById("eq-disposal-form-title").innerHTML = `<i class="fa-solid fa-trash-can-arrow-up"></i> Hủy Thiết Bị`;
+            document.getElementById("inp-eq-disposal-code").value = "";
+            document.getElementById("inp-eq-disposal-name").value = "";
+            document.getElementById("inp-eq-disposal-unit").value = "Cái";
+            document.getElementById("inp-eq-disposal-qty").value = 1;
+            document.getElementById("inp-eq-disposal-date").value = "";
+            document.getElementById("inp-eq-disposal-reason").value = "";
+            document.getElementById("inp-eq-disposal-note").value = "";
+            let apvSelReset = document.getElementById("inp-eq-disposal-approver");
+            if (apvSelReset) apvSelReset.value = "";
+            document.getElementById("inp-eq-disposal-file").value = "";
+            document.getElementById("eq-disposal-current-file-hint").innerText = "";
+            document.getElementById("btn-cancel-edit-eq-disposal").style.display = "none";
+            fillEquipmentDisposalDropdowns();
+            let catSel = document.getElementById("inp-eq-disposal-cat");
+            if (catSel) catSel.selectedIndex = 0;
+            onEqDisposalCategoryChange();
+            let statusSel = document.getElementById("inp-eq-disposal-status");
+            if (statusSel) statusSel.value = "Đã hủy";
+        }
+
+        async function deleteEquipmentDisposalRow(idx) {
+            let d = equipmentDisposalData[idx];
+            if (!d) return;
+            if (!confirm(`Xác nhận xóa khai báo hủy thiết bị "${d.name}" (${d.assetCode})?`)) return;
+            let ok = await pushToCloud({ action: "deleteEquipmentDisposal", assetCode: d.assetCode });
+            if (ok) {
+                await loadFromCloud(true);
+                updateSystemData();
+            }
+        }
+
+        function renderEquipmentDisposalTable() {
+            let canEdit = (currentUser && (currentUser.role === "Admin" || !!currentUser.eqManage));
+            let boxEl = document.getElementById("eq-disposal-box");
+            if (boxEl) boxEl.style.display = canEdit ? "block" : "none";
+
+            let rowsHtml = equipmentDisposalData.map((d, idx) => {
+                let fileHtml = d.fileId
+                    ? `<a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(d.fileId)}', '${escapeHtml(d.fileName || 'file')}', 'equipmentDisposal')"><i class="fa-solid fa-file-arrow-down"></i> ${escapeHtml(d.fileName || "Xem file")}</a>`
+                    : `<span style="color:#999;">Chưa có file</span>`;
+                let typeLabel = d.group ? (d.group + (d.chiTiet ? ` - ${d.chiTiet}` : "")) : (d.chiTiet || "");
+                let actionsHtml = canEdit ? `
+                    <button class="btn btn-sm btn-warning" onclick="startEditEquipmentDisposal(${idx})"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteEquipmentDisposalRow(${idx})"><i class="fa-solid fa-trash"></i></button>
+                ` : "";
+                return `
+                    <tr>
+                        <td><b>${escapeHtml(d.assetCode)}</b></td>
+                        <td>${escapeHtml(d.group)}</td>
+                        <td>${escapeHtml(d.chiTiet)}</td>
+                        <td>${escapeHtml(d.name)}</td>
+                        <td>${escapeHtml(d.status)}</td>
+                        <td>${escapeHtml(d.unit)}</td>
+                        <td>${escapeHtml(d.qty)}</td>
+                        <td>${formatDateDisplay(d.ngayHuy)}</td>
+                        <td>${escapeHtml(d.reason)}</td>
+                        <td>${fileHtml}</td>
+                        <td>${escapeHtml(d.approver) || '<span style="color:#999;">Chưa chọn</span>'}</td>
+                        <td>${escapeHtml(d.note)}</td>
+                        <td style="display:${canEdit ? '' : 'none'}">${actionsHtml}</td>
+                    </tr>`;
+            }).join('');
+
+            document.querySelector("#tbl-equipment-disposal tbody").innerHTML = rowsHtml ||
+                `<tr><td colspan="12" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo hủy.</td></tr>`;
+
+            filterEquipmentDisposalTable();
+        }
+
+        function filterEquipmentDisposalTable() {
+            let searchEl = document.getElementById("search-eq-disposal");
+            if (!searchEl) return;
+            let search = (searchEl.value || "").toLowerCase();
+            let rows = document.querySelectorAll("#tbl-equipment-disposal tbody tr");
+
+            equipmentDisposalData.forEach((d, idx) => {
+                if (!rows[idx]) return;
+                let match = !search ||
+                    (d.assetCode || "").toLowerCase().includes(search) ||
+                    (d.name || "").toLowerCase().includes(search) ||
+                    (d.reason || "").toLowerCase().includes(search);
+                rows[idx].style.display = match ? "" : "none";
+            });
         }
 
         // [THIẾT BỊ DÙNG CHUNG] Đổi Nhóm thiết bị -> đổ lại danh sách Loại chi tiết tương ứng, dùng
