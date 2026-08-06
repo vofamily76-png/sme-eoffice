@@ -1207,23 +1207,31 @@
                             <label>Ghi chú</label>
                             <input type="text" id="inp-td-ghichu" placeholder="Ghi chú thêm (nếu có)...">
                         </div>
-                        <!-- [MỚI - CHỈ ADMIN THẤY] "Người đánh giá": Admin chọn 1 tài khoản user (trong
-                             danh sách tài khoản hiện có của hệ thống) để giao phụ trách đánh giá hồ sơ
-                             ứng viên này. Ẩn hoàn toàn với tài khoản không phải Admin (kể cả có quyền
-                             Sửa hồ sơ ứng viên) - xem toggleRecruitmentAdminFieldsVisibility(). Server
-                             cũng CHỈ chấp nhận cập nhật trường này khi người gọi action thực sự là
-                             Admin (xem saveRecruitmentCandidate ở Code.gs) - không thể bị bỏ qua dù gọi
-                             thẳng API. -->
-                        <div class="input-group" id="td-nguoidanhgia-group" style="display:none; grid-column: 1 / -1;">
-                            <label>Người đánh giá <span style="font-weight:400; color:#888; font-size:12px;">(chỉ Admin thấy/sửa được mục này)</span></label>
-                            <select id="inp-td-nguoidanhgia"><option value="">-- Chọn tài khoản phụ trách đánh giá --</option></select>
-                        </div>
                     </div>
                     <div class="form-row" style="margin-top:10px">
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
                             <button class="btn btn-success" style="width:auto;" onclick="submitRecruitmentCandidate()">Lưu hồ sơ ✔️</button>
                             <button class="btn btn-danger" id="btn-cancel-edit-tuyendung" onclick="resetRecruitmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
+                    </div>
+
+                    <!-- [MỚI - TÁCH THÀNH MỤC RIÊNG, CHỈ ADMIN THẤY, CHO CHỌN CÙNG LÚC NHIỀU NGƯỜI]
+                         "Người đánh giá được giao": tách hẳn khỏi form Thêm/Sửa hồ sơ ở trên - đây là
+                         1 THAO TÁC RIÊNG (action "saveRecruitmentAssignedEvaluators" ở Code.gs, có nút
+                         Lưu RIÊNG), không còn gửi kèm mỗi khi Lưu hồ sơ nữa - giống hệt cách mục "Người
+                         được phê duyệt" ở Tab "Đăng ký nghỉ phép" đã tách riêng. Ẩn hoàn toàn với tài
+                         khoản không phải Admin (kể cả có quyền Sửa hồ sơ ứng viên) - xem
+                         applyUserPermissions(). Chỉ áp dụng được cho 1 hồ sơ ĐANG Ở CHẾ ĐỘ SỬA (bấm nút
+                         "Sửa" ở bảng danh sách trước) - khi đang ở chế độ Thêm mới (chưa có Mã hồ sơ) thì
+                         hiện gợi ý và khóa lại. Cho phép TICK CHỌN CÙNG LÚC NHIỀU tài khoản (dùng lại
+                         đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ thống,
+                         giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ phép"). -->
+                    <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
+                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(mục riêng, chỉ Admin thấy/sửa được - có thể chọn cùng lúc nhiều người)</span></h4>
+                        <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
+                        <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
+                        <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
+                        <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
                     </div>
                 </div>
 
@@ -6051,11 +6059,14 @@
             if (elMenuRecruitment) elMenuRecruitment.style.display = canViewHR ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
             if (tdFormBox) tdFormBox.style.display = canEditHRUI ? "block" : "none";
-            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN THẤY] Ẩn/hiện khối chọn "Người đánh giá"
-            // theo đúng Role đang đăng nhập (KHÔNG dùng quyền canEditHRUI - dù có quyền Sửa hồ
-            // sơ ứng viên, tài khoản không phải Admin vẫn KHÔNG thấy mục này).
-            let tdNguoiDanhGiaGroup = document.getElementById("td-nguoidanhgia-group");
-            if (tdNguoiDanhGiaGroup) tdNguoiDanhGiaGroup.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO", TÁCH RIÊNG, CHỈ ADMIN THẤY] Ẩn/hiện khối
+            // riêng "td-nguoidanhgia-box" theo đúng Role đang đăng nhập (KHÔNG dùng quyền
+            // canEditHRUI - dù có quyền Sửa hồ sơ ứng viên, tài khoản không phải Admin vẫn KHÔNG
+            // thấy mục này). Gọi lại với hồ sơ đang Sửa trên form hiện tại (nếu có) để không mất
+            // trạng thái khi applyUserPermissions() được gọi lại (VD sau khi đồng bộ dữ liệu).
+            let tdMaHoSoHienTai = document.getElementById("edit-mahoso-tuyendung");
+            let tdHoTenHienTai = document.getElementById("inp-td-hoten");
+            toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai ? tdMaHoSoHienTai.value : "", tdHoTenHienTai ? tdHoTenHienTai.value : "");
             if (canViewHR) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
@@ -12482,7 +12493,6 @@
             populateRecruitmentStatusSelect();
             populateRecruitmentDeptSelect();
             populateRecruitmentInterviewRoomSelect();
-            populateRecruitmentNguoiDanhGiaSelect();
             renderRecruitmentTabs();
             renderRecruitmentTable();
         }
@@ -12521,20 +12531,50 @@
             sel.value = current || "";
         }
 
-        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN THẤY/DÙNG] Danh sách tài khoản lấy lại từ
-        // "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm action mới để liệt kê tài khoản) —
-        // dùng CHUNG kỹ thuật với populateAdminCtvNguoiPheDuyetSettingsList() ở tính năng khác.
-        // Với tài khoản không phải Admin, userDatabase rỗng/không có -> select này cũng rỗng,
-        // nhưng khối chứa nó đã bị ẩn hoàn toàn (xem toggle ở applyPermissions), nên không ảnh
-        // hưởng gì tới trải nghiệm của tài khoản không phải Admin.
-        function populateRecruitmentNguoiDanhGiaSelect() {
-            let sel = document.getElementById("inp-td-nguoidanhgia");
-            if (!sel) return;
-            let current = sel.value;
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG + CHỌN NHIỀU NGƯỜI, CHỈ ADMIN
+        // THẤY/DÙNG] Vẽ danh sách tài khoản thành CHECKBOX nhiều lựa chọn (dùng lại đúng class
+        // "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ thống, giống khung chọn
+        // nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ phép" - xem populateAdminApprovalSettingsList()).
+        // Danh sách tài khoản lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm
+        // action mới để liệt kê tài khoản). Tick sẵn đúng những tài khoản đang có trong
+        // "selectedArr" (mảng username đã gán trước đó của hồ sơ đang sửa, có thể rỗng).
+        function populateRecruitmentNguoiDanhGiaCheckboxes(selectedArr) {
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            let selected = Array.isArray(selectedArr) ? selectedArr : [];
             let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
-            sel.innerHTML = `<option value="">-- Chọn tài khoản phụ trách đánh giá --</option>` +
-                allUsernames.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
-            sel.value = current || "";
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${selected.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("");
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG] Ẩn/hiện + khóa/mở khối chọn "Người
+        // đánh giá được giao" tùy theo: (1) tài khoản đang đăng nhập có phải Admin hay không -
+        // ẩn hoàn toàn với tài khoản không phải Admin (giống hệt hành vi cũ); (2) hồ sơ hiện có
+        // đang ở chế độ SỬA (có Mã hồ sơ) hay THÊM MỚI (chưa có Mã hồ sơ, chưa lưu lần nào) - vì
+        // mục này gắn với 1 hồ sơ ĐÃ TỒN TẠI, nên khi đang thêm mới sẽ hiện gợi ý + khóa nút Lưu
+        // lại thay vì cho thao tác ngay (tránh gán nhầm cho hồ sơ khác/hồ sơ chưa tồn tại).
+        function toggleRecruitmentNguoiDanhGiaBox(maHoSo, hoTen) {
+            let box = document.getElementById("td-nguoidanhgia-box");
+            if (!box) return;
+            let showBox = !!(currentUser && currentUser.role === "Admin");
+            box.style.display = showBox ? "block" : "none";
+            if (!showBox) return;
+            let hintEl = document.getElementById("td-nguoidanhgia-target-hint");
+            let saveBtn = document.getElementById("btn-save-td-nguoidanhgia");
+            if (maHoSo) {
+                if (hintEl) hintEl.innerHTML = 'Đang gán cho hồ sơ: <b>' + escapeHtml(hoTen || "") + '</b> (Mã hồ sơ: ' + escapeHtml(maHoSo) + ')';
+                if (saveBtn) saveBtn.disabled = false;
+            } else {
+                if (hintEl) hintEl.innerHTML = '<i>Vui lòng bấm "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới trước, sau đó quay lại đây để gán người đánh giá cho đúng hồ sơ đó.</i>';
+                if (saveBtn) saveBtn.disabled = true;
+                let box2 = document.getElementById("td-nguoidanhgia-list");
+                if (box2) box2.innerHTML = "";
+            }
         }
 
         function tdBadgeClass(status) {
@@ -12647,7 +12687,7 @@
                     <td>${escapeHtml(r.ngayTao || "")}</td>
                     <td>${escapeHtml(r.ngayNhanViec ? formatDateDisplay(r.ngayNhanViec) : "")}</td>
                     <td>${danhGiaCell || "-"}</td>
-                    <td>${escapeHtml(r.nguoiDuocGiaoDanhGia || "-")}</td>
+                    <td>${escapeHtml((r.nguoiDuocGiaoDanhGia || []).join(", ") || "-")}</td>
                     <td>${actions || "-"}</td>
                 </tr>`;
             }).join('');
@@ -12669,8 +12709,9 @@
             document.getElementById("inp-td-ghichu").value = "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = "";
-            let elNguoiDanhGiaReset = document.getElementById("inp-td-nguoidanhgia");
-            if (elNguoiDanhGiaReset) { populateRecruitmentNguoiDanhGiaSelect(); elNguoiDanhGiaReset.value = ""; }
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" TÁCH RIÊNG] Đang Thêm hồ sơ MỚI (chưa có Mã hồ
+            // sơ) -> khối này chưa áp dụng được cho hồ sơ nào, hiện gợi ý + khóa nút Lưu lại.
+            toggleRecruitmentNguoiDanhGiaBox("", "");
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "none";
         }
@@ -12706,8 +12747,12 @@
             document.getElementById("inp-td-ghichu").value = r.ghiChu || "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = r.cvFileName ? ("CV hiện tại: " + r.cvFileName + " (chỉ chọn file mới nếu muốn thay thế)") : "";
-            let elNguoiDanhGiaEdit = document.getElementById("inp-td-nguoidanhgia");
-            if (elNguoiDanhGiaEdit) { populateRecruitmentNguoiDanhGiaSelect(); elNguoiDanhGiaEdit.value = r.nguoiDuocGiaoDanhGia || ""; }
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" TÁCH RIÊNG] Gắn khối chọn người đánh giá vào
+            // đúng hồ sơ đang Sửa, tick sẵn những tài khoản đã gán trước đó (r.nguoiDuocGiaoDanhGia
+            // nay LUÔN là mảng - kể cả dữ liệu cũ chỉ có 1 người, xem parseNguoiDuocGiaoDanhGiaArr_
+            // ở Code.gs).
+            toggleRecruitmentNguoiDanhGiaBox(r.maHoSo, r.hoTen);
+            populateRecruitmentNguoiDanhGiaCheckboxes(r.nguoiDuocGiaoDanhGia || []);
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật hồ sơ ứng viên';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "inline-block";
             document.getElementById("tuyendung-form-box").scrollIntoView({ behavior: "smooth" });
@@ -12741,15 +12786,9 @@
                 ghiChu: document.getElementById("inp-td-ghichu").value.trim()
             };
 
-            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ", CHỈ ADMIN] CHỈ gửi trường này lên server khi tài khoản
-            // đang đăng nhập đúng là Admin (khối chứa input này cũng bị ẩn hoàn toàn với tài
-            // khoản không phải Admin — xem toggle ở applyPermissions). Server (Code.gs, hàm
-            // saveRecruitmentCandidate) VẪN TỰ kiểm tra lại đúng Role của người gọi action trước
-            // khi ghi giá trị này — không thể bị bỏ qua dù gọi thẳng API với Role giả mạo.
-            if (currentUser && currentUser.role === "Admin") {
-                let elNguoiDanhGiaSubmit = document.getElementById("inp-td-nguoidanhgia");
-                if (elNguoiDanhGiaSubmit) payload.nguoiDuocGiaoDanhGia = elNguoiDanhGiaSubmit.value;
-            }
+            // [CẬP NHẬT - TÁCH RIÊNG] "Người đánh giá được giao" KHÔNG còn gửi kèm ở đây nữa —
+            // nay là 1 thao tác/action RIÊNG (xem hàm saveRecruitmentAssignedEvaluators() bên
+            // dưới + khối "td-nguoidanhgia-box"), có nút "Lưu người đánh giá" độc lập.
 
             if (file) {
                 let base64Data = await new Promise((resolve, reject) => {
@@ -12769,6 +12808,38 @@
                 resetRecruitmentForm();
                 await loadRecruitmentData();
                 alert("✔️ Đã lưu hồ sơ ứng viên thành công.");
+            }
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG + CHỌN NHIỀU NGƯỜI, CHỈ ADMIN] Lưu
+        // danh sách tài khoản (có thể chọn CÙNG LÚC NHIỀU người) được giao phụ trách đánh giá hồ
+        // sơ ứng viên ĐANG SỬA trên form (action RIÊNG "saveRecruitmentAssignedEvaluators" ở
+        // Code.gs — server tự kiểm tra lại đúng Role Admin, không thể bị bỏ qua dù gọi thẳng
+        // API). Gửi mảng RỖNG (bỏ tick hết) = chủ động xóa hết người đánh giá đã gán, hợp lệ.
+        async function saveRecruitmentAssignedEvaluators() {
+            if (!currentUser || currentUser.role !== "Admin") return;
+            let maHoSo = document.getElementById("edit-mahoso-tuyendung").value;
+            if (!maHoSo) { alert("⚠️ Vui lòng bấm \"Sửa\" ở 1 hồ sơ ứng viên trước khi gán người đánh giá."); return; }
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            let statusEl = document.getElementById("td-nguoidanhgia-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let data = await callRecruitmentApi({ action: "saveRecruitmentAssignedEvaluators", maHoSo: maHoSo, nguoiDuocGiaoDanhGia: usernames });
+            if (data) {
+                // Cập nhật ngay dữ liệu đang hiển thị trong bảng, không cần tải lại cả trang.
+                let r = recruitmentData.find(x => x.maHoSo === maHoSo);
+                if (r) r.nguoiDuocGiaoDanhGia = usernames;
+                renderRecruitmentTable();
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " người đánh giá được giao).")
+                        : "✅ Đã lưu (KHÔNG gán ai).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                }
+            } else if (statusEl) {
+                statusEl.style.color = "#c62828";
+                statusEl.innerText = "❌ Lưu thất bại, vui lòng thử lại.";
             }
         }
 
