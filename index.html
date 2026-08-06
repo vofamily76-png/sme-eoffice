@@ -1182,9 +1182,21 @@
                             <label>Ngày phỏng vấn</label>
                             <input type="date" id="inp-td-ngayphongvan">
                         </div>
+                        <!-- [SỬA] "Người phỏng vấn" (nhập tay tự do) -> "Phòng phỏng vấn" (chọn từ đúng
+                             danh mục Phòng ban hiện có của hệ thống, y hệt "Phòng ban" ở trên - KHÔNG
+                             cho nhập tay tự do nữa). Field/khóa dữ liệu gửi lên server ("nguoiPhongVan")
+                             GIỮ NGUYÊN để KHÔNG đổi cấu trúc cột trên Google Sheet, KHÔNG mất dữ liệu
+                             cũ đã lưu trước đây (dữ liệu cũ vẫn hiển thị lại bình thường nếu trùng tên
+                             1 phòng ban hiện có, hoặc vẫn được giữ nguyên trong Sheet nếu không trùng). -->
                         <div class="input-group">
-                            <label>Người phỏng vấn</label>
-                            <input type="text" id="inp-td-nguoipv" placeholder="Tên người phụ trách phỏng vấn">
+                            <label>Phòng phỏng vấn</label>
+                            <select id="inp-td-nguoipv"><option value="">-- Chọn phòng phỏng vấn --</option></select>
+                        </div>
+                        <!-- [MỚI] "Ngày nhận việc" - ghi nhận ngày ứng viên chính thức nhận việc (thường
+                             điền sau khi đã "Chuyển nhân sự"), tách biệt hoàn toàn với "Ngày phỏng vấn". -->
+                        <div class="input-group">
+                            <label>Ngày nhận việc</label>
+                            <input type="date" id="inp-td-ngaynhanviec">
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label>File CV đính kèm</label>
@@ -1202,6 +1214,25 @@
                             <button class="btn btn-danger" id="btn-cancel-edit-tuyendung" onclick="resetRecruitmentForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
                         </div>
                     </div>
+
+                    <!-- [MỚI - TÁCH THÀNH MỤC RIÊNG, CHỈ ADMIN THẤY, CHO CHỌN CÙNG LÚC NHIỀU NGƯỜI]
+                         "Người đánh giá được giao": tách hẳn khỏi form Thêm/Sửa hồ sơ ở trên - đây là
+                         1 THAO TÁC RIÊNG (action "saveRecruitmentAssignedEvaluators" ở Code.gs, có nút
+                         Lưu RIÊNG), không còn gửi kèm mỗi khi Lưu hồ sơ nữa - giống hệt cách mục "Người
+                         được phê duyệt" ở Tab "Đăng ký nghỉ phép" đã tách riêng. Ẩn hoàn toàn với tài
+                         khoản không phải Admin (kể cả có quyền Sửa hồ sơ ứng viên) - xem
+                         applyUserPermissions(). Chỉ áp dụng được cho 1 hồ sơ ĐANG Ở CHẾ ĐỘ SỬA (bấm nút
+                         "Sửa" ở bảng danh sách trước) - khi đang ở chế độ Thêm mới (chưa có Mã hồ sơ) thì
+                         hiện gợi ý và khóa lại. Cho phép TICK CHỌN CÙNG LÚC NHIỀU tài khoản (dùng lại
+                         đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ thống,
+                         giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ phép"). -->
+                    <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
+                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(mục riêng, chỉ Admin thấy/sửa được - có thể chọn cùng lúc nhiều người)</span></h4>
+                        <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
+                        <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
+                        <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
+                        <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
+                    </div>
                 </div>
 
                 <div class="form-row" style="margin: 16px 0; align-items:flex-end;">
@@ -1217,8 +1248,9 @@
                     <thead><tr>
                         <th>Mã hồ sơ</th><th>Họ tên</th><th>SĐT</th><th>Email</th><th>Vị trí ứng tuyển</th>
                         <th>Phòng ban</th><th>Kênh tuyển dụng</th><th>Trạng thái</th><th>Ngày phỏng vấn</th>
-                        <th>Người phỏng vấn</th><th>CV</th><th>Ghi chú</th><th>Ngày tạo</th>
-                        <th>Đánh giá ứng viên</th>
+                        <th>Phòng phỏng vấn</th><th>Kết quả phỏng vấn</th><th>CV</th><th>Ghi chú</th><th>Ngày tạo</th>
+                        <th>Ngày nhận việc</th>
+                        <th>Đánh giá ứng viên</th><th>Người đánh giá (được giao)</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -3364,6 +3396,60 @@
     <script>
         let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
+        // [SỬA LỖI ĐỒNG BỘ - "Unexpected token '<', ..."] Lỗi này xảy ra khi trình duyệt gọi
+        // res.json() nhưng phản hồi trả về KHÔNG PHẢI JSON mà là HTML (bắt đầu bằng ký tự "<").
+        // Đây KHÔNG phải lỗi trong logic action/dữ liệu của code.gs (doGet/doPost ở đó đã tự bọc
+        // try/catch và luôn trả JSON hợp lệ) — nguyên nhân hầu như luôn nằm ở TẦNG TRIỂN KHAI
+        // (deploy) của Google Apps Script. Hàm dùng chung dưới đây thay cho việc gọi thẳng
+        // res.json() ở khắp nơi: đọc phản hồi dạng text trước, thử parse JSON, và nếu thất bại
+        // thì ném ra 1 thông báo lỗi RÕ RÀNG, dễ hiểu (thay vì thông báo kỹ thuật khó hiểu
+        // "Unexpected token '<'") — PHÂN BIỆT RÕ theo đúng mã HTTP trả về để chỉ thẳng nguyên
+        // nhân (thay vì liệt kê chung chung mọi khả năng), để Admin biết ngay hướng xử lý:
+        //   - HTTP 404 ("Not found"): URL Web App ĐANG LƯU KHÔNG TỒN TẠI trên Google — do dán
+        //     sai URL, hoặc bản Triển khai (Deployment) tương ứng ĐÃ BỊ XÓA/thu hồi. Đây là
+        //     nguyên nhân CHẮC CHẮN NHẤT khi gặp mã 404 (khác với các mã khác bên dưới).
+        //   - HTTP 401/403 ("Unauthorized"/"Forbidden"), hoặc HTTP 200 nhưng nội dung là trang
+        //     đăng nhập Google: quyền truy cập Web App chưa đặt "Anyone"/"Bất kỳ ai".
+        //   - HTTP 500/503, hoặc các mã khác: Apps Script tạm thời lỗi/quá tải (quota), hoặc
+        //     code.gs vừa sửa nhưng CHƯA được Triển khai lại (Deploy > Quản lý phiên bản triển
+        //     khai > sửa ✏️ > Phiên bản: Mới > Triển khai).
+        // KHÔNG thay đổi bất kỳ dữ liệu, action, hay cơ chế bảo mật/đăng nhập nào đang có — chỉ
+        // thay đổi cách ĐỌC/CHẨN ĐOÁN phản hồi mạng cho an toàn/rõ ràng hơn.
+        async function parseServerResponse(res) {
+            let rawText = await res.text();
+            try {
+                return JSON.parse(rawText);
+            } catch (parseErr) {
+                let trimmed = (rawText || "").trim();
+                if (trimmed.indexOf("<") === 0) {
+                    let ly_do;
+                    if (res.status === 404) {
+                        ly_do = "URL Web App đang lưu KHÔNG TỒN TẠI trên Google (HTTP 404 - Not Found). Nguyên nhân " +
+                            "gần như chắc chắn: (1) URL đã dán bị SAI/gõ thiếu, hoặc (2) bản Triển khai (Deployment) " +
+                            "tương ứng với URL này ĐÃ BỊ XÓA/thu hồi trên Apps Script. Cách khắc phục: mở Google Apps " +
+                            "Script Editor của bạn → Triển khai (Deploy) → Quản lý phiên bản triển khai (Manage " +
+                            "deployments) → kiểm tra còn bản Web App đang hoạt động hay không (nếu không còn, bấm " +
+                            "Triển khai (Deploy) → New deployment để tạo bản MỚI) → COPY LẠI ĐÚNG \"Web app URL\" hiện " +
+                            "ra (kết thúc bằng /exec) → dán vào Tab Admin, mục \"Kết nối Google Sheet\" → bấm \"Lưu & " +
+                            "Đồng bộ ngay\".";
+                    } else if (res.status === 401 || res.status === 403) {
+                        ly_do = "Không đủ quyền truy cập Web App (HTTP " + res.status + "). Nguyên nhân thường gặp: " +
+                            "Quyền truy cập Web App chưa đặt \"Anyone\"/\"Bất kỳ ai\". Cách khắc phục: mở Google Apps " +
+                            "Script Editor → Triển khai (Deploy) → Quản lý phiên bản triển khai → sửa (✏️) bản đang " +
+                            "chạy → mục \"Ai có quyền truy cập\" (Who has access) chọn \"Anyone\"/\"Bất kỳ ai\" → Triển " +
+                            "khai lại.";
+                    } else {
+                        ly_do = "Máy chủ Google Apps Script trả về trang HTML thay vì dữ liệu JSON (HTTP " + res.status + "). " +
+                            "Nguyên nhân thường gặp: (1) Web App chưa được Triển khai lại (Deploy > Quản lý phiên bản " +
+                            "triển khai > sửa ✏️ > Phiên bản: Mới > Triển khai) sau khi cập nhật code.gs; (2) Apps " +
+                            "Script tạm thời quá tải/giới hạn số lượt gọi (quota) — thử lại sau ít phút.";
+                    }
+                    throw new Error(ly_do + " Sau khi kiểm tra/khắc phục xong, vui lòng thử \"Đồng bộ lại\".");
+                }
+                throw new Error("Không đọc được phản hồi từ máy chủ (không phải JSON hợp lệ, HTTP " + res.status + "). " + parseErr.message);
+            }
+        }
+
         // --- BẮT ĐẦU ĐOẠN CODE BẢO VỆ GIAO DIỆN ---
         // 1. Chặn click chuột phải
         document.addEventListener('contextmenu', function(e) {
@@ -3837,7 +3923,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "resumeSession", authToken: saved.token })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
@@ -3948,7 +4034,7 @@
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            let data = await res.json();
+            let data = await parseServerResponse(res);
 
             // Backend mới (đã có action "getData") luôn trả về "depts" dạng mảng, kể cả khi
             // lỗi xác thực hoặc lỗi khác (status "ERROR"). Backend cũ không hiểu action này
@@ -3964,7 +4050,7 @@
             // BẢO MẬT: KHÔNG BAO GIỜ gắn token/mật khẩu vào URL (?...), dù ở nhánh dự phòng
             // này — tránh bị lộ qua log máy chủ, lịch sử trình duyệt, hay header Referer.
             let res2 = await fetch(SCRIPT_URL, { method: "GET" });
-            return await res2.json();
+            return await parseServerResponse(res2);
         }
 
         async function loadFromCloud(manual) {
@@ -4091,7 +4177,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return true;
             } catch (err) {
@@ -4128,7 +4214,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 resultEl.innerHTML = `
                     <div style="padding:10px 14px; background:#eef7ff; border:1px solid #bcdcff; border-radius:8px;">
@@ -4421,7 +4507,7 @@
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            let data = await res.json();
+            let data = await parseServerResponse(res);
             if (data.status === "ERROR") throw new Error(data.message || "Có lỗi xảy ra.");
             return data;
         }
@@ -4565,7 +4651,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "requestPasswordChangeOtp", authToken: authToken, username: currentUsername })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") {
                     if (/chưa được liên kết email/i.test(data.message || "")) {
                         infoEl.textContent = "ℹ️ Tài khoản chưa liên kết email — không cần mã xác nhận, có thể đổi mật khẩu trực tiếp.";
@@ -4635,7 +4721,7 @@
                         otp: document.getElementById("cpw-otp").value.trim()
                     })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 // Token phiên đăng nhập hiện tại vẫn còn hiệu lực sau khi đổi mật khẩu
@@ -5701,7 +5787,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getAuditLog", authToken: authToken, limit: 300 })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 let logs = data.logs || [];
                 if (!logs.length) {
@@ -5819,7 +5905,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "loginVerify2FA", pendingTicket: pending2FATicket, code: code })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message || "Mã xác thực không đúng.");
 
                 let username = pending2FAUsername;
@@ -5855,7 +5941,7 @@
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ action: "login", username: u, password: p })
                     });
-                    let data = await res.json();
+                    let data = await parseServerResponse(res);
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
                     // [BẢO MẬT - 2FA] Tài khoản này đã bật xác thực 2 lớp -> mật khẩu đúng chỉ
@@ -5992,6 +6078,14 @@
             if (elMenuRecruitment) elMenuRecruitment.style.display = canViewHR ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
             if (tdFormBox) tdFormBox.style.display = canEditHRUI ? "block" : "none";
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO", TÁCH RIÊNG, CHỈ ADMIN THẤY] Ẩn/hiện khối
+            // riêng "td-nguoidanhgia-box" theo đúng Role đang đăng nhập (KHÔNG dùng quyền
+            // canEditHRUI - dù có quyền Sửa hồ sơ ứng viên, tài khoản không phải Admin vẫn KHÔNG
+            // thấy mục này). Gọi lại với hồ sơ đang Sửa trên form hiện tại (nếu có) để không mất
+            // trạng thái khi applyUserPermissions() được gọi lại (VD sau khi đồng bộ dữ liệu).
+            let tdMaHoSoHienTai = document.getElementById("edit-mahoso-tuyendung");
+            let tdHoTenHienTai = document.getElementById("inp-td-hoten");
+            toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai ? tdMaHoSoHienTai.value : "", tdHoTenHienTai ? tdHoTenHienTai.value : "");
             if (canViewHR) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
@@ -6223,7 +6317,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 let lines = Array.isArray(data.summaryLines) ? data.summaryLines : [];
                 alert('✅ ĐÃ XÁC NHẬN QUYỀN cho tài khoản "' + username + '" (đọc trực tiếp từ Google Sheet lúc ' + (data.confirmedAt || "") + '):\n\n' + lines.map(l => "• " + l).join("\n"));
@@ -6446,7 +6540,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: context || "staffDoc", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 let byteChars = atob(data.fileData);
@@ -6482,7 +6576,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getStaffAvatars", fileIds: idsNeeded, authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { console.error(data.message); return; }
                 Object.keys(data.avatars || {}).forEach(id => {
                     let a = data.avatars[id];
@@ -6507,7 +6601,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: "avatar", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { console.error(data.message); return; }
                 let dataUri = `data:${data.mimeType};base64,${data.fileData}`;
                 avatarCache[fileId] = dataUri;
@@ -6924,7 +7018,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") return { status: "ERROR", message: data.message };
                 return data;
             } catch (err) {
@@ -10675,7 +10769,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveApprovers", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveApproverUsernames = data.usernames || [];
                 let checked = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
@@ -10865,7 +10959,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 alert(editingId ? "✅ Đã cập nhật lại đơn xin nghỉ phép!" : "✅ Đã gửi đơn xin nghỉ phép! Đơn sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
                 resetLeaveRequestForm();
@@ -10884,7 +10978,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "recallLeaveRequest", authToken: authToken, id: id })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 await loadLeaveRequests();
             } catch (err) {
@@ -10907,7 +11001,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "deleteLeaveRequest", authToken: authToken, id: id })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 if (document.getElementById("edit-id-nghiphep").value.trim() === id) resetLeaveRequestForm();
                 await loadLeaveRequests();
@@ -10927,7 +11021,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveRequests", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveRequestsData = data.list || [];
                 renderMyLeaveTable();
@@ -10951,7 +11045,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveNotifications", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveNotificationData = {
                     tuanTruoc: data.tuanTruoc || [], tuanNay: data.tuanNay || [],
@@ -11415,7 +11509,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "decideLeaveRequest", authToken: authToken, id: id, decision: decision, lyDo: lyDo })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 await loadLeaveRequests();
             } catch (err) {
@@ -12194,7 +12288,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data;
             } catch (err) {
@@ -12400,7 +12494,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data;
             } catch (err) {
@@ -12417,6 +12511,7 @@
             recruitmentData = data.candidates || [];
             populateRecruitmentStatusSelect();
             populateRecruitmentDeptSelect();
+            populateRecruitmentInterviewRoomSelect();
             renderRecruitmentTabs();
             renderRecruitmentTable();
         }
@@ -12436,6 +12531,69 @@
             sel.innerHTML = `<option value="">-- Chọn phòng ban --</option>` +
                 (depts || []).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
             sel.value = current || "";
+        }
+
+        // [SỬA - "NGƯỜI PHỎNG VẤN" -> "PHÒNG PHỎNG VẤN"] Dùng lại ĐÚNG danh mục Phòng ban hiện có
+        // của hệ thống (biến "depts", y hệt populateRecruitmentDeptSelect() ở trên) để hiển thị
+        // cho chọn "Phòng phỏng vấn" — KHÔNG cho nhập tay tự do nữa. Field/khóa dữ liệu gửi lên
+        // server VẪN GIỮ NGUYÊN là "nguoiPhongVan" (KHÔNG đổi tên cột trên Google Sheet) nên dữ
+        // liệu "Người phỏng vấn" đã lưu từ trước hoàn toàn KHÔNG bị mất — nếu giá trị cũ trùng
+        // đúng tên 1 phòng ban hiện có thì vẫn tự hiển thị chọn sẵn, nếu không trùng thì hồ sơ đó
+        // xem như "chưa chọn phòng" trên form (giá trị cũ vẫn còn nguyên trong Sheet, không bị
+        // xóa/ghi đè cho tới khi người dùng chủ động Sửa và Lưu lại hồ sơ đó).
+        function populateRecruitmentInterviewRoomSelect() {
+            let sel = document.getElementById("inp-td-nguoipv");
+            if (!sel) return;
+            let current = sel.value;
+            sel.innerHTML = `<option value="">-- Chọn phòng phỏng vấn --</option>` +
+                (depts || []).map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+            sel.value = current || "";
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG + CHỌN NHIỀU NGƯỜI, CHỈ ADMIN
+        // THẤY/DÙNG] Vẽ danh sách tài khoản thành CHECKBOX nhiều lựa chọn (dùng lại đúng class
+        // "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ thống, giống khung chọn
+        // nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ phép" - xem populateAdminApprovalSettingsList()).
+        // Danh sách tài khoản lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm
+        // action mới để liệt kê tài khoản). Tick sẵn đúng những tài khoản đang có trong
+        // "selectedArr" (mảng username đã gán trước đó của hồ sơ đang sửa, có thể rỗng).
+        function populateRecruitmentNguoiDanhGiaCheckboxes(selectedArr) {
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            let selected = Array.isArray(selectedArr) ? selectedArr : [];
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${selected.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("");
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG] Ẩn/hiện + khóa/mở khối chọn "Người
+        // đánh giá được giao" tùy theo: (1) tài khoản đang đăng nhập có phải Admin hay không -
+        // ẩn hoàn toàn với tài khoản không phải Admin (giống hệt hành vi cũ); (2) hồ sơ hiện có
+        // đang ở chế độ SỬA (có Mã hồ sơ) hay THÊM MỚI (chưa có Mã hồ sơ, chưa lưu lần nào) - vì
+        // mục này gắn với 1 hồ sơ ĐÃ TỒN TẠI, nên khi đang thêm mới sẽ hiện gợi ý + khóa nút Lưu
+        // lại thay vì cho thao tác ngay (tránh gán nhầm cho hồ sơ khác/hồ sơ chưa tồn tại).
+        function toggleRecruitmentNguoiDanhGiaBox(maHoSo, hoTen) {
+            let box = document.getElementById("td-nguoidanhgia-box");
+            if (!box) return;
+            let showBox = !!(currentUser && currentUser.role === "Admin");
+            box.style.display = showBox ? "block" : "none";
+            if (!showBox) return;
+            let hintEl = document.getElementById("td-nguoidanhgia-target-hint");
+            let saveBtn = document.getElementById("btn-save-td-nguoidanhgia");
+            if (maHoSo) {
+                if (hintEl) hintEl.innerHTML = 'Đang gán cho hồ sơ: <b>' + escapeHtml(hoTen || "") + '</b> (Mã hồ sơ: ' + escapeHtml(maHoSo) + ')';
+                if (saveBtn) saveBtn.disabled = false;
+            } else {
+                if (hintEl) hintEl.innerHTML = '<i>Vui lòng bấm "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới trước, sau đó quay lại đây để gán người đánh giá cho đúng hồ sơ đó.</i>';
+                if (saveBtn) saveBtn.disabled = true;
+                let box2 = document.getElementById("td-nguoidanhgia-list");
+                if (box2) box2.innerHTML = "";
+            }
         }
 
         function tdBadgeClass(status) {
@@ -12486,7 +12644,7 @@
             }
 
             if (rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ ứng viên nào.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="18" style="text-align:center; color:#888; padding:20px;">Không có hồ sơ ứng viên nào.</td></tr>`;
                 return;
             }
 
@@ -12522,6 +12680,15 @@
                     }
                 }
 
+                // [MỚI - CỘT "KẾT QUẢ PHỎNG VẤN"] Chỉ HIỂN THỊ, tự động lấy đúng theo kết quả của
+                // cột "Đánh giá ứng viên" (r.ketQuaDanhGia) — KHÔNG phải 1 trường dữ liệu riêng,
+                // KHÔNG có nút bấm/chỉnh sửa riêng ở cột này, nên luôn đồng bộ 100% với "Đánh giá
+                // ứng viên": khi đánh giá "Đạt" thì cột này tự hiện "Đạt", đánh giá "Không đạt" thì
+                // tự hiện "Không đạt", chưa đánh giá thì hiện "-".
+                let ketQuaPhongVanCell = r.ketQuaDanhGia
+                    ? `<span class="td-badge ${r.ketQuaDanhGia === "Đạt" ? "td-badge-dat" : "td-badge-khongdat"}">${escapeHtml(r.ketQuaDanhGia)}</span>`
+                    : "-";
+
                 return `<tr>
                     <td>${escapeHtml(r.maHoSo)}</td>
                     <td>${escapeHtml(r.hoTen)}</td>
@@ -12533,10 +12700,13 @@
                     <td><span class="td-badge ${tdBadgeClass(r.trangThai)}">${escapeHtml(r.trangThai)}</span></td>
                     <td>${escapeHtml(r.ngayPhongVan ? formatDateDisplay(r.ngayPhongVan) : "")}</td>
                     <td>${escapeHtml(r.nguoiPhongVan || "")}</td>
+                    <td>${ketQuaPhongVanCell}</td>
                     <td>${cvCell}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${escapeHtml(r.ngayTao || "")}</td>
+                    <td>${escapeHtml(r.ngayNhanViec ? formatDateDisplay(r.ngayNhanViec) : "")}</td>
                     <td>${danhGiaCell || "-"}</td>
+                    <td>${escapeHtml((r.nguoiDuocGiaoDanhGia || []).join(", ") || "-")}</td>
                     <td>${actions || "-"}</td>
                 </tr>`;
             }).join('');
@@ -12552,10 +12722,15 @@
             document.getElementById("inp-td-kenh").value = "";
             document.getElementById("inp-td-trangthai").value = TUYENDUNG_STATUS_LIST_FE[0];
             document.getElementById("inp-td-ngayphongvan").value = "";
+            populateRecruitmentInterviewRoomSelect();
             document.getElementById("inp-td-nguoipv").value = "";
+            document.getElementById("inp-td-ngaynhanviec").value = "";
             document.getElementById("inp-td-ghichu").value = "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = "";
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" TÁCH RIÊNG] Đang Thêm hồ sơ MỚI (chưa có Mã hồ
+            // sơ) -> khối này chưa áp dụng được cho hồ sơ nào, hiện gợi ý + khóa nút Lưu lại.
+            toggleRecruitmentNguoiDanhGiaBox("", "");
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "none";
         }
@@ -12585,10 +12760,18 @@
             document.getElementById("inp-td-kenh").value = r.kenhTuyenDung || "";
             document.getElementById("inp-td-trangthai").value = r.trangThai || TUYENDUNG_STATUS_LIST_FE[0];
             document.getElementById("inp-td-ngayphongvan").value = tdToDateInputValue(r.ngayPhongVan);
+            populateRecruitmentInterviewRoomSelect();
             document.getElementById("inp-td-nguoipv").value = r.nguoiPhongVan || "";
+            document.getElementById("inp-td-ngaynhanviec").value = tdToDateInputValue(r.ngayNhanViec);
             document.getElementById("inp-td-ghichu").value = r.ghiChu || "";
             document.getElementById("inp-td-file").value = "";
             document.getElementById("td-current-file-hint").innerText = r.cvFileName ? ("CV hiện tại: " + r.cvFileName + " (chỉ chọn file mới nếu muốn thay thế)") : "";
+            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" TÁCH RIÊNG] Gắn khối chọn người đánh giá vào
+            // đúng hồ sơ đang Sửa, tick sẵn những tài khoản đã gán trước đó (r.nguoiDuocGiaoDanhGia
+            // nay LUÔN là mảng - kể cả dữ liệu cũ chỉ có 1 người, xem parseNguoiDuocGiaoDanhGiaArr_
+            // ở Code.gs).
+            toggleRecruitmentNguoiDanhGiaBox(r.maHoSo, r.hoTen);
+            populateRecruitmentNguoiDanhGiaCheckboxes(r.nguoiDuocGiaoDanhGia || []);
             document.getElementById("tuyendung-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Cập nhật hồ sơ ứng viên';
             document.getElementById("btn-cancel-edit-tuyendung").style.display = "inline-block";
             document.getElementById("tuyendung-form-box").scrollIntoView({ behavior: "smooth" });
@@ -12618,8 +12801,13 @@
                 trangThai: document.getElementById("inp-td-trangthai").value,
                 ngayPhongVan: document.getElementById("inp-td-ngayphongvan").value,
                 nguoiPhongVan: document.getElementById("inp-td-nguoipv").value.trim(),
+                ngayNhanViec: document.getElementById("inp-td-ngaynhanviec").value,
                 ghiChu: document.getElementById("inp-td-ghichu").value.trim()
             };
+
+            // [CẬP NHẬT - TÁCH RIÊNG] "Người đánh giá được giao" KHÔNG còn gửi kèm ở đây nữa —
+            // nay là 1 thao tác/action RIÊNG (xem hàm saveRecruitmentAssignedEvaluators() bên
+            // dưới + khối "td-nguoidanhgia-box"), có nút "Lưu người đánh giá" độc lập.
 
             if (file) {
                 let base64Data = await new Promise((resolve, reject) => {
@@ -12639,6 +12827,38 @@
                 resetRecruitmentForm();
                 await loadRecruitmentData();
                 alert("✔️ Đã lưu hồ sơ ứng viên thành công.");
+            }
+        }
+
+        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG + CHỌN NHIỀU NGƯỜI, CHỈ ADMIN] Lưu
+        // danh sách tài khoản (có thể chọn CÙNG LÚC NHIỀU người) được giao phụ trách đánh giá hồ
+        // sơ ứng viên ĐANG SỬA trên form (action RIÊNG "saveRecruitmentAssignedEvaluators" ở
+        // Code.gs — server tự kiểm tra lại đúng Role Admin, không thể bị bỏ qua dù gọi thẳng
+        // API). Gửi mảng RỖNG (bỏ tick hết) = chủ động xóa hết người đánh giá đã gán, hợp lệ.
+        async function saveRecruitmentAssignedEvaluators() {
+            if (!currentUser || currentUser.role !== "Admin") return;
+            let maHoSo = document.getElementById("edit-mahoso-tuyendung").value;
+            if (!maHoSo) { alert("⚠️ Vui lòng bấm \"Sửa\" ở 1 hồ sơ ứng viên trước khi gán người đánh giá."); return; }
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            let statusEl = document.getElementById("td-nguoidanhgia-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let data = await callRecruitmentApi({ action: "saveRecruitmentAssignedEvaluators", maHoSo: maHoSo, nguoiDuocGiaoDanhGia: usernames });
+            if (data) {
+                // Cập nhật ngay dữ liệu đang hiển thị trong bảng, không cần tải lại cả trang.
+                let r = recruitmentData.find(x => x.maHoSo === maHoSo);
+                if (r) r.nguoiDuocGiaoDanhGia = usernames;
+                renderRecruitmentTable();
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " người đánh giá được giao).")
+                        : "✅ Đã lưu (KHÔNG gán ai).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                }
+            } else if (statusEl) {
+                statusEl.style.color = "#c62828";
+                statusEl.innerText = "❌ Lưu thất bại, vui lòng thử lại.";
             }
         }
 
@@ -16157,7 +16377,7 @@
                         authToken: authToken
                     })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data.fileId || null;
             } catch (err) {
@@ -16298,7 +16518,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getOtherAppIcons", fileIds: idsNeeded, authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS" || !data.icons) return;
                 let gotAny = false;
                 Object.keys(data.icons).forEach(id => {
@@ -16544,7 +16764,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "changeOwnPassword", authToken: authToken, username: currentUsername, oldPassword: currentPass, newPassword: newPass })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert('❌ ' + data.message); return; }
 
                 alert('Đổi mật khẩu thành công!');
