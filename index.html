@@ -3388,6 +3388,41 @@
     <script>
         let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
+        // [SỬA LỖI ĐỒNG BỘ - "Unexpected token '<', ..."] Lỗi này xảy ra khi trình duyệt gọi
+        // res.json() nhưng phản hồi trả về KHÔNG PHẢI JSON mà là HTML (bắt đầu bằng ký tự "<").
+        // Đây KHÔNG phải lỗi trong logic action/dữ liệu của code.gs (doGet/doPost ở đó đã tự bọc
+        // try/catch và luôn trả JSON hợp lệ) — nguyên nhân hầu như luôn nằm ở TẦNG TRIỂN KHAI
+        // (deploy) của Google Apps Script, ví dụ:
+        //   1) Web App chưa được "Triển khai lại" (Deploy > Manage deployments > sửa (✏️) >
+        //      Version: New) sau khi code.gs thay đổi, hoặc URL đang lưu đã bị thu hồi/sai.
+        //   2) Quyền truy cập Web App không phải "Anyone"/"Anyone with Google account" -> Google
+        //      trả về trang HTML yêu cầu đăng nhập/xin quyền thay vì chạy doGet/doPost.
+        //   3) Apps Script tạm thời quá tải/giới hạn số lượt gọi (quota) -> Google trả trang lỗi
+        //      HTML của riêng Google (không phải trang do code.gs tạo ra).
+        // Hàm dùng chung dưới đây thay cho việc gọi thẳng res.json() ở khắp nơi: đọc phản hồi dạng
+        // text trước, thử parse JSON, và nếu thất bại thì ném ra 1 thông báo lỗi RÕ RÀNG, dễ hiểu
+        // (thay vì thông báo kỹ thuật khó hiểu "Unexpected token '<'") để Admin biết ngay hướng xử
+        // lý. KHÔNG thay đổi bất kỳ dữ liệu, action, hay cơ chế bảo mật/đăng nhập nào đang có —
+        // chỉ thay đổi cách ĐỌC phản hồi mạng cho an toàn/rõ ràng hơn.
+        async function parseServerResponse(res) {
+            let rawText = await res.text();
+            try {
+                return JSON.parse(rawText);
+            } catch (parseErr) {
+                let trimmed = (rawText || "").trim();
+                if (trimmed.indexOf("<") === 0) {
+                    throw new Error(
+                        "Máy chủ Google Apps Script trả về trang HTML thay vì dữ liệu JSON (HTTP " + res.status + "). " +
+                        "Nguyên nhân thường gặp: (1) Web App chưa được Triển khai lại (Deploy > Quản lý phiên bản triển khai " +
+                        "> sửa ✏️ > Phiên bản: Mới > Triển khai) sau khi cập nhật code.gs; (2) Quyền truy cập Web App chưa đặt " +
+                        "\"Anyone\"/\"Bất kỳ ai\"; (3) URL Apps Script đã lưu không còn đúng/đã bị thu hồi. " +
+                        "Vui lòng kiểm tra lại trong Google Apps Script Editor rồi thử \"Đồng bộ lại\"."
+                    );
+                }
+                throw new Error("Không đọc được phản hồi từ máy chủ (không phải JSON hợp lệ, HTTP " + res.status + "). " + parseErr.message);
+            }
+        }
+
         // --- BẮT ĐẦU ĐOẠN CODE BẢO VỆ GIAO DIỆN ---
         // 1. Chặn click chuột phải
         document.addEventListener('contextmenu', function(e) {
@@ -3861,7 +3896,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "resumeSession", authToken: saved.token })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
@@ -3972,7 +4007,7 @@
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            let data = await res.json();
+            let data = await parseServerResponse(res);
 
             // Backend mới (đã có action "getData") luôn trả về "depts" dạng mảng, kể cả khi
             // lỗi xác thực hoặc lỗi khác (status "ERROR"). Backend cũ không hiểu action này
@@ -3988,7 +4023,7 @@
             // BẢO MẬT: KHÔNG BAO GIỜ gắn token/mật khẩu vào URL (?...), dù ở nhánh dự phòng
             // này — tránh bị lộ qua log máy chủ, lịch sử trình duyệt, hay header Referer.
             let res2 = await fetch(SCRIPT_URL, { method: "GET" });
-            return await res2.json();
+            return await parseServerResponse(res2);
         }
 
         async function loadFromCloud(manual) {
@@ -4115,7 +4150,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return true;
             } catch (err) {
@@ -4152,7 +4187,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 resultEl.innerHTML = `
                     <div style="padding:10px 14px; background:#eef7ff; border:1px solid #bcdcff; border-radius:8px;">
@@ -4445,7 +4480,7 @@
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: JSON.stringify(payload)
             });
-            let data = await res.json();
+            let data = await parseServerResponse(res);
             if (data.status === "ERROR") throw new Error(data.message || "Có lỗi xảy ra.");
             return data;
         }
@@ -4589,7 +4624,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "requestPasswordChangeOtp", authToken: authToken, username: currentUsername })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") {
                     if (/chưa được liên kết email/i.test(data.message || "")) {
                         infoEl.textContent = "ℹ️ Tài khoản chưa liên kết email — không cần mã xác nhận, có thể đổi mật khẩu trực tiếp.";
@@ -4659,7 +4694,7 @@
                         otp: document.getElementById("cpw-otp").value.trim()
                     })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 // Token phiên đăng nhập hiện tại vẫn còn hiệu lực sau khi đổi mật khẩu
@@ -5725,7 +5760,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getAuditLog", authToken: authToken, limit: 300 })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 let logs = data.logs || [];
                 if (!logs.length) {
@@ -5843,7 +5878,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "loginVerify2FA", pendingTicket: pending2FATicket, code: code })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message || "Mã xác thực không đúng.");
 
                 let username = pending2FAUsername;
@@ -5879,7 +5914,7 @@
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify({ action: "login", username: u, password: p })
                     });
-                    let data = await res.json();
+                    let data = await parseServerResponse(res);
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
                     // [BẢO MẬT - 2FA] Tài khoản này đã bật xác thực 2 lớp -> mật khẩu đúng chỉ
@@ -6252,7 +6287,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 let lines = Array.isArray(data.summaryLines) ? data.summaryLines : [];
                 alert('✅ ĐÃ XÁC NHẬN QUYỀN cho tài khoản "' + username + '" (đọc trực tiếp từ Google Sheet lúc ' + (data.confirmedAt || "") + '):\n\n' + lines.map(l => "• " + l).join("\n"));
@@ -6475,7 +6510,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: context || "staffDoc", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 let byteChars = atob(data.fileData);
@@ -6511,7 +6546,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getStaffAvatars", fileIds: idsNeeded, authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { console.error(data.message); return; }
                 Object.keys(data.avatars || {}).forEach(id => {
                     let a = data.avatars[id];
@@ -6536,7 +6571,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getFileContent", fileId: fileId, context: "avatar", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { console.error(data.message); return; }
                 let dataUri = `data:${data.mimeType};base64,${data.fileData}`;
                 avatarCache[fileId] = dataUri;
@@ -6953,7 +6988,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") return { status: "ERROR", message: data.message };
                 return data;
             } catch (err) {
@@ -10704,7 +10739,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveApprovers", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveApproverUsernames = data.usernames || [];
                 let checked = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
@@ -10894,7 +10929,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 alert(editingId ? "✅ Đã cập nhật lại đơn xin nghỉ phép!" : "✅ Đã gửi đơn xin nghỉ phép! Đơn sẽ hiện ở tab \"Nhận Việc\" của những người bạn đã chọn phê duyệt.");
                 resetLeaveRequestForm();
@@ -10913,7 +10948,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "recallLeaveRequest", authToken: authToken, id: id })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 await loadLeaveRequests();
             } catch (err) {
@@ -10936,7 +10971,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "deleteLeaveRequest", authToken: authToken, id: id })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 if (document.getElementById("edit-id-nghiphep").value.trim() === id) resetLeaveRequestForm();
                 await loadLeaveRequests();
@@ -10956,7 +10991,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveRequests", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveRequestsData = data.list || [];
                 renderMyLeaveTable();
@@ -10980,7 +11015,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getLeaveNotifications", authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS") return;
                 leaveNotificationData = {
                     tuanTruoc: data.tuanTruoc || [], tuanNay: data.tuanNay || [],
@@ -11444,7 +11479,7 @@
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "decideLeaveRequest", authToken: authToken, id: id, decision: decision, lyDo: lyDo })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert("❌ " + data.message); return; }
                 await loadLeaveRequests();
             } catch (err) {
@@ -12223,7 +12258,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data;
             } catch (err) {
@@ -12429,7 +12464,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(payload)
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data;
             } catch (err) {
@@ -16252,7 +16287,7 @@
                         authToken: authToken
                     })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") throw new Error(data.message);
                 return data.fileId || null;
             } catch (err) {
@@ -16393,7 +16428,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getOtherAppIcons", fileIds: idsNeeded, authToken: authToken })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status !== "SUCCESS" || !data.icons) return;
                 let gotAny = false;
                 Object.keys(data.icons).forEach(id => {
@@ -16639,7 +16674,7 @@
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "changeOwnPassword", authToken: authToken, username: currentUsername, oldPassword: currentPass, newPassword: newPass })
                 });
-                let data = await res.json();
+                let data = await parseServerResponse(res);
                 if (data.status === "ERROR") { alert('❌ ' + data.message); return; }
 
                 alert('Đổi mật khẩu thành công!');
