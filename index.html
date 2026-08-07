@@ -1982,6 +1982,33 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- [MỚI - "CHỌN NHIỀU Ô" ĐỂ ĐIỀU CHỈNH/XÓA HÀNG LOẠT] Thanh công cụ nổi, CHỈ hiện
+                     khi đang bật "Điều chỉnh" (ccDieuChinhMode) VÀ có ít nhất 1 ô đã được tick chọn
+                     trên bảng lưới (xem ccOChonMap, toggleCcOChon() bên dưới) — GIỐNG HỆT ý tưởng
+                     của "cctv-bulk-toolbar" bên Tab "Bảng Chấm Công Thuyền Viên": chọn 1 loại ngày
+                     công rồi bấm "Áp dụng" để ghi đè NGAY LẬP TỨC cho TẤT CẢ các ô đã chọn (action
+                     MỚI "suaNgayChamCongBulk"), hoặc bấm "Xóa các ô đã chọn" để xóa hàng loạt điều
+                     chỉnh đã lưu (action MỚI "xoaNgayChamCongBulk", ô đó trở về giá trị tự tính) —
+                     thay vì phải mở hộp thoại và lưu/xóa từng ô một. Không hỗ trợ đính kèm file/
+                     người nhận ở đây (Server tự chặn nếu chọn phải loại công bắt buộc đính kèm —
+                     xem action "suaNgayChamCongBulk" ở Code.gs) — những trường hợp cần đính kèm
+                     vẫn dùng hộp thoại "Điều chỉnh" từng ô như cũ. -->
+                <div id="cc-bulk-toolbar" class="admin-box" style="display:none; position:sticky; bottom:10px; z-index:5; border-left:5px solid #2f6fed; background:#eef4ff; box-shadow:0 2px 10px rgba(0,0,0,0.15); margin-top:16px;">
+                    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                        <div style="font-weight:600; color:#2f6fed;"><i class="fa-solid fa-square-check"></i> Đã chọn <span id="cc-bulk-count">0</span> ô</div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Loại ngày công áp dụng</label>
+                            <select id="cc-bulk-select" class="search-box" style="min-width:180px;"></select>
+                        </div>
+                        <div class="form-group" style="margin:0; flex:1; min-width:160px;">
+                            <span style="font-size:12px; color:#888;"><i class="fa-solid fa-circle-info"></i> Không hỗ trợ đính kèm file ở chế độ chọn nhiều ô. Loại công yêu cầu đính kèm minh chứng vui lòng dùng "Điều chỉnh" từng ô.</span>
+                        </div>
+                        <button class="btn btn-success" style="width:auto;" onclick="apDungHangLoatChamCong()"><i class="fa-solid fa-check-double"></i> Áp dụng</button>
+                        <button class="btn btn-danger" style="width:auto;" onclick="xoaHangLoatChamCong()"><i class="fa-solid fa-trash"></i> Xóa các ô đã chọn</button>
+                        <button class="btn" style="width:auto;" onclick="boChonTatChamCong()"><i class="fa-solid fa-xmark"></i> Bỏ chọn</button>
+                    </div>
+                </div>
             </div>
 
             <!-- [MỚI - MỤC "CÁC YÊU CẦU PHÊ DUYỆT" (Bảng Chấm Công Thuyền Viên) - NÚT "XEM TRƯỚC"]
@@ -2058,7 +2085,13 @@
                     <div id="cc-adjust-error" style="color:#d9534f; font-size:13px; margin-bottom:10px; display:none;"></div>
                     <div style="display:flex; gap:10px;">
                         <button class="btn" style="width:auto; flex-grow:1;" onclick="submitChamCongAdjust()">Xác nhận ✔️</button>
-                        <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeChamCongAdjustModal()">Hủy</button>
+                        <!-- [MỚI - NÚT "XÓA"] Chỉ hiện khi ô đang mở ĐÃ có 1 lần điều chỉnh thủ công
+                             lưu sẵn (xem openChamCongAdjustModal() — dựa vào "info.manual") — xóa
+                             ĐÚNG dòng ghi đè đó (action MỚI "xoaNgayChamCong"), ô sẽ TRỞ VỀ giá trị
+                             do hệ thống tự tính (X/O theo lịch làm việc gốc), KHÔNG phải để trống
+                             như bảng Thuyền viên (nhân sự Văn phòng luôn có giá trị nền tự tính). -->
+                        <button class="btn btn-danger" id="cc-adjust-btn-xoa" style="width:auto; display:none;" onclick="xoaNgayChamCongTuModal()"><i class="fa-solid fa-trash"></i> Xóa</button>
+                        <button class="btn" style="width:auto; flex-grow:1;" onclick="closeChamCongAdjustModal()">Hủy</button>
                     </div>
                 </div>
             </div>
@@ -7151,6 +7184,9 @@
 
             let tbody = document.getElementById("cc-table-body");
             if (tbody) tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">Đang tải...</td></tr>';
+            // [MỚI - "CHỌN NHIỀU Ô"] Mỗi lần tải lại dữ liệu (đổi kỳ, vừa lưu/xóa xong...) đều bỏ
+            // hết các ô đang tick chọn dở — tránh giữ lựa chọn cũ không còn khớp với dữ liệu mới.
+            if (typeof ccOChonMap !== "undefined") ccOChonMap.clear();
 
             let result = await callServerAction({ action: "getChamCongData", maKy: maKy });
             if (!result || result.status !== "SUCCESS") {
@@ -7332,6 +7368,10 @@
                 ccScopeType = "all"; ccScopeValue = "";
                 let sel = document.getElementById("cc-scope-select");
                 if (sel) sel.value = "all";
+                // [MỚI - "CHỌN NHIỀU Ô"] Tắt "Điều chỉnh" -> bỏ luôn mọi ô đang tick chọn dở
+                // (nếu có) + ẩn thanh công cụ nổi, tránh còn sót lựa chọn từ lần trước.
+                if (typeof ccOChonMap !== "undefined") ccOChonMap.clear();
+                capNhatThanhCongCuChonNhieuChamCong();
             } else {
                 // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Vừa BẬT (không phải tắt) "Điều chỉnh" ->
                 // báo cho các tài khoản "Người nhận" khác biết, theo đúng phạm vi đang chọn lúc
@@ -9815,12 +9855,24 @@
                     // Code.gs), nên "editable" thực tế chỉ áp dụng cho dòng của chính họ, không
                     // thể vô tình mở khóa nhân sự khác.
                     let editable = (currentUserCanEditChamCong || currentUserCanSelfAdjustChamCong) && !chamCongDaChot && ccDieuChinhMode && rowInScope;
-                    let style = 'text-align:center; ' + (info.bg ? 'background:' + info.bg + ';' : '') +
+                    // [MỚI - "CHỌN NHIỀU Ô"] 1 ô tick nhỏ ở góc, CHỈ hiện khi ô đang mở khóa sửa
+                    // (editable) — bấm vào ô tick KHÔNG mở hộp thoại (event.stopPropagation) mà
+                    // chỉ đánh dấu chọn/bỏ chọn ô này để sau đó áp dụng/xóa hàng loạt ở thanh công
+                    // cụ nổi "cc-bulk-toolbar" (xem toggleCcOChon() bên dưới) — GIỐNG HỆT cách làm
+                    // của "cctv-ochon-checkbox" bên Tab "Bảng Chấm Công Thuyền Viên".
+                    let ccOChonKeyThis = ccOChonKey(r.msnv, d.ngay);
+                    let ccDangChon = ccOChonMap.has(ccOChonKeyThis);
+                    let checkboxHtml = editable
+                        ? ` <input type="checkbox" class="cc-ochon-checkbox" ${ccDangChon ? "checked" : ""} style="position:absolute; top:1px; left:1px; width:12px; height:12px; cursor:pointer;"
+                              onclick="event.stopPropagation(); toggleCcOChon('${safeMsnv}', ${d.ngay}, this.checked, this.closest('td'))">`
+                        : "";
+                    let style = 'text-align:center; ' + (editable ? 'position:relative; ' : '') + (info.bg ? 'background:' + info.bg + ';' : '') +
                         (info.manual ? 'box-shadow: inset 0 0 0 2px #6c757d;' : '') +
-                        (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '');
+                        (editable ? 'cursor:pointer; box-shadow: inset 0 0 0 1px #2f6fed;' : '') +
+                        (ccDangChon ? ' outline:2px solid #2f6fed; background:#e3edff;' : '');
                     let fullTitle = info.title + (editable ? " — Bấm để điều chỉnh loại ngày công" : "");
                     let clickAttr = editable ? ` onclick="openChamCongAdjustModal('${safeMsnv}', ${d.ngay}, ${d.isWeekend ? "true" : "false"})"` : '';
-                    return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${info.label}</td>`;
+                    return `<td style="${style}" title="${escapeHtml(fullTitle)}"${clickAttr}>${checkboxHtml}${info.label}</td>`;
                 }).join("");
                 // [MỚI - PHẠM VI ĐIỀU CHỈNH] Làm mờ nhẹ cả dòng nếu đang bật "Điều chỉnh" với
                 // phạm vi hẹp (phòng ban/cá nhân) NHƯNG dòng này không thuộc phạm vi đó — chỉ để
@@ -9937,6 +9989,13 @@
             let ghiChuInput = document.getElementById("cc-adjust-ghichu");
             if (ghiChuInput) ghiChuInput.value = daCo ? (daCo.ghiChu || "") : "";
 
+            // [MỚI - NÚT "XÓA"] Chỉ hiện nút "Xóa" khi ô này ĐÃ có 1 lần điều chỉnh thủ công lưu
+            // sẵn (đang có dữ liệu ở "ccGhiDeChiTietMap" — GIỐNG HỆT điều kiện dùng để tô viền đậm
+            // "manual" của ô trên bảng lưới, xem chamCongMaNgayInfo()) — ô còn trống (chưa từng
+            // điều chỉnh) thì không có gì để xóa.
+            let btnXoa = document.getElementById("cc-adjust-btn-xoa");
+            if (btnXoa) btnXoa.style.display = daCo ? "" : "none";
+
             updateChamCongAdjustAttachmentUI();
             let err = document.getElementById("cc-adjust-error");
             if (err) err.style.display = "none";
@@ -10040,6 +10099,129 @@
                 err.innerText = (result && result.message) || "Không thể lưu điều chỉnh.";
                 err.style.display = "block";
             }
+        }
+
+        // [MỚI - NÚT "XÓA"] Xóa ĐÚNG 1 lần điều chỉnh thủ công đang mở trong hộp thoại (action MỚI
+        // "xoaNgayChamCong" — server tự kiểm tra lại quyền/kỳ chốt GIỐNG HỆT "suaNgayChamCong",
+        // KHÔNG nới lỏng bảo mật). Sau khi xóa, ô đó TRỞ VỀ giá trị do hệ thống tự tính (KHÁC với
+        // bảng Thuyền viên — xem chú thích ở nút "Xóa" trong HTML).
+        async function xoaNgayChamCongTuModal() {
+            if (!ccAdjustTarget) return;
+            if ((!currentUserCanEditChamCong && !currentUserCanSelfAdjustChamCong) || chamCongDaChot) { closeChamCongAdjustModal(); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) { closeChamCongAdjustModal(); return; }
+            if (!confirm("Xóa điều chỉnh đã lưu cho ngày " + ccAdjustTarget.ngay + " của nhân sự \"" + ccAdjustTarget.msnv + "\"?\n\nÔ này sẽ trở về giá trị do hệ thống tự tính.")) return;
+
+            let result = await callServerAction({ action: "xoaNgayChamCong", maKy: maKy, msnv: ccAdjustTarget.msnv, ngay: ccAdjustTarget.ngay });
+            if (result && result.status === "SUCCESS") {
+                closeChamCongAdjustModal();
+                loadChamCongData();
+            } else {
+                let err = document.getElementById("cc-adjust-error");
+                if (err) { err.innerText = (result && result.message) || "Không thể xóa điều chỉnh."; err.style.display = "block"; }
+            }
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Tập hợp các ô (msnv, ngay) đang được tick chọn để điều chỉnh/xóa
+        // hàng loạt — mỗi phần tử { msnv, ngay }, khóa Map dạng "msnv_ngay". Hoàn toàn ở phía giao
+        // diện (KHÔNG gọi action nào khi tick/bỏ tick), chỉ thật sự gửi lên server khi bấm "Áp
+        // dụng"/"Xóa các ô đã chọn" ở thanh công cụ nổi "cc-bulk-toolbar".
+        let ccOChonMap = new Map();
+        function ccOChonKey(msnv, ngay) { return String(msnv) + "_" + String(ngay); }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Tick/bỏ tick 1 ô ngày công — chỉ đổi trạng thái chọn rồi vẽ lại
+        // thanh công cụ nổi (KHÔNG vẽ lại cả bảng để tránh giật/mất vị trí cuộn, viền chọn của ô
+        // được cập nhật trực tiếp qua "this" ở onclick, xem renderChamCongTable()).
+        function toggleCcOChon(msnv, ngay, dangChon, cellEl) {
+            let key = ccOChonKey(msnv, ngay);
+            if (dangChon) {
+                ccOChonMap.set(key, { msnv: msnv, ngay: ngay });
+            } else {
+                ccOChonMap.delete(key);
+            }
+            if (cellEl) {
+                cellEl.style.outline = dangChon ? "2px solid #2f6fed" : "";
+                cellEl.style.background = dangChon ? "#e3edff" : "";
+            }
+            capNhatThanhCongCuChonNhieuChamCong();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Bỏ chọn TẤT CẢ các ô đang chọn — vẽ lại bảng để bỏ luôn viền/nền
+        // đánh dấu trên từng ô.
+        function boChonTatChamCong() {
+            ccOChonMap.clear();
+            renderChamCongTable();
+            capNhatThanhCongCuChonNhieuChamCong();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô"] Hiện/ẩn thanh công cụ nổi + cập nhật số ô đang chọn + đổ danh
+        // sách "Loại ngày công" vào <select id="cc-bulk-select"> — dùng LẠI ĐÚNG danh sách mã hợp
+        // lệ giống hệt <select id="cc-adjust-select"> của hộp thoại từng ô (X/O/P/CD/KL/BHXH + toàn
+        // bộ Danh mục loại công đã tải sẵn), để không chọn phải mã bị server từ chối.
+        function capNhatThanhCongCuChonNhieuChamCong() {
+            let box = document.getElementById("cc-bulk-toolbar");
+            if (!box) return;
+            let soLuong = ccOChonMap.size;
+            box.style.display = (ccDieuChinhMode && soLuong > 0) ? "block" : "none";
+            let countEl = document.getElementById("cc-bulk-count");
+            if (countEl) countEl.textContent = String(soLuong);
+            let sel = document.getElementById("cc-bulk-select");
+            if (sel) {
+                let cur = sel.value;
+                let options = [
+                    { ma: "X", ten: "Ngày làm việc bình thường" },
+                    { ma: "O", ten: "Ngày không làm việc (chung)" },
+                    { ma: "P", ten: "Nghỉ phép hưởng lương (AL/CL)" },
+                    { ma: "CD", ten: "Nghỉ chế độ Cty (ML/TC)" },
+                    { ma: "KL", ten: "Nghỉ không lương (UL)" },
+                    { ma: "BHXH", ten: "Nghỉ hưởng BHXH (SI)" }
+                ];
+                (danhMucLoaiCongRows || []).forEach(r => { if (r.ma) options.push({ ma: r.ma, ten: r.ten || "" }); });
+                sel.innerHTML = '<option value="">-- Chọn loại ngày công --</option>' +
+                    options.map(o => `<option value="${escapeHtml(o.ma)}">${escapeHtml(o.ma)} - ${escapeHtml(o.ten)}</option>`).join("");
+                sel.value = options.some(o => o.ma === cur) ? cur : "";
+            }
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô" - ÁP DỤNG HÀNG LOẠT] Ghi đè NGAY LẬP TỨC 1 loại ngày công cho TẤT
+        // CẢ các ô đang được tick chọn (action MỚI "suaNgayChamCongBulk" — server tự kiểm tra lại
+        // quyền hạn/kỳ chưa chốt/mã hợp lệ cho TỪNG ô, GIỐNG HỆT hộp thoại từng ô, không nới lỏng
+        // gì). Nếu mã chọn thuộc nhóm bắt buộc đính kèm minh chứng, server sẽ từ chối và báo lỗi —
+        // trường hợp đó cần dùng lại hộp thoại "Điều chỉnh" từng ô để đính kèm file.
+        async function apDungHangLoatChamCong() {
+            if (chamCongDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi điều chỉnh."); return; }
+            if (!ccOChonMap.size) { alert("Vui lòng chọn ít nhất 1 ô ngày công."); return; }
+            let sel = document.getElementById("cc-bulk-select");
+            let ma = sel ? sel.value : "";
+            if (!ma) { alert("Vui lòng chọn loại ngày công cần áp dụng."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) return;
+            let items = Array.from(ccOChonMap.values());
+            if (!confirm(`Áp dụng loại ngày công "${ma}" cho ${items.length} ô đã chọn?`)) return;
+            let res = await callServerAction({ action: "suaNgayChamCongBulk", maKy: maKy, items: items, loai: ma });
+            if (!res || res.status === "ERROR") { alert("Lỗi điều chỉnh hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            ccOChonMap.clear();
+            await loadChamCongData();
+        }
+
+        // [MỚI - "CHỌN NHIỀU Ô" - XÓA HÀNG LOẠT] Xóa TẤT CẢ các lần điều chỉnh đã lưu của các ô
+        // đang được tick chọn (action MỚI "xoaNgayChamCongBulk") — mỗi ô sau khi xóa TRỞ VỀ giá
+        // trị do hệ thống tự tính. Ô nào chưa từng điều chỉnh (không có gì để xóa) hoặc không đủ
+        // quyền sẽ tự động được server bỏ qua, không báo lỗi (xem action "xoaNgayChamCongBulk").
+        async function xoaHangLoatChamCong() {
+            if (chamCongDaChot) { alert("Kỳ chấm công này đã được chốt. Vui lòng \"Mở lại\" trước khi xóa điều chỉnh."); return; }
+            if (!ccOChonMap.size) { alert("Vui lòng chọn ít nhất 1 ô ngày công."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) return;
+            let items = Array.from(ccOChonMap.values());
+            if (!confirm(`Xóa điều chỉnh đã lưu của ${items.length} ô đã chọn? (Các ô này sẽ trở về giá trị tự tính.)`)) return;
+            let res = await callServerAction({ action: "xoaNgayChamCongBulk", maKy: maKy, items: items });
+            if (!res || res.status === "ERROR") { alert("Lỗi xóa hàng loạt: " + (res ? res.message : "Không kết nối được máy chủ.")); return; }
+            ccOChonMap.clear();
+            await loadChamCongData();
         }
 
         // [ĐÃ XÓA - MỤC "NHẬN FILE"] Toàn bộ hàm JS cho hộp thoại "Nhận file" (loadChamCongFileNhanDuocQuietly/
