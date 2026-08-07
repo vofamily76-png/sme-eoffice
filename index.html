@@ -1567,6 +1567,11 @@
                         <div class="input-group">
                             <label>Người phê duyệt</label>
                             <select id="inp-eq-disposal-approver"><option value="">-- Chưa chọn --</option></select>
+                            <!-- [MỚI] Giải thích quy trình duyệt: có chọn Người phê duyệt -> trạng
+                                 thái tự chuyển "Chờ hủy" cho tới khi người đó bấm "Đồng ý" (tự động
+                                 chuyển "Đã hủy" và lưu lại người/ngày giờ xác nhận). Không chọn ai
+                                 -> coi như "Đã hủy" ngay, không cần chờ duyệt. -->
+                            <small style="color:#888;">Có chọn Người phê duyệt: trạng thái sẽ ở "Chờ hủy" cho tới khi người đó Đồng ý (tự động chuyển "Đã hủy"). Không chọn: coi như "Đã hủy" ngay.</small>
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:10px;">
@@ -1597,7 +1602,11 @@
                     <thead><tr>
                         <th>Mã TB</th><th>Nhóm thiết bị</th><th>Loại chi tiết</th><th>Tên thiết bị</th>
                         <th>Tình trạng</th><th>DVT</th><th>SL</th><th>Ngày hủy</th><th>Lý do hủy</th>
-                        <th>Đính kèm file</th><th>Người phê duyệt</th><th>Ghi chú</th>
+                        <th>Đính kèm file</th><th>Người phê duyệt</th>
+                        <!-- [MỚI] Cột "Trạng thái" (quy trình duyệt hủy: Chờ hủy / Đã hủy / Từ chối)
+                             TÁCH RIÊNG với cột "Tình trạng" (tình trạng vật lý thiết bị) ở trên. -->
+                        <th>Trạng thái</th>
+                        <th>Ghi chú</th>
                         <th class="admin-action-header">Thao tác</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -15169,6 +15178,15 @@
             }
         }
 
+        // [MỚI - QUY TRÌNH DUYỆT HỦY THIẾT BỊ] Trả về màu/nhãn hiển thị tương ứng với
+        // "TrangThaiHuy" ("Chờ hủy"/"Đã hủy"/"Từ chối") để tô màu badge trong bảng, giống cách
+        // các Tab khác (VD "Chữ Ký Số", "Đăng ký nghỉ phép") đang hiển thị trạng thái.
+        function eqDisposalTrangThaiBadge_(trangThai) {
+            let t = trangThai || "Đã hủy";
+            let color = t === "Chờ hủy" ? "#e67e22" : (t === "Từ chối" ? "#c0392b" : "#2e7d32");
+            return `<span style="color:${color}; font-weight:bold;">${escapeHtml(t)}</span>`;
+        }
+
         function renderEquipmentDisposalTable() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || !!currentUser.eqManage));
             let boxEl = document.getElementById("eq-disposal-box");
@@ -15183,6 +15201,24 @@
                     <button class="btn btn-sm btn-warning" onclick="startEditEquipmentDisposal(${idx})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-sm btn-danger" onclick="deleteEquipmentDisposalRow(${idx})"><i class="fa-solid fa-trash"></i></button>
                 ` : "";
+
+                // [MỚI] Nếu đang "Chờ hủy" VÀ đúng người dùng đang đăng nhập là "Người phê duyệt"
+                // được chỉ định (hoặc Admin) -> hiện 2 nút "Đồng ý"/"Không đồng ý" ngay trong
+                // bảng, y hệt cách Tab "Đăng ký nghỉ phép" cho phê duyệt trực tiếp trên bảng.
+                let canDecideThis = currentUser && d.trangThaiHuy === "Chờ hủy" && d.approver &&
+                    (currentUser.role === "Admin" || currentUser.username === d.approver);
+                if (canDecideThis) {
+                    actionsHtml += `
+                    <button class="btn btn-sm btn-success" onclick="decideEquipmentDisposal('${escapeHtml(d.assetCode)}', 'approve')" title="Đồng ý"><i class="fa-solid fa-check"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="decideEquipmentDisposal('${escapeHtml(d.assetCode)}', 'reject')" title="Không đồng ý"><i class="fa-solid fa-xmark"></i></button>`;
+                }
+                // [MỚI] Đã hủy xong (có xác nhận của người phê duyệt) -> cho tải phiếu xác nhận PDF
+                // (có logo công ty, giống các mẫu PDF khác trong hệ thống).
+                if (d.trangThaiHuy === "Đã hủy") {
+                    actionsHtml += `
+                    <button class="btn btn-sm btn-primary" onclick="xuatPdfXacNhanHuyThietBi('${escapeHtml(d.assetCode)}')" title="Tải phiếu xác nhận (PDF)"><i class="fa-solid fa-file-pdf"></i></button>`;
+                }
+
                 return `
                     <tr>
                         <td><b>${escapeHtml(d.assetCode)}</b></td>
@@ -15196,15 +15232,158 @@
                         <td>${escapeHtml(d.reason)}</td>
                         <td>${fileHtml}</td>
                         <td>${escapeHtml(d.approver) || '<span style="color:#999;">Chưa chọn</span>'}</td>
+                        <td>${eqDisposalTrangThaiBadge_(d.trangThaiHuy)}</td>
                         <td>${escapeHtml(d.note)}</td>
-                        <td style="display:${canEdit ? '' : 'none'}">${actionsHtml}</td>
+                        <td>${actionsHtml}</td>
                     </tr>`;
             }).join('');
 
             document.querySelector("#tbl-equipment-disposal tbody").innerHTML = rowsHtml ||
-                `<tr><td colspan="12" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo hủy.</td></tr>`;
+                `<tr><td colspan="13" style="text-align:center; padding:20px; color:#666;">Chưa có thiết bị nào được khai báo hủy.</td></tr>`;
 
             filterEquipmentDisposalTable();
+        }
+
+        // [MỚI - QUY TRÌNH DUYỆT HỦY THIẾT BỊ] Được gọi khi ĐÚNG "Người phê duyệt" (hoặc Admin)
+        // bấm "Đồng ý"/"Không đồng ý" ngay trong bảng. Server tự kiểm tra lại toàn bộ điều kiện
+        // (đúng người, đúng trạng thái "Chờ hủy"...) - xem action "decideEquipmentDisposal" ở
+        // Code.gs - nên phía trình duyệt chỉ cần gọi và tải lại dữ liệu.
+        async function decideEquipmentDisposal(assetCode, decision) {
+            let msg = decision === "reject"
+                ? `Xác nhận KHÔNG đồng ý hủy thiết bị "${assetCode}"?`
+                : `Xác nhận ĐỒNG Ý hủy thiết bị "${assetCode}"? Trạng thái sẽ tự động chuyển thành "Đã hủy" và hệ thống sẽ lưu lại thông tin xác nhận của bạn.`;
+            if (!confirm(msg)) return;
+            let ok = await pushToCloud({ action: "decideEquipmentDisposal", assetCode: assetCode, decision: decision });
+            if (ok) {
+                await loadFromCloud(true);
+                updateSystemData();
+            }
+        }
+
+        // [MỚI - QUY TRÌNH DUYỆT HỦY THIẾT BỊ] Xuất phiếu xác nhận hủy thiết bị ra file PDF (có
+        // logo công ty ở góc trên-trái, giống hệt các mẫu PDF khác trong hệ thống — VD
+        // xuatPdfCctvDmlcDuyet() của Tab "Bảng Chấm Công Thuyền Viên") — dùng CHUNG kỹ thuật
+        // jsPDF + html2canvas + pdfText() (đã nạp sẵn ở đầu trang), KHÔNG lưu thêm gì lên Drive,
+        // KHÔNG đổi dữ liệu/cơ chế bảo mật, chỉ đọc lại dữ liệu đã có sẵn trong
+        // "equipmentDisposalData". Chỉ dùng được khi đã "Đã hủy" (đã có người xác nhận).
+        async function xuatPdfXacNhanHuyThietBi(assetCode) {
+            let d = (equipmentDisposalData || []).find(x => x.assetCode === assetCode);
+            if (!d) { alert("Không tìm thấy khai báo hủy thiết bị."); return; }
+            if (d.trangThaiHuy !== "Đã hủy") { alert("Khai báo này chưa được xác nhận hủy xong."); return; }
+            if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
+                alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
+            }
+
+            let pdfLogoSrc = (document.querySelector(".sidebar-logo") || document.querySelector(".login-logo") || {}).src || "";
+            let pdfLogoHtml = pdfLogoSrc ? `<img src="${pdfLogoSrc}" style="height:60px; width:auto; object-fit:contain;">` : "<div></div>";
+
+            let html = `
+            <div style="width:900px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.6; background:#fff;">
+                <div style="display:flex; align-items:center; margin-bottom:6px;">
+                    <div style="width:120px;">${pdfLogoHtml}</div>
+                    <div style="flex:1; text-align:center; margin-right:120px;">
+                        <div style="font-size:17px; font-weight:bold; letter-spacing:0.5px;">SEAHORSE MARINE AND ENERGY JSC</div>
+                        <div style="font-size:16px; font-weight:bold; margin-top:2px;">CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ</div>
+                        <div style="font-size:15px; font-weight:bold; margin-top:10px; text-transform:uppercase;">PHIẾU XÁC NHẬN HỦY THIẾT BỊ</div>
+                    </div>
+                </div>
+
+                <p style="margin-top:24px; font-weight:bold;">Thông tin thiết bị:</p>
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:3px 0; width:50%;">Mã số thiết bị: <b>${pdfText(d.assetCode || "")}</b></td>
+                        <td style="padding:3px 0;">Tên thiết bị: <b>${pdfText(d.name || "")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:3px 0;">Nhóm thiết bị: <b>${pdfText(d.group || "")}</b></td>
+                        <td style="padding:3px 0;">Loại chi tiết: <b>${pdfText(d.chiTiet || "")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:3px 0;">Tình trạng thiết bị: <b>${pdfText(d.status || "")}</b></td>
+                        <td style="padding:3px 0;">Số lượng: <b>${pdfText(d.qty || "")} ${pdfText(d.unit || "")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:3px 0;">Ngày hủy: <b>${pdfText(formatDateDisplay(d.ngayHuy) || "")}</b></td>
+                        <td style="padding:3px 0;">Trạng thái: <b style="color:#2e7d32;">${pdfText(d.trangThaiHuy || "")}</b></td>
+                    </tr>
+                    <tr><td style="padding:3px 0;" colspan="2">Lý do hủy: <b>${pdfText(d.reason || "(không ghi)")}</b></td></tr>
+                    <tr><td style="padding:3px 0;" colspan="2">Ghi chú: <b>${pdfText(d.note || "(không ghi)")}</b></td></tr>
+                    ${d.fileName ? `<tr><td style="padding:3px 0;" colspan="2">File đính kèm: <b>${pdfText(d.fileName)}</b></td></tr>` : ""}
+                </table>
+
+                <p style="margin-top:24px; font-weight:bold;">Xác nhận phê duyệt:</p>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th style="border:1px solid #333; padding:6px;">Người phê duyệt được chỉ định</th>
+                            <th style="border:1px solid #333; padding:6px;">Người xác nhận</th>
+                            <th style="border:1px solid #333; padding:6px;">Ngày giờ xác nhận</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(d.approver || "")}</td>
+                            <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(d.nguoiXacNhan || "")}</td>
+                            <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(d.thoiGianXacNhan || "")}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p style="margin-top:24px; font-size:10px; color:#888; text-align:center;">Phiếu được xuất tự động từ Hệ thống quản lý thiết bị - Mã thiết bị: ${pdfText(d.assetCode || "")}</p>
+            </div>`;
+
+            let container = document.createElement("div");
+            container.style.position = "fixed";
+            container.style.left = "-10000px";
+            container.style.top = "0";
+            container.innerHTML = html;
+            document.body.appendChild(container);
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const canvas = await html2canvas(container.firstElementChild, {
+                    scale: 2, useCORS: true, backgroundColor: "#ffffff"
+                });
+                let pdfImgQuality = 0.92;
+                let imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                const PDF_TARGET_BYTES = 900 * 1024;
+                while (imgData.length * 0.75 > PDF_TARGET_BYTES && pdfImgQuality > 0.5) {
+                    pdfImgQuality -= 0.05;
+                    imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                }
+
+                const doc = new jsPDF("p", "pt", "a4");
+                const margin = 20;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const usableWidth = pageWidth - margin * 2;
+                const usableHeight = pageHeight - margin * 2;
+                const imgWidth = usableWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                if (imgHeight <= usableHeight) {
+                    doc.addImage(imgData, "JPEG", margin, margin, imgWidth, imgHeight);
+                } else {
+                    let heightLeft = imgHeight;
+                    let renderedHeight = 0;
+                    let isFirstPage = true;
+                    while (heightLeft > 0) {
+                        if (!isFirstPage) doc.addPage();
+                        doc.addImage(imgData, "JPEG", margin, margin - renderedHeight, imgWidth, imgHeight);
+                        renderedHeight += usableHeight;
+                        heightLeft -= usableHeight;
+                        isFirstPage = false;
+                    }
+                }
+
+                let fileName = "XacNhanHuyThietBi_" + boDauTiengViet(assetCode || "").trim().replace(/\s+/g, "_") + ".pdf";
+                doc.save(fileName);
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi khi xuất PDF!");
+            } finally {
+                if (container.parentNode) document.body.removeChild(container);
+            }
         }
 
         function filterEquipmentDisposalTable() {
