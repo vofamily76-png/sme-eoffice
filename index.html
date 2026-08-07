@@ -1793,9 +1793,22 @@
                             <label>Kỳ chấm công (tháng/năm)</label>
                             <input type="month" id="cc-period-input" style="padding:6px 8px;">
                         </div>
+                        <!-- [MỚI - LỌC THEO PHÒNG BAN] Chỉ ảnh hưởng tới VIỆC HIỂN THỊ bảng bên dưới
+                             (ẩn/hiện dòng nào đang được vẽ ra ở renderChamCongTable) — KHÔNG gọi thêm
+                             action nào tới server, KHÔNG đụng/đổi dữ liệu chamCongRows đã tải, KHÔNG
+                             ảnh hưởng phạm vi "Điều chỉnh" hay khối "Xuất Excel" (2 mục đó có ô chọn
+                             phòng ban RIÊNG, độc lập với ô này). Danh sách phòng ban được đổ lại mỗi
+                             lần tải dữ liệu (xem populateChamCongFilterDeptSelect ở loadChamCongData). -->
+                        <div class="form-group" style="margin:0;">
+                            <label>Lọc theo phòng ban</label>
+                            <select id="cc-filter-dept" class="search-box" style="padding:6px 8px; min-width:200px;" onchange="renderChamCongTable()">
+                                <option value="all">Tất cả nhân viên</option>
+                            </select>
+                        </div>
                         <button class="btn btn-primary" onclick="loadChamCongData()"><i class="fa-solid fa-rotate"></i> Tải / Tính lại</button>
                         <!-- [ĐÃ XÓA - MỤC "NHẬN FILE"] Theo yêu cầu, bỏ nút "Nhận file" khỏi Tab
                              "Bảng Chấm Công" (không còn cách nào mở hộp thoại xem lại file NGAY
+
                              TRONG ứng dụng nữa). Người nhận vẫn tiếp tục nhận được file minh chứng
                              qua EMAIL như cũ (không đổi action "guiFileDanhMucLoaiCong"/gửi mail ở
                              "suaNgayChamCong"). KHÔNG xóa dữ liệu: Sheet lưu file
@@ -1832,6 +1845,71 @@
                             <i class="fa-solid fa-user-lock"></i> Cho tự điều chỉnh
                         </button>
                         <span id="cc-status-badge" style="font-size:12px; padding:4px 10px; border-radius:12px; font-weight:600;"></span>
+                    </div>
+                </div>
+
+                <!-- [SỬA - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG" - ĐỔI SANG CƠ CHẾ "GỬI YÊU CẦU PHÊ DUYỆT"]
+                     Chỉ hiện khi kỳ đang chọn ĐÃ CHỐT (giống điều kiện của nút "Mở lại"). TRƯỚC ĐÂY ô
+                     "Người phê duyệt" là 1 ô CHỮ TỰ DO, bấm "Lưu phê duyệt" là GHI THẲNG. NAY đổi
+                     thành 1 danh sách checkbox NHIỀU LỰA CHỌN (y hệt mục "Người nhận" — dùng CHUNG
+                     action "getChamCongNguoiNhanList" đã có sẵn, KHÔNG tạo thêm cấu hình nào khác),
+                     người có quyền sửa Bảng Chấm Công (canAdjustChamCong — y hệt quyền Chốt/Mở lại,
+                     không thêm quyền mới) chọn 1 hoặc NHIỀU người rồi bấm "Gửi yêu cầu phê duyệt" ->
+                     tạo 1 yêu cầu "Chờ duyệt" (action MỚI "guiYeuCauPheDuyetBangChamCong" ở Code.gs),
+                     hoạt động y hệt cơ chế phê duyệt của Tab "Đăng ký nghỉ phép" / mục "Phê duyệt
+                     bảng chấm công thuyền viên": CHỈ khi TẤT CẢ người phê duyệt đã chọn đều bấm
+                     "Đồng ý" (ở khối "Các yêu cầu phê duyệt" bên dưới — action MỚI
+                     "decideYeuCauPheDuyetBangChamCong") thì hệ thống mới tự ghi lại "Đã phê duyệt"
+                     (GIỐNG HỆT 3 cột "NguoiPheDuyet"/"GhiChuPheDuyet"/"NgayPheDuyet" đã có sẵn, xem
+                     renderChamCongPheDuyetUI() bên dưới) — KHÔNG đổi cấu trúc dữ liệu chấm công gốc,
+                     KHÔNG mất dữ liệu. Nếu kỳ CHƯA CHỐT, hiện dòng ghi chú giải thích lý do chưa phê
+                     duyệt được thay vì khối nhập liệu (không gây hiểu lầm). Action CŨ
+                     "pheDuyetBangChamCong"/"huyPheDuyetBangChamCong" VẪN GIỮ NGUYÊN (không xóa) —
+                     nút "Hủy phê duyệt" bên dưới vẫn dùng action cũ này để Admin/người có quyền chủ
+                     động xóa thủ công 1 phê duyệt đã có (VD lỡ duyệt nhầm), không thay đổi bảo mật. -->
+                <div class="admin-box" id="cc-pheduyet-box" style="border-top: 4px solid #1a7f37; display:none;">
+                    <div style="font-weight:600; margin-bottom:10px;"><i class="fa-solid fa-stamp"></i> Phê duyệt bảng chấm công</div>
+                    <div id="cc-pheduyet-chuachot-note" style="display:none; color:#888; font-size:13px;">
+                        Chỉ có thể phê duyệt sau khi bảng chấm công của kỳ này đã được <b>Chốt</b>.
+                    </div>
+                    <div id="cc-pheduyet-form-wrap" style="display:none;">
+                        <p style="margin:0 0 10px 0; font-size:12.5px; color:#555;">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Chọn "Người phê duyệt" (1 hoặc nhiều), ghi chú (nếu cần) rồi gửi — yêu cầu chỉ được xem là "Đã duyệt" khi TẤT CẢ người phê duyệt đã chọn đều bấm "Đồng ý" (giống cơ chế phê duyệt ở Tab "Đăng ký nghỉ phép").
+                        </p>
+                        <div class="input-group">
+                            <label>Người phê duyệt <span style="color:#d9534f;">*</span></label>
+                            <div class="checkbox-dropdown-list" id="cc-pheduyet-approver-list" style="max-height:140px;"></div>
+                        </div>
+                        <div class="input-group">
+                            <label>Ghi chú <span style="font-weight:normal; color:#888; font-size:11.5px;">(không bắt buộc)</span></label>
+                            <input type="text" id="cc-pheduyet-ghichu" class="search-box" placeholder="Ghi chú thêm nếu cần..." maxlength="500">
+                        </div>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn btn-success" id="cc-btn-luu-pheduyet" onclick="guiYeuCauPheDuyetBangChamCong()"><i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu phê duyệt</button>
+                            <button class="btn btn-danger" id="cc-btn-huy-pheduyet" style="display:none;" onclick="huyPheDuyetBangChamCong()" title="Xóa thủ công phê duyệt đã có cho kỳ này (không qua bước xét duyệt)"><i class="fa-solid fa-xmark"></i> Hủy phê duyệt</button>
+                        </div>
+                        <div id="cc-pheduyet-info" style="margin-top:10px; font-size:13px; color:#1a7f37; display:none;"></div>
+
+                        <!-- [MỚI] Danh sách các yêu cầu phê duyệt mà tài khoản đang đăng nhập được phép
+                             thấy (chính mình đã gửi, hoặc mình được chọn làm người phê duyệt). Nếu đang
+                             CHỜ mình duyệt, hiện thêm 2 nút "Đồng ý"/"Không đồng ý". -->
+                        <div style="margin-top:18px; border-top:1px solid #dbe4fb; padding-top:12px;">
+                            <h4 style="margin:0 0 10px 0; font-size:14px;"><i class="fa-solid fa-list-ul" style="color:#2f6fed;"></i> Các yêu cầu phê duyệt</h4>
+                            <div style="overflow-x:auto;">
+                                <table class="data-table" style="min-width:640px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Ngày gửi</th><th>Người gửi</th><th>Kỳ chấm công</th><th>Ghi chú</th>
+                                            <th>Người phê duyệt</th><th>Trạng thái</th><th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cc-pheduyet-duyet-tbody">
+                                        <tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -3854,6 +3932,12 @@
         let currentUserCanSelfAdjustChamCong = false;
         let chamCongRows = [];
         let chamCongDaChot = false;
+        // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Thông tin phê duyệt của kỳ đang xem (dùng CHUNG
+        // cho cả kỳ, không lặp lại theo từng dòng nhân sự — xem action "getChamCongData"/
+        // "pheDuyetBangChamCong" ở Code.gs). Rỗng ("") nghĩa là kỳ CHƯA được phê duyệt.
+        let chamCongNguoiPheDuyet = "";
+        let chamCongGhiChuPheDuyet = "";
+        let chamCongNgayPheDuyet = "";
         // [MỚI - THÔNG BÁO KHI BẬT "ĐIỀU CHỈNH"] Danh sách thông báo CHƯA XEM gửi riêng cho tài
         // khoản đang đăng nhập (chỉ có nếu tài khoản này nằm trong danh sách "Người nhận") — tải
         // kèm mỗi lần loadFromCloud() (xem buildSystemData ở Code.gs, trường
@@ -7196,6 +7280,11 @@
             chamCongRows = result.rows || [];
             chamCongDaChot = !!result.daChot;
             chamCongDanhSachNgay = result.danhSachNgay || [];
+            // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Cập nhật lại theo đúng dữ liệu server trả về
+            // mỗi lần tải (đổi kỳ, hoặc vừa lưu/hủy phê duyệt xong).
+            chamCongNguoiPheDuyet = result.nguoiPheDuyet || "";
+            chamCongGhiChuPheDuyet = result.ghiChuPheDuyet || "";
+            chamCongNgayPheDuyet = result.ngayPheDuyet || "";
             // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Cập nhật lại đúng theo giá trị server trả về mỗi
             // lần tải dữ liệu (đổi kỳ, hoặc quản lý vừa bật/tắt cờ cho mình xong).
             currentUserCanSelfAdjustChamCong = !!result.canSelfAdjust;
@@ -7205,7 +7294,9 @@
             // việc hiển thị bảng chính nếu lỗi (chỉ mất phần chú thích file đính kèm).
             loadChamCongGhiDeChiTiet(maKy);
             populateChamCongScopeSelect();
+            populateChamCongFilterDeptSelect();
             renderChamCongTable();
+            renderChamCongPheDuyetUI();
             populateChamCongExportSelects();
             // [SỬA LỖI - GIỚI HẠN XUẤT EXCEL THEO QUYỀN] Gọi lại sau mỗi lần tải dữ liệu để chắc
             // chắn khối "Xuất Excel" luôn khớp đúng quyền hiện có (phòng trường hợp quyền vừa được
@@ -7263,6 +7354,9 @@
             }
             if (btnChot) btnChot.style.display = (currentUserCanEditChamCong && !chamCongDaChot) ? "inline-flex" : "none";
             if (btnMoLai) btnMoLai.style.display = (currentUserCanEditChamCong && chamCongDaChot) ? "inline-flex" : "none";
+            // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Đồng bộ ngay khi trạng thái Chốt/Mở lại đổi
+            // (VD vừa "Mở lại" thì khối phê duyệt phải ẩn form/hiện dòng ghi chú ngay lập tức).
+            renderChamCongPheDuyetUI();
             // [MỚI - CHO PHÉP TỰ ĐIỀU CHỈNH] Ngoài người có quyền "SuaChamCong" (như cũ), tài
             // khoản KHÔNG có quyền đó nhưng ĐÃ được BẬT cờ "tự điều chỉnh" cho ĐÚNG MSNV của
             // chính mình (currentUserCanSelfAdjustChamCong, xem loadChamCongData) cũng được phép
@@ -7436,6 +7530,26 @@
                 sel.value = "all";
                 ccScopeType = "all"; ccScopeValue = "";
             }
+        }
+
+        // [MỚI - LỌC THEO PHÒNG BAN] Dựng lại danh sách lựa chọn trong ô "cc-filter-dept" (Tất cả
+        // nhân viên / từng Phòng ban) theo ĐÚNG dữ liệu chamCongRows vừa tải — gọi lại mỗi khi tải
+        // dữ liệu mới (đổi kỳ) để danh sách luôn khớp đúng nhân sự đang có trong bảng, giống hệt
+        // cách làm với populateChamCongScopeSelect() ở trên. Ô này CHỈ dùng để LỌC HIỂN THỊ (xem
+        // renderChamCongTable) — hoàn toàn TÁCH BIỆT với "cc-scope-select" (phạm vi ĐIỀU CHỈNH)
+        // và với ô lọc phòng ban riêng của khối "Xuất Excel".
+        function populateChamCongFilterDeptSelect() {
+            let sel = document.getElementById("cc-filter-dept");
+            if (!sel) return;
+            let currentValue = sel.value || "all";
+            let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
+            sel.innerHTML = '<option value="all">Tất cả nhân viên</option>' +
+                depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+            // Khôi phục đúng lựa chọn đang chọn (nếu phòng ban đó vẫn còn tồn tại trong dữ liệu vừa
+            // tải lại) — tránh bị tự động về "Tất cả nhân viên" một cách khó chịu mỗi lần bấm
+            // "Tải / Tính lại". Nếu phòng ban đó không còn ai (VD đổi kỳ khác) -> tự động về "Tất
+            // cả nhân viên" (an toàn, không hiện bảng trống khó hiểu).
+            sel.value = (currentValue === "all" || depts.indexOf(currentValue) !== -1) ? currentValue : "all";
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Người dùng đổi lựa chọn ở ô "cc-scope-select" -> cập nhật
@@ -9818,11 +9932,22 @@
             updateChamCongStatusUI();
             buildChamCongTableHead();
 
-            if (!chamCongRows.length) {
-                tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
+            // [MỚI - LỌC THEO PHÒNG BAN] Chỉ lọc DÒNG NÀO ĐƯỢC VẼ RA ở bảng bên dưới theo lựa chọn
+            // hiện tại ở ô "cc-filter-dept" — KHÔNG đụng/đổi mảng chamCongRows gốc (mọi nơi khác
+            // như Xuất Excel/phạm vi Điều chỉnh/tổng hợp vẫn dùng ĐÚNG dữ liệu đầy đủ như cũ).
+            let ccFilterDeptSel = document.getElementById("cc-filter-dept");
+            let ccFilterDeptVal = ccFilterDeptSel ? (ccFilterDeptSel.value || "all") : "all";
+            let ccRowsToRender = (ccFilterDeptVal && ccFilterDeptVal !== "all")
+                ? chamCongRows.filter(r => (r.phongBan || "(Chưa rõ)") === ccFilterDeptVal)
+                : chamCongRows;
+
+            if (!ccRowsToRender.length) {
+                tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">' +
+                    (chamCongRows.length ? "Không có nhân sự nào thuộc phòng ban đã chọn." : "Không có dữ liệu nhân sự cho kỳ này.") +
+                    '</td></tr>';
                 return;
             }
-            tbody.innerHTML = chamCongRows.map((r, rIdx) => {
+            tbody.innerHTML = ccRowsToRender.map((r, rIdx) => {
                 let chiTiet = r.chiTietNgay || {};
                 let safeMsnv = escapeHtml(r.msnv || "");
                 // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dòng (nhân viên) này có thuộc phạm vi đang được mở
@@ -10261,10 +10386,223 @@
             if (result && result.status === "SUCCESS") {
                 // [TRỰC QUAN NGAY LẬP TỨC] Giống chotBangChamCong() ở trên.
                 chamCongDaChot = false;
+                // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Server đã tự xóa phê duyệt cũ (nếu có)
+                // khi Mở lại — đồng bộ ngay ở FE để không hiện phê duyệt "ma" trước khi tải lại.
+                chamCongNguoiPheDuyet = ""; chamCongGhiChuPheDuyet = ""; chamCongNgayPheDuyet = "";
                 updateChamCongStatusUI();
                 loadChamCongData();
             } else {
                 alert("⚠️ " + ((result && result.message) || "Không thể mở lại bảng chấm công."));
+            }
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Hiện/ẩn đúng khối UI theo trạng thái hiện tại:
+        //   - Kỳ CHƯA CHỐT: ẩn cả khối (chưa có gì để phê duyệt) — giống điều kiện áp dụng cho
+        //     nút "Mở lại"/"Chốt bảng chấm công".
+        //   - Kỳ ĐÃ CHỐT nhưng tài khoản KHÔNG có quyền sửa (currentUserCanEditChamCong=false):
+        //     chỉ hiện thông tin đã phê duyệt (nếu có) ở dạng CHỈ ĐỌC, không hiện form nhập/nút.
+        //   - Kỳ ĐÃ CHỐT và có quyền sửa: hiện đầy đủ form nhập + nút "Lưu phê duyệt"/"Hủy phê
+        //     duyệt" (nút Hủy chỉ hiện khi ĐÃ có phê duyệt).
+        // Tách riêng thành hàm này để gọi lại được từ nhiều nơi (tải dữ liệu, Chốt/Mở lại xong,
+        // lưu/hủy phê duyệt xong) mà không lặp code — giống đúng cách làm của updateChamCongStatusUI().
+        function renderChamCongPheDuyetUI() {
+            let box = document.getElementById("cc-pheduyet-box");
+            let chuaChotNote = document.getElementById("cc-pheduyet-chuachot-note");
+            let formWrap = document.getElementById("cc-pheduyet-form-wrap");
+            let btnLuu = document.getElementById("cc-btn-luu-pheduyet");
+            let btnHuy = document.getElementById("cc-btn-huy-pheduyet");
+            let infoBox = document.getElementById("cc-pheduyet-info");
+            if (!box) return;
+
+            if (!currentUserCanViewChamCong) { box.style.display = "none"; return; }
+            box.style.display = "";
+
+            if (!chamCongDaChot) {
+                if (chuaChotNote) chuaChotNote.style.display = "";
+                if (formWrap) formWrap.style.display = "none";
+                return;
+            }
+            if (chuaChotNote) chuaChotNote.style.display = "none";
+            if (formWrap) formWrap.style.display = "";
+
+            let daPheDuyet = !!chamCongNguoiPheDuyet;
+            // [SỬA - Ô "NGƯỜI PHÊ DUYỆT" NAY LÀ DANH SÁCH CHECKBOX] Chỉ hiện form gửi yêu cầu (+
+            // đổ lại danh sách checkbox, tải lại "Các yêu cầu phê duyệt") cho tài khoản CÓ quyền
+            // sửa (currentUserCanEditChamCong) — tài khoản chỉ có quyền XEM vẫn thấy được khối
+            // "Các yêu cầu phê duyệt" (đã tự giới hạn đúng theo action
+            // "getYeuCauPheDuyetBangChamCongList" — chỉ người gửi/người phê duyệt/Admin mới thấy).
+            if (btnLuu) btnLuu.style.display = currentUserCanEditChamCong ? "inline-flex" : "none";
+            if (btnHuy) btnHuy.style.display = (currentUserCanEditChamCong && daPheDuyet) ? "inline-flex" : "none";
+            if (currentUserCanEditChamCong) populateChamCongPheDuyetApproverList();
+            loadChamCongPheDuyetDuyetList();
+
+            if (infoBox) {
+                if (daPheDuyet) {
+                    infoBox.style.display = "";
+                    infoBox.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đã phê duyệt bởi <b>' + escapeHtml(chamCongNguoiPheDuyet) + '</b>' +
+                        (chamCongNgayPheDuyet ? (' lúc ' + escapeHtml(chamCongNgayPheDuyet)) : '') +
+                        (chamCongGhiChuPheDuyet ? ('<br>Ghi chú: ' + escapeHtml(chamCongGhiChuPheDuyet)) : '');
+                } else {
+                    infoBox.style.display = "";
+                    infoBox.style.color = "#b26a00";
+                    infoBox.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Kỳ này đã chốt nhưng CHƯA được phê duyệt.';
+                }
+            }
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Đổ danh sách username vào khối checkbox nhiều
+        // lựa chọn "cc-pheduyet-approver-list" — DÙNG CHUNG action "getChamCongNguoiNhanList" đã
+        // có sẵn (đúng mục "Người nhận" đang dùng cho "Điều chỉnh ngày công"/"Danh mục loại
+        // công"), như vậy danh sách "Người phê duyệt" ở đây sẽ giống hệt danh sách ở mục "Người
+        // nhận" đúng theo yêu cầu, KHÔNG cần thêm sheet/cấu hình Admin nào khác.
+        let ccPheDuyetNguoiNhanUsernames = [];
+        async function populateChamCongPheDuyetApproverList() {
+            let box = document.getElementById("cc-pheduyet-approver-list");
+            if (!box) return;
+            let result = await callServerAction({ action: "getChamCongNguoiNhanList" });
+            if (result && result.status === "SUCCESS") ccPheDuyetNguoiNhanUsernames = result.usernames || [];
+            box.innerHTML = ccPheDuyetNguoiNhanUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}"> ${escapeHtml(u)}</label>`
+            ).join("") || '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào được phép chọn làm "Người phê duyệt" (mục "Người nhận"). Liên hệ Admin để được cấu hình.</div>';
+        }
+
+        // [SỬA - "LƯU PHÊ DUYỆT" -> "GỬI YÊU CẦU PHÊ DUYỆT"] Đọc các username đang được tick ở
+        // khối checkbox "cc-pheduyet-approver-list" rồi gửi lên action MỚI
+        // "guiYeuCauPheDuyetBangChamCong" — server tự tạo 1 yêu cầu "Chờ duyệt" + gửi email NGAY
+        // tới từng "Người phê duyệt" đã chọn, y hệt cơ chế đang dùng cho Tab "Đăng ký nghỉ phép"
+        // và mục "Phê duyệt bảng chấm công thuyền viên" (action "guiDuyetDanhMucLoaiCongThuyenVien").
+        async function guiYeuCauPheDuyetBangChamCong() {
+            if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền phê duyệt Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) { alert("Vui lòng chọn kỳ chấm công (tháng/năm)."); return; }
+            let nguoiPheDuyet = Array.from(document.querySelectorAll("#cc-pheduyet-approver-list input:checked")).map(i => i.value);
+            if (!nguoiPheDuyet.length) { alert("Vui lòng chọn ít nhất 1 \"Người phê duyệt\"."); return; }
+            let ghiChuInput = document.getElementById("cc-pheduyet-ghichu");
+            let ghiChu = ghiChuInput ? ghiChuInput.value.trim() : "";
+
+            let result = await callServerAction({ action: "guiYeuCauPheDuyetBangChamCong", maKy: maKy, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu });
+            if (result && result.status === "SUCCESS") {
+                if (ghiChuInput) ghiChuInput.value = "";
+                document.querySelectorAll("#cc-pheduyet-approver-list input:checked").forEach(i => i.checked = false);
+                alert("Đã gửi yêu cầu phê duyệt bảng chấm công kỳ \"" + maKy + "\" thành công tới " + nguoiPheDuyet.length + " người phê duyệt.");
+                loadChamCongPheDuyetDuyetList();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể gửi yêu cầu phê duyệt bảng chấm công."));
+            }
+        }
+
+        // [MỚI - DANH SÁCH YÊU CẦU PHÊ DUYỆT] Tải danh sách yêu cầu phê duyệt mà tài khoản đang
+        // đăng nhập được phép thấy (action MỚI "getYeuCauPheDuyetBangChamCongList") rồi vẽ lại
+        // bảng — y hệt cơ chế đang dùng cho loadCctvDmlcDuyetList() của mục "Phê duyệt bảng chấm
+        // công thuyền viên", nhưng TÁCH BIỆT hoàn toàn (dữ liệu riêng, không lẫn nhau).
+        let ccPheDuyetDuyetData = [];
+        async function loadChamCongPheDuyetDuyetList() {
+            let result = await callServerAction({ action: "getYeuCauPheDuyetBangChamCongList" });
+            if (result && result.status === "SUCCESS") ccPheDuyetDuyetData = result.list || [];
+            renderChamCongPheDuyetDuyetList();
+            if (typeof updateNotificationBell === "function") updateNotificationBell();
+        }
+
+        // Vẽ lại bảng các yêu cầu phê duyệt Bảng Chấm Công (Văn phòng). Chỉ hiện 2 nút "Đồng ý"/
+        // "Không đồng ý" ở đúng yêu cầu mà CHÍNH tài khoản đang đăng nhập được chọn làm "Người phê
+        // duyệt" VÀ đang thực sự còn "Chờ duyệt" (chưa tự mình xử lý) — Server vẫn LUÔN kiểm tra
+        // lại quyền này, đây chỉ là ẩn/hiện cho gọn giao diện.
+        function renderChamCongPheDuyetDuyetList() {
+            let tbody = document.getElementById("cc-pheduyet-duyet-tbody");
+            if (!tbody) return;
+            let inp = document.getElementById("cc-period-input");
+            let maKyDangXem = inp ? inp.value : "";
+            let list = ccPheDuyetDuyetData.filter(r => !maKyDangXem || r.maKy === maKyDangXem)
+                .slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(r => {
+                let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
+                let canDecide = (r.nguoiPheDuyet || []).includes(currentUsername) &&
+                    r.trangThaiChung === "Chờ duyệt" && (!myStatus || myStatus.status === "cho_duyet");
+                let coTheXoa = (r.nguoiGui === currentUsername) || (currentUser && currentUser.role === "Admin");
+                let mauTrangThai = r.trangThaiChung === "Đã duyệt" ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let thaoTacHtml = "";
+                if (canDecide) {
+                    thaoTacHtml += `<button class="btn btn-success btn-sm" onclick="decideChamCongPheDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                        <button class="btn btn-danger btn-sm" onclick="decideChamCongPheDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>`;
+                }
+                if (coTheXoa) {
+                    thaoTacHtml += `<button class="btn btn-danger btn-sm" onclick="xoaChamCongPheDuyetUI('${r.id}')" title="Xóa yêu cầu này"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+                }
+                if (!thaoTacHtml) thaoTacHtml = '<span style="color:#ccc;">—</span>';
+                return `<tr>
+                    <td>${escapeHtml(r.ngayGui || "")}</td>
+                    <td>${escapeHtml(r.nguoiGui || "")}</td>
+                    <td>${escapeHtml(r.maKy || "")}</td>
+                    <td>${escapeHtml(r.ghiChu || "")}</td>
+                    <td>${(r.nguoiPheDuyet || []).map(u => escapeHtml(u)).join(", ")}</td>
+                    <td><b style="color:${mauTrangThai};">${escapeHtml(r.trangThaiChung || "")}</b></td>
+                    <td style="white-space:nowrap;">${thaoTacHtml}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        // Xử lý bấm "Đồng ý"/"Không đồng ý" trên 1 yêu cầu phê duyệt Bảng Chấm Công (Văn phòng) —
+        // "Không đồng ý" BẮT BUỘC phải nhập lý do (server cũng tự kiểm tra lại), y hệt
+        // decideCctvDmlcDuyetUI() của mục "Phê duyệt bảng chấm công thuyền viên".
+        async function decideChamCongPheDuyetUI(id, decision) {
+            let lyDo = "";
+            if (decision === "reject") {
+                lyDo = prompt("Vui lòng nhập lý do KHÔNG đồng ý yêu cầu này:", "");
+                if (lyDo === null) return;
+                lyDo = lyDo.trim();
+                if (!lyDo) { alert("Bạn cần nhập lý do khi chọn \"Không đồng ý\"."); return; }
+            } else {
+                if (!confirm("Xác nhận ĐỒNG Ý yêu cầu phê duyệt này?")) return;
+            }
+            let result = await callServerAction({ action: "decideYeuCauPheDuyetBangChamCong", id: id, decision: decision, lyDo: lyDo });
+            if (!result || result.status === "ERROR") {
+                alert("❌ " + ((result && result.message) || "Có lỗi xảy ra khi xử lý yêu cầu."));
+                return;
+            }
+            // [ĐỒNG BỘ NGAY] Nếu vừa duyệt xong đủ (Đã duyệt) mà đang xem đúng kỳ này, tải lại
+            // dữ liệu Bảng Chấm Công để hiện ngay "Đã phê duyệt bởi..." (3 cột NguoiPheDuyet/
+            // GhiChuPheDuyet/NgayPheDuyet vừa được server ghi lại).
+            if (typeof loadChamCongData === "function") loadChamCongData(); else await loadChamCongPheDuyetDuyetList();
+        }
+
+        // [MỚI - NÚT "XÓA"] Xóa hẳn 1 yêu cầu phê duyệt Bảng Chấm Công (action MỚI
+        // "xoaYeuCauPheDuyetBangChamCong") — CHỈ người đã gửi yêu cầu (hoặc Admin) mới thấy nút
+        // này, SERVER vẫn luôn kiểm tra lại quyền này. KHÔNG đụng/xóa bất kỳ dữ liệu chấm công
+        // nào đã ghi nhận — chỉ xóa đúng 1 dòng yêu cầu phê duyệt này.
+        async function xoaChamCongPheDuyetUI(id) {
+            if (!confirm("Xác nhận XÓA yêu cầu phê duyệt này? Thao tác không thể hoàn tác.")) return;
+            let result = await callServerAction({ action: "xoaYeuCauPheDuyetBangChamCong", id: id });
+            if (!result || result.status === "ERROR") {
+                alert("❌ " + ((result && result.message) || "Có lỗi xảy ra khi xóa yêu cầu."));
+                return;
+            }
+            ccPheDuyetDuyetData = ccPheDuyetDuyetData.filter(x => x.id !== id);
+            renderChamCongPheDuyetDuyetList();
+            if (typeof updateNotificationBell === "function") updateNotificationBell();
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG"] Hủy (xóa) THỦ CÔNG phê duyệt đã lưu cho kỳ đang
+        // xem (dùng action CŨ "huyPheDuyetBangChamCong", VẪN GIỮ NGUYÊN) — dùng khi lỡ duyệt nhầm
+        // hoặc cần phê duyệt lại từ đầu (không đụng trạng thái Chốt/Mở lại, không xóa các yêu cầu
+        // đã gửi ở khối "Các yêu cầu phê duyệt").
+        async function huyPheDuyetBangChamCong() {
+            if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền hủy phê duyệt Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            let inp = document.getElementById("cc-period-input");
+            let maKy = inp ? inp.value : "";
+            if (!maKy) return;
+            if (!confirm("Hủy phê duyệt đã lưu cho kỳ chấm công \"" + maKy + "\"?")) return;
+
+            let result = await callServerAction({ action: "huyPheDuyetBangChamCong", maKy: maKy });
+            if (result && result.status === "SUCCESS") {
+                chamCongNguoiPheDuyet = ""; chamCongGhiChuPheDuyet = ""; chamCongNgayPheDuyet = "";
+                renderChamCongPheDuyetUI();
+            } else {
+                alert("⚠️ " + ((result && result.message) || "Không thể hủy phê duyệt bảng chấm công."));
             }
         }
 
