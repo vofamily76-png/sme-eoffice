@@ -1517,7 +1517,13 @@
                      Cùng mức quyền với phần còn lại của Tab (canManageEquipment ở Code.gs) —
                      kiểm tra lại Ở SERVER, không thể bị bỏ qua dù gọi thẳng API. Gõ đúng Mã số
                      thiết bị ĐÃ TỒN TẠI (trong equipmentData) sẽ tự đổ lại Nhóm/Loại chi tiết/
-                     Tên/Tình trạng/ĐVT/Số lượng hiện có để không phải gõ tay lại từ đầu. -->
+                     Tên/Tình trạng/ĐVT/Số lượng hiện có để không phải gõ tay lại từ đầu.
+                     [SỬA LỖI - TÁCH RIÊNG "PHÊ DUYỆT HỦY THIẾT BỊ"] Trước đây 3 trường "Người phê
+                     duyệt"/"Đính kèm file"/"Ghi chú" nằm LẪN trong chính khối khai báo này, khiến
+                     người dùng phải điền TOÀN BỘ thông tin duyệt ngay khi khai báo. Nay TÁCH riêng
+                     3 trường đó sang khối MỚI "Phê duyệt hủy thiết bị" ngay bên dưới — khối này
+                     chỉ còn thông tin THIẾT BỊ (không đổi field id/action nào ở Code.gs, không đổi
+                     cấu trúc cột sheet "ThietBiHuy" -> dữ liệu cũ/quyền hạn giữ nguyên 100%). -->
                 <div class="admin-box" id="eq-disposal-box" style="border-top: 4px solid #c0392b; background:#fdf3f2;">
                     <h3 id="eq-disposal-form-title"><i class="fa-solid fa-trash-can-arrow-up"></i> Hủy Thiết Bị</h3>
                     <input type="hidden" id="edit-code-eq-disposal" value="">
@@ -1563,15 +1569,48 @@
                             <textarea id="inp-eq-disposal-reason" rows="2" placeholder="Ví dụ: Hỏng hóc không thể sửa chữa, hết thời hạn sử dụng..." style="width:100%; padding:10px; border:1px solid #ccc; border-radius:4px; font-family:inherit;"></textarea>
                         </div>
                     </div>
+                    <div class="form-row" style="margin-top:10px">
+                        <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                            <button type="button" class="btn btn-success" style="width:auto;" onclick="saveEquipmentDisposal()">Lưu Hủy Thiết Bị ✔️</button>
+                            <button type="button" class="btn btn-danger" id="btn-cancel-edit-eq-disposal" onclick="resetEquipmentDisposalForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                        </div>
+                    </div>
+                    <small style="color:#888; display:block; margin-top:6px;">Khai báo xong, xuống mục "Phê duyệt hủy thiết bị" bên dưới để chọn Người phê duyệt và gửi đi.</small>
+                </div>
+
+                <!-- [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Khối RIÊNG chỉ để chọn 1
+                     thiết bị ĐÃ khai báo hủy ở khối trên rồi gửi đi phê duyệt: chọn "Người phê
+                     duyệt", đính kèm file (biên bản hủy, hình ảnh...), ghi chú. Vẫn dùng CHUNG
+                     action "saveEquipmentDisposal" ở Code.gs (KHÔNG đổi field/action nào ở server
+                     -> dữ liệu đồng bộ tuyệt đối với khối "Hủy Thiết Bị" phía trên, không tách
+                     sheet/không nhân đôi dữ liệu, không mất dữ liệu cũ), chỉ khác ở chỗ giao diện
+                     tách riêng 2 bước rõ ràng: (1) khai báo thiết bị, (2) gửi phê duyệt. Sau khi
+                     gửi, "Người phê duyệt" được chọn sẽ thấy ngay ở chuông thông báo (🔔) — xem
+                     getPendingEquipmentDisposalApprovalsForMe()/getNotificationItems(). Sau khi
+                     người đó bấm Đồng ý/Không đồng ý (đã xác nhận), dòng đó tự động bị KHÓA khỏi
+                     mục "Thao tác" của bảng danh sách bên dưới (xem renderEquipmentDisposalTable -
+                     điều kiện "d.nguoiXacNhan"), không cho sửa/xóa nữa để đảm bảo dữ liệu đã duyệt
+                     luôn đồng bộ, không bị đổi ngược sau khi đã có quyết định. -->
+                <div class="admin-box" id="eq-disposal-approval-box" style="border-top: 4px solid #1565c0; background:#eef5fc;">
+                    <h3><i class="fa-solid fa-user-shield"></i> Phê duyệt hủy thiết bị</h3>
+                    <div class="form-row">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <label>Chọn thiết bị cần gửi phê duyệt hủy</label>
+                            <select id="inp-eq-disposal-select-code" onchange="onSelectEqDisposalForApproval()">
+                                <option value="">-- Chọn thiết bị đã khai báo ở mục "Hủy Thiết Bị" --</option>
+                            </select>
+                            <small style="color:#888;">Chỉ liệt kê thiết bị CHƯA gửi duyệt hoặc BỊ từ chối (có thể gửi lại). Thiết bị đang chờ duyệt hoặc đã được xác nhận sẽ không hiện ở đây.</small>
+                        </div>
+                    </div>
                     <div class="form-row" style="margin-top:10px;">
                         <div class="input-group">
-                            <label>Người phê duyệt</label>
+                            <label>Người phê duyệt <span style="color:#d9534f;">*</span></label>
                             <select id="inp-eq-disposal-approver"><option value="">-- Chưa chọn --</option></select>
                             <!-- [MỚI] Giải thích quy trình duyệt: có chọn Người phê duyệt -> trạng
                                  thái tự chuyển "Chờ hủy" cho tới khi người đó bấm "Đồng ý" (tự động
-                                 chuyển "Đã hủy" và lưu lại người/ngày giờ xác nhận). Không chọn ai
-                                 -> coi như "Đã hủy" ngay, không cần chờ duyệt. -->
-                            <small style="color:#888;">Có chọn Người phê duyệt: trạng thái sẽ ở "Chờ hủy" cho tới khi người đó Đồng ý (tự động chuyển "Đã hủy"). Không chọn: coi như "Đã hủy" ngay.</small>
+                                 chuyển "Đã hủy" và lưu lại người/ngày giờ xác nhận), người phê
+                                 duyệt sẽ nhận thông báo ngay trên chuông (🔔). -->
+                            <small style="color:#888;">Bắt buộc chọn để gửi phê duyệt. Người được chọn sẽ nhận thông báo trên chuông (🔔) và trạng thái ở "Chờ hủy" cho tới khi họ Đồng ý/Không đồng ý.</small>
                         </div>
                     </div>
                     <div class="form-row" style="margin-top:10px;">
@@ -1587,8 +1626,7 @@
                     </div>
                     <div class="form-row" style="margin-top:10px">
                         <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
-                            <button type="button" class="btn btn-success" style="width:auto;" onclick="saveEquipmentDisposal()">Lưu Hủy Thiết Bị ✔️</button>
-                            <button type="button" class="btn btn-danger" id="btn-cancel-edit-eq-disposal" onclick="resetEquipmentDisposalForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                            <button type="button" class="btn btn-success" style="width:auto;" onclick="submitEquipmentDisposalApproval()">Gửi phê duyệt 📨</button>
                         </div>
                     </div>
                 </div>
@@ -4351,8 +4389,39 @@
                 });
             });
 
+            // 6) [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Khai báo "Hủy thiết bị" đang
+            //    chờ ĐÚNG mình phê duyệt (Tab "Quản lý Thiết bị" > khối "Phê duyệt hủy thiết bị")
+            //    — hiện lên chuông thông báo NGAY khi người gửi bấm "Gửi phê duyệt", y hệt cách
+            //    làm với đơn nghỉ phép (mục 2)/bảng chấm công thuyền viên (mục 5) ở trên.
+            getPendingEquipmentDisposalApprovalsForMe().forEach(d => {
+                items.push({
+                    tab: "equipment",
+                    sortKey: d.ngayHuy || "",
+                    icon: "fa-trash-can-arrow-up",
+                    color: "#c0392b",
+                    title: "Yêu cầu phê duyệt hủy thiết bị: " + (d.name || d.assetCode || ""),
+                    desc: "Mã TB: " + (d.assetCode || "") + (d.reason ? (" — Lý do: " + d.reason) : ""),
+                    onClick: function () {
+                        switchPage("equipment");
+                        setTimeout(function () {
+                            let box = document.getElementById("eq-disposal-approval-box");
+                            if (box) box.scrollIntoView({ behavior: "smooth" });
+                        }, 200);
+                    }
+                });
+            });
+
             items.sort((a, b) => String(b.sortKey).localeCompare(String(a.sortKey)));
             return items;
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Đếm/lọc các khai báo "Hủy thiết bị"
+        // đang thực sự CHỜ tài khoản đang đăng nhập bấm Đồng ý/Không đồng ý (đúng "Người phê
+        // duyệt" được chỉ định, đúng trạng thái "Chờ hủy" — chưa ai xử lý) — dùng CHUNG kỹ thuật
+        // với getPendingLeaveApprovalsForMe()/getPendingCctvDmlcApprovalsForMe() ở trên.
+        function getPendingEquipmentDisposalApprovalsForMe() {
+            if (!currentUsername) return [];
+            return (equipmentDisposalData || []).filter(d => d.trangThaiHuy === "Chờ hủy" && d.approver === currentUsername);
         }
 
         // Đếm/lọc các yêu cầu "Phê duyệt bảng chấm công thuyền viên" đang thực sự CHỜ tài khoản
@@ -15109,8 +15178,57 @@
                 await loadFromCloud(true);
                 resetEquipmentDisposalForm();
                 updateSystemData();
-                alert("✔️ Đã lưu thông tin Hủy Thiết Bị lên hệ thống.");
+                // [MỚI - TÁCH RIÊNG "PHÊ DUYỆT HỦY THIẾT BỊ"] Thông báo khác nhau tùy có gửi kèm
+                // "Người phê duyệt" hay không, để người dùng biết rõ đây là bước khai báo đơn
+                // thuần hay đã thực sự GỬI ĐI chờ duyệt (không đổi luồng dữ liệu, chỉ đổi câu chữ).
+                alert(payload.approver
+                    ? ("✔️ Đã gửi yêu cầu phê duyệt hủy thiết bị đến \"" + payload.approver + "\". Vui lòng chờ xác nhận (Đồng ý/Không đồng ý).")
+                    : "✔️ Đã lưu thông tin Hủy Thiết Bị lên hệ thống.");
             }
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Được gọi từ nút "Gửi phê duyệt" ở
+        // khối MỚI "Phê duyệt hủy thiết bị". Bắt buộc phải chọn 1 thiết bị (đã khai báo ở khối
+        // "Hủy Thiết Bị" phía trên, thông qua "onSelectEqDisposalForApproval()") VÀ chọn "Người
+        // phê duyệt" trước khi gửi — khác với "saveEquipmentDisposal()" gọi trực tiếp từ khối
+        // "Hủy Thiết Bị" (không bắt buộc chọn Người phê duyệt). Dùng LẠI đúng
+        // "saveEquipmentDisposal()" bên trên để gửi lên server -> KHÔNG có action mới, KHÔNG đổi
+        // cấu trúc dữ liệu, đảm bảo đồng bộ tuyệt đối, không mất dữ liệu.
+        async function submitEquipmentDisposalApproval() {
+            let editCode = document.getElementById("edit-code-eq-disposal").value;
+            if (!editCode) { alert("⚠️ Vui lòng chọn thiết bị cần gửi phê duyệt hủy ở khung phía trên."); return; }
+            let approver = document.getElementById("inp-eq-disposal-approver") ? document.getElementById("inp-eq-disposal-approver").value : "";
+            if (!approver) { alert("⚠️ Vui lòng chọn Người phê duyệt trước khi gửi."); return; }
+            await saveEquipmentDisposal();
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Đổ danh sách các thiết bị ĐÃ khai báo
+        // hủy (ở "equipmentDisposalData") vào ô "Chọn thiết bị cần gửi phê duyệt hủy" — CHỈ liệt
+        // kê những dòng CHƯA gửi duyệt (trangThaiHuy khác "Chờ hủy") VÀ CHƯA bị khóa do đã có
+        // người xác nhận (không có "nguoiXacNhan"), để không cho gửi trùng 1 yêu cầu đang chờ, và
+        // không cho "gửi lại" 1 dòng đã được duyệt xong (đã khóa hẳn). Dòng bị "Từ chối" (có
+        // nguoiXacNhan nhưng trangThaiHuy = "Từ chối") VẪN được liệt kê để có thể chọn Người phê
+        // duyệt khác rồi gửi lại từ đầu.
+        function populateEqDisposalApprovalSelect_() {
+            let sel = document.getElementById("inp-eq-disposal-select-code");
+            if (!sel) return;
+            let keepValue = sel.value;
+            let sendable = (equipmentDisposalData || []).map((d, idx) => ({ d: d, idx: idx }))
+                .filter(x => x.d.trangThaiHuy !== "Chờ hủy" && !(x.d.trangThaiHuy === "Đã hủy" && x.d.nguoiXacNhan));
+            sel.innerHTML = '<option value="">-- Chọn thiết bị đã khai báo ở mục "Hủy Thiết Bị" --</option>' +
+                sendable.map(x => `<option value="${x.idx}">${escapeHtml(x.d.assetCode)} - ${escapeHtml(x.d.name)}${x.d.trangThaiHuy === "Từ chối" ? " (Đã bị từ chối - gửi lại)" : ""}</option>`).join('');
+            if (keepValue && sendable.some(x => String(x.idx) === keepValue)) sel.value = keepValue;
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Chọn 1 thiết bị ở ô dropdown MỚI ->
+        // đổ lại TOÀN BỘ thông tin của dòng đó lên form (dùng LẠI đúng startEditEquipmentDisposal
+        // đã có, chỉ khác nơi kích hoạt), để người dùng thấy đủ thông tin thiết bị trước khi chọn
+        // Người phê duyệt/đính kèm file/ghi chú rồi gửi đi.
+        function onSelectEqDisposalForApproval() {
+            let sel = document.getElementById("inp-eq-disposal-select-code");
+            let idx = sel ? sel.value : "";
+            if (idx === "") { resetEquipmentDisposalForm(); return; }
+            startEditEquipmentDisposal(parseInt(idx, 10));
         }
 
         async function startEditEquipmentDisposal(idx) {
@@ -15141,11 +15259,20 @@
                 ? `File hiện tại: ${d.fileName} (chỉ chọn file mới nếu muốn thay thế)`
                 : "Chưa có file nào được tải lên.";
             document.getElementById("btn-cancel-edit-eq-disposal").style.display = "inline-block";
+            // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Đồng bộ lại ô "Chọn thiết bị cần
+            // gửi phê duyệt hủy" ở khối MỚI khi vào sửa 1 dòng (từ nút "Sửa" ở bảng hoặc từ chính
+            // ô chọn đó) — nếu dòng này không nằm trong danh sách "có thể gửi duyệt" (VD đang
+            // "Chờ hủy" hoặc đã khóa) thì ô đó tự về "-- Chọn --", không gây nhầm lẫn.
+            populateEqDisposalApprovalSelect_();
+            let selApv = document.getElementById("inp-eq-disposal-select-code");
+            if (selApv) selApv.value = String(idx);
             document.getElementById("eq-disposal-box").scrollIntoView({ behavior: "smooth" });
         }
 
         function resetEquipmentDisposalForm() {
             document.getElementById("edit-code-eq-disposal").value = "";
+            let selApvReset = document.getElementById("inp-eq-disposal-select-code");
+            if (selApvReset) selApvReset.value = "";
             document.getElementById("eq-disposal-form-title").innerHTML = `<i class="fa-solid fa-trash-can-arrow-up"></i> Hủy Thiết Bị`;
             document.getElementById("inp-eq-disposal-code").value = "";
             document.getElementById("inp-eq-disposal-name").value = "";
@@ -15188,19 +15315,37 @@
         }
 
         function renderEquipmentDisposalTable() {
+            // [MỚI - CHUÔNG THÔNG BÁO] equipmentDisposalData vừa được nạp/cập nhật ngay trước khi
+            // hàm này chạy — cập nhật lại chuông thông báo CHUNG ở đây, giống hệt cách làm với
+            // renderTaskAssignTable()/taskAssignData ở trên, để "Người phê duyệt" được chọn thấy
+            // ngay yêu cầu mới trên chuông (🔔) mà không cần vào hẳn Tab "Quản lý Thiết bị".
+            if (typeof updateNotificationBell === "function") updateNotificationBell();
+
             let canEdit = (currentUser && (currentUser.role === "Admin" || !!currentUser.eqManage));
             let boxEl = document.getElementById("eq-disposal-box");
             if (boxEl) boxEl.style.display = canEdit ? "block" : "none";
+            let approvalBoxEl = document.getElementById("eq-disposal-approval-box");
+            if (approvalBoxEl) approvalBoxEl.style.display = canEdit ? "block" : "none";
+            // [MỚI - MỤC "PHÊ DUYỆT HỦY THIẾT BỊ" - TÁCH RIÊNG] Đổ lại danh sách thiết bị có thể
+            // gửi duyệt mỗi khi bảng được vẽ lại (dữ liệu mới nhất từ server).
+            populateEqDisposalApprovalSelect_();
 
             let rowsHtml = equipmentDisposalData.map((d, idx) => {
                 let fileHtml = d.fileId
                     ? `<a href="javascript:void(0)" onclick="viewSecureFile('${escapeHtml(d.fileId)}', '${escapeHtml(d.fileName || 'file')}', 'equipmentDisposal')"><i class="fa-solid fa-file-arrow-down"></i> ${escapeHtml(d.fileName || "Xem file")}</a>`
                     : `<span style="color:#999;">Chưa có file</span>`;
                 let typeLabel = d.group ? (d.group + (d.chiTiet ? ` - ${d.chiTiet}` : "")) : (d.chiTiet || "");
-                let actionsHtml = canEdit ? `
+                // [MỚI - KHÓA CHỈNH SỬA SAU KHI ĐÃ XÁC NHẬN] Once "Người phê duyệt" đã bấm Đồng
+                // ý/Không đồng ý (server ghi lại "NguoiXacNhan" ở action "decideEquipmentDisposal"
+                // - xem Code.gs), dòng này coi như đã CHỐT quyết định -> khóa hẳn nút Sửa/Xóa để
+                // dữ liệu đã duyệt luôn đồng bộ, không ai (kể cả người khai báo) sửa/xóa ngược lại
+                // được nữa. Muốn gửi duyệt lại (VD sau khi bị "Từ chối") phải qua khối "Phê duyệt
+                // hủy thiết bị" (chọn lại Người phê duyệt rồi gửi lại từ đầu), không sửa trực tiếp.
+                let isDecided = !!d.nguoiXacNhan;
+                let actionsHtml = (canEdit && !isDecided) ? `
                     <button class="btn btn-sm btn-warning" onclick="startEditEquipmentDisposal(${idx})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-sm btn-danger" onclick="deleteEquipmentDisposalRow(${idx})"><i class="fa-solid fa-trash"></i></button>
-                ` : "";
+                ` : (canEdit ? `<span style="color:#999; font-size:12px; white-space:nowrap;" title="Đã có xác nhận của Người phê duyệt — khóa chỉnh sửa để đảm bảo dữ liệu đồng bộ."><i class="fa-solid fa-lock"></i> Đã khóa</span>` : "");
 
                 // [MỚI] Nếu đang "Chờ hủy" VÀ đúng người dùng đang đăng nhập là "Người phê duyệt"
                 // được chỉ định (hoặc Admin) -> hiện 2 nút "Đồng ý"/"Không đồng ý" ngay trong
