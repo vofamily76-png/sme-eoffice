@@ -218,9 +218,16 @@
            lên chính ô, không tràn/bị che nữa) kèm thuộc tính "title" (xem renderChamCongTable) để
            rê chuột vào là thấy đầy đủ MSNV/Họ tên. */
         #cc-table th.cc-col-sticky, #cc-table td.cc-col-sticky { padding: 8px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #cc-table .cc-col-1 { left: 0; width: 110px; min-width: 110px; max-width: 110px; }
-        #cc-table .cc-col-2 { left: 110px; width: 170px; min-width: 170px; max-width: 170px; }
-        #cc-table .cc-col-3 { left: 280px; width: 120px; min-width: 120px; max-width: 120px; }
+        /* [MỚI - CỘT "STT" + "CHỨC DANH"] Bổ sung 2 cột dính MỚI (STT ở đầu, Chức danh chen giữa
+           Họ và tên/Phòng ban) theo yêu cầu -> nay có 5 cột dính: STT, MSNV, Họ và tên, Chức danh,
+           Phòng ban. Đổi tên lớp cho rõ thứ tự (cc-col-0 = STT) và dời lại "left" của các cột sau
+           cho khớp độ rộng mới — KHÔNG ảnh hưởng gì tới các cột ngày/cột tổng hợp phía sau (vẫn
+           cuộn ngang bình thường, chỉ 5 cột này cố định khi cuộn). */
+        #cc-table .cc-col-0 { left: 0; width: 44px; min-width: 44px; max-width: 44px; text-align: center; }
+        #cc-table .cc-col-1 { left: 44px; width: 100px; min-width: 100px; max-width: 100px; }
+        #cc-table .cc-col-2 { left: 144px; width: 160px; min-width: 160px; max-width: 160px; }
+        #cc-table .cc-col-4 { left: 304px; width: 140px; min-width: 140px; max-width: 140px; }
+        #cc-table .cc-col-3 { left: 444px; width: 120px; min-width: 120px; max-width: 120px; }
 
         /* [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN"] Cùng cơ chế cuộn/cố định cột như #cc-table ở
            trên (Văn phòng), áp dụng riêng cho #cctv-table — 2 cột đầu cố định: "Họ Tên"/"Chức
@@ -3836,6 +3843,13 @@
         // [BẢNG THEO THỨ/NGÀY TRONG THÁNG] Danh sách {ngay, thu, isWeekend} của kỳ đang xem,
         // do server trả về (field "danhSachNgay") — dùng để dựng cột theo từng ngày + xuất Excel.
         let chamCongDanhSachNgay = [];
+        // [MỚI - CỘT TỔNG HỢP THEO MÃ CÔNG] Danh sách MÃ CÔNG hiện theo ĐÚNG thứ tự yêu cầu ở Tab
+        // "Bảng Chấm Công" Văn phòng (sau cột "Tổng"): N, NL, N1, N2, N3, N4, D, D1, P, UP,
+        // OTx1.5, OT2, OT3, N5, N6 — dùng CHUNG cho buildChamCongTableHead()/renderChamCongTable()/
+        // exportChamCongToExcel() để 3 nơi này LUÔN khớp đúng cùng 1 danh sách cột. Khớp ĐÚNG mã
+        // ("Ma") đang có trong Sheet "DanhMucLoaiCong" (xem DANHMUCLOAICONG_MAC_DINH ở Code.gs) —
+        // đổi thứ tự/thêm bớt Ở ĐÂY để đổi cột hiển thị mà KHÔNG cần đụng tới dữ liệu đã lưu.
+        const CHAMCONG_CACOT_MA_CONG = ["N", "NL", "N1", "N2", "N3", "N4", "D", "D1", "P", "UP", "OTx1.5", "OT2", "OT3", "N5", "N6"];
         const CHUKYSO_TABS = ["Trình file ký", "Chờ tôi xử lý", "Được giao ký thay", "Đã giao ký thay", "Sắp trình đến", "Đang xử lý", "Đang soạn", "Trả lại để cập nhật", "Hủy không trình lại", "Đã ký", "Tất cả"];
         let ckyActiveTab = "Chờ tôi xử lý";
 
@@ -7122,7 +7136,10 @@
         // dùng để colspan dòng thông báo/đang tải cho khớp độ rộng bảng. [MỚI - CHO PHÉP ĐIỀU
         // CHỈNH CUỐI TUẦN] Tăng từ 6 lên 7 cột tổng hợp do thêm cột tham khảo "Ngày làm cuối tuần".
         function chamCongTongSoCot() {
-            return 3 + (chamCongDanhSachNgay || []).length + 7;
+            // [SỬA - THÔNG TIN BẢNG CHẤM CÔNG] 5 cột cố định (STT, MSNV, Họ và tên, Chức danh,
+            // Phòng ban) + cột theo từng ngày trong tháng (giữ nguyên) + 1 cột "Tổng" + các cột
+            // theo từng mã công (CHAMCONG_CACOT_MA_CONG) — thay cho 7 cột tổng hợp cũ.
+            return 5 + (chamCongDanhSachNgay || []).length + 1 + CHAMCONG_CACOT_MA_CONG.length;
         }
 
         // Tải (và với kỳ chưa chốt, server tự TÍNH LẠI) dữ liệu bảng chấm công của đúng kỳ
@@ -9724,28 +9741,33 @@
         }
 
 
-        // Dựng phần <thead> động: 3 cột cố định (MSNV/Họ tên/Phòng ban) + 1 cột cho MỖI ngày
-        // trong tháng của kỳ đang xem (hiện số ngày + Thứ, VD "5\nT4") + 6 cột tổng hợp cuối
-        // bảng — vì số ngày trong tháng thay đổi (28-31) nên không thể viết cố định trong HTML.
+        // [SỬA - THÔNG TIN BẢNG CHẤM CÔNG] Dựng phần <thead> động: 5 cột cố định (STT/MSNV/Họ và
+        // tên/Chức danh/Phòng ban) + 1 cột cho MỖI ngày trong tháng của kỳ đang xem (giữ nguyên,
+        // hiện số ngày + Thứ, VD "5\nT4") + 1 cột "Tổng" (Tổng công) + 1 cột cho TỪNG mã công theo
+        // CHAMCONG_CACOT_MA_CONG (N/NL/N1/N2/N3/N4/D/D1/P/UP/OTx1.5/OT2/OT3/N5/N6) — thay cho 7
+        // cột tổng hợp cũ (Ngày công chuẩn/thực tế, 4 loại nghỉ, Tổng ngày công tính lương). Tên
+        // hiển thị (title) của mỗi cột mã công lấy từ Danh mục loại công đã tải (danhMucLoaiCongRows)
+        // nếu có, để dễ đối chiếu ý nghĩa từng mã.
         function buildChamCongTableHead() {
             let thead = document.getElementById("cc-table-thead");
             if (!thead) return;
             let dayThs = (chamCongDanhSachNgay || []).map(d =>
                 `<th style="min-width:34px; padding:4px 2px; ${d.isWeekend ? 'background:#f1f2f4;' : ''}" title="${d.isWeekend ? 'Cuối tuần' : 'Ngày làm việc'}">${d.ngay}<br><span style="font-weight:400; font-size:10px;">${escapeHtml(d.thu)}</span></th>`
             ).join("");
+            let maCongThs = CHAMCONG_CACOT_MA_CONG.map(ma => {
+                let dm = (danhMucLoaiCongRows || []).find(r => String(r.ma || "").toUpperCase() === ma.toUpperCase());
+                let tenDayDu = dm ? (ma + " - " + (dm.ten || "")) : ma;
+                return `<th style="min-width:44px;" title="${escapeHtml(tenDayDu)}">${escapeHtml(ma)}</th>`;
+            }).join("");
             thead.innerHTML = `<tr>
+                <th class="cc-col-sticky cc-col-0">STT</th>
                 <th class="cc-col-sticky cc-col-1">MSNV</th>
                 <th class="cc-col-sticky cc-col-2">Họ và tên</th>
+                <th class="cc-col-sticky cc-col-4">Chức danh</th>
                 <th class="cc-col-sticky cc-col-3">Phòng ban</th>
                 ${dayThs}
-                <th>Ngày công chuẩn</th>
-                <th>Ngày công thực tế</th>
-                <th>Nghỉ phép hưởng lương<br>(AL/CL)</th>
-                <th>Nghỉ chế độ Cty<br>(ML/TC)</th>
-                <th>Nghỉ không lương<br>(UL)</th>
-                <th>Nghỉ hưởng BHXH<br>(SI)</th>
-                <th>Tổng ngày công tính lương</th>
-                <th title="Số ngày Thứ 7/CN đã điều chỉnh thủ công thành có đi làm — chỉ mang tính tham khảo, KHÔNG tự cộng vào Ngày công thực tế/Tổng ngày công tính lương.">Ngày làm cuối tuần<br><span style="font-weight:400; font-size:10px;">(tham khảo)</span></th>
+                <th style="min-width:52px;" title="Tổng tất cả ngày đã có mã công trong kỳ (kể cả ngày nghỉ)">Tổng</th>
+                ${maCongThs}
             </tr>`;
         }
 
@@ -9760,7 +9782,7 @@
                 tbody.innerHTML = '<tr><td colspan="' + chamCongTongSoCot() + '" style="text-align:center; color:#999;">Không có dữ liệu nhân sự cho kỳ này.</td></tr>';
                 return;
             }
-            tbody.innerHTML = chamCongRows.map(r => {
+            tbody.innerHTML = chamCongRows.map((r, rIdx) => {
                 let chiTiet = r.chiTietNgay || {};
                 let safeMsnv = escapeHtml(r.msnv || "");
                 // [MỚI - PHẠM VI ĐIỀU CHỈNH] Dòng (nhân viên) này có thuộc phạm vi đang được mở
@@ -9806,19 +9828,22 @@
                 // được nhân sự này. KHÔNG ảnh hưởng gì khi đang xem bảng bình thường (chưa bật
                 // "Điều chỉnh") hoặc đang chọn phạm vi "Toàn bộ".
                 let rowStyle = (ccDieuChinhMode && !rowInScope) ? ' style="opacity:0.55;"' : '';
+                // [SỬA - THÔNG TIN BẢNG CHẤM CÔNG] Cột "Tổng" + từng cột mã công lấy từ
+                // "tongTheoMa" server đã tính sẵn (xem tinhTongHopMaCongTuChiTietNgay_ ở Code.gs) —
+                // CHỈ hiển thị, không tính toán gì thêm ở FE để luôn khớp đúng với server.
+                let tongTheoMa = r.tongTheoMa || {};
+                let maCongTds = CHAMCONG_CACOT_MA_CONG.map(ma =>
+                    `<td style="text-align:center;">${escapeHtml(String(tongTheoMa[ma] || 0))}</td>`
+                ).join("");
                 return `<tr${rowStyle}>
+                <td class="cc-col-sticky cc-col-0">${rIdx + 1}</td>
                 <td class="cc-col-sticky cc-col-1" title="${escapeHtml(r.msnv || "")}">${escapeHtml(r.msnv || "")}</td>
                 <td class="cc-col-sticky cc-col-2" title="${escapeHtml(r.hoTen || "")}">${escapeHtml(r.hoTen || "")}</td>
+                <td class="cc-col-sticky cc-col-4" title="${escapeHtml(r.chucDanh || "")}">${escapeHtml(r.chucDanh || "")}</td>
                 <td class="cc-col-sticky cc-col-3" title="${escapeHtml(r.phongBan || "")}">${escapeHtml(r.phongBan || "")}</td>
                 ${dayTds}
-                <td style="text-align:center;">${escapeHtml(String(r.ngayCongChuan ?? ""))}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.ngayCongThucTe ?? ""))}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.nghiPhepLuong ?? 0))}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.nghiCheDoCty ?? 0))}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.nghiKhongLuong ?? 0))}</td>
-                <td style="text-align:center;">${escapeHtml(String(r.nghiBHXH ?? 0))}</td>
-                <td style="text-align:center; font-weight:600;">${escapeHtml(String(r.tongNgayCongTinhLuong ?? ""))}</td>
-                <td style="text-align:center; color:#555;" title="Chỉ mang tính tham khảo, không tự cộng vào Ngày công thực tế/Tổng ngày công tính lương.">${escapeHtml(String(r.ngayLamCuoiTuan ?? 0))}</td>
+                <td style="text-align:center; font-weight:600;" title="Tổng tất cả ngày đã có mã công trong kỳ (kể cả ngày nghỉ)">${escapeHtml(String(r.tongCong ?? 0))}</td>
+                ${maCongTds}
             </tr>`;
             }).join("");
         }
@@ -10168,60 +10193,68 @@
             if (!rowsToExport.length) { alert("Không có dữ liệu phù hợp để xuất."); return; }
 
             let maKy = document.getElementById("cc-period-input") ? document.getElementById("cc-period-input").value : "";
-            // [MỚI - THÊM THỨ + NGÀY DƯƠNG LỊCH] Tách "yyyy-MM" để tính ra ngày dương lịch đầy đủ
-            // (dd/mm/yyyy) cho từng cột ngày công bên dưới.
+            // Tách "yyyy-MM" để hiện đúng "Tháng .../Năm ..." ở tiêu đề file Excel.
             let kyParts = String(maKy || "").split("-");
             let kyNam = kyParts[0] || "", kyThang = kyParts[1] || "";
+            let kyThangSo = kyThang ? parseInt(kyThang, 10) : null;
+            // Nếu chưa chọn kỳ chấm công (hiếm khi xảy ra vì đã có dữ liệu chamCongRows), lấy
+            // tháng/năm hiện tại của máy để tiêu đề Excel luôn có nội dung.
+            let ngayHienTai = new Date();
+            let thangHienThi = kyThangSo || (ngayHienTai.getMonth() + 1);
+            let namHienThi = kyNam || ngayHienTai.getFullYear();
 
-            // [MỚI - THÊM THỨ + NGÀY DƯƠNG LỊCH] Tách tiêu đề cột ngày công thành 2 DÒNG riêng thay
-            // vì gộp chung 1 dòng như trước ("Ngày N (Thu)"): dòng 1 ghi rõ "Thứ" (T2..CN), dòng 2
-            // ghi rõ ngày dương lịch đầy đủ (dd/mm/yyyy) — giúp người xem biết chính xác ngày công
-            // đó rơi vào ngày nào trong tháng mà không cần dò lại lịch. KHÔNG bớt/đổi bất kỳ cột dữ
-            // liệu nào đã có, chỉ CHÈN THÊM 1 dòng tiêu đề phía trên dòng tiêu đề cũ.
-            let headerThuRow = ["", "", ""];
-            let headerNgayRow = ["MSNV", "Họ và tên", "Phòng ban"];
-            (chamCongDanhSachNgay || []).forEach(d => {
-                headerThuRow.push(d.thu || "");
-                let ngayDuongLich = (kyNam && kyThang)
-                    ? (String(d.ngay).padStart(2, "0") + "/" + kyThang + "/" + kyNam)
-                    : ("Ngày " + d.ngay);
-                headerNgayRow.push(ngayDuongLich);
-            });
-            headerThuRow.push("", "", "", "", "", "", "");
-            headerNgayRow.push("Ngày công chuẩn", "Ngày công thực tế", "Nghỉ phép lương (AL/CL)", "Nghỉ chế độ Cty (ML/TC)", "Nghỉ không lương (UL)", "Nghỉ hưởng BHXH (SI)", "Tổng ngày công tính lương", "Ngày làm cuối tuần (tham khảo)");
+            // [SỬA - CỘT BẢNG CHẤM CÔNG KHI XUẤT EXCEL] Theo yêu cầu: BỎ lưới chấm công theo từng
+            // ngày/thứ trong tháng (vẫn còn xem được trên giao diện web như cũ, chỉ KHÔNG xuất ra
+            // Excel nữa) — thứ tự cột xuất ra CỐ ĐỊNH là: STT, MSNV, Họ và tên, Chức danh, Bộ phận,
+            // Tổng, rồi đến từng mã công theo đúng CHAMCONG_CACOT_MA_CONG (N,NL,N1,N2,N3,N4,D,D1,P,
+            // UP,OTx1.5,OT2,OT3,N5,N6). Dữ liệu vẫn lấy nguyên từ chamCongRows/tongTheoMa/tongCong
+            // đã tải sẵn theo đúng quyền hiện có — KHÔNG đổi nguồn dữ liệu, KHÔNG đổi quyền hạn.
+            let SO_COT_CO_DINH = 5;
+            let headerRow = ["STT", "MSNV", "Họ và tên", "Chức danh", "Bộ phận", "Tổng", ...CHAMCONG_CACOT_MA_CONG];
+            let tongSoCot = headerRow.length;
 
-            let aoa = [headerThuRow, headerNgayRow];
-            rowsToExport.forEach(r => {
-                let chiTiet = r.chiTietNgay || {};
-                let row = [r.msnv || "", r.hoTen || "", r.phongBan || ""];
-                (chamCongDanhSachNgay || []).forEach(d => {
-                    let ma = chiTiet[String(d.ngay)] || "";
-                    let info = chamCongMaNgayInfo(ma, d.isWeekend);
-                    // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Trước đây LUÔN ghi "Nghỉ" cho mọi ô
-                    // cuối tuần (kể cả khi đã điều chỉnh thủ công cho đi làm), làm mất thông tin
-                    // khi xuất Excel. Nay: cuối tuần CHƯA điều chỉnh (info.label rỗng) vẫn ghi
-                    // "Nghỉ" như cũ; cuối tuần ĐÃ điều chỉnh thì xuất đúng mã đã chọn (giống hệt
-                    // trên bảng) thay vì luôn ghi "Nghỉ".
-                    row.push(info.label || (d.isWeekend ? "Nghỉ" : "X"));
-                });
-                row.push(r.ngayCongChuan ?? "", r.ngayCongThucTe ?? "", r.nghiPhepLuong ?? 0, r.nghiCheDoCty ?? 0, r.nghiKhongLuong ?? 0, r.nghiBHXH ?? 0, r.tongNgayCongTinhLuong ?? "", r.ngayLamCuoiTuan ?? 0);
+            // [MỚI - TIÊU ĐỀ CÔNG TY + THÁNG/NĂM] Thêm các dòng tiêu đề phía trên bảng dữ liệu:
+            // tên công ty (tiếng Anh + tiếng Việt, giống mẫu PDF đang dùng trong hệ thống), tên
+            // bảng biểu "BẢNG CHẤM CÔNG KHỐI VĂN PHÒNG", và tháng/năm đang xuất — giúp file Excel
+            // khi mở ra biết ngay là bảng chấm công của tháng nào, công ty nào mà không cần đối
+            // chiếu lại tên file.
+            let dongTrong = () => Array(tongSoCot).fill("");
+            let aoa = [
+                (() => { let r = dongTrong(); r[0] = "SEAHORSE MARINE AND ENERGY JSC"; return r; })(),
+                (() => { let r = dongTrong(); r[0] = "CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ"; return r; })(),
+                (() => { let r = dongTrong(); r[0] = "BẢNG CHẤM CÔNG KHỐI VĂN PHÒNG"; return r; })(),
+                (() => { let r = dongTrong(); r[0] = "Tháng " + thangHienThi + " Năm " + namHienThi; return r; })(),
+                dongTrong(),
+                headerRow
+            ];
+            let SO_DONG_TIEU_DE = aoa.length; // số dòng phía trên dòng tiêu đề cột (để đóng băng/gộp ô)
+
+            rowsToExport.forEach((r, rIdx) => {
+                let tongTheoMa = r.tongTheoMa || {};
+                let row = [rIdx + 1, r.msnv || "", r.hoTen || "", r.chucDanh || "", r.phongBan || "", r.tongCong ?? 0];
+                CHAMCONG_CACOT_MA_CONG.forEach(ma => row.push(tongTheoMa[ma] || 0));
                 aoa.push(row);
             });
 
             let ws = XLSX.utils.aoa_to_sheet(aoa);
-            // Độ rộng cột: 3 cột cố định (MSNV/Họ tên/Phòng ban) + N cột theo ngày (hẹp) + 7 cột tổng hợp.
-            let cols = [{ wch: 12 }, { wch: 24 }, { wch: 18 }];
-            (chamCongDanhSachNgay || []).forEach(() => cols.push({ wch: 6 }));
-            cols.push({ wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 20 });
+            // Độ rộng cột: 5 cột cố định (STT/MSNV/Họ tên/Chức danh/Bộ phận) + 1 cột "Tổng" + các
+            // cột mã công (hẹp).
+            let cols = [{ wch: 6 }, { wch: 12 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 8 }];
+            CHAMCONG_CACOT_MA_CONG.forEach(() => cols.push({ wch: 7 }));
             ws['!cols'] = cols;
-            // [MỚI - THÊM THỨ + NGÀY DƯƠNG LỊCH] Gộp ô trống ở dòng "Thứ" cho 3 cột cố định đầu
-            // (MSNV/Họ tên/Phòng ban) và 7 cột tổng hợp cuối cho gọn gàng, tránh để trống lẻ tẻ.
+            // Gộp ô cho 4 dòng tiêu đề (tên công ty x2 dòng, tên bảng biểu, tháng/năm) trải hết
+            // chiều rộng bảng, canh giữa cho đẹp.
             ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
-                { s: { r: 0, c: headerThuRow.length - 7 }, e: { r: 0, c: headerThuRow.length - 1 } }
+                { s: { r: 0, c: 0 }, e: { r: 0, c: tongSoCot - 1 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: tongSoCot - 1 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: tongSoCot - 1 } },
+                { s: { r: 3, c: 0 }, e: { r: 3, c: tongSoCot - 1 } }
             ];
-            // Cố định 2 dòng tiêu đề + 3 cột đầu khi cuộn, giúp dễ đối chiếu với bảng dài nhiều ngày.
-            ws['!freeze'] = { xSplit: 3, ySplit: 2 };
+            ["A1", "A2", "A3", "A4"].forEach(addr => {
+                if (ws[addr]) ws[addr].s = { alignment: { horizontal: "center" } };
+            });
+            // Cố định dòng tiêu đề cột + 5 cột đầu khi cuộn.
+            ws['!freeze'] = { xSplit: SO_COT_CO_DINH, ySplit: SO_DONG_TIEU_DE };
 
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "ChamCong");
