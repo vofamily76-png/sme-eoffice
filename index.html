@@ -1877,6 +1877,22 @@
                             <i class="fa-solid fa-circle-info"></i>
                             Chọn "Người phê duyệt" (1 hoặc nhiều), ghi chú (nếu cần) rồi gửi — yêu cầu chỉ được xem là "Đã duyệt" khi TẤT CẢ người phê duyệt đã chọn đều bấm "Đồng ý" (giống cơ chế phê duyệt ở Tab "Đăng ký nghỉ phép").
                         </p>
+                        <!-- [MỚI - LỌC THEO PHÒNG BAN KHI GỬI YÊU CẦU PHÊ DUYỆT] Chọn ĐÚNG 1 phòng ban để
+                             yêu cầu này CHỈ xin duyệt cho nhân sự của phòng ban đó (mặc định "Toàn bộ nhân
+                             sự", GIỮ NGUYÊN hành vi cũ). Danh sách phòng ban DÙNG CHUNG với ô "Lọc theo
+                             phòng ban" ở trên (xem populateChamCongFilterDeptSelect() bên dưới) — KHÔNG
+                             gọi thêm action nào, KHÔNG đụng/đổi dữ liệu chấm công gốc. Lựa chọn này CHỈ
+                             ảnh hưởng tới VIỆC HIỂN THỊ của file PDF xuất ra sau khi duyệt (bảng chấm công
+                             trong PDF sẽ CHỈ hiện đúng nhân sự phòng ban đã chọn — xem
+                             ccXayDungBangChamCongHtml_()/xuatPdfBangChamCongDuyet() bên dưới), KHÔNG ảnh
+                             hưởng gì tới việc Chốt/Tính lại/Điều chỉnh (vẫn áp dụng cho TOÀN BỘ nhân sự
+                             của kỳ như cũ). -->
+                        <div class="input-group">
+                            <label>Phòng ban <span style="font-weight:normal; color:#888; font-size:11.5px;">(chỉ để lọc hiển thị trong file PDF sau khi duyệt)</span></label>
+                            <select id="cc-pheduyet-phongban" class="search-box">
+                                <option value="all">Toàn bộ nhân sự</option>
+                            </select>
+                        </div>
                         <div class="input-group">
                             <label>Người phê duyệt <span style="color:#d9534f;">*</span></label>
                             <div class="checkbox-dropdown-list" id="cc-pheduyet-approver-list" style="max-height:140px;"></div>
@@ -1887,7 +1903,7 @@
                         </div>
                         <div style="display:flex; gap:10px; flex-wrap:wrap;">
                             <button class="btn btn-success" id="cc-btn-luu-pheduyet" onclick="guiYeuCauPheDuyetBangChamCong()"><i class="fa-solid fa-paper-plane"></i> Gửi yêu cầu phê duyệt</button>
-                            <button class="btn btn-danger" id="cc-btn-huy-pheduyet" style="display:none;" onclick="huyPheDuyetBangChamCong()" title="Xóa thủ công phê duyệt đã có cho kỳ này (không qua bước xét duyệt)"><i class="fa-solid fa-xmark"></i> Hủy phê duyệt</button>
+                            <button class="btn btn-danger" id="cc-btn-huy-pheduyet" style="display:none;" onclick="huyPheDuyetBangChamCong()" title="Xóa thủ công phê duyệt đã có cho kỳ này (không qua bước xét duyệt)"><i class="fa-solid fa-xmark"></i> <span id="cc-btn-huy-pheduyet-label">Hủy phê duyệt</span></button>
                         </div>
                         <div id="cc-pheduyet-info" style="margin-top:10px; font-size:13px; color:#1a7f37; display:none;"></div>
 
@@ -1897,18 +1913,42 @@
                         <div style="margin-top:18px; border-top:1px solid #dbe4fb; padding-top:12px;">
                             <h4 style="margin:0 0 10px 0; font-size:14px;"><i class="fa-solid fa-list-ul" style="color:#2f6fed;"></i> Các yêu cầu phê duyệt</h4>
                             <div style="overflow-x:auto;">
-                                <table class="data-table" style="min-width:640px;">
+                                <table class="data-table" style="min-width:720px;">
                                     <thead>
                                         <tr>
-                                            <th>Ngày gửi</th><th>Người gửi</th><th>Kỳ chấm công</th><th>Ghi chú</th>
+                                            <th>Ngày gửi</th><th>Người gửi</th><th>Kỳ chấm công</th><th>Phòng ban</th><th>Ghi chú</th>
                                             <th>Người phê duyệt</th><th>Trạng thái</th><th>Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody id="cc-pheduyet-duyet-tbody">
-                                        <tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
+                                        <tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG" (Tab "Bảng Chấm Công" - văn phòng) - NÚT
+                     "XEM TRƯỚC"] Modal hiện lại đúng "Bảng chấm công" (dạng lưới, GIỐNG HỆT bảng sẽ
+                     có trong file PDF sau khi duyệt — dùng lại NGUYÊN VẸN hàm
+                     ccXayDungBangChamCongHtml_ đang chạy đúng ở xuatPdfBangChamCongDuyet(), KHÔNG
+                     tính toán khác đi) để người ĐƯỢC CHỌN LÀM NGƯỜI PHÊ DUYỆT xem trước được nội
+                     dung VÀ tải file về NGAY TRONG TRANG, TRƯỚC KHI bấm "Đồng ý"/"Không đồng ý" —
+                     điều chỉnh giống hệt cơ chế "Xem trước" đang dùng cho mục "Phê duyệt bảng chấm
+                     công thuyền viên" (xem cctv-preview-modal/xemTruocBangChamCongCctvDmlcUI() ở
+                     trên). CHỈ ĐỌC dữ liệu qua đúng action "getChamCongData" đã có sẵn (dùng chung
+                     quyền "XemChamCong" như bảng đang hiển thị/nút "Xuất Excel" — KHÔNG phải action
+                     mới, KHÔNG cấp thêm quyền gì), KHÔNG ghi/sửa/xóa bất kỳ dữ liệu nào — xem
+                     xemTruocBangChamCongPheDuyetUI() bên dưới. -->
+                <div id="cc-pheduyet-preview-modal" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 10500; justify-content: center; align-items: center;">
+                    <div class="login-box" style="max-width:96vw; width:1150px; max-height:92vh; overflow-y:auto;">
+                        <h2><i class="fa-solid fa-eye"></i> Xem trước Bảng chấm công</h2>
+                        <p id="cc-pheduyet-preview-info" style="color:#555; font-size:13.5px; margin-top:-6px;"></p>
+                        <div id="cc-pheduyet-preview-body" style="font-size:12.5px;"></div>
+                        <div style="display:flex; gap:10px; margin-top:14px;">
+                            <button class="btn btn-primary" style="width:auto; flex-grow:1;" onclick="taiFileXemTruocBangChamCongPheDuyet()"><i class="fa-solid fa-download"></i> Tải file (PDF)</button>
+                            <button class="btn btn-danger" style="width:auto; flex-grow:1;" onclick="closeCcPheDuyetPreviewModal()">Đóng</button>
                         </div>
                     </div>
                 </div>
@@ -7550,6 +7590,19 @@
             // "Tải / Tính lại". Nếu phòng ban đó không còn ai (VD đổi kỳ khác) -> tự động về "Tất
             // cả nhân viên" (an toàn, không hiện bảng trống khó hiểu).
             sel.value = (currentValue === "all" || depts.indexOf(currentValue) !== -1) ? currentValue : "all";
+
+            // [MỚI - LỌC THEO PHÒNG BAN KHI GỬI YÊU CẦU PHÊ DUYỆT] Đổ lại CÙNG danh sách phòng ban
+            // vào ô "cc-pheduyet-phongban" (mục "Phê duyệt bảng chấm công") mỗi khi tải dữ liệu mới
+            // (đổi kỳ) — giữ đúng lựa chọn đang chọn nếu phòng ban đó vẫn còn, giống hệt cách làm ở
+            // trên với "cc-filter-dept". Đây là 2 ô ĐỘC LẬP (lọc hiển thị khác với phạm vi gửi yêu
+            // cầu phê duyệt), chỉ dùng chung nguồn danh sách phòng ban.
+            let pdSel = document.getElementById("cc-pheduyet-phongban");
+            if (pdSel) {
+                let pdCurrentValue = pdSel.value || "all";
+                pdSel.innerHTML = '<option value="all">Toàn bộ nhân sự</option>' +
+                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+                pdSel.value = (pdCurrentValue === "all" || depts.indexOf(pdCurrentValue) !== -1) ? pdCurrentValue : "all";
+            }
         }
 
         // [MỚI - PHẠM VI ĐIỀU CHỈNH] Người dùng đổi lựa chọn ở ô "cc-scope-select" -> cập nhật
@@ -10432,7 +10485,22 @@
             // "Các yêu cầu phê duyệt" (đã tự giới hạn đúng theo action
             // "getYeuCauPheDuyetBangChamCongList" — chỉ người gửi/người phê duyệt/Admin mới thấy).
             if (btnLuu) btnLuu.style.display = currentUserCanEditChamCong ? "inline-flex" : "none";
-            if (btnHuy) btnHuy.style.display = (currentUserCanEditChamCong && daPheDuyet) ? "inline-flex" : "none";
+            // [SỬA - KHÓA "HỦY PHÊ DUYỆT" SAU KHI ĐÃ PHÊ DUYỆT XONG] Nút vẫn hiện để tài khoản có
+            // quyền biết đã từng phê duyệt xong, NHƯNG chuyển sang trạng thái "disabled" (khóa,
+            // không bấm được) kèm chú thích hướng dẫn dùng "Mở lại bảng chấm công" thay thế — Server
+            // (action "huyPheDuyetBangChamCong") LUÔN tự chặn lại y hệt dù có cố tình gọi thẳng API,
+            // đây chỉ là khóa thêm ở giao diện cho rõ ràng, KHÔNG nới lỏng/thắt chặt quyền nào khác.
+            if (btnHuy) {
+                btnHuy.style.display = currentUserCanEditChamCong ? "inline-flex" : "none";
+                btnHuy.disabled = daPheDuyet;
+                btnHuy.style.opacity = daPheDuyet ? "0.55" : "1";
+                btnHuy.style.cursor = daPheDuyet ? "not-allowed" : "pointer";
+                btnHuy.title = daPheDuyet
+                    ? "Đã phê duyệt xong nên chức năng này đã bị khóa. Cần chỉnh sửa lại thì dùng \"Mở lại bảng chấm công\" rồi làm lại đúng quy trình Chốt -> Phê duyệt."
+                    : "Xóa thủ công phê duyệt đã có cho kỳ này (không qua bước xét duyệt)";
+                let btnHuyLabel = document.getElementById("cc-btn-huy-pheduyet-label");
+                if (btnHuyLabel) btnHuyLabel.textContent = daPheDuyet ? "Hủy phê duyệt (đã khóa)" : "Hủy phê duyệt";
+            }
             if (currentUserCanEditChamCong) populateChamCongPheDuyetApproverList();
             loadChamCongPheDuyetDuyetList();
 
@@ -10480,8 +10548,13 @@
             if (!nguoiPheDuyet.length) { alert("Vui lòng chọn ít nhất 1 \"Người phê duyệt\"."); return; }
             let ghiChuInput = document.getElementById("cc-pheduyet-ghichu");
             let ghiChu = ghiChuInput ? ghiChuInput.value.trim() : "";
+            // [MỚI - LỌC THEO PHÒNG BAN] Đọc phòng ban đang chọn ở ô "cc-pheduyet-phongban" ("all"
+            // = Toàn bộ nhân sự, không lọc) — CHỈ dùng để lọc hiển thị bảng chấm công trong file PDF
+            // xuất ra sau khi duyệt, KHÔNG ảnh hưởng tới dữ liệu chấm công gốc/quyền hạn hiện có.
+            let phongBanSel = document.getElementById("cc-pheduyet-phongban");
+            let phongBan = phongBanSel ? (phongBanSel.value || "all") : "all";
 
-            let result = await callServerAction({ action: "guiYeuCauPheDuyetBangChamCong", maKy: maKy, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu });
+            let result = await callServerAction({ action: "guiYeuCauPheDuyetBangChamCong", maKy: maKy, nguoiPheDuyet: nguoiPheDuyet, ghiChu: ghiChu, phongBan: phongBan });
             if (result && result.status === "SUCCESS") {
                 if (ghiChuInput) ghiChuInput.value = "";
                 document.querySelectorAll("#cc-pheduyet-approver-list input:checked").forEach(i => i.checked = false);
@@ -10516,19 +10589,37 @@
             let list = ccPheDuyetDuyetData.filter(r => !maKyDangXem || r.maKy === maKyDangXem)
                 .slice().sort((a, b) => String(b.id || "").localeCompare(String(a.id || "")));
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#999;">Chưa có yêu cầu nào.</td></tr>';
                 return;
             }
             tbody.innerHTML = list.map(r => {
                 let myStatus = (r.trangThaiTungNguoi || {})[currentUsername];
                 let canDecide = (r.nguoiPheDuyet || []).includes(currentUsername) &&
                     r.trangThaiChung === "Chờ duyệt" && (!myStatus || myStatus.status === "cho_duyet");
+                let daDuyet = r.trangThaiChung === "Đã duyệt";
                 let coTheXoa = (r.nguoiGui === currentUsername) || (currentUser && currentUser.role === "Admin");
-                let mauTrangThai = r.trangThaiChung === "Đã duyệt" ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
+                let mauTrangThai = daDuyet ? "#2e7d32" : (r.trangThaiChung === "Từ chối" ? "#d9534f" : "#f0ad4e");
                 let thaoTacHtml = "";
+                // [MỚI - NÚT "XEM TRƯỚC"] Hiện cho MỌI yêu cầu đang thấy được ở bảng này (đã tự
+                // giới hạn đúng theo action "getYeuCauPheDuyetBangChamCongList" — chỉ người gửi/
+                // người phê duyệt/Admin mới thấy dòng này) để xem trước "Bảng chấm công" NGAY
+                // TRONG TRANG và tải file về được (nút "Tải file (PDF)" trong modal) — KHÔNG cần
+                // đợi phê duyệt xong, đặc biệt hữu ích cho người ĐANG CHỜ DUYỆT (canDecide) để
+                // xem/tải trước nội dung TRƯỚC KHI bấm "Đồng ý"/"Không đồng ý" — điều chỉnh giống
+                // hệt mục "Phê duyệt bảng chấm công thuyền viên" (xem xemTruocBangChamCongCctvDmlcUI()).
+                thaoTacHtml += `<button class="btn btn-primary btn-sm" onclick="xemTruocBangChamCongPheDuyetUI('${r.id}')" title="Xem trước bảng chấm công (không cần tải file)"><i class="fa-solid fa-eye"></i> Xem trước</button>`;
                 if (canDecide) {
                     thaoTacHtml += `<button class="btn btn-success btn-sm" onclick="decideChamCongPheDuyetUI('${r.id}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
                         <button class="btn btn-danger btn-sm" onclick="decideChamCongPheDuyetUI('${r.id}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>`;
+                }
+                // [NÚT "TẢI FILE" CHÍNH] Vẫn CHỈ hiện SAU KHI yêu cầu đã "Đã duyệt" (file PDF
+                // chính thức, có bảng "Xác nhận của người phê duyệt" dùng lưu trữ/đối chiếu) — y
+                // hệt điều kiện đang áp dụng cho mục "Phê duyệt bảng chấm công thuyền viên" (xem
+                // renderCctvDmlcDuyetList()); người CHƯA duyệt xong vẫn xem/tải trước được qua nút
+                // "Xem trước" ở trên. KHÔNG nới lỏng bảo mật: server (action "getChamCongData")
+                // vẫn luôn tự kiểm tra lại quyền "XemChamCong" của người bấm tải.
+                if (daDuyet) {
+                    thaoTacHtml += `<button class="btn btn-primary btn-sm" onclick="xuatPdfBangChamCongDuyet('${r.id}')" title="Tải file PDF (khổ A4 ngang)"><i class="fa-solid fa-file-pdf"></i> Tải file</button>`;
                 }
                 if (coTheXoa) {
                     thaoTacHtml += `<button class="btn btn-danger btn-sm" onclick="xoaChamCongPheDuyetUI('${r.id}')" title="Xóa yêu cầu này"><i class="fa-solid fa-trash"></i> Xóa</button>`;
@@ -10538,6 +10629,7 @@
                     <td>${escapeHtml(r.ngayGui || "")}</td>
                     <td>${escapeHtml(r.nguoiGui || "")}</td>
                     <td>${escapeHtml(r.maKy || "")}</td>
+                    <td>${r.phongBan ? escapeHtml(r.phongBan) : '<span style="color:#888;">Toàn bộ nhân sự</span>'}</td>
                     <td>${escapeHtml(r.ghiChu || "")}</td>
                     <td>${(r.nguoiPheDuyet || []).map(u => escapeHtml(u)).join(", ")}</td>
                     <td><b style="color:${mauTrangThai};">${escapeHtml(r.trangThaiChung || "")}</b></td>
@@ -10592,6 +10684,14 @@
         // đã gửi ở khối "Các yêu cầu phê duyệt").
         async function huyPheDuyetBangChamCong() {
             if (!currentUserCanEditChamCong) { alert("⚠️ Bạn không có quyền hủy phê duyệt Bảng Chấm Công. Liên hệ Admin để được cấp quyền."); return; }
+            // [SỬA - KHÓA SAU KHI ĐÃ PHÊ DUYỆT XONG] Chặn thêm ở FE cho rõ ràng (server vẫn LUÔN
+            // tự kiểm tra lại, xem action "huyPheDuyetBangChamCong" ở Code.gs) — nút cũng đã bị
+            // "disabled" ở renderChamCongPheDuyetUI() nên trường hợp này chủ yếu phòng khi hàm bị
+            // gọi trực tiếp từ console.
+            if (chamCongNguoiPheDuyet) {
+                alert("⚠️ Kỳ chấm công này đã được PHÊ DUYỆT XONG nên chức năng \"Hủy phê duyệt\" đã bị khóa. Vui lòng dùng chức năng \"Mở lại bảng chấm công\" nếu cần chỉnh sửa lại.");
+                return;
+            }
             let inp = document.getElementById("cc-period-input");
             let maKy = inp ? inp.value : "";
             if (!maKy) return;
@@ -10604,6 +10704,308 @@
             } else {
                 alert("⚠️ " + ((result && result.message) || "Không thể hủy phê duyệt bảng chấm công."));
             }
+        }
+
+        /* ===== [MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG" - NÚT "TẢI FILE"] =====
+           [MỚI] Xuất file PDF "PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG" cho Tab "Bảng Chấm Công" (khối văn
+           phòng) — DÙNG LẠI CHUNG kỹ thuật jsPDF + html2canvas và bố cục (tiêu đề công ty/bảng xác
+           nhận người phê duyệt) đang chạy đúng ở xuatPdfCctvDmlcDuyet() của mục "Phê duyệt bảng
+           chấm công thuyền viên" — chỉ KHÁC ở bảng chấm công CHÈN VÀO: thay vì bảng dạng lưới theo
+           từng ngày/tàu, dùng đúng cấu trúc cột đã thống nhất cho khối văn phòng (STT, MSNV, Họ và
+           tên, Chức danh, Bộ phận, Tổng, rồi từng mã công theo CHAMCONG_CACOT_MA_CONG — GIỐNG HỆT
+           thứ tự cột đang dùng ở exportChamCongToExcel(), xem hàm đó để đối chiếu), và LỌC đúng 1
+           phòng ban đã chọn lúc gửi yêu cầu (r.phongBan — xem action "guiYeuCauPheDuyetBangChamCong"
+           ở Code.gs) — rỗng nghĩa là "Toàn bộ nhân sự" (không lọc gì, GIỮ NGUYÊN hành vi cũ cho các
+           yêu cầu gửi từ trước khi có cột "PhongBan"). KHÔNG gọi thêm action nào ngoài
+           "getChamCongData" (CHỈ ĐỌC, dùng CHUNG quyền "XemChamCong" như bảng đang hiển thị/nút
+           "Xuất Excel" — không phải action mới, không cấp thêm quyền gì), KHÔNG lưu thêm gì lên
+           Drive, KHÔNG đổi dữ liệu/cơ chế bảo mật nào hiện có. */
+
+        // Dựng bảng chấm công dạng lưới (1 dòng/nhân sự, cột STT/MSNV/Họ tên/Chức danh/Bộ phận/
+        // Tổng + từng cột mã công) để chèn vào file PDF — CHỈ ĐỌC lại mảng "rows" (đã tải sẵn theo
+        // đúng kỳ của yêu cầu, xem xuatPdfBangChamCongDuyet() bên dưới), KHÔNG gọi thêm API, KHÔNG
+        // tính toán lại gì khác ngoài việc LỌC đúng phòng ban (nếu có) — số liệu "tongCong"/
+        // "tongTheoMa" lấy NGUYÊN VẸN từ server (action "getChamCongData") để luôn khớp đúng.
+        function ccXayDungBangChamCongHtml_(phongBan, rows) {
+            let dsRows = (rows || []).filter(r => !phongBan || (r.phongBan || "(Chưa rõ)") === phongBan);
+            if (!dsRows.length) {
+                return '<p style="color:#999;">(Không có nhân sự nào thuộc phòng ban "' + pdfText(phongBan || "") + '" trong kỳ này)</p>';
+            }
+            dsRows = dsRows.slice().sort((a, b) => String(a.hoTen || "").localeCompare(String(b.hoTen || ""), "vi"));
+
+            // [SỬA - CĂN LẠI ĐỘ RỘNG CỘT CHO VỪA 1-2 TRANG A4] TRƯỚC ĐÂY các cột không khai báo
+            // "width" cụ thể -> với "table-layout:fixed" trình duyệt CHIA ĐỀU độ rộng cho MỌI cột
+            // (kể cả STT/Tổng/từng mã công vốn chỉ cần vài ký tự) khiến các cột này quá rộng một
+            // cách không cần thiết, ĐỒNG THỜI làm 3 cột cần nhiều chỗ hơn (Họ và tên/Chức danh/Bộ
+            // phận) bị bóp quá hẹp -> chữ tự xuống dòng -> mỗi dòng nhân sự cao hơn -> bảng dài ra
+            // nhiều trang. NAY: khai báo % cụ thể cho từng cột (áp dụng ở DÒNG ĐẦU của bảng, đúng
+            // cách "table-layout:fixed" đọc độ rộng) — nhóm cột hẹp (STT/MSNV/Tổng/mã công) chỉ
+            // nhận vừa đủ chỗ, phần còn lại dồn cho Họ và tên/Chức danh/Bộ phận để hạn chế xuống
+            // dòng, tổng cộng vẫn đúng 100% (không ảnh hưởng số liệu, chỉ đổi cách hiển thị).
+            let ccSoMaCong = (CHAMCONG_CACOT_MA_CONG || []).length || 1;
+            let ccPctCoDinh = { stt: 3.5, msnv: 6.5, hoTen: 17, chucDanh: 11, boPhan: 10, tong: 4.5 };
+            let ccTongPctCoDinh = ccPctCoDinh.stt + ccPctCoDinh.msnv + ccPctCoDinh.hoTen + ccPctCoDinh.chucDanh + ccPctCoDinh.boPhan + ccPctCoDinh.tong;
+            let ccPctMoiMaCong = Math.max(2.2, (100 - ccTongPctCoDinh) / ccSoMaCong);
+
+            let theadHtml = `<tr style="background:#f0f0f0;">
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.stt}%;">STT</th>
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.msnv}%;">MSNV</th>
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.hoTen}%;">Họ và tên</th>
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.chucDanh}%;">Chức danh</th>
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.boPhan}%;">Bộ phận</th>
+                    <th style="border:1px solid #333; padding:3px; width:${ccPctCoDinh.tong}%;">Tổng</th>
+                    ${CHAMCONG_CACOT_MA_CONG.map(ma => `<th style="border:1px solid #333; padding:2px; width:${ccPctMoiMaCong}%; overflow:hidden;">${pdfText(ma)}</th>`).join("")}
+                </tr>`;
+
+            let bodyRows = dsRows.map((r, idx) => {
+                let tongTheoMa = r.tongTheoMa || {};
+                let maCongTds = CHAMCONG_CACOT_MA_CONG.map(ma =>
+                    `<td style="border:1px solid #333; padding:2px; text-align:center; overflow:hidden;">${pdfText(String(tongTheoMa[ma] || 0))}</td>`
+                ).join("");
+                return `<tr>
+                        <td style="border:1px solid #333; padding:2px; text-align:center;">${idx + 1}</td>
+                        <td style="border:1px solid #333; padding:2px; text-align:center; overflow:hidden;">${pdfText(r.msnv || "")}</td>
+                        <td style="border:1px solid #333; padding:2px; overflow:hidden;">${pdfText(r.hoTen || "")}</td>
+                        <td style="border:1px solid #333; padding:2px; overflow:hidden;">${pdfText(r.chucDanh || "")}</td>
+                        <td style="border:1px solid #333; padding:2px; overflow:hidden;">${pdfText(r.phongBan || "")}</td>
+                        <td style="border:1px solid #333; padding:2px; text-align:center; font-weight:bold;">${pdfText(String(r.tongCong ?? 0))}</td>
+                        ${maCongTds}
+                    </tr>`;
+            }).join("");
+
+            return `<table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
+                    <thead>${theadHtml}</thead>
+                    <tbody>${bodyRows}</tbody>
+                </table>`;
+        }
+
+        // Nút "Tải file" ở bảng "Các yêu cầu phê duyệt" (Tab "Bảng Chấm Công") — CHỈ hiện/dùng
+        // được khi yêu cầu đã "Đã duyệt" (kiểm tra lại y hệt xuatPdfCctvDmlcDuyet(), KHÔNG nới
+        // lỏng bảo mật dù gọi thẳng hàm này).
+        // [SỬA - THÊM THAM SỐ "boQuaKiemTraDaDuyet"] Y HỆT cách sửa ở xuatPdfCctvDmlcDuyet(): khi
+        // gọi từ modal "Xem trước" (nút "Tải file (PDF)" — xem taiFileXemTruocBangChamCongPheDuyet()
+        // bên dưới), người phê duyệt cần tải được NGAY CẢ KHI yêu cầu CHƯA duyệt xong, để xem/lưu
+        // lại bảng chấm công trước khi quyết định Đồng ý/Không đồng ý. Mặc định false/không truyền
+        // -> GIỮ NGUYÊN hành vi cũ cho nút "Tải file" chính (chỉ dùng được khi "Đã duyệt"). Nội
+        // dung PDF vẫn hiện đúng "Trạng thái chung" thực tế (VD "Chờ duyệt"), KHÔNG giả mạo thành
+        // "Đã duyệt".
+        async function xuatPdfBangChamCongDuyet(id, boQuaKiemTraDaDuyet) {
+            let r = (ccPheDuyetDuyetData || []).find(x => x.id === id);
+            if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
+            if (!boQuaKiemTraDaDuyet && r.trangThaiChung !== "Đã duyệt") { alert("Yêu cầu này chưa được duyệt xong."); return; }
+            if (typeof window.jspdf === "undefined" || typeof html2canvas === "undefined") {
+                alert("Thư viện xuất PDF chưa tải xong, vui lòng thử lại sau ít giây."); return;
+            }
+
+            // [ĐỘ TIN CẬY] Tải lại ĐÚNG dữ liệu chấm công của kỳ "r.maKy" (KHÔNG đụng biến toàn cục
+            // chamCongRows đang hiển thị trên màn hình) để bảng trong PDF luôn khớp đúng kỳ của
+            // yêu cầu, dù người dùng đang xem 1 kỳ khác trên màn hình — giống hệt kỹ thuật đang
+            // dùng ở xuatPdfCctvDmlcDuyet().
+            let dRows = chamCongRows;
+            if (r.maKy) {
+                try {
+                    let dataRes = await callServerAction({ action: "getChamCongData", maKy: r.maKy });
+                    if (dataRes && dataRes.status !== "ERROR") {
+                        dRows = dataRes.rows || [];
+                    } else {
+                        console.error("xuatPdfBangChamCongDuyet: getChamCongData trả lỗi:", dataRes && dataRes.message);
+                    }
+                } catch (fetchErr) {
+                    console.error("xuatPdfBangChamCongDuyet: lỗi khi tải dữ liệu chấm công:", fetchErr);
+                }
+            }
+
+            let thangNam = cctvPhanTichThangNam_(r.maKy);
+            let phongBanNhan = r.phongBan ? ("PHÒNG BAN " + String(r.phongBan).toUpperCase()) : "TOÀN BỘ NHÂN SỰ";
+            let phieuTitleHtml = `<p style="text-align:center; font-weight:bold; font-size:15px; margin:6px 0 0 0; text-transform:uppercase;">PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG ${pdfText(phongBanNhan)}</p>`;
+            let bangChamCongHtml = ccXayDungBangChamCongHtml_(r.phongBan || "", dRows);
+
+            let approverList = (r.nguoiPheDuyetInfo && r.nguoiPheDuyetInfo.length)
+                ? r.nguoiPheDuyetInfo
+                : (r.nguoiPheDuyet || []).map(u => ({ username: u, hoTen: "", chucDanh: "" }));
+            let approverRows = approverList.map((a, idx) => {
+                let st = (r.trangThaiTungNguoi || {})[a.username] || { status: "cho_duyet" };
+                let trangThaiText = st.status === "dong_y" ? "Đồng ý" : (st.status === "tu_choi" ? "Không đồng ý" : "Chưa xử lý");
+                return `<tr>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${idx + 1}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(resolveApproverDisplayName(a))}</td>
+                    <td style="border:1px solid #333; padding:6px;">${pdfText(a.chucDanh || "")}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${trangThaiText}</td>
+                    <td style="border:1px solid #333; padding:6px; text-align:center;">${pdfText(st.thoiGian || "")}</td>
+                </tr>`;
+            }).join("");
+
+            let pdfLogoSrc = (document.querySelector(".sidebar-logo") || document.querySelector(".login-logo") || {}).src || "";
+            let pdfLogoHtml = pdfLogoSrc ? `<img src="${pdfLogoSrc}" style="height:60px; width:auto; object-fit:contain;">` : "<div></div>";
+
+            let html = `
+            <div style="width:1500px; padding:30px; font-family:'Times New Roman', Times, serif; color:#222; font-size:14px; line-height:1.5; background:#fff;">
+                <div style="display:flex; align-items:center; margin-bottom:6px;">
+                    <div style="width:120px;">${pdfLogoHtml}</div>
+                    <div style="flex:1; text-align:center; margin-right:120px;">
+                        <div style="font-size:17px; font-weight:bold; letter-spacing:0.5px;">SEAHORSE MARINE AND ENERGY JSC</div>
+                        <div style="font-size:16px; font-weight:bold; margin-top:2px;">CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ</div>
+                        <div style="font-size:15px; font-weight:bold; margin-top:6px; text-transform:uppercase;">BẢNG CHẤM CÔNG ${thangNam.nhan}</div>
+                        ${phieuTitleHtml}
+                    </div>
+                </div>
+
+                <p style="margin-top:20px; font-weight:bold;">Thông tin yêu cầu phê duyệt:</p>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:10px;">
+                    <tr>
+                        <td style="padding:2px 0; width:50%;">Mã yêu cầu: <b>${pdfText(r.id || "")}</b></td>
+                        <td style="padding:2px 0;">Kỳ chấm công: <b>${pdfText(cctvThangHienThi_(r.maKy))}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:2px 0;">Người gửi: <b>${pdfText(r.nguoiGui || "")}</b></td>
+                        <td style="padding:2px 0;">Ngày gửi: <b>${pdfText(r.ngayGui || "")}</b></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:2px 0;">Phòng ban: <b>${pdfText(r.phongBan || "Toàn bộ nhân sự")}</b></td>
+                        <td style="padding:2px 0;">Ghi chú: <b>${pdfText(r.ghiChu || "(không ghi)")}</b></td>
+                    </tr>
+                </table>
+                <p style="margin-top:6px;">Trạng thái chung: <b style="color:#2e7d32;">${pdfText(r.trangThaiChung || "")}</b></p>
+
+                <p style="margin-top:18px; font-weight:bold;">Xác nhận của người phê duyệt:</p>
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr style="background:#f0f0f0;">
+                            <th style="border:1px solid #333; padding:6px;">STT</th>
+                            <th style="border:1px solid #333; padding:6px;">Họ tên</th>
+                            <th style="border:1px solid #333; padding:6px;">Chức danh</th>
+                            <th style="border:1px solid #333; padding:6px;">Xác nhận</th>
+                            <th style="border:1px solid #333; padding:6px;">Ngày giờ phê duyệt</th>
+                        </tr>
+                    </thead>
+                    <tbody>${approverRows}</tbody>
+                </table>
+
+                <!-- [BẢNG CHẤM CÔNG NẰM DƯỚI CÙNG] Cùng bố cục với PHIẾU PHÊ DUYỆT BẢNG CHẤM CÔNG
+                     THUYỀN VIÊN (xem xuatPdfCctvDmlcDuyet() ở trên): bảng chấm công dạng lưới nằm
+                     SAU bảng "Xác nhận của người phê duyệt", tức là ở DƯỚI CÙNG file PDF. -->
+                <p style="margin-top:16px; font-weight:bold;">Bảng chấm công:</p>
+                ${bangChamCongHtml}
+
+                <p style="margin-top:20px; font-size:10px; color:#888; text-align:center;">Phiếu được xuất tự động từ Hệ thống quản lý nhân sự - Mã yêu cầu: ${pdfText(r.id || "")}</p>
+            </div>`;
+
+            let container = document.createElement("div");
+            container.style.position = "fixed";
+            container.style.left = "-10000px";
+            container.style.top = "0";
+            container.innerHTML = html;
+            document.body.appendChild(container);
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const canvas = await html2canvas(container.firstElementChild, {
+                    scale: 2, useCORS: true, backgroundColor: "#ffffff"
+                });
+                let pdfImgQuality = 0.92;
+                let imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                const PDF_TARGET_BYTES = 900 * 1024;
+                while (imgData.length * 0.75 > PDF_TARGET_BYTES && pdfImgQuality > 0.5) {
+                    pdfImgQuality -= 0.05;
+                    imgData = canvas.toDataURL("image/jpeg", pdfImgQuality);
+                }
+
+                // [KHỔ A4 NGANG] Giống mẫu "Phiếu phê duyệt bảng chấm công thuyền viên" — đủ chỗ
+                // cho nhiều cột mã công (N/NL/N1.../N6) trên 1 hàng ngang.
+                const doc = new jsPDF("l", "pt", "a4");
+                const margin = 20;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const usableWidth = pageWidth - margin * 2;
+                const usableHeight = pageHeight - margin * 2;
+                const imgWidth = usableWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                if (imgHeight <= usableHeight) {
+                    doc.addImage(imgData, "JPEG", margin, margin, imgWidth, imgHeight);
+                } else {
+                    let heightLeft = imgHeight;
+                    let renderedHeight = 0;
+                    let isFirstPage = true;
+                    while (heightLeft > 0) {
+                        if (!isFirstPage) doc.addPage();
+                        doc.addImage(imgData, "JPEG", margin, margin - renderedHeight, imgWidth, imgHeight);
+                        renderedHeight += usableHeight;
+                        heightLeft -= usableHeight;
+                        isFirstPage = false;
+                    }
+                }
+
+                let fileName = "PheDuyetBangChamCong_" + boDauTiengViet(r.maKy || "").trim().replace(/\s+/g, "_") + "_" + r.id + ".pdf";
+                doc.save(fileName);
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi khi xuất PDF!");
+            } finally {
+                if (container.parentNode) document.body.removeChild(container);
+            }
+        }
+
+        // [MỚI - MỤC "PHÊ DUYỆT BẢNG CHẤM CÔNG" (VĂN PHÒNG) - NÚT "XEM TRƯỚC"] Mở modal
+        // "cc-pheduyet-preview-modal" hiện lại "Bảng chấm công" (dạng lưới, GIỐNG HỆT bảng sẽ có
+        // trong file PDF sau khi duyệt) để người ĐƯỢC CHỌN LÀM NGƯỜI PHÊ DUYỆT xem trước được nội
+        // dung ngay trong trang, TRƯỚC KHI bấm "Đồng ý"/"Không đồng ý" — điều chỉnh giống hệt cơ
+        // chế "Xem trước" đang dùng cho mục "Phê duyệt bảng chấm công thuyền viên" (xem
+        // xemTruocBangChamCongCctvDmlcUI()). DÙNG LẠI NGUYÊN VẸN ccXayDungBangChamCongHtml_ (đang
+        // chạy đúng ở xuatPdfBangChamCongDuyet()) và action "getChamCongData" đã có sẵn (CHỈ ĐỌC,
+        // dùng chung quyền "XemChamCong" như bảng đang hiển thị/nút "Xuất Excel" — KHÔNG phải
+        // action mới, KHÔNG cấp thêm quyền gì, KHÔNG ghi/sửa/xóa bất kỳ dữ liệu nào, KHÔNG đụng
+        // biến toàn cục chamCongRows đang hiển thị trên màn hình chính).
+        let ccPheDuyetPreviewCurrentId = "";
+        async function xemTruocBangChamCongPheDuyetUI(id) {
+            let r = (ccPheDuyetDuyetData || []).find(x => x.id === id);
+            if (!r) { alert("Không tìm thấy yêu cầu phê duyệt."); return; }
+            ccPheDuyetPreviewCurrentId = id;
+
+            let modal = document.getElementById("cc-pheduyet-preview-modal");
+            let infoEl = document.getElementById("cc-pheduyet-preview-info");
+            let bodyEl = document.getElementById("cc-pheduyet-preview-body");
+            if (!modal || !infoEl || !bodyEl) return;
+
+            infoEl.innerHTML = `Mã yêu cầu: <b>${escapeHtml(r.id || "")}</b> — Người gửi: <b>${escapeHtml(r.nguoiGui || "")}</b> — Kỳ chấm công: <b>${escapeHtml(cctvThangHienThi_(r.maKy))}</b> — Phòng ban: <b>${r.phongBan ? escapeHtml(r.phongBan) : "Toàn bộ nhân sự"}</b>`;
+            bodyEl.innerHTML = '<p style="color:#999; text-align:center; padding:20px 0;"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải bảng chấm công...</p>';
+            modal.style.display = "flex";
+
+            if (!r.maKy) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">⚠️ Yêu cầu này chưa lưu "Kỳ chấm công" (dữ liệu cũ). Vui lòng liên hệ Admin.</p>';
+                return;
+            }
+
+            let dRows = [];
+            try {
+                let dataRes = await callServerAction({ action: "getChamCongData", maKy: r.maKy });
+                if (!dataRes || dataRes.status === "ERROR") throw new Error((dataRes && dataRes.message) || "Không tải được dữ liệu chấm công.");
+                dRows = dataRes.rows || [];
+            } catch (err) {
+                bodyEl.innerHTML = '<p style="color:#c00; font-weight:bold; text-align:center; padding:20px 0;">❌ Không tải được bảng chấm công: ' + escapeHtml(err.message || String(err)) + '</p>';
+                return;
+            }
+
+            bodyEl.innerHTML = `<div style="overflow-x:auto;">${ccXayDungBangChamCongHtml_(r.phongBan || "", dRows)}</div>`;
+        }
+
+        // [MỚI - NÚT "TẢI FILE (PDF)" Ở MODAL XEM TRƯỚC] Cho phép tải PDF NGAY từ màn hình xem
+        // trước, không cần đóng modal rồi tìm lại nút "Tải file" ở bảng "Các yêu cầu phê duyệt".
+        // TÁI SỬ DỤNG NGUYÊN VẸN hàm xuatPdfBangChamCongDuyet() đã có sẵn (dùng đúng "Mã yêu cầu"
+        // đang mở ở modal, lưu tại ccPheDuyetPreviewCurrentId khi mở modal — xem
+        // xemTruocBangChamCongPheDuyetUI() ở trên), truyền "true" để BỎ QUA điều kiện "Đã duyệt"
+        // — KHÔNG tạo action/luồng tải file mới, KHÔNG đổi bảo mật/quyền hạn.
+        async function taiFileXemTruocBangChamCongPheDuyet() {
+            if (!ccPheDuyetPreviewCurrentId) { alert("Không xác định được yêu cầu đang xem trước."); return; }
+            await xuatPdfBangChamCongDuyet(ccPheDuyetPreviewCurrentId, true);
+        }
+
+        function closeCcPheDuyetPreviewModal() {
+            let modal = document.getElementById("cc-pheduyet-preview-modal");
+            if (modal) modal.style.display = "none";
+            // Dọn lại "Mã yêu cầu" đang lưu tạm khi đóng modal, tránh nút "Tải file (PDF)" lỡ tải
+            // NHẦM yêu cầu của lần xem trước trước đó nếu người dùng bấm lại khi modal đã đóng.
+            ccPheDuyetPreviewCurrentId = "";
         }
 
         /* ---------- [XUẤT EXCEL] Tất cả / Theo phòng ban / Theo từng cá nhân ---------- */
