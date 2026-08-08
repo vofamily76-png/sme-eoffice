@@ -246,19 +246,21 @@
            cố định cũ "Họ Tên"/"Chức Danh" dịch sang phải thêm đúng bề rộng cột "STT" (44px),
            KHÔNG đổi độ rộng/nội dung của 2 cột đó. */
         #cctv-table .cctv-col-0 { left: 0; width: 44px; min-width: 44px; max-width: 44px; text-align: center; }
-        #cctv-table .cctv-col-1 { left: 44px; width: 170px; min-width: 170px; max-width: 170px; }
-        /* [MỚI - CỘT "MSNV"] Cột MỚI thêm ngay sau "Họ Tên" — hiện Mã nhân viên (MSNV) của thuyền
-           viên, TRÙNG với MSNV đã khai báo ở Tab "Thêm nhân sự mới"/"Quản lý Đội tàu" (đọc thẳng
-           từ trường "msnv" có sẵn trong "cctvCrewList", KHÔNG cần thêm cột dữ liệu mới ở Sheet
-           hay action mới ở server) -> cột cố định cũ "Chức Danh" dịch sang phải thêm đúng bề rộng
-           cột này (100px), đổi tên lớp từ "cctv-col-2" thành "cctv-col-3" (KHÔNG đổi độ rộng/nội
-           dung của cột "Chức Danh"). */
-        #cctv-table .cctv-col-2 { left: 214px; width: 100px; min-width: 100px; max-width: 100px; }
+        /* [SỬA THEO YÊU CẦU MỚI - ĐẢO VỊ TRÍ "MSNV"] Trước đây thứ tự là STT/Họ Tên/MSNV/Chức
+           Danh. NAY đảo "MSNV" lên đứng NGAY SAU "STT" (trước "Họ Tên") theo đúng yêu cầu mới —
+           CHỈ đổi thứ tự HIỂN THỊ 2 cột "cctv-col-1"/"cctv-col-2" (đổi luôn nội dung/độ rộng cho
+           đúng vị trí mới, tổng bề rộng 2 cột KHÔNG đổi nên "left" của "Chức Danh" (cctv-col-3)
+           giữ nguyên 314px, không cần sửa gì thêm) — KHÔNG đổi trường dữ liệu/action nào ở server.
+           Xem buildCctvTableHead()/renderChamCongThuyenVienTable() bên dưới. */
+        #cctv-table .cctv-col-1 { left: 44px; width: 100px; min-width: 100px; max-width: 100px; }
+        #cctv-table .cctv-col-2 { left: 144px; width: 170px; min-width: 170px; max-width: 170px; }
         #cctv-table .cctv-col-3 { left: 314px; width: 150px; min-width: 150px; max-width: 150px; }
-        /* [MỚI - CỘT "Kht"] Cột MỚI thêm ở CUỐI bảng (không cố định/sticky, chỉ cuộn ngang bình
-           thường như các cột ngày khác) — chỗ TRỐNG để nhân sự ký tay xác nhận, không phải ô nhập
-           liệu, không gắn dữ liệu/action nào (xem renderChamCongThuyenVienTable() bên dưới). */
-        #cctv-table .cctv-col-kht { min-width: 90px; }
+        /* [MỚI - CỘT "Đơn vị (tàu)"] Cột MỚI thêm ngay sau "Chức Danh" theo đúng yêu cầu mới — hiện
+           tên tàu (đơn vị) của thuyền viên, đọc thẳng từ trường "tau" có sẵn trong "cctvCrewList"
+           (KHÔNG cần thêm cột dữ liệu mới ở Sheet hay action mới ở server). Dùng chung 1 ô cho CẢ
+           2 hàng (chính + phụ) của CÙNG 1 thuyền viên bằng rowspan, giống hệt cột "STT"/"MSNV"/
+           "Họ Tên". */
+        #cctv-table .cctv-col-4 { left: 464px; width: 90px; min-width: 90px; max-width: 90px; }
         
         /* Thẻ danh bạ CBCNV */
         .contact-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
@@ -7966,6 +7968,7 @@
                 let headerNgayRow = ["STT", "Mã nhân viên", "Họ và tên", "Chức vụ"];
                 ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
                 danhMucCoDuLieu.forEach(dm => { headerThuRow.push(""); headerNgayRow.push("Công " + dm.ma); });
+                headerThuRow.push(""); headerNgayRow.push("TỔNG");
                 let aoa = [headerThuRow, headerNgayRow];
                 let sttXuat = 0;
                 crewOfTau.forEach((c, i) => {
@@ -7986,6 +7989,7 @@
                     // đang hiện sẵn trên giao diện web (kể cả hiện số 0 khi người đó không có công
                     // ở mã đó, đúng như trên web).
                     danhMucCoDuLieu.forEach(dm => row.push(tongTheoCrew[i].chinh[dm.ma] || 0));
+                    row.push(cctvTinhTong(tongTheoCrew[i].chinh) || "");
                     aoa.push(row);
 
                     // [MỚI - HÀNG "CÔNG CHỨC DANH"] Xuất thêm 1 dòng phụ ngay bên dưới cho đúng
@@ -8012,6 +8016,7 @@
                             rowPhu.push(recPhu ? (cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : "");
                         });
                         danhMucCoDuLieu.forEach(dm => rowPhu.push(tongTheoCrew[i].phu[dm.ma] || 0));
+                        rowPhu.push("");
                         aoa.push(rowPhu);
                     }
                 });
@@ -8019,14 +8024,16 @@
                 // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Y hệt dòng tổng đang hiện sẵn cuối
                 // bảng trên giao diện web: mỗi cột "Công {mã}" hiện tổng số công của TẤT CẢ thuyền
                 // viên tàu này cho đúng mã đó (đã cộng dồn ở "tongTheoMa" phía trên) — chỉ hiện số
-                // khi tổng >= 1 (bằng 0 để trống, không hiện "0"), các cột ngày để trống.
+                // khi tổng >= 1 (bằng 0 để trống, không hiện "0"), các cột ngày để trống. Cột
+                // "TỔNG" cuối cùng cộng dồn đúng 7/8 cột "Công {mã}" (không tính "NPT").
                 let tongRow = ["", "", "Tổng cộng Công", ""];
                 ngayList.forEach(() => tongRow.push(""));
                 danhMucCoDuLieu.forEach(dm => tongRow.push(tongTheoMa[dm.ma] || ""));
+                tongRow.push(cctvTinhTong(tongTheoMa) || "");
                 aoa.push(tongRow);
 
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
-                let maxCols = 4 + ngayList.length + danhMucCoDuLieu.length;
+                let maxCols = 4 + ngayList.length + danhMucCoDuLieu.length + 1;
                 let cols = [{ wch: 6 }, { wch: 14 }, { wch: 24 }, { wch: 16 }];
                 for (let ci = 4; ci < maxCols; ci++) cols.push({ wch: 10 });
                 ws['!cols'] = cols;
@@ -8454,6 +8461,7 @@
                     <th style="border:1px solid #333; padding:3px;">Chức vụ</th>
                     ${ngayList.map(d => `<th style="border:1px solid #333; padding:2px; min-width:20px;">${d.ngay}<br><span style="font-weight:normal; font-size:8px;">${d.thu}</span></th>`).join("")}
                     ${danhMucCoDuLieu.map(dm => `<th style="border:1px solid #333; padding:2px; min-width:26px;">Công ${pdfText(dm.ma)}</th>`).join("")}
+                    <th style="border:1px solid #333; padding:2px; min-width:26px;">TỔNG</th>
                 </tr>`;
 
             let bodyRows = "";
@@ -8470,6 +8478,7 @@
                     return `<td style="border:1px solid #333; padding:2px; text-align:center;">${pdfText(maHienThi)}</td>`;
                 }).join("");
                 let tongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].chinh[dm.ma] || 0}</td>`).join("");
+                let tongChinhCrew = cctvTinhTong(tongTheoCrew[i].chinh);
                 bodyRows += `<tr>
                         <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${sttXuat}</td>
                         <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${pdfText(c.msnv || "")}</td>
@@ -8477,6 +8486,7 @@
                         <td style="border:1px solid #333; padding:2px;">${pdfText(c.chucDanh || "")}</td>
                         ${dayTds}
                         ${tongTds}
+                        <td style="border:1px solid #333; padding:2px; text-align:center; font-weight:bold;">${tongChinhCrew >= 1 ? tongChinhCrew : ""}</td>
                     </tr>`;
 
                 if (coHangPhu) {
@@ -8498,12 +8508,14 @@
                             <td style="border:1px solid #333; padding:2px;">${pdfText(nhanHang)}</td>
                             ${dayTdsPhu}
                             ${tongTdsPhu}
+                            <td style="border:1px solid #333; padding:2px;"></td>
                         </tr>`;
                 }
             });
 
             let tongRowTds = ngayList.map(() => `<td style="border:1px solid #333; padding:2px;"></td>`).join("");
             let tongRowTongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoMa[dm.ma] || ""}</td>`).join("");
+            let tongRowTongCong = cctvTinhTong(tongTheoMa);
 
             return `<table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
                     <thead>${theadHtml}</thead>
@@ -8513,6 +8525,7 @@
                             <td style="border:1px solid #333; padding:2px;"></td>
                             ${tongRowTds}
                             ${tongRowTongTds}
+                            <td style="border:1px solid #333; padding:2px; text-align:center;">${tongRowTongCong >= 1 ? tongRowTongCong : ""}</td>
                         </tr>
                     </tbody>
                 </table>`;
@@ -8929,9 +8942,10 @@
         // thay đổi theo đúng danh mục loại công thực tế + 1 cột "Kht" (chỗ ký tên) MỚI thêm ở cuối
         // bảng) — dùng cho thuộc tính colspan của các dòng thông báo (VD "Không có dữ liệu...").
         function cctvTongSoCot() {
-            // [MỚI - CỘT MSNV] Trước đây 4 cột cố định/không phụ thuộc danh mục: STT, Họ Tên,
-            // Chức Danh, Kht. Nay thêm cột "Mã nhân viên (MSNV)" -> 5 cột.
-            return 5 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
+            // [SỬA THEO YÊU CẦU MỚI] 5 cột cố định/không phụ thuộc danh mục: STT, MSNV, Họ Tên,
+            // Chức Danh, Đơn vị (tàu) + 1 cột "TỔNG" ở cuối (thay cho cột "Kht" đã bỏ) -> 6 cột cố
+            // định + số ngày trong kỳ + số mã công đang có trong danh mục.
+            return 6 + (cctvDanhSachNgay || []).length + (cctvDanhMuc || []).length;
         }
 
         // [SỬA - CỘT TỔNG HỢP ĐỘNG] Dựng phần <thead> động: 2 cột cố định (Họ Tên/Chức Danh) + 1
@@ -8949,15 +8963,30 @@
             let tongHopThs = (cctvDanhMuc || []).map(dm =>
                 `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
             ).join("");
+            // [MỚI - CỘT "TỔNG"] Thêm ở CUỐI bảng (sau mọi cột "Ngày công {Mã}") — hiện tổng số
+            // ngày công của 7/8 mã (KHÔNG tính mã "NPT" — nhà thầu phụ, xem CCTV_TONG_LOAI_TRU_MA
+            // và cctvTinhTong() bên dưới). Tính toán lại từ dữ liệu đã tải, KHÔNG lưu/ghi gì xuống
+            // Sheet, KHÔNG gọi thêm action nào.
             thead.innerHTML = `<tr>
                 <th class="cctv-col-sticky cctv-col-0">STT</th>
-                <th class="cctv-col-sticky cctv-col-1">Họ Tên</th>
-                <th class="cctv-col-sticky cctv-col-2" title="Mã nhân viên — trùng với MSNV đã khai báo ở Tab Thêm nhân sự mới / Quản lý Đội tàu">MSNV</th>
+                <th class="cctv-col-sticky cctv-col-1" title="Mã nhân viên — trùng với MSNV đã khai báo ở Tab Thêm nhân sự mới / Quản lý Đội tàu">MSNV</th>
+                <th class="cctv-col-sticky cctv-col-2">Họ Tên</th>
                 <th class="cctv-col-sticky cctv-col-3">Chức Danh</th>
+                <th class="cctv-col-sticky cctv-col-4">Đơn vị (tàu)</th>
                 ${dayThs}
                 ${tongHopThs}
-                <th style="min-width:70px;" title="Ký tên nhận (Kht) — chỗ trống để nhân sự ký xác nhận, không phải ô nhập liệu">Kht</th>
+                <th style="min-width:80px; background:#fff3cd;" title="Tổng ngày công của 7 mã (không tính NPT)">TỔNG</th>
             </tr>`;
+        }
+
+        // [MỚI - CỘT "TỔNG"] Mã KHÔNG tính vào cột "TỔNG" — theo đúng yêu cầu "TỔNG = tổng ngày
+        // công của 7 mã" (8 mã hiện có trong danh mục, trừ "NPT" - nhà thầu phụ).
+        var CCTV_TONG_LOAI_TRU_MA = ["NPT"];
+        function cctvTinhTong(tongHopDong) {
+            return (cctvDanhMuc || []).reduce((sum, dm) => {
+                if (CCTV_TONG_LOAI_TRU_MA.indexOf(dm.ma) !== -1) return sum;
+                return sum + (Number((tongHopDong || {})[dm.ma]) || 0);
+            }, 0);
         }
 
         // [SỬA - BẢNG DẠNG LƯỚI THEO NGÀY + SỬA LỖI "CHỌN TÀU KHÔNG HIỆN DANH SÁCH"] Trước đây
@@ -9070,18 +9099,22 @@
                 (cctvDanhMuc || []).forEach(dm => {
                     cctvTongCongTheoMa[dm.ma] = (cctvTongCongTheoMa[dm.ma] || 0) + (tongHopDong[dm.ma] || 0);
                 });
-                // [MỚI - CỘT "Kht"] Ô trống để nhân sự KÝ TAY xác nhận (không phải ô nhập liệu, KHÔNG
-                // gắn action/lưu dữ liệu nào) — dùng chung 1 ô cho CẢ 2 hàng (chính + phụ) của CÙNG 1
-                // thuyền viên bằng rowspanAttr (giống hệt cột "STT"/"Họ Tên" ở trên).
-                let khtTd = `<td class="cctv-col-kht"${rowspanAttr}></td>`;
+                // [MỚI - CỘT "TỔNG"] Tổng ngày công của 7/8 mã (không tính "NPT") của hàng CHÍNH
+                // "Công làm việc" — dùng lại đúng "tongHopDong" vừa tính ở trên (cctvTinhTong()).
+                let tongChinh = cctvTinhTong(tongHopDong);
+                let tongChinhTd = `<td style="text-align:center; font-weight:700; background:#fff3cd;">${tongChinh >= 1 ? tongChinh : ""}</td>`;
+                // [MỚI - CỘT "Đơn vị (tàu)"] Dùng chung 1 ô cho CẢ 2 hàng (chính + phụ) của CÙNG 1
+                // thuyền viên bằng rowspanAttr (giống hệt cột "STT"/"MSNV"/"Họ Tên" ở trên).
+                let donViTd = `<td class="cctv-col-sticky cctv-col-4"${rowspanAttr} title="${escapeHtml(c.tau || "")}">${escapeHtml(c.tau || "")}</td>`;
                 let hangChinh = `<tr>
                     <td class="cctv-col-sticky cctv-col-0"${rowspanAttr} style="text-align:center;">${cctvStt}</td>
-                    <td class="cctv-col-sticky cctv-col-1"${rowspanAttr} title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
-                    <td class="cctv-col-sticky cctv-col-2"${rowspanAttr} title="${escapeHtml(c.msnv || "")}">${escapeHtml(c.msnv || "")}</td>
+                    <td class="cctv-col-sticky cctv-col-1"${rowspanAttr} title="${escapeHtml(c.msnv || "")}">${escapeHtml(c.msnv || "")}</td>
+                    <td class="cctv-col-sticky cctv-col-2"${rowspanAttr} title="${escapeHtml(c.hoTen)}">${escapeHtml(c.hoTen)}</td>
                     <td class="cctv-col-sticky cctv-col-3" title="${escapeHtml(c.chucDanh || "")}">${escapeHtml(c.chucDanh || "")}</td>
+                    ${donViTd}
                     ${dayTds}
                     ${tongHopTds}
-                    ${khtTd}
+                    ${tongChinhTd}
                 </tr>`;
 
                 // [MỚI - HÀNG "CÔNG CHỨC DANH" CÓ THỂ ĐIỀU CHỈNH] Chỉ dựng thêm khi chức danh
@@ -9187,10 +9220,16 @@
                         : "";
                     let nhanStyle = 'background:#f6fff8;' + (editable ? ' cursor:pointer; box-shadow: inset 0 0 0 1px #2e7d32;' : '');
                     let clickAttrNhan = ` title="Công chức danh ${escapeHtml(maRank)}${editable ? ' — Bấm để điều chỉnh' : ''}"`;
+                    // [MỚI - CỘT "TỔNG"] Hàng phụ "Công chức danh" dùng mã "SDPO"/"JDPO" — các mã
+                    // này KHÔNG còn nằm trong danh mục 8 mã mới (chỉ dùng riêng cho hàng phụ, xem
+                    // CREWCHAMCONG_MA_CHUCDANH_HOPLE_ ở Code.gs) nên cctvTinhTong() luôn ra 0 ở
+                    // đây — để trống ô "TỔNG" của hàng phụ cho gọn, không hiện số "0".
+                    let tongPhuTd = `<td style="background:#eafaf1;"></td>`;
                     hangPhu = `<tr>
                         <td class="cctv-col-sticky cctv-col-3" style="${nhanStyle}"${clickAttrNhan}${nhanClickAttr}>${escapeHtml(nhanHang)}</td>
                         ${dayTdsPhu}
                         ${tongHopTdsPhu}
+                        ${tongPhuTd}
                     </tr>`;
                 }
                 return hangChinh + hangPhu;
@@ -9198,23 +9237,27 @@
                 // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] 1 dòng tổng ở cuối bảng: mỗi cột "Ngày công {Mã}"
                 // hiện tổng số công của TẤT CẢ thuyền viên đang hiển thị cho ĐÚNG mã đó (đã cộng dồn
                 // ở cctvTongCongTheoMa trong lúc dựng từng dòng phía trên) — CHỈ hiện số nếu tổng
-                // >= 1 (bằng 0 thì để Ô TRỐNG, không hiện số "0", theo đúng yêu cầu). Cột "Kht" và
-                // các cột ngày để trống (không có ý nghĩa tổng hợp). Đây CHỈ là dòng HIỂN THỊ tổng
-                // hợp (tính toán lại từ dữ liệu đã tải, KHÔNG lưu/ghi gì xuống Sheet, KHÔNG gọi thêm
-                // action nào), nên không ảnh hưởng gì tới dữ liệu hay bảo mật.
+                // >= 1 (bằng 0 thì để Ô TRỐNG, không hiện số "0", theo đúng yêu cầu). Cột "Đơn vị
+                // (tàu)" và các cột ngày để trống (không có ý nghĩa tổng hợp). Cột "TỔNG" ở cuối
+                // cộng dồn đúng 7/8 cột "Ngày công {Mã}" phía trên (không tính "NPT", xem
+                // CCTV_TONG_LOAI_TRU_MA). Đây CHỈ là dòng HIỂN THỊ tổng hợp (tính toán lại từ dữ
+                // liệu đã tải, KHÔNG lưu/ghi gì xuống Sheet, KHÔNG gọi thêm action nào), nên không
+                // ảnh hưởng gì tới dữ liệu hay bảo mật.
                 let ngayTrongCols = (cctvDanhSachNgay || []).map(() => '<td></td>').join("");
                 let tongCongCols = (cctvDanhMuc || []).map(dm => {
                     let tong = cctvTongCongTheoMa[dm.ma] || 0;
                     return `<td style="text-align:center; font-weight:700; background:#fff3cd;">${tong >= 1 ? tong : ""}</td>`;
                 }).join("");
+                let tongCongTong = cctvTinhTong(cctvTongCongTheoMa);
                 return `<tr style="background:#fff8e1;">
                     <td class="cctv-col-sticky cctv-col-0" style="font-weight:700;"></td>
-                    <td class="cctv-col-sticky cctv-col-1" style="font-weight:700;">Tổng cộng Công</td>
-                    <td class="cctv-col-sticky cctv-col-2" style="font-weight:700;"></td>
+                    <td class="cctv-col-sticky cctv-col-1" style="font-weight:700;"></td>
+                    <td class="cctv-col-sticky cctv-col-2" style="font-weight:700;">Tổng cộng Công</td>
                     <td class="cctv-col-sticky cctv-col-3" style="font-weight:700;"></td>
+                    <td class="cctv-col-sticky cctv-col-4" style="font-weight:700;"></td>
                     ${ngayTrongCols}
                     ${tongCongCols}
-                    <td class="cctv-col-kht"></td>
+                    <td style="text-align:center; font-weight:700; background:#ffe082;">${tongCongTong >= 1 ? tongCongTong : ""}</td>
                 </tr>`;
             })();
         }
