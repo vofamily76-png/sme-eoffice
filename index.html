@@ -873,7 +873,20 @@
                                  như cũ. KHÔNG đổi tên id/cách đọc-ghi giá trị (vẫn "inp-position" ->
                                  "position" như cũ) nên KHÔNG ảnh hưởng dữ liệu nhân sự đã lưu. -->
                             <input type="text" id="inp-position" placeholder="Ví dụ: Thuyền trưởng / Kế toán viên">
+                            <!-- [MỚI - THÊM GỢI Ý CHỨC DANH "SDPO"/"JDPO"] Theo yêu cầu mới, bổ sung thêm
+                                 các gợi ý chức danh gắn liền với "SDPO"/"JDPO" (Senior/Junior DPO) — VẪN
+                                 chỉ là GỢI Ý cho ô nhập chữ tự do phía trên (KHÔNG giới hạn giá trị được
+                                 phép nhập, người dùng vẫn gõ tự do được BẤT KỲ chức danh nào khác — đúng
+                                 yêu cầu "khác (có thể điền tên chức danh vào)"), KHÔNG xóa/đổi bất kỳ gợi ý
+                                 cũ nào đã có sẵn bên dưới, KHÔNG ảnh hưởng dữ liệu nhân sự đã lưu. -->
                             <datalist id="list-crew-position">
+                                <option value="SDPO">
+                                <option value="JDPO">
+                                <option value="Thuyền trưởng/SDPO">
+                                <option value="Thuyền trưởng/JDPO">
+                                <option value="Đại phó/JDPO">
+                                <option value="Đại phó/SDPO">
+                                <option value="Đại phó thực tập/JDPO">
                                 <option value="Thuyền trưởng">
                                 <option value="Thuyền trưởng thực tập">
                                 <option value="Sỹ quan boong">
@@ -1043,10 +1056,6 @@
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-sack-dollar"></i> Lương & Bảo hiểm xã hội</label>
                         </div>
                         <div class="input-group">
-                            <label>Mức lương cơ bản</label>
-                            <input type="number" id="inp-luong-co-ban" min="0" step="1000" placeholder="Ví dụ: 8000000">
-                        </div>
-                        <div class="input-group">
                             <label>Ngày đóng BHXH</label>
                             <input type="date" id="inp-ngay-dong-bhxh">
                         </div>
@@ -1058,33 +1067,14 @@
                             <label>Số ngày làm việc trong tháng</label>
                             <input type="number" id="inp-so-ngay-lam-viec-thang" min="0" max="31" step="0.5" placeholder="Ví dụ: 26">
                         </div>
-                        <div class="input-group">
-                            <label>Lương thực nhận trong tháng</label>
-                            <input type="number" id="inp-luong-thuc-nhan-thang" min="0" step="1000" placeholder="Ví dụ: 8500000">
-                        </div>
                     </div>
-                    <div class="form-row contract-group">
-                        <div class="input-group" style="grid-column: 1 / -1;">
-                            <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-sack-dollar"></i> Thông tin lương</label>
-                            <span style="font-weight:normal; color:#888; font-size:11.5px;">2 trường đầu do bạn tự nhập; 2 trường sau (chỉ đọc) hiện không còn nguồn nào tự động cập nhật, giữ nguyên giá trị đã lưu gần nhất.</span>
-                        </div>
-                        <div class="input-group">
-                            <label>Phụ cấp (nếu có)</label>
-                            <input type="number" id="inp-phu-cap-mac-dinh" min="0" step="1000" placeholder="Ví dụ: 500000">
-                        </div>
-                        <div class="input-group">
-                            <label>Khấu trừ khác</label>
-                            <input type="number" id="inp-khau-tru-khac-mac-dinh" min="0" step="1000" placeholder="Ví dụ: 0">
-                        </div>
-                        <div class="input-group">
-                            <label>Lương thời gian (Lương thực tế) <span style="font-weight:normal; color:#888; font-size:11.5px;">(chỉ đọc)</span></label>
-                            <input type="text" id="inp-luong-thoi-gian-thuc-te-thang" disabled placeholder="Chưa có dữ liệu">
-                        </div>
-                        <div class="input-group">
-                            <label>Tổng thu nhập <span style="font-weight:normal; color:#888; font-size:11.5px;">(chỉ đọc)</span></label>
-                            <input type="text" id="inp-tong-thu-nhap-thang" disabled placeholder="Chưa có dữ liệu">
-                        </div>
-                    </div>
+                    <!-- [ĐÃ ẨN THEO YÊU CẦU] Các trường "Mức lương cơ bản", "Lương thực nhận
+                    trong tháng" và toàn bộ khối "Thông tin lương" (Phụ cấp, Khấu trừ khác, Lương
+                    thời gian (Lương thực tế), Tổng thu nhập) không còn hiển thị/nhập liệu tại
+                    Tab "Thêm nhân sự mới". Dữ liệu các trường này (nếu nhân sự đã có sẵn) VẪN
+                    được giữ nguyên trong hệ thống và tiếp tục đồng bộ bình thường với Tab "Lương
+                    Nhân Viên" — xem hàm luuNhanSu()/moThemNhanVien()/moSuaNhanVien() bên dưới, nơi
+                    giá trị cũ được giữ lại thay vì bị ghi đè bằng 0 khi lưu từ form này. -->
                     <div class="form-row contract-group">
                         <div class="input-group">
                             <label>Tình trạng hôn nhân</label>
@@ -2226,21 +2216,13 @@
                  có sẵn (Tab "Quản lý Đội tàu") — CHỈ ĐỌC, không sửa dữ liệu Sheet đó. -->
             <div id="page-chamcongthuyenvien" class="page-content">
                 <h2 class="page-title"><i class="fa-solid fa-ship"></i> Bảng Chấm Công Thuyền Viên</h2>
-                <!-- [SỬA THEO YÊU CẦU MỚI - ĐỔI MÃ "DP-SDPO"/"DP-JDPO" THÀNH "SDPO"/"JDPO"] Trước
-                     đây 2 mã công chức danh chọn trực tiếp ở ô "Mã công" là "DP-SDPO" (Senior DPO)
-                     và "DP-JDPO" (Junior DPO). NAY đổi thành 2 mã NGẮN GỌN "SDPO"/"JDPO" (bỏ tiền
-                     tố "DP-") — xem crewChamCongDoiTenMaDanhMucCu_()/CREWCHAMCONG_DANHMUC_BOSUNG_MOI_
-                     ở Code.gs: mã CŨ trong Sheet "DanhMucLoaiCongThuyenVien" được ĐỔI TÊN ngay tại
-                     đúng dòng cũ (không xóa/thêm dòng, không mất dữ liệu); các bản ghi ngày công ĐÃ
-                     LƯU trước đây với mã cũ vẫn hiển thị/tổng hợp đúng vào cột "Ngày công SDPO"/
-                     "Ngày công JDPO" mới (xem crewChamCongChuanHoaMaChucDanhCu_() ở Code.gs). -->
-                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">
-                    Ghi nhận ngày công của Thuyền viên (Đội tàu) theo Danh mục loại công riêng: <b>B1, B2, B3, B4,
-                    SDPO, JDPO, N, N1, N2, D</b>. Mã <b>SDPO</b> (Senior DPO) và <b>JDPO</b> (Junior
-                    DPO) là công chức danh — chọn trực tiếp ở ô "Mã công", không cần chọn thêm bước phụ nào khác.
-                    Bấm vào từng ô ngày để ghi nhận/sửa lại mã công cụ thể. Dữ liệu được lưu trên Google Sheet
-                    riêng, tách biệt hoàn toàn với Bảng Chấm Công của Văn phòng.
-                </p>
+                <!-- [SỬA THEO YÊU CẦU MỚI] Đã bỏ đoạn mô tả cũ nhắc tới danh mục mã công cũ
+                     (B1/B2/B3/B4/SDPO/JDPO/N/N1/N2/D) — danh mục mã công nay đã đổi hoàn toàn sang
+                     bộ 8 mã mới (NPT/DB1/DB2/DOCK/BO/NGHICA/BO2/DP, xem
+                     CREWCHAMCONG_DANHMUC_MAC_DINH ở Code.gs) nên đoạn mô tả cũ không còn đúng nữa,
+                     KHÔNG thay bằng đoạn mô tả mới nào khác (theo đúng yêu cầu "xóa dòng chữ" này).
+                     KHÔNG đụng/đổi bất kỳ dữ liệu, action, hay quyền hạn nào ở đây — CHỈ xóa đúng 1
+                     đoạn văn bản hiển thị thuần túy. -->
 
 
                 <!-- [SỬA - THÊM "CHỐT BẢNG CHẤM CÔNG"/"MỞ LẠI"/"ĐIỀU CHỈNH"/"XUẤT EXCEL"; XÓA NÚT
@@ -7706,13 +7688,24 @@
             return { label: maGoc, bg: "#eaf3ff", title: "Mã loại công: " + maGoc };
         }
 
-        function chamCongMaNgayInfo(ma, isWeekend) {
+        function chamCongMaNgayInfo(ma, isWeekend, tuDongThu7) {
             // [MỚI - CHO PHÉP ĐIỀU CHỈNH CUỐI TUẦN] Trước đây MỌI ô cuối tuần luôn hiện trống
             // (bỏ qua hoàn toàn dữ liệu ô đó). Nay: cuối tuần CHƯA có điều chỉnh gì vẫn hiện
             // trống như cũ (giữ nguyên hành vi mặc định) — nhưng nếu ĐÃ được điều chỉnh thủ công
             // (nhân sự đi làm cuối tuần, xem nút "Điều chỉnh"), hiện ĐÚNG mã đã chọn giống hệt
             // cách hiển thị của ngày trong tuần (dùng chung logic bên dưới), kèm thêm "Cuối tuần"
             // trong phần chú thích để phân biệt.
+            // [MỚI - TỰ ĐỘNG TÍNH CÔNG THỨ 7 THEO CHỨC DANH] Tham số "tuDongThu7" (server đã tính
+            // sẵn CHÍNH XÁC là ô này có phải Thứ 7 của 1 nhân sự thuộc Chức danh tự động hay
+            // không — xem coTuDongThu7/chamCongChucDanhTuDongThu7_ ở Code.gs, truyền vào từ
+            // renderChamCongTable() bên dưới). Ô Thứ 7 CHƯA có ghi đè thủ công (ma rỗng) của
+            // những nhân sự này hiện sẵn "X" (kèm màu/chú thích riêng để phân biệt với "X" ngày
+            // thường), thay vì để trống như mặc định — ĐÚNG với số liệu server đã tự động cộng
+            // vào "Ngày công chuẩn"/"Ngày công thực tế" (xem tinhTongHopTuChiTietNgay_). Vẫn có
+            // thể bấm "Điều chỉnh" để đổi ô này sang "O"/nhóm nghỉ khác như bình thường.
+            if (isWeekend && !ma && tuDongThu7) {
+                return { label: "X", bg: "#e6f4ea", title: "Thứ 7 - Tự động tính công (theo Chức danh)" };
+            }
             if (isWeekend && !ma) return { label: "", bg: "#f1f2f4", title: "Cuối tuần" };
             // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] "OX"/"OO" là mã do người có quyền "Sửa" bảng
             // chấm công tự sửa tay (khi kỳ CHƯA chốt) — vẫn hiện đúng ký hiệu X/O như bình
@@ -7896,6 +7889,16 @@
             }
             if (!ngayListFull.length) { alert("Vui lòng chọn kỳ chấm công (tháng/năm) trước khi xuất."); return; }
 
+            // [SỬA - TIÊU ĐỀ THÁNG/NĂM DÙNG CHO DÒNG TIÊU ĐỀ EXCEL] Tách "yyyy-MM" của kỳ đang
+            // chọn để hiện đúng "Tháng .../Năm ..."; nếu vì lý do nào đó chưa tách được (hiếm khi
+            // xảy ra vì đã bắt buộc chọn kỳ ở trên), lấy tháng/năm hiện tại của máy để dòng tiêu
+            // đề luôn có nội dung — giống đúng cách đang làm ở exportChamCongToExcel() của Văn
+            // phòng (xem hàm đó bên dưới) để 2 file Excel (Văn phòng + Thuyền viên) có bố cục tiêu
+            // đề đồng nhất.
+            let ngayHienTai = new Date();
+            let thangHienThi = m ? parseInt(m[2], 10) : (ngayHienTai.getMonth() + 1);
+            let namHienThi = m ? parseInt(m[1], 10) : ngayHienTai.getFullYear();
+
             // [SỬA LỖI - XUẤT EXCEL LUÔN RA HẾT TẤT CẢ CÁC TÀU, KHÔNG THEO ĐÚNG TÀU ĐANG LỌC]
             // TRƯỚC ĐÂY hàm này luôn tự lấy TOÀN BỘ các tàu đang có mặt trong "cctvCrewList" để
             // tạo 1 sheet Excel cho MỖI tàu — hoàn toàn KHÔNG đọc giá trị đang chọn ở bộ lọc "Tên
@@ -7912,33 +7915,32 @@
             let taus = [...new Set(cctvCrewList.map(c => c.tau || "(Chưa rõ tàu)"))].sort();
             if (cctvTauDangLoc) taus = taus.filter(t => t === cctvTauDangLoc);
             if (!taus.length) { alert("Không có dữ liệu thuyền viên của tàu \"" + cctvTauDangLoc + "\" để xuất."); return; }
+
+            // [SỬA THEO YÊU CẦU MỚI - ĐỔI BỐ CỤC FILE EXCEL] Theo mẫu báo cáo mới: BỎ lưới chấm
+            // công theo từng ngày/thứ trong tháng khi xuất Excel (vẫn xem được đầy đủ trên giao
+            // diện web như cũ ở Tab "Bảng Chấm Công Thuyền Viên", KHÔNG mất/đổi dữ liệu gốc) — mỗi
+            // sheet (1 tàu) nay là bảng TỔNG HỢP theo tháng, 1 dòng/thuyền viên, cột CỐ ĐỊNH theo
+            // đúng thứ tự: STT, MSNV, Họ và tên, Chức danh, Đơn vị (tàu), rồi đến TỪNG mã công theo
+            // ĐÚNG danh mục "cctvDanhMuc" đang cấu hình (mặc định 8 mã NPT/DB1/DB2/DOCK/BO/NGHICA/
+            // BO2/DP — xem CREWCHAMCONG_DANHMUC_MAC_DINH ở Code.gs), cuối cùng là "TỔNG". Phía
+            // trên bảng có 4 dòng tiêu đề: tên công ty (2 dòng), "Đơn vị (tàu)" đang xuất, và
+            // "Tháng .../Năm ..." của kỳ đang chọn — giống đúng bố cục đang dùng ở
+            // exportChamCongToExcel() của Văn phòng (xem hàm đó bên dưới) để đồng bộ 2 file.
+            let SO_COT_CO_DINH = 5;
+            let headerRow = ["STT", "MSNV", "Họ và tên", "Chức danh", "Đơn vị (tàu)", ...(cctvDanhMuc || []).map(dm => dm.ma), "TỔNG"];
+            let tongSoCot = headerRow.length;
+            let dongTrong = () => Array(tongSoCot).fill("");
+
             let wb = XLSX.utils.book_new();
             taus.forEach(tau => {
                 let crewOfTau = cctvCrewList.filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
-
-                // [MỚI - CHỈ HIỆN CỘT NGÀY CÔNG MÀ THUYỀN VIÊN CÓ LÀM VIỆC] Bảng lưới theo ngày
-                // NAY chỉ còn hiện đúng những cột ngày mà ÍT NHẤT 1 thuyền viên của tàu này CÓ ghi
-                // nhận công (có "Mã loại công", bản ghi bất kỳ hàng chính/hàng phụ) trong đúng kỳ
-                // đang xuất — bỏ hẳn cột những ngày mà CẢ tàu không ai có công để bảng gọn, dễ đọc
-                // hơn (thay vì luôn hiện đủ mọi ngày trong tháng như trước). KHÔNG đụng/mất dữ liệu
-                // gốc trên Sheet: đây chỉ là lọc CỘT khi xuất Excel, dữ liệu đầy đủ (kể cả những
-                // ngày không có công) vẫn xem lại được bình thường trên giao diện web (Tab "Bảng
-                // Chấm Công Thuyền Viên").
-                let ngayList = ngayListFull.filter(d => {
-                    let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    return crewOfTau.some(c => cctvCoBanGhiTheoNgay(cctvRecords, c, ngayStr));
-                });
-
-                // [MỚI - CỘT "STT"] Thêm cột đầu tiên đánh số thứ tự (theo đúng thứ tự thuyền viên
-                // trong sheet Excel của tàu này — KHÔNG liên quan tới thứ tự trên Sheet dữ liệu).
 
                 // [MỚI - GOM SẴN DỮ LIỆU TỔNG HỢP THEO MÃ CÔNG] Dùng LẠI đúng dữ liệu server đã
                 // tính sẵn "cctvTongHopCongViec" (tổng số công theo TỪNG mã của hàng "Công làm
                 // việc") + "cctvTongHopChucDanh" (của hàng phụ "Công chức danh", nếu có) — CHỈ ĐỌC
                 // LẠI, KHÔNG tính toán khác đi so với đúng những gì đang hiện trên giao diện web ở
-                // renderChamCongThuyenVienTable(). Dùng để: (1) biết mã công nào tàu này THỰC SỰ
-                // có dữ liệu trong kỳ (để chỉ đưa đúng những cột đó vào file, bỏ hẳn cột mã công
-                // không có thông tin gì), và (2) dựng dòng "Tổng cộng Công" ở cuối bảng.
+                // renderChamCongThuyenVienTable(). Dùng để dựng đúng từng ô "Công {mã}" (đã cộng
+                // dồn hàng chính + hàng phụ nếu có) và dòng "Tổng cộng Công" ở cuối bảng.
                 let tongTheoCrew = crewOfTau.map(c => {
                     let idxGoc = cctvCrewList.indexOf(c);
                     return {
@@ -7946,100 +7948,59 @@
                         phu: (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {}
                     };
                 });
-                let tongTheoMa = {};
+
+                let aoa = [
+                    (() => { let r = dongTrong(); r[0] = "SEAHORSE MARINE AND ENERGY JSC"; return r; })(),
+                    (() => { let r = dongTrong(); r[0] = "CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ"; return r; })(),
+                    (() => { let r = dongTrong(); r[0] = "BẢNG CHẤM CÔNG THUYỀN VIÊN - ĐƠN VỊ (TÀU): " + tau; return r; })(),
+                    (() => { let r = dongTrong(); r[0] = "Tháng " + thangHienThi + " Năm " + namHienThi; return r; })(),
+                    dongTrong(),
+                    headerRow
+                ];
+                let SO_DONG_TIEU_DE = aoa.length; // số dòng phía trên dòng tiêu đề cột (để đóng băng/gộp ô)
+
+                // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Cộng dồn từng cột "Công {mã}" của TẤT
+                // CẢ thuyền viên tàu này ngay khi dựng từng dòng dữ liệu — TỔNG mỗi thuyền viên
+                // KHÔNG tính mã "NPT" (nhà thầu phụ), giống đúng logic "CCTV_TONG_LOAI_TRU_MA"
+                // đang dùng trên giao diện web.
+                let tongTheoMaCaTau = {};
                 crewOfTau.forEach((c, i) => {
+                    let coHangChucDanh = cctvCoHangChucDanh(c.chucDanh);
+                    let row = [i + 1, c.msnv || "", c.hoTen || "", c.chucDanh || "", tau];
+                    let tongCrew = 0;
                     (cctvDanhMuc || []).forEach(dm => {
-                        let n = (tongTheoCrew[i].chinh[dm.ma] || 0) +
-                            (cctvCoHangChucDanh(c.chucDanh) ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
-                        if (n) tongTheoMa[dm.ma] = (tongTheoMa[dm.ma] || 0) + n;
+                        let n = (tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                        row.push(n || 0);
+                        if (dm.ma !== "NPT") tongCrew += n;
+                        tongTheoMaCaTau[dm.ma] = (tongTheoMaCaTau[dm.ma] || 0) + n;
                     });
-                });
-                // [MỚI - CHỈ HIỆN CỘT MÃ CÔNG CÓ DỮ LIỆU] Bỏ hẳn cột "Công {mã}" nào mà CẢ tàu
-                // không ai có công trong kỳ đang xuất (tổng = 0) — theo đúng yêu cầu "không hiện
-                // các cột khác khi không có thông tin".
-                let danhMucCoDuLieu = (cctvDanhMuc || []).filter(dm => (tongTheoMa[dm.ma] || 0) > 0);
-
-                // [MỚI - THÊM CỘT "MÃ NHÂN VIÊN"] Theo yêu cầu mới, thêm cột "Mã nhân viên" (MSNV)
-                // ngay sau cột "STT" trong file Excel — lấy từ c.msnv (nay đã có sẵn từ
-                // layDanhSachThuyenVienChoChamCong_() ở Code.gs, đọc từ cột MỚI "MSNV" của Sheet
-                // "Đội tàu"). Hàng phụ "Công chức danh" để trống ô này (không có MSNV riêng, cùng
-                // 1 thuyền viên với hàng chính ngay phía trên).
-                let headerThuRow = ["", "", "", ""];
-                let headerNgayRow = ["STT", "Mã nhân viên", "Họ và tên", "Chức vụ"];
-                ngayList.forEach(d => { headerThuRow.push(d.thu); headerNgayRow.push("Ngày " + d.ngay); });
-                danhMucCoDuLieu.forEach(dm => { headerThuRow.push(""); headerNgayRow.push("Công " + dm.ma); });
-                headerThuRow.push(""); headerNgayRow.push("TỔNG");
-                let aoa = [headerThuRow, headerNgayRow];
-                let sttXuat = 0;
-                crewOfTau.forEach((c, i) => {
-                    sttXuat++;
-                    // [MỚI - HÀNG "CÔNG CHỨC DANH"] Hàng CHÍNH ("Công làm việc") CHỈ lấy đúng bản
-                    // ghi có "loaiBanGhi" RỖNG — GIỐNG HỆT bộ lọc đang dùng ở
-                    // renderChamCongThuyenVienTable(), để không lẫn với bản ghi của hàng phụ.
-                    let row = [sttXuat, c.msnv || "", c.hoTen, c.chucDanh || ""];
-                    ngayList.forEach(d => {
-                        let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let rec = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "");
-                        let maHienThi = rec ? (rec.maLoaiCong || "") : "";
-                        if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
-                        row.push(maHienThi);
-                    });
-                    // [MỚI - CỘT "NGÀY CÔNG {MÃ}" NỐI NGAY SAU BẢNG NGÀY] Hiện đúng tổng số công
-                    // của người này theo TỪNG mã (hàng "Công làm việc") — giống hệt cột tổng hợp
-                    // đang hiện sẵn trên giao diện web (kể cả hiện số 0 khi người đó không có công
-                    // ở mã đó, đúng như trên web).
-                    danhMucCoDuLieu.forEach(dm => row.push(tongTheoCrew[i].chinh[dm.ma] || 0));
-                    row.push(cctvTinhTong(tongTheoCrew[i].chinh) || "");
+                    row.push(tongCrew || 0);
                     aoa.push(row);
-
-                    // [MỚI - HÀNG "CÔNG CHỨC DANH"] Xuất thêm 1 dòng phụ ngay bên dưới cho đúng
-                    // chức danh thuộc nhóm CCTV_CHUCDANH_CO_HANG_PHU — CHỈ lấy bản ghi "loaiBanGhi"
-                    // = "CHUCDANH", giống hệt hàng phụ trên giao diện web.
-                    if (cctvCoHangChucDanh(c.chucDanh)) {
-                        let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
-                        let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
-                        let rowPhu = ["", "", "", nhanHang];
-                        ngayList.forEach(d => {
-                            let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                            let recPhu = cctvTimBanGhiTheoNgay(cctvRecords, c, ngayStr, "CHUCDANH");
-                            // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE EXCEL HIỆN SAI MÃ] TRƯỚC ĐÂY
-                            // luôn hiện CỐ ĐỊNH "maRank" (mã suy ra từ CẤP BẬC/chức danh, VD luôn
-                            // "SDPO" cho Thuyền trưởng) bất kể ngày đó THỰC SỰ đã lưu mã gì — khiến
-                            // Excel hiển thị SAI so với đúng mã đã lưu (VD trên giao diện web ngày đó
-                            // đang hiện "DP" vì recPhu.maLoaiCong lưu là "DP", nhưng Excel lại tự ý
-                            // đổi thành "SDPO"/"JDPO" theo cấp bậc). NAY sửa lại dùng ĐÚNG mã đã lưu
-                            // của ngày đó (cctvNhanTuMa(recPhu.maLoaiCong)) — CHỈ khi mã đó không rõ
-                            // ràng (hàm trả về rỗng) mới tạm dùng "maRank" làm dự phòng — GIỐNG HỆT
-                            // logic đang chạy đúng ở renderChamCongThuyenVienTable() trên giao diện
-                            // web (biến "nhanNgay"), để Excel LUÔN khớp đúng những gì đang hiển thị
-                            // trên bảng. KHÔNG đụng/đổi dữ liệu gốc đã lưu trên Sheet.
-                            rowPhu.push(recPhu ? (cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : "");
-                        });
-                        danhMucCoDuLieu.forEach(dm => rowPhu.push(tongTheoCrew[i].phu[dm.ma] || 0));
-                        rowPhu.push("");
-                        aoa.push(rowPhu);
-                    }
                 });
 
-                // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Y hệt dòng tổng đang hiện sẵn cuối
-                // bảng trên giao diện web: mỗi cột "Công {mã}" hiện tổng số công của TẤT CẢ thuyền
-                // viên tàu này cho đúng mã đó (đã cộng dồn ở "tongTheoMa" phía trên) — chỉ hiện số
-                // khi tổng >= 1 (bằng 0 để trống, không hiện "0"), các cột ngày để trống. Cột
-                // "TỔNG" cuối cùng cộng dồn đúng 7/8 cột "Công {mã}" (không tính "NPT").
-                let tongRow = ["", "", "Tổng cộng Công", ""];
-                ngayList.forEach(() => tongRow.push(""));
-                danhMucCoDuLieu.forEach(dm => tongRow.push(tongTheoMa[dm.ma] || ""));
-                tongRow.push(cctvTinhTong(tongTheoMa) || "");
-                aoa.push(tongRow);
+                // [SỬA THEO YÊU CẦU MỚI - BỎ DÒNG "TỔNG CỘNG CÔNG"] Theo yêu cầu mới nhất, KHÔNG
+                // còn thêm dòng cộng dồn "Tổng cộng Công" ở cuối mỗi sheet Excel nữa (mỗi thuyền
+                // viên vẫn có ĐẦY ĐỦ số công theo từng mã + cột "TỔNG" riêng của người đó ở trên,
+                // KHÔNG mất dữ liệu gì). Biến "tongTheoMaCaTau" phía trên vẫn được TÍNH giữ nguyên
+                // (dùng chung logic với vòng lặp dựng từng dòng thuyền viên) nhưng KHÔNG còn được
+                // đẩy thành 1 dòng riêng vào bảng nữa.
 
                 let ws = XLSX.utils.aoa_to_sheet(aoa);
-                let maxCols = 4 + ngayList.length + danhMucCoDuLieu.length + 1;
-                let cols = [{ wch: 6 }, { wch: 14 }, { wch: 24 }, { wch: 16 }];
-                for (let ci = 4; ci < maxCols; ci++) cols.push({ wch: 10 });
+                let cols = [{ wch: 6 }, { wch: 14 }, { wch: 24 }, { wch: 18 }, { wch: 16 }];
+                (cctvDanhMuc || []).forEach(() => cols.push({ wch: 8 }));
+                cols.push({ wch: 8 });
                 ws['!cols'] = cols;
-                ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
-                ws['!freeze'] = { xSplit: 4, ySplit: 2 };
-                // Tên sheet tối đa 31 ký tự, không chứa ký tự đặc biệt Excel không cho phép.
+                ws['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: tongSoCot - 1 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: tongSoCot - 1 } },
+                    { s: { r: 2, c: 0 }, e: { r: 2, c: tongSoCot - 1 } },
+                    { s: { r: 3, c: 0 }, e: { r: 3, c: tongSoCot - 1 } }
+                ];
+                ["A1", "A2", "A3", "A4"].forEach(addr => {
+                    if (ws[addr]) ws[addr].s = { alignment: { horizontal: "center" } };
+                });
+                ws['!freeze'] = { xSplit: SO_COT_CO_DINH, ySplit: SO_DONG_TIEU_DE };
+
                 let sheetName = String(tau).replace(/[\[\]\*\/\\\?:]/g, "_").substring(0, 31) || "Tau";
                 XLSX.utils.book_append_sheet(wb, ws, sheetName);
             });
@@ -8415,28 +8376,27 @@
         // GIỐNG HỆT file Excel đã xuất — CHỈ ĐỌC lại dữ liệu truyền vào (dCrew/dRecords/dDanhMuc/
         // dTongHopCongViec/dTongHopChucDanh), KHÔNG tính toán khác đi, KHÔNG gọi thêm action nào,
         // KHÔNG sửa/mất bất kỳ dữ liệu ngày công nào đã lưu.
+        // [SỬA THEO YÊU CẦU MỚI - ĐỔI BẢNG CHẤM CÔNG TRONG FILE PDF (SAU KHI DUYỆT) + Ô "XEM
+        // TRƯỚC"] Trước đây bảng này hiện dạng LƯỚI theo từng ngày/thứ trong tháng (kèm hàng phụ
+        // "Công chức danh" riêng). NAY đổi sang bảng TỔNG HỢP theo tháng — 1 dòng/thuyền viên, cột
+        // CỐ ĐỊNH theo ĐÚNG thứ tự: STT, MSNV, Họ và tên, Chức danh, Đơn vị (tàu), rồi từng mã công
+        // theo ĐÚNG danh mục "dDanhMuc" đang cấu hình (mặc định 8 mã NPT/DB1/DB2/DOCK/BO/NGHICA/
+        // BO2/DP), cuối cùng là "TỔNG" — GIỐNG HỆT bố cục cột đang dùng ở file Excel xuất ra (xem
+        // exportChamCongThuyenVienToExcel() ở trên) để 2 nơi hiển thị luôn đồng nhất. Hàm này vẫn
+        // được DÙNG CHUNG cho cả file PDF (xuatPdfCctvDmlcDuyet()) lẫn modal "Xem trước" — CHỈ đổi
+        // CÁCH TRÌNH BÀY, KHÔNG đổi nguồn dữ liệu/quyền hạn (vẫn đọc "dTongHopCongViec"/
+        // "dTongHopChucDanh" đã server tính sẵn, CHỈ ĐỌC LẠI, không tính khác đi).
         function cctvXayDungBangChamCongHtml_(tau, thang, dCrew, dRecords, dDanhMuc, dTongHopCongViec, dTongHopChucDanh) {
             let crewOfTau = (dCrew || []).filter(c => (c.tau || "(Chưa rõ tàu)") === tau);
             if (!crewOfTau.length) return '<p style="color:#999;">(Tàu này chưa có thuyền viên nào trong Sheet "Đội tàu")</p>';
 
-            let ngayListFull = [];
             let m = String(thang || "").match(/^(\d{4})-(\d{2})$/);
-            if (m) {
-                let nam = parseInt(m[1], 10), thangSo = parseInt(m[2], 10);
-                let soNgay = new Date(nam, thangSo, 0).getDate();
-                let thuTen = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-                for (let d = 1; d <= soNgay; d++) {
-                    ngayListFull.push({ ngay: d, thu: thuTen[new Date(nam, thangSo - 1, d).getDay()] });
-                }
-            }
-            if (!ngayListFull.length) return '<p style="color:#999;">(Chưa xác định được kỳ chấm công để dựng bảng)</p>';
+            if (!m) return '<p style="color:#999;">(Chưa xác định được kỳ chấm công để dựng bảng)</p>';
 
-            let ngayList = ngayListFull.filter(d => {
-                let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                return crewOfTau.some(c => cctvCoBanGhiTheoNgay(dRecords || [], c, ngayStr));
-            });
-            if (!ngayList.length) ngayList = ngayListFull;
-
+            // [MỚI - GOM SẴN DỮ LIỆU TỔNG HỢP THEO MÃ CÔNG] Dùng LẠI đúng dữ liệu server đã tính
+            // sẵn "dTongHopCongViec" (hàng "Công làm việc") + "dTongHopChucDanh" (hàng phụ "Công
+            // chức danh", nếu có) — cộng dồn CHUNG lại thành 1 tổng duy nhất cho mỗi mã công của
+            // mỗi thuyền viên, GIỐNG HỆT cách tính ở exportChamCongThuyenVienToExcel().
             let tongTheoCrew = crewOfTau.map(c => {
                 let idxGoc = (dCrew || []).indexOf(c);
                 return {
@@ -8444,90 +8404,49 @@
                     phu: (dTongHopChucDanh && dTongHopChucDanh[idxGoc]) || {}
                 };
             });
-            let tongTheoMa = {};
-            crewOfTau.forEach((c, i) => {
-                (dDanhMuc || []).forEach(dm => {
-                    let n = (tongTheoCrew[i].chinh[dm.ma] || 0) +
-                        (cctvCoHangChucDanh(c.chucDanh) ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
-                    if (n) tongTheoMa[dm.ma] = (tongTheoMa[dm.ma] || 0) + n;
-                });
-            });
-            let danhMucCoDuLieu = (dDanhMuc || []).filter(dm => (tongTheoMa[dm.ma] || 0) > 0);
 
             let theadHtml = `<tr style="background:#f0f0f0;">
                     <th style="border:1px solid #333; padding:3px;">STT</th>
-                    <th style="border:1px solid #333; padding:3px;">Mã nhân viên</th>
+                    <th style="border:1px solid #333; padding:3px;">MSNV</th>
                     <th style="border:1px solid #333; padding:3px;">Họ và tên</th>
-                    <th style="border:1px solid #333; padding:3px;">Chức vụ</th>
-                    ${ngayList.map(d => `<th style="border:1px solid #333; padding:2px; min-width:20px;">${d.ngay}<br><span style="font-weight:normal; font-size:8px;">${d.thu}</span></th>`).join("")}
-                    ${danhMucCoDuLieu.map(dm => `<th style="border:1px solid #333; padding:2px; min-width:26px;">Công ${pdfText(dm.ma)}</th>`).join("")}
+                    <th style="border:1px solid #333; padding:3px;">Chức danh</th>
+                    <th style="border:1px solid #333; padding:3px;">Đơn vị (tàu)</th>
+                    ${(dDanhMuc || []).map(dm => `<th style="border:1px solid #333; padding:2px; min-width:26px;">${pdfText(dm.ma)}</th>`).join("")}
                     <th style="border:1px solid #333; padding:2px; min-width:26px;">TỔNG</th>
                 </tr>`;
 
             let bodyRows = "";
-            let sttXuat = 0;
+            let tongTheoMaCaTau = {};
             crewOfTau.forEach((c, i) => {
-                sttXuat++;
-                let coHangPhu = cctvCoHangChucDanh(c.chucDanh);
-                let rowspanAttr = coHangPhu ? ' rowspan="2"' : '';
-                let dayTds = ngayList.map(d => {
-                    let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                    let rec = cctvTimBanGhiTheoNgay(dRecords || [], c, ngayStr, "");
-                    let maHienThi = rec ? (rec.maLoaiCong || "") : "";
-                    if (rec && rec.maLoaiCong === "DP" && rec.loaiDP) maHienThi = maHienThi + " (" + rec.loaiDP + ")";
-                    return `<td style="border:1px solid #333; padding:2px; text-align:center;">${pdfText(maHienThi)}</td>`;
+                let coHangChucDanh = cctvCoHangChucDanh(c.chucDanh);
+                let tongCrew = 0;
+                let maTds = (dDanhMuc || []).map(dm => {
+                    let n = (tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                    if (dm.ma !== "NPT") tongCrew += n;
+                    tongTheoMaCaTau[dm.ma] = (tongTheoMaCaTau[dm.ma] || 0) + n;
+                    return `<td style="border:1px solid #333; padding:2px; text-align:center;">${n || 0}</td>`;
                 }).join("");
-                let tongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].chinh[dm.ma] || 0}</td>`).join("");
-                let tongChinhCrew = cctvTinhTong(tongTheoCrew[i].chinh);
                 bodyRows += `<tr>
-                        <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${sttXuat}</td>
-                        <td style="border:1px solid #333; padding:2px; text-align:center;"${rowspanAttr}>${pdfText(c.msnv || "")}</td>
-                        <td style="border:1px solid #333; padding:2px;"${rowspanAttr}>${pdfText(c.hoTen)}</td>
+                        <td style="border:1px solid #333; padding:2px; text-align:center;">${i + 1}</td>
+                        <td style="border:1px solid #333; padding:2px; text-align:center;">${pdfText(c.msnv || "")}</td>
+                        <td style="border:1px solid #333; padding:2px;">${pdfText(c.hoTen)}</td>
                         <td style="border:1px solid #333; padding:2px;">${pdfText(c.chucDanh || "")}</td>
-                        ${dayTds}
-                        ${tongTds}
-                        <td style="border:1px solid #333; padding:2px; text-align:center; font-weight:bold;">${tongChinhCrew >= 1 ? tongChinhCrew : ""}</td>
+                        <td style="border:1px solid #333; padding:2px;">${pdfText(tau)}</td>
+                        ${maTds}
+                        <td style="border:1px solid #333; padding:2px; text-align:center; font-weight:bold;">${tongCrew || 0}</td>
                     </tr>`;
-
-                if (coHangPhu) {
-                    let maRank = cctvMaChucDanhTheoRank(c.chucDanh);
-                    let nhanHang = cctvNhanHangChucDanh(c.chucDanh);
-                    let dayTdsPhu = ngayList.map(d => {
-                        let ngayStr = thang + "-" + String(d.ngay).padStart(2, "0");
-                        let recPhu = cctvTimBanGhiTheoNgay(dRecords || [], c, ngayStr, "CHUCDANH");
-                        // [SỬA LỖI - HÀNG "CÔNG CHỨC DANH" TRONG FILE PDF HIỆN SAI MÃ] Cùng lỗi/cùng
-                    // cách sửa với file Excel ở exportChamCongThuyenVienToExcel() (xem giải thích
-                    // đầy đủ ở đó): trước đây luôn hiện CỐ ĐỊNH "maRank" theo cấp bậc bất kể ngày đó
-                    // THỰC SỰ đã lưu mã gì — NAY dùng đúng mã đã lưu của ngày đó qua cctvNhanTuMa(),
-                    // chỉ dự phòng về "maRank" khi không xác định được, để PDF LUÔN khớp đúng với
-                    // giao diện web đang hiển thị.
-                    return `<td style="border:1px solid #333; padding:2px; text-align:center;">${recPhu ? pdfText(cctvNhanTuMa(recPhu.maLoaiCong) || maRank) : ""}</td>`;
-                    }).join("");
-                    let tongTdsPhu = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoCrew[i].phu[dm.ma] || 0}</td>`).join("");
-                    bodyRows += `<tr>
-                            <td style="border:1px solid #333; padding:2px;">${pdfText(nhanHang)}</td>
-                            ${dayTdsPhu}
-                            ${tongTdsPhu}
-                            <td style="border:1px solid #333; padding:2px;"></td>
-                        </tr>`;
-                }
             });
 
-            let tongRowTds = ngayList.map(() => `<td style="border:1px solid #333; padding:2px;"></td>`).join("");
-            let tongRowTongTds = danhMucCoDuLieu.map(dm => `<td style="border:1px solid #333; padding:2px; text-align:center;">${tongTheoMa[dm.ma] || ""}</td>`).join("");
-            let tongRowTongCong = cctvTinhTong(tongTheoMa);
+            // [SỬA THEO YÊU CẦU MỚI - BỎ DÒNG "TỔNG CỘNG CÔNG" TRONG FILE PDF] Theo yêu cầu mới
+            // nhất, KHÔNG còn thêm dòng cộng dồn "Tổng cộng Công" ở cuối bảng trong file PDF (và
+            // modal "Xem trước" dùng chung hàm này) nữa — GIỐNG HỆT thay đổi đã áp dụng cho file
+            // Excel ở exportChamCongThuyenVienToExcel(). Mỗi thuyền viên vẫn có ĐẦY ĐỦ số công
+            // theo từng mã + cột "TỔNG" riêng của người đó ở trên, KHÔNG mất dữ liệu gì — chỉ bỏ
+            // dòng cộng dồn cuối bảng.
 
             return `<table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
                     <thead>${theadHtml}</thead>
-                    <tbody>${bodyRows}
-                        <tr style="background:#f5f5f5; font-weight:bold;">
-                            <td style="border:1px solid #333; padding:2px;" colspan="3">Tổng cộng Công</td>
-                            <td style="border:1px solid #333; padding:2px;"></td>
-                            ${tongRowTds}
-                            ${tongRowTongTds}
-                            <td style="border:1px solid #333; padding:2px; text-align:center;">${tongRowTongCong >= 1 ? tongRowTongCong : ""}</td>
-                        </tr>
-                    </tbody>
+                    <tbody>${bodyRows}</tbody>
                 </table>`;
         }
 
@@ -10050,9 +9969,14 @@
                 // khóa để điều chỉnh hay không — tính 1 LẦN cho cả dòng (dùng chung cho mọi ô
                 // ngày của dòng đó). Xem chamCongRowMatchesScope().
                 let rowInScope = chamCongRowMatchesScope(r);
+                // [MỚI - TỰ ĐỘNG TÍNH CÔNG THỨ 7 THEO CHỨC DANH] "r.coTuDongThu7" do server trả
+                // sẵn (xem Code.gs) — chỉ áp dụng cho đúng ô Thứ 7 ("T7"), KHÔNG áp dụng cho Chủ
+                // nhật dù cùng là "isWeekend" (giữ nguyên hành vi cũ cho Chủ nhật).
+                let rowTuDongThu7 = !!r.coTuDongThu7;
                 let dayTds = (chamCongDanhSachNgay || []).map(d => {
                     let ma = chiTiet[String(d.ngay)] || "";
-                    let info = chamCongMaNgayInfo(ma, d.isWeekend);
+                    let laThu7TuDong = rowTuDongThu7 && d.thu === "T7";
+                    let info = chamCongMaNgayInfo(ma, d.isWeekend, laThu7TuDong);
                     // [MỚI - GHI ĐÈ THỦ CÔNG TỪNG NGÀY] Chỉ mở khóa click sửa cho: (1) người có
                     // quyền "SuaChamCong" (hoặc Admin), (2) kỳ CHƯA chốt (dùng cho trường hợp
                     // đặc biệt trước khi chốt bảng). [MỚI - NÚT "ĐIỀU CHỈNH"] Ngoài ra CHỈ
@@ -16943,9 +16867,14 @@
                     gender: document.getElementById("inp-gender").value,
                     permanentAddress: document.getElementById("inp-permanent-address").value.trim(),
                     socialInsuranceNumber: document.getElementById("inp-social-insurance").value.trim(),
-                    // [BỔ SUNG MỚI] Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH, Tình
-                    // trạng hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
-                    mucLuongCoBan: parseFloat(document.getElementById("inp-luong-co-ban").value) || 0,
+                    // [BỔ SUNG MỚI] Ngày đóng BHXH, Mức lương đóng BHXH, Tình trạng hôn nhân,
+                    // Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
+                    // ["Mức lương cơ bản" đã ẨN khỏi form "Thêm nhân sự mới" theo yêu cầu — GIỮ
+                    // NGUYÊN giá trị đã lưu trước đó (nếu đang sửa nhân sự có sẵn) thay vì đọc
+                    // từ input (không còn tồn tại), để KHÔNG mất dữ liệu và vẫn đồng bộ bình
+                    // thường với Tab "Lương Nhân Viên". Nhân sự MỚI mặc định = 0, có thể khai
+                    // báo sau ở Tab "Lương Nhân Viên".]
+                    mucLuongCoBan: (isEdit && staffData[index]) ? (parseFloat(staffData[index].mucLuongCoBan) || 0) : 0,
                     ngayDongBHXH: document.getElementById("inp-ngay-dong-bhxh").value,
                     mucLuongDongBHXH: parseFloat(document.getElementById("inp-luong-dong-bhxh").value) || 0,
                     tinhTrangHonNhan: document.getElementById("inp-tinh-trang-hon-nhan").value,
@@ -16957,17 +16886,19 @@
                     // lại (server tự tính lại, không cần gửi lên).
                     tongSoNgayNghiPhep: parseFloat(document.getElementById("inp-tong-ngay-nghiphep").value) || 0,
                     soNgayDaNghi: parseFloat(document.getElementById("inp-so-ngay-da-nghi").value) || 0,
-                    // [BỔ SUNG MỚI] Số ngày làm việc trong tháng / Lương thực nhận trong tháng —
-                    // 2 trường THÔNG TIN THAM KHẢO (Admin/HR tự nhập lại theo từng tháng), KHÔNG
-                    // liên kết tự động với bất kỳ tính toán nào khác trong hệ thống.
+                    // [BỔ SUNG MỚI] Số ngày làm việc trong tháng — THÔNG TIN THAM KHẢO (Admin/HR
+                    // tự nhập lại theo từng tháng), KHÔNG liên kết tự động với bất kỳ tính toán
+                    // nào khác trong hệ thống.
                     soNgayLamViecThang: parseFloat(document.getElementById("inp-so-ngay-lam-viec-thang").value) || 0,
-                    luongThucNhanThang: parseFloat(document.getElementById("inp-luong-thuc-nhan-thang").value) || 0,
-                    // [LIÊN KẾT TAB "LƯƠNG NHÂN VIÊN"] Phụ cấp/Khấu trừ khác MẶC ĐỊNH — dùng làm
-                    // giá trị đề xuất mỗi khi tạo dòng lương mới cho nhân sự này ở Tab "Lương
-                    // Nhân Viên". "Lương thời gian thực tế"/"Tổng thu nhập" KHÔNG gửi lên từ đây
-                    // (server tự giữ nguyên giá trị đã đồng bộ từ lần lưu lương gần nhất).
-                    phuCapMacDinh: parseFloat(document.getElementById("inp-phu-cap-mac-dinh").value) || 0,
-                    khauTruKhacMacDinh: parseFloat(document.getElementById("inp-khau-tru-khac-mac-dinh").value) || 0,
+                    // ["Lương thực nhận trong tháng" và khối "Thông tin lương" — Phụ cấp, Khấu
+                    // trừ khác, Lương thời gian (Lương thực tế), Tổng thu nhập — đã ẨN khỏi form
+                    // "Thêm nhân sự mới" theo yêu cầu. GIỮ NGUYÊN giá trị đã lưu trước đó (nếu
+                    // đang sửa nhân sự có sẵn) thay vì đọc từ input (không còn tồn tại), để
+                    // KHÔNG mất dữ liệu. Các trường này vẫn được quản lý/cập nhật bình thường ở
+                    // Tab "Lương Nhân Viên". Nhân sự MỚI mặc định = 0.]
+                    luongThucNhanThang: (isEdit && staffData[index]) ? (parseFloat(staffData[index].luongThucNhanThang) || 0) : 0,
+                    phuCapMacDinh: (isEdit && staffData[index]) ? (parseFloat(staffData[index].phuCapMacDinh) || 0) : 0,
+                    khauTruKhacMacDinh: (isEdit && staffData[index]) ? (parseFloat(staffData[index].khauTruKhacMacDinh) || 0) : 0,
                     // [BỔ SUNG MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Danh sách các lần ký hợp đồng (chỉ gửi
                     // các dòng đã có ngày ký hợp lệ) — server sẽ tự sắp xếp theo thời gian và
                     // đánh lại số "Lần ký" khi lưu.
@@ -17100,10 +17031,11 @@
                 document.getElementById("inp-permanent-address").value = d.permanentAddress || "";
                 document.getElementById("inp-social-insurance").value = d.socialInsuranceNumber || "";
 
-                // [BỔ SUNG MỚI] Đổ lại Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH,
-                // Tình trạng hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia
-                // cảnh vào form khi sửa.
-                document.getElementById("inp-luong-co-ban").value = (d.mucLuongCoBan || d.mucLuongCoBan === 0) ? d.mucLuongCoBan : "";
+                // [BỔ SUNG MỚI] Đổ lại Ngày đóng BHXH, Mức lương đóng BHXH, Tình trạng hôn
+                // nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh vào form
+                // khi sửa. ("Mức lương cơ bản" đã ẨN khỏi form này theo yêu cầu — giá trị cũ
+                // (d.mucLuongCoBan) vẫn được giữ nguyên và gửi lại nguyên vẹn khi lưu, xem
+                // luuNhanSu() bên dưới.)
                 document.getElementById("inp-ngay-dong-bhxh").value = d.ngayDongBHXH || "";
                 document.getElementById("inp-luong-dong-bhxh").value = (d.mucLuongDongBHXH || d.mucLuongDongBHXH === 0) ? d.mucLuongDongBHXH : "";
                 document.getElementById("inp-tinh-trang-hon-nhan").value = d.tinhTrangHonNhan || "";
@@ -17116,18 +17048,13 @@
                 document.getElementById("inp-so-ngay-da-nghi").value = (d.soNgayDaNghi || d.soNgayDaNghi === 0) ? d.soNgayDaNghi : "";
                 npCapNhatSoNgayConLaiForm();
 
-                // [BỔ SUNG MỚI] Đổ lại Số ngày làm việc trong tháng / Lương thực nhận trong
-                // tháng vào form khi sửa.
+                // [BỔ SUNG MỚI] Đổ lại Số ngày làm việc trong tháng vào form khi sửa.
+                // ("Lương thực nhận trong tháng" và khối "Thông tin lương" — Phụ cấp, Khấu trừ
+                // khác, Lương thời gian (Lương thực tế), Tổng thu nhập — đã ẨN khỏi form này
+                // theo yêu cầu. Giá trị cũ của các trường đó vẫn được giữ nguyên trong đối
+                // tượng dữ liệu nhân sự và gửi lại nguyên vẹn khi lưu, xem luuNhanSu() bên
+                // dưới, nên KHÔNG bị mất và vẫn đồng bộ bình thường với Tab "Lương Nhân Viên".)
                 document.getElementById("inp-so-ngay-lam-viec-thang").value = (d.soNgayLamViecThang || d.soNgayLamViecThang === 0) ? d.soNgayLamViecThang : "";
-                document.getElementById("inp-luong-thuc-nhan-thang").value = (d.luongThucNhanThang || d.luongThucNhanThang === 0) ? d.luongThucNhanThang : "";
-
-                // [LIÊN KẾT TAB "LƯƠNG NHÂN VIÊN"] Đổ lại Phụ cấp/Khấu trừ khác mặc định (2
-                // trường có thể sửa ở đây); Lương thời gian thực tế/Tổng thu nhập trong tháng
-                // (2 trường CHỈ ĐỌC, hiển thị số liệu đã đồng bộ từ lần lưu lương gần nhất).
-                document.getElementById("inp-phu-cap-mac-dinh").value = (d.phuCapMacDinh || d.phuCapMacDinh === 0) ? d.phuCapMacDinh : "";
-                document.getElementById("inp-khau-tru-khac-mac-dinh").value = (d.khauTruKhacMacDinh || d.khauTruKhacMacDinh === 0) ? d.khauTruKhacMacDinh : "";
-                document.getElementById("inp-luong-thoi-gian-thuc-te-thang").value = (d.luongThoiGianThucTeThang || d.luongThoiGianThucTeThang === 0) ? Number(d.luongThoiGianThucTeThang).toLocaleString("vi-VN") : "Chưa có dữ liệu";
-                document.getElementById("inp-tong-thu-nhap-thang").value = (d.tongThuNhapThang || d.tongThuNhapThang === 0) ? Number(d.tongThuNhapThang).toLocaleString("vi-VN") : "Chưa có dữ liệu";
 
                 document.querySelectorAll('input[name="chk-dept"]').forEach(cb => {
                     cb.checked = Array.isArray(d.dept) ? d.dept.includes(cb.value) : (d.dept === cb.value);
