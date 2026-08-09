@@ -7556,6 +7556,22 @@
             }
         }
 
+        // [SỬA - GỘP DANH MỤC PHÒNG BAN "ẢO"] Một nhân sự có thể thuộc CÙNG LÚC nhiều phòng ban;
+        // ở đó, "r.phongBan" do server trả về là 1 CHUỖI đã nối các phòng ban đó bằng ", " (VD
+        // "BAN GIÁM ĐỐC - BOD, PHÒNG PHÁT TRIỂN KINH DOANH - BUSINESS AND DEVELOPMENT DEPT").
+        // Trước đây ô "Lọc theo phòng ban" và khối "Xuất Excel" coi NGUYÊN CHUỖI NỐI đó là 1
+        // "phòng ban" riêng -> phát sinh các mục phòng ban "ảo"/trùng lặp không có thật trong
+        // Danh mục phòng ban của hệ thống (VD 2 mục gộp nêu trên). Hàm này TÁCH lại chuỗi đó
+        // thành TỪNG phòng ban THẬT theo dấu phẩy, CHỈ dùng để dựng danh sách lựa chọn/lọc hiển
+        // thị — KHÔNG ghi/đổi gì lên dữ liệu gốc: "r.phongBan" của từng dòng vẫn giữ NGUYÊN chuỗi
+        // đầy đủ (hiển thị đúng trong bảng/PDF/Excel như cũ), đảm bảo KHÔNG mất dữ liệu của nhân
+        // sự thuộc nhiều phòng ban, và KHÔNG đụng tới bất kỳ điều kiện phân quyền nào đang có.
+        function ccTachDanhSachPhongBan(v) {
+            let s = String(v || "").trim();
+            if (!s) return ["(Chưa rõ)"];
+            return s.split(",").map(x => x.trim()).filter(x => x !== "");
+        }
+
         // [MỚI - LỌC THEO PHÒNG BAN] Dựng lại danh sách lựa chọn trong ô "cc-filter-dept" (Tất cả
         // nhân viên / từng Phòng ban) theo ĐÚNG dữ liệu chamCongRows vừa tải — gọi lại mỗi khi tải
         // dữ liệu mới (đổi kỳ) để danh sách luôn khớp đúng nhân sự đang có trong bảng, giống hệt
@@ -7566,7 +7582,10 @@
             let sel = document.getElementById("cc-filter-dept");
             if (!sel) return;
             let currentValue = sel.value || "all";
-            let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
+            // [SỬA - GỘP DANH MỤC PHÒNG BAN "ẢO"] Dùng danh sách phòng ban ĐÃ TÁCH (xem
+            // ccTachDanhSachPhongBan ở trên) để ô "Lọc theo phòng ban" chỉ hiện ĐÚNG các phòng
+            // ban thật, không còn các mục gộp nhiều phòng ban thành 1 dòng như trước.
+            let depts = Array.from(new Set(chamCongRows.flatMap(r => ccTachDanhSachPhongBan(r.phongBan)))).sort((a, b) => a.localeCompare(b, "vi"));
             sel.innerHTML = '<option value="all">Tất cả nhân viên</option>' +
                 depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
             // Khôi phục đúng lựa chọn đang chọn (nếu phòng ban đó vẫn còn tồn tại trong dữ liệu vừa
@@ -7575,17 +7594,18 @@
             // cả nhân viên" (an toàn, không hiện bảng trống khó hiểu).
             sel.value = (currentValue === "all" || depts.indexOf(currentValue) !== -1) ? currentValue : "all";
 
-            // [MỚI - LỌC THEO PHÒNG BAN KHI GỬI YÊU CẦU PHÊ DUYỆT] Đổ lại CÙNG danh sách phòng ban
-            // vào ô "cc-pheduyet-phongban" (mục "Phê duyệt bảng chấm công") mỗi khi tải dữ liệu mới
-            // (đổi kỳ) — giữ đúng lựa chọn đang chọn nếu phòng ban đó vẫn còn, giống hệt cách làm ở
-            // trên với "cc-filter-dept". Đây là 2 ô ĐỘC LẬP (lọc hiển thị khác với phạm vi gửi yêu
-            // cầu phê duyệt), chỉ dùng chung nguồn danh sách phòng ban.
+            // [MỚI - LỌC THEO PHÒNG BAN KHI GỬI YÊU CẦU PHÊ DUYỆT] Ô "cc-pheduyet-phongban" GIỮ
+            // NGUYÊN danh sách CHƯA tách (đúng giá trị nguyên bản của "r.phongBan") vì action gửi/
+            // xem lại yêu cầu phê duyệt đang so khớp CHÍNH XÁC theo chuỗi "phongBan" đã lưu (xem
+            // action "guiYeuCauPheDuyetBangChamCong") — tách ở đây sẽ làm sai lệch phạm vi phê
+            // duyệt đã gửi trước đó, nên CỐ Ý không đổi phần này (ngoài phạm vi yêu cầu chỉnh sửa).
             let pdSel = document.getElementById("cc-pheduyet-phongban");
             if (pdSel) {
+                let pdDepts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
                 let pdCurrentValue = pdSel.value || "all";
                 pdSel.innerHTML = '<option value="all">Toàn bộ nhân sự</option>' +
-                    depts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
-                pdSel.value = (pdCurrentValue === "all" || depts.indexOf(pdCurrentValue) !== -1) ? pdCurrentValue : "all";
+                    pdDepts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join("");
+                pdSel.value = (pdCurrentValue === "all" || pdDepts.indexOf(pdCurrentValue) !== -1) ? pdCurrentValue : "all";
             }
         }
 
@@ -9952,8 +9972,12 @@
             // như Xuất Excel/phạm vi Điều chỉnh/tổng hợp vẫn dùng ĐÚNG dữ liệu đầy đủ như cũ).
             let ccFilterDeptSel = document.getElementById("cc-filter-dept");
             let ccFilterDeptVal = ccFilterDeptSel ? (ccFilterDeptSel.value || "all") : "all";
+            // [SỬA - GỘP DANH MỤC PHÒNG BAN "ẢO"] So khớp theo danh sách phòng ban ĐÃ TÁCH của
+            // từng dòng (xem ccTachDanhSachPhongBan) thay vì so khớp NGUYÊN chuỗi — nhờ vậy nhân
+            // sự thuộc nhiều phòng ban vẫn hiện ra đúng khi lọc theo BẤT KỲ phòng ban nào trong số
+            // đó, thay vì chỉ hiện khi chọn đúng NGUYÊN chuỗi gộp (mục phòng ban "ảo" cũ).
             let ccRowsToRender = (ccFilterDeptVal && ccFilterDeptVal !== "all")
-                ? chamCongRows.filter(r => (r.phongBan || "(Chưa rõ)") === ccFilterDeptVal)
+                ? chamCongRows.filter(r => ccTachDanhSachPhongBan(r.phongBan).indexOf(ccFilterDeptVal) !== -1)
                 : chamCongRows;
 
             if (!ccRowsToRender.length) {
@@ -10989,7 +11013,10 @@
                 // (nếu vẫn còn tồn tại trong danh sách mới) mỗi khi hàm này được gọi lại (đổi kỳ/tải
                 // lại dữ liệu), tránh mất lựa chọn người dùng đang thao tác dở một cách khó chịu.
                 let dangChon = new Set(Array.from(document.querySelectorAll("#cc-export-dept-list input:checked")).map(i => i.value));
-                let depts = Array.from(new Set(chamCongRows.map(r => r.phongBan || "(Chưa rõ)"))).sort((a, b) => a.localeCompare(b, "vi"));
+                // [SỬA - GỘP DANH MỤC PHÒNG BAN "ẢO"] Dùng danh sách phòng ban ĐÃ TÁCH (xem
+                // ccTachDanhSachPhongBan) để khối "Xuất Excel" chỉ hiện ĐÚNG các phòng ban thật,
+                // không còn các mục gộp nhiều phòng ban thành 1 dòng như trước.
+                let depts = Array.from(new Set(chamCongRows.flatMap(r => ccTachDanhSachPhongBan(r.phongBan)))).sort((a, b) => a.localeCompare(b, "vi"));
                 deptListEl.innerHTML = depts.map(d =>
                     `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(d)}" ${dangChon.has(d) ? "checked" : ""}> ${escapeHtml(d)}</label>`
                 ).join("") || `<span style="font-size:12.5px; color:#999;">Không có phòng ban nào.</span>`;
@@ -11077,7 +11104,11 @@
 
             let deptValuesSet = new Set(deptValues);
             let rowsToExport = chamCongRows;
-            if (scope === "dept") rowsToExport = chamCongRows.filter(r => deptValuesSet.has(r.phongBan || "(Chưa rõ)"));
+            // [SỬA - GỘP DANH MỤC PHÒNG BAN "ẢO"] So khớp theo danh sách phòng ban ĐÃ TÁCH của
+            // từng dòng (xem ccTachDanhSachPhongBan) thay vì so khớp NGUYÊN chuỗi — nhân sự thuộc
+            // nhiều phòng ban vẫn được xuất đúng khi tick BẤT KỲ phòng ban nào trong số đó, thay
+            // vì chỉ xuất được khi tick đúng NGUYÊN chuỗi gộp (mục phòng ban "ảo" cũ).
+            if (scope === "dept") rowsToExport = chamCongRows.filter(r => ccTachDanhSachPhongBan(r.phongBan).some(d => deptValuesSet.has(d)));
             else if (scope === "staff") rowsToExport = chamCongRows.filter(r => r.msnv === staffValue);
             if (!rowsToExport.length) { alert("Không có dữ liệu phù hợp để xuất."); return; }
 
