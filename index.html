@@ -8049,15 +8049,20 @@
                     };
                 });
 
+                // [SỬA - THÊM HÀNG TRỐNG TRƯỚC DỮ LIỆU] Theo đúng mẫu yêu cầu: hàng số 6 là dòng
+                // tiêu đề chính của bảng (STT, MSNV, Họ và tên...), để TRỐNG đúng 1 hàng (hàng số
+                // 7), rồi hàng số 8 mới bắt đầu dữ liệu từng thuyền viên — KHÔNG đổi nội dung/thứ
+                // tự cột dữ liệu, chỉ thêm 1 hàng trống đệm ngay sau dòng tiêu đề cột.
                 let aoa = [
                     (() => { let r = dongTrong(); r[0] = "SEAHORSE MARINE AND ENERGY JSC"; return r; })(),
                     (() => { let r = dongTrong(); r[0] = "CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ"; return r; })(),
                     (() => { let r = dongTrong(); r[0] = "BẢNG CHẤM CÔNG THUYỀN VIÊN - ĐƠN VỊ (TÀU): " + tau; return r; })(),
                     (() => { let r = dongTrong(); r[0] = "Tháng " + thangHienThi + " Năm " + namHienThi; return r; })(),
                     dongTrong(),
-                    headerRow
+                    headerRow,   // Hàng 6 - dòng tiêu đề chính của bảng
+                    dongTrong()  // Hàng 7 (trống)
                 ];
-                let SO_DONG_TIEU_DE = aoa.length; // số dòng phía trên dòng tiêu đề cột (để đóng băng/gộp ô)
+                let SO_DONG_TIEU_DE = 6; // số hàng cần đóng băng (freeze) phía trên, tính đến hết dòng tiêu đề cột (hàng 6)
 
                 // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Cộng dồn từng cột "Công {mã}" của TẤT
                 // CẢ thuyền viên tàu này ngay khi dựng từng dòng dữ liệu — TỔNG mỗi thuyền viên
@@ -8102,6 +8107,12 @@
                 ];
                 ["A1", "A2", "A3", "A4"].forEach(addr => {
                     if (ws[addr]) ws[addr].s = { alignment: { horizontal: "center" } };
+                });
+                // In đậm dòng tiêu đề chính của bảng (hàng số 6) cho dễ phân biệt với dòng dữ
+                // liệu bên dưới — chỉ đổi định dạng hiển thị, không đổi nội dung/thứ tự cột.
+                headerRow.forEach((_, colIdx) => {
+                    let addr = XLSX.utils.encode_cell({ r: SO_DONG_TIEU_DE - 1, c: colIdx });
+                    if (ws[addr]) ws[addr].s = { font: { bold: true } };
                 });
                 ws['!freeze'] = { xSplit: SO_COT_CO_DINH, ySplit: SO_DONG_TIEU_DE };
 
@@ -11244,16 +11255,28 @@
             // bảng biểu "BẢNG CHẤM CÔNG KHỐI VĂN PHÒNG", và tháng/năm đang xuất — giúp file Excel
             // khi mở ra biết ngay là bảng chấm công của tháng nào, công ty nào mà không cần đối
             // chiếu lại tên file.
+            // [SỬA - VỊ TRÍ DÒNG TIÊU ĐỀ CỘT/DỮ LIỆU KHI XUẤT EXCEL] Theo đúng mẫu yêu cầu: hàng
+            // số 9 (1-based, tức index 8) hiển thị dòng tiêu đề chính của bảng (STT, MSNV, Họ Và
+            // Tên, Chức danh, Bộ phận, TỔNG, N, NL...), sau đó để TRỐNG 2 hàng (10 và 11), rồi hàng
+            // số 12 mới bắt đầu dữ liệu từng nhân sự. Khối 4 dòng tiêu đề công ty/tên bảng biểu/
+            // tháng-năm vẫn giữ nguyên như cũ (hàng 1-4), chỉ thêm các hàng trống đệm (hàng 5-8)
+            // để đẩy đúng dòng tiêu đề cột xuống hàng 9 — KHÔNG đổi nội dung/thứ tự cột dữ liệu.
             let dongTrong = () => Array(tongSoCot).fill("");
             let aoa = [
-                (() => { let r = dongTrong(); r[0] = "SEAHORSE MARINE AND ENERGY JSC"; return r; })(),
-                (() => { let r = dongTrong(); r[0] = "CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ"; return r; })(),
-                (() => { let r = dongTrong(); r[0] = "BẢNG CHẤM CÔNG KHỐI VĂN PHÒNG"; return r; })(),
-                (() => { let r = dongTrong(); r[0] = "Tháng " + thangHienThi + " Năm " + namHienThi; return r; })(),
-                dongTrong(),
-                headerRow
+                (() => { let r = dongTrong(); r[0] = "SEAHORSE MARINE AND ENERGY JSC"; return r; })(),   // Hàng 1
+                (() => { let r = dongTrong(); r[0] = "CÔNG TY CỔ PHẦN HÀNG HẢI VÀ NĂNG LƯỢNG HẢI MÃ"; return r; })(), // Hàng 2
+                (() => { let r = dongTrong(); r[0] = "BẢNG CHẤM CÔNG KHỐI VĂN PHÒNG"; return r; })(),      // Hàng 3
+                (() => { let r = dongTrong(); r[0] = "Tháng " + thangHienThi + " Năm " + namHienThi; return r; })(), // Hàng 4
+                dongTrong(), // Hàng 5 (trống)
+                dongTrong(), // Hàng 6 (trống)
+                dongTrong(), // Hàng 7 (trống)
+                dongTrong(), // Hàng 8 (trống)
+                headerRow,   // Hàng 9 - dòng tiêu đề chính của bảng
+                dongTrong(), // Hàng 10 (trống)
+                dongTrong()  // Hàng 11 (trống)
             ];
-            let SO_DONG_TIEU_DE = aoa.length; // số dòng phía trên dòng tiêu đề cột (để đóng băng/gộp ô)
+            let DONG_TIEU_DE_COT = 9; // hàng (1-based) chứa dòng tiêu đề chính của bảng — cố định theo yêu cầu
+            let SO_DONG_TIEU_DE = DONG_TIEU_DE_COT; // số hàng cần đóng băng (freeze) phía trên, tính đến hết dòng tiêu đề cột
 
             rowsToExport.forEach((r, rIdx) => {
                 let tongTheoMa = r.tongTheoMa || {};
@@ -11279,7 +11302,14 @@
             ["A1", "A2", "A3", "A4"].forEach(addr => {
                 if (ws[addr]) ws[addr].s = { alignment: { horizontal: "center" } };
             });
-            // Cố định dòng tiêu đề cột + 5 cột đầu khi cuộn.
+            // In đậm dòng tiêu đề chính của bảng (hàng số 9, tức index DONG_TIEU_DE_COT-1) cho dễ
+            // phân biệt với các dòng dữ liệu bên dưới — chỉ đổi định dạng hiển thị, không đổi nội
+            // dung/thứ tự cột.
+            headerRow.forEach((_, colIdx) => {
+                let addr = XLSX.utils.encode_cell({ r: DONG_TIEU_DE_COT - 1, c: colIdx });
+                if (ws[addr]) ws[addr].s = { font: { bold: true } };
+            });
+            // Cố định dòng tiêu đề cột (đến hết hàng 9) + 5 cột đầu khi cuộn.
             ws['!freeze'] = { xSplit: SO_COT_CO_DINH, ySplit: SO_DONG_TIEU_DE };
 
             let wb = XLSX.utils.book_new();
