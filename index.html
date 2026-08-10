@@ -934,6 +934,16 @@
                             <label>Số tháng dưới tàu tính đến hiện tại</label>
                             <input type="number" id="inp-months" step="0.1" value="0">
                         </div>
+                        <!-- [MỚI - NPT (NGƯỜI PHỤ THUỘC)] Chỉ hiện khi Phân loại đối tượng = "Thuyền
+                             viên Đội tàu" (cùng nhóm với ".months-group", xem handleFormFieldsSwitch()
+                             ở index.html) — số người phụ thuộc của thuyền viên, được lưu vào cột MỚI
+                             "SoNguoiPhuThuoc" ở Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs) và
+                             hiển thị lại ở cột "NPT" của Tab "Bảng Chấm Công Thuyền Viên" (KHÔNG tính
+                             vào cột "TỔNG" của bảng đó). -->
+                        <div class="input-group npt-group" style="display:none;">
+                            <label>NPT (Số người phụ thuộc)</label>
+                            <input type="number" id="inp-npt" min="0" step="1" value="0">
+                        </div>
                         <div class="input-group staff-image-group">
                             <label>Hình ảnh nhân viên</label>
                             <input type="file" id="inp-img-file" accept="image/jpeg, image/jpg, image/png" onchange="processAndValidateImage(this)">
@@ -8003,7 +8013,11 @@
                     let row = [i + 1, c.msnv || "", c.hoTen || "", c.chucDanh || "", tau];
                     let tongCrew = 0;
                     (cctvDanhMuc || []).forEach(dm => {
-                        let n = (tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                        // [SỬA THEO YÊU CẦU MỚI - CỘT "NPT"] Cột "NPT" xuất ra Excel dùng ĐÚNG Số
+                        // người phụ thuộc đã khai (c.soNguoiPhuThuoc), GIỐNG cách hiển thị trên giao
+                        // diện web (renderChamCongThuyenVienTable()) — KHÔNG còn cộng dồn số ngày
+                        // công đã ghi nhận mã "NPT" như trước.
+                        let n = (dm.ma === "NPT") ? (c.soNguoiPhuThuoc || 0) : ((tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0));
                         row.push(n || 0);
                         if (dm.ma !== "NPT") tongCrew += n;
                         tongTheoMaCaTau[dm.ma] = (tongTheoMaCaTau[dm.ma] || 0) + n;
@@ -8455,7 +8469,9 @@
                 let coHangChucDanh = cctvCoHangChucDanh(c.chucDanh);
                 let tongCrew = 0;
                 let maTds = (dDanhMuc || []).map(dm => {
-                    let n = (tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0);
+                    // [SỬA THEO YÊU CẦU MỚI - CỘT "NPT"] Đồng bộ với giao diện web/Excel: cột "NPT"
+                    // trong PDF cũng hiển thị ĐÚNG Số người phụ thuộc đã khai (c.soNguoiPhuThuoc).
+                    let n = (dm.ma === "NPT") ? (c.soNguoiPhuThuoc || 0) : ((tongTheoCrew[i].chinh[dm.ma] || 0) + (coHangChucDanh ? (tongTheoCrew[i].phu[dm.ma] || 0) : 0));
                     if (dm.ma !== "NPT") tongCrew += n;
                     tongTheoMaCaTau[dm.ma] = (tongTheoMaCaTau[dm.ma] || 0) + n;
                     return `<td style="border:1px solid #333; padding:2px; text-align:center;">${n || 0}</td>`;
@@ -8913,8 +8929,14 @@
             let dayThs = (cctvDanhSachNgay || []).map(d =>
                 `<th style="min-width:34px; padding:4px 2px; ${d.isWeekend ? 'background:#f1f2f4;' : ''}" title="${d.isWeekend ? 'Cuối tuần' : 'Ngày làm việc'}">${d.ngay}<br><span style="font-weight:400; font-size:10px;">${escapeHtml(d.thu)}</span></th>`
             ).join("");
-            let tongHopThs = (cctvDanhMuc || []).map(dm =>
-                `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
+            // [SỬA THEO YÊU CẦU MỚI - CỘT "NPT"] Cột "NPT" (mã "NPT" — Người phụ thuộc) KHÔNG còn
+            // là tổng số ngày công (không có khái niệm "ngày công NPT") mà hiển thị Số người phụ
+            // thuộc đã khai báo sẵn ở Tab "Thêm nhân sự mới" (xem cột giá trị tương ứng ở
+            // renderChamCongThuyenVienTable() bên dưới) -> tiêu đề CHỈ còn "NPT", KHÔNG còn tiền tố
+            // "Ngày công". Các mã công khác giữ NGUYÊN tiêu đề "Ngày công {Mã}" như cũ.
+            let tongHopThs = (cctvDanhMuc || []).map(dm => (dm.ma === "NPT")
+                ? `<th style="min-width:60px; background:#eef4ff;" title="Số người phụ thuộc (đã khai ở Tab Thêm nhân sự mới)">NPT</th>`
+                : `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
             ).join("");
             // [MỚI - CỘT "TỔNG"] Thêm ở CUỐI bảng (sau mọi cột "Ngày công {Mã}") — hiện tổng số
             // ngày công của 7/8 mã (KHÔNG tính mã "NPT" — người phụ thuộc, xem CCTV_TONG_LOAI_TRU_MA
@@ -9044,13 +9066,22 @@
                 // đúng hàng "Công làm việc" (LoaiBanGhi rỗng) — nếu server cũ chưa trả về (an toàn
                 // ngược), tự rơi về "cctvTongHop" (tổng hợp gộp như trước) để không lỗi.
                 let tongHopDong = (cctvTongHopCongViec && cctvTongHopCongViec[idxGoc]) || cctvTongHop[idxGoc] || {};
-                let tongHopTds = (cctvDanhMuc || []).map(dm =>
-                    `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong[dm.ma] || 0}</td>`
+                // [SỬA THEO YÊU CẦU MỚI - CỘT "NPT"] Ô ở cột "NPT" KHÔNG còn lấy từ tổng số ngày
+                // công đã ghi nhận (tongHopDong["NPT"]) mà hiển thị THẲNG Số người phụ thuộc đã
+                // khai báo sẵn cho thuyền viên này ở Tab "Thêm nhân sự mới" (c.soNguoiPhuThuoc, đọc
+                // từ Sheet "Đội tàu" — xem layDanhSachThuyenVienChoChamCong_() ở Code.gs). Các cột
+                // "Ngày công {Mã}" khác giữ NGUYÊN cách tính như cũ.
+                let tongHopTds = (cctvDanhMuc || []).map(dm => (dm.ma === "NPT")
+                    ? `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${c.soNguoiPhuThuoc || 0}</td>`
+                    : `<td style="text-align:center; font-weight:600; background:#f5f8ff;">${tongHopDong[dm.ma] || 0}</td>`
                 ).join("");
                 // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] Cộng dồn số công của hàng CHÍNH (Công làm việc) vào
-                // tổng chung theo từng mã công — xem khai báo cctvTongCongTheoMa ở trên.
+                // tổng chung theo từng mã công — xem khai báo cctvTongCongTheoMa ở trên. [SỬA - CỘT
+                // "NPT"] Riêng mã "NPT" cộng dồn Số người phụ thuộc (c.soNguoiPhuThuoc) thay vì số
+                // ngày công đã ghi nhận, để dòng tổng cuối bảng khớp với cách hiển thị mới của cột
+                // này (Tổng số người phụ thuộc của các thuyền viên đang hiển thị).
                 (cctvDanhMuc || []).forEach(dm => {
-                    cctvTongCongTheoMa[dm.ma] = (cctvTongCongTheoMa[dm.ma] || 0) + (tongHopDong[dm.ma] || 0);
+                    cctvTongCongTheoMa[dm.ma] = (cctvTongCongTheoMa[dm.ma] || 0) + ((dm.ma === "NPT") ? (c.soNguoiPhuThuoc || 0) : (tongHopDong[dm.ma] || 0));
                 });
                 // [MỚI - CỘT "TỔNG"] Tổng ngày công của 7/8 mã (không tính "NPT") của hàng CHÍNH
                 // "Công làm việc" — dùng lại đúng "tongHopDong" vừa tính ở trên (cctvTinhTong()).
@@ -9121,8 +9152,13 @@
                         return `<td style="${stylePhu}" title="${escapeHtml(titlePhu)}"${clickAttrPhu}>${checkboxHtmlPhu}<b>${escapeHtml(nhanNgay)}</b></td>`;
                     }).join("");
                     let tongHopDongPhu = (cctvTongHopChucDanh && cctvTongHopChucDanh[idxGoc]) || {};
-                    let tongHopTdsPhu = (cctvDanhMuc || []).map(dm =>
-                        `<td style="text-align:center; font-weight:600; background:#eafaf1;">${tongHopDongPhu[dm.ma] || 0}</td>`
+                    // [SỬA THEO YÊU CẦU MỚI - CỘT "NPT"] Số người phụ thuộc gắn với THUYỀN VIÊN
+                    // (đã hiện ở hàng CHÍNH phía trên, dùng chung rowspan cho cột "Đơn vị (tàu)"),
+                    // KHÔNG có ý nghĩa riêng cho hàng PHỤ "Công chức danh" -> để trống ở đây, tránh
+                    // hiện trùng lặp gây hiểu nhầm.
+                    let tongHopTdsPhu = (cctvDanhMuc || []).map(dm => (dm.ma === "NPT")
+                        ? `<td style="text-align:center; font-weight:600; background:#eafaf1;"></td>`
+                        : `<td style="text-align:center; font-weight:600; background:#eafaf1;">${tongHopDongPhu[dm.ma] || 0}</td>`
                     ).join("");
                     // [MỚI - DÒNG "TỔNG CỘNG CÔNG"] Cộng dồn thêm số công của hàng PHỤ (Công chức
                     // danh SDPO/JDPO) vào ĐÚNG tổng chung theo từng mã công (đã cộng hàng chính ở
@@ -14268,7 +14304,7 @@
                 // xem thêm phần lưu (data.msnv), hiển thị lại khi sửa, và cột "MSNV" mới thêm ở
                 // Sheet "Đội tàu" (ensureColumnHeader(sheet, 11, "MSNV") — xem Code.gs).
                 document.querySelectorAll(".select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
-                document.querySelectorAll(".id-group, .email-group, .select-vessel-group, .months-group").forEach(el => el.style.display = "block");
+                document.querySelectorAll(".id-group, .email-group, .select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
                 // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động, thông tin ngân hàng, liên hệ khẩn
                 // cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
@@ -14277,7 +14313,7 @@
                 document.querySelectorAll(".contract-group").forEach(el => el.style.display = "none");
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
-                document.querySelectorAll(".select-vessel-group, .months-group").forEach(el => el.style.display = "none");
+                document.querySelectorAll(".select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "none");
                 document.getElementById("lbl-date-join").innerText = "Ngày vào làm";
                 document.querySelectorAll(".contract-group").forEach(el => el.style.display = "grid");
 
@@ -17041,7 +17077,11 @@
                     email: document.getElementById("inp-email").value.trim(),
                     months: parseFloat(document.getElementById("inp-months").value) || 0,
                     workStatus: document.getElementById("inp-work-status").value || "ON",
-                    resignDate: document.getElementById("inp-resign-date").value
+                    resignDate: document.getElementById("inp-resign-date").value,
+                    // [MỚI - NPT (NGƯỜI PHỤ THUỘC)] Gửi kèm giá trị đã nhập ở ô "inp-npt" (xem
+                    // markup + handleFormFieldsSwitch() ở trên) — server lưu vào cột MỚI
+                    // "SoNguoiPhuThuoc" của Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs).
+                    soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0
                 };
 
                 if (isEdit) crewData[index] = obj; else crewData.push(obj);
@@ -17188,6 +17228,9 @@
                 document.getElementById("inp-phone").value = d.phone || "";
                 document.getElementById("inp-email").value = d.email || "";
                 document.getElementById("inp-months").value = d.months || "0";
+                // [MỚI - NPT (NGƯỜI PHỤ THUỘC)] Hiển thị lại đúng số người phụ thuộc đã khai
+                // trước đó khi mở sửa 1 thuyền viên.
+                document.getElementById("inp-npt").value = d.soNguoiPhuThuoc || "0";
                 document.getElementById("inp-work-status").value = d.workStatus || "ON";
                 document.getElementById("inp-resign-date").value = d.resignDate || "";
                 onWorkStatusChange();
