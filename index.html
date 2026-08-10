@@ -815,6 +815,14 @@
                 <div class="table-controls">
                     <input type="text" id="search-crew" class="search-box" oninput="debouncedFilterCrewTable()" placeholder="Tìm theo tên, MSNV, chức danh...">
                     <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="max-width: 250px;"></select>
+                    <!-- [MỚI - TÌNH TRẠNG LÀM VIỆC] Ô lọc riêng theo Tình trạng làm việc của thuyền
+                         viên (Đang làm việc / Đang nghỉ ca / Đã nghỉ việc) — xem filterCrewTable(). -->
+                    <select id="filter-crew-status" class="search-box" onchange="filterCrewTable()" style="max-width: 220px;">
+                        <option value="Tất cả">-- Tất cả tình trạng --</option>
+                        <option value="ON">Đang làm việc</option>
+                        <option value="ON_LEAVE">Đang nghỉ ca</option>
+                        <option value="OFF">Đã nghỉ việc</option>
+                    </select>
                     <!-- [MỚI - CHUYỂN NHÂN VIÊN SANG TÀU KHÁC] Chỉ hiện với tài khoản có quyền
                          sửa dữ liệu Đội tàu (Admin/ReadWrite — cùng điều kiện với nút Sửa/Xóa ở
                          mỗi dòng, xem renderCrewTable()) — ẩn/hiện qua id "btn-crew-transfer",
@@ -825,7 +833,7 @@
                     </button>
                 </div>
                 <table id="tbl-crew">
-                    <thead><tr><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <thead><tr><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th>Tình trạng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -941,6 +949,12 @@
                             <label>Tình trạng làm việc</label>
                             <select id="inp-work-status" onchange="onWorkStatusChange()">
                                 <option value="ON">Đang làm việc (ON)</option>
+                                <!-- [MỚI - THUYỀN VIÊN ĐỘI TÀU] Trạng thái "Đang nghỉ ca" (thuyền viên tạm
+                                     rời tàu nghỉ giữa các ca, VẪN đang làm việc/thuộc biên chế công ty —
+                                     KHÁC với "Đã nghỉ việc"). Option này chỉ hiện/dùng được khi Phân loại
+                                     đối tượng = "Thuyền viên Đội tàu" — xem toggleOnLeaveStatusOption() và
+                                     handleFormFieldsSwitch(). Nhân sự Văn phòng KHÔNG bị đổi/ảnh hưởng gì. -->
+                                <option value="ON_LEAVE" id="opt-work-status-on-leave" style="display:none;" disabled>Đang nghỉ ca</option>
                                 <option value="OFF">Đã nghỉ việc (OFF)</option>
                             </select>
                         </div>
@@ -7981,7 +7995,7 @@
 
                 // [MỚI - DÒNG "TỔNG CỘNG CÔNG" Ở CUỐI BẢNG] Cộng dồn từng cột "Công {mã}" của TẤT
                 // CẢ thuyền viên tàu này ngay khi dựng từng dòng dữ liệu — TỔNG mỗi thuyền viên
-                // KHÔNG tính mã "NPT" (nhà thầu phụ), giống đúng logic "CCTV_TONG_LOAI_TRU_MA"
+                // KHÔNG tính mã "NPT" (người phụ thuộc), giống đúng logic "CCTV_TONG_LOAI_TRU_MA"
                 // đang dùng trên giao diện web.
                 let tongTheoMaCaTau = {};
                 crewOfTau.forEach((c, i) => {
@@ -8903,7 +8917,7 @@
                 `<th style="min-width:70px; background:#eef4ff;" title="Tổng số ngày công '${escapeHtml(dm.ma)}' trong kỳ (${escapeHtml(dm.ten || "")})">Ngày công ${escapeHtml(dm.ma)}</th>`
             ).join("");
             // [MỚI - CỘT "TỔNG"] Thêm ở CUỐI bảng (sau mọi cột "Ngày công {Mã}") — hiện tổng số
-            // ngày công của 7/8 mã (KHÔNG tính mã "NPT" — nhà thầu phụ, xem CCTV_TONG_LOAI_TRU_MA
+            // ngày công của 7/8 mã (KHÔNG tính mã "NPT" — người phụ thuộc, xem CCTV_TONG_LOAI_TRU_MA
             // và cctvTinhTong() bên dưới). Tính toán lại từ dữ liệu đã tải, KHÔNG lưu/ghi gì xuống
             // Sheet, KHÔNG gọi thêm action nào.
             thead.innerHTML = `<tr>
@@ -8919,7 +8933,7 @@
         }
 
         // [MỚI - CỘT "TỔNG"] Mã KHÔNG tính vào cột "TỔNG" — theo đúng yêu cầu "TỔNG = tổng ngày
-        // công của 7 mã" (8 mã hiện có trong danh mục, trừ "NPT" - nhà thầu phụ).
+        // công của 7 mã" (8 mã hiện có trong danh mục, trừ "NPT" - người phụ thuộc).
         var CCTV_TONG_LOAI_TRU_MA = ["NPT"];
         function cctvTinhTong(tongHopDong) {
             return (cctvDanhMuc || []).reduce((sum, dm) => {
@@ -14209,7 +14223,28 @@
             }
         }
 
+        // [MỚI - THUYỀN VIÊN ĐỘI TÀU] Bật/tắt option "Đang nghỉ ca" trong ô <select>
+        // "Tình trạng làm việc" (#inp-work-status): CHỈ hiện & chọn được khi đang khai báo/sửa
+        // Thuyền viên Đội tàu (CREW_SHIP) — Nhân sự Văn phòng vẫn giữ nguyên đúng 2 lựa chọn cũ
+        // (ON/OFF) như trước, KHÔNG đổi/mất dữ liệu hay hành vi đã có của Văn phòng.
+        // Nếu đang tắt (Văn phòng) mà ô đang lỡ giữ giá trị "ON_LEAVE" (VD dữ liệu sót lại từ
+        // lần sửa Thuyền viên trước đó chưa reset form) thì tự đưa về lại "ON" cho an toàn.
+        function toggleOnLeaveStatusOption(isCrew) {
+            let opt = document.getElementById("opt-work-status-on-leave");
+            if (!opt) return;
+            opt.style.display = isCrew ? "" : "none";
+            opt.disabled = !isCrew;
+            let statusSelect = document.getElementById("inp-work-status");
+            if (statusSelect && !isCrew && statusSelect.value === "ON_LEAVE") {
+                statusSelect.value = "ON";
+                onWorkStatusChange();
+            }
+        }
+
         function handleFormFieldsSwitch(selectedValue) {
+            // [MỚI - THUYỀN VIÊN ĐỘI TÀU] Xem toggleOnLeaveStatusOption() ở trên.
+            toggleOnLeaveStatusOption(selectedValue === "CREW_SHIP");
+
             // [MỚI - GỢI Ý CHỨC DANH MẶC ĐỊNH] Ô "Chức vụ / Chức danh" (#inp-position) VẪN LÀ ô
             // nhập chữ tự do như cũ — chỉ gắn thêm/gỡ thuộc tính "list" trỏ tới
             // <datalist id="list-crew-position"> (xem markup ở trên) để gợi ý sẵn các chức danh
@@ -15157,6 +15192,21 @@
             XLSX.writeFile(wb, fileName);
         }
 
+        // [MỚI - THUYỀN VIÊN ĐỘI TÀU] Sinh badge màu cho "Tình trạng làm việc" của 1 thuyền viên
+        // trong bảng Đội tàu: xanh = Đang làm việc (ON, mặc định nếu chưa có dữ liệu cũ), cam =
+        // Đang nghỉ ca (ON_LEAVE, MỚI thêm), đỏ = Đã nghỉ việc (OFF). CHỈ hiển thị, không đọc/ghi
+        // gì thêm — dùng lại đúng field c.workStatus/c.resignDate đã có sẵn.
+        function buildCrewWorkStatusBadgeHtml(c) {
+            let status = c.workStatus || "ON";
+            if (status === "OFF") {
+                return `<span class="chip-dept" style="background:#fde8e8; color:#b91c1c; border-color:#f5c2c2;">Đã nghỉ việc${c.resignDate ? ' - ' + formatDateDisplay(c.resignDate) : ''}</span>`;
+            }
+            if (status === "ON_LEAVE") {
+                return `<span class="chip-dept" style="background:#fff4e0; color:#b9770e; border-color:#f6ddaa;">Đang nghỉ ca</span>`;
+            }
+            return `<span class="chip-dept" style="background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;">Đang làm việc</span>`;
+        }
+
         function renderCrewTable() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let btnCrewTransfer = document.getElementById("btn-crew-transfer");
@@ -15171,6 +15221,7 @@
                     <td>${formatDateDisplay(c.dateJoin)}</td>
                     <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(c.months)} tháng</span></td>
                     <td>${escapeHtml(c.email || "-")}</td>
+                    <td>${buildCrewWorkStatusBadgeHtml(c)}</td>
                     <td style="display: ${canEdit ? '' : 'none'}">
                         <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
@@ -17010,6 +17061,10 @@
 
             if (type === "staff") {
                 let d = staffData[idx];
+                // [MỚI - THUYỀN VIÊN ĐỘI TÀU] Đảm bảo option "Đang nghỉ ca" luôn ẩn/tắt khi đang
+                // sửa Nhân sự Văn phòng (đề phòng còn sót lại trạng thái bật từ lần sửa Thuyền
+                // viên trước đó) — xem toggleOnLeaveStatusOption().
+                toggleOnLeaveStatusOption(false);
                 document.getElementById("form-title").innerHTML = `<i class="fa-solid fa-user-pen" style="color:orange;"></i> Sửa nhân viên: ${d.name}`;
                 document.getElementById("inp-msnv").value = d.msnv || "";
                 document.getElementById("inp-name").value = d.name || "";
@@ -17246,12 +17301,17 @@
         function filterCrewTable() {
             let search = document.getElementById("search-crew").value.toLowerCase();
             let vessel = document.getElementById("filter-vessel").value;
+            // [MỚI - TÌNH TRẠNG LÀM VIỆC] Ô lọc riêng (#filter-crew-status) theo ON/ON_LEAVE/OFF —
+            // xem markup ở trên. "Tất cả" nghĩa là không lọc theo trạng thái (giữ đúng hành vi cũ).
+            let statusFilterEl = document.getElementById("filter-crew-status");
+            let statusFilter = statusFilterEl ? statusFilterEl.value : "Tất cả";
             let rows = document.querySelectorAll("#tbl-crew tbody tr");
 
             crewData.forEach((c, idx) => {
                 let matchSearch = c.name.toLowerCase().includes(search) || c.position.toLowerCase().includes(search) || String(c.msnv || "").toLowerCase().includes(search);
                 let matchVessel = (vessel === "Tất cả" || c.vessel === vessel);
-                if(rows[idx]) rows[idx].style.display = (matchSearch && matchVessel) ? "" : "none";
+                let matchStatus = (statusFilter === "Tất cả" || (c.workStatus || "ON") === statusFilter);
+                if(rows[idx]) rows[idx].style.display = (matchSearch && matchVessel && matchStatus) ? "" : "none";
             });
         }
 
