@@ -4153,7 +4153,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -5436,6 +5436,31 @@
             renderUserListViewForAdmin();
         }
 
+        // [MỚI - TAB "TUYỂN DỤNG" - PHÂN QUYỀN RIÊNG] Bật/tắt quyền "Xem tab" / "Thêm/Sửa hồ sơ
+        // ứng viên" của Tab "Tuyển Dụng" cho 1 tài khoản — ĐỘC LẬP với quyền "Quản Lý Nhân Sự"
+        // (hrView/hrEdit). Dùng action riêng "setRecruitmentPermission" (chỉ ghi đúng cột 33-34
+        // của sheet "TaiKhoan", không đụng các cột/quyền khác), giống hệt cách làm với
+        // "toggleUserChamCongPermission".
+        async function toggleUserRecruitmentPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newXem = (field === "xemTuyenDung") ? checked : !!userDatabase[username].xemTuyenDung;
+            let newSua = (field === "suaTuyenDung") ? checked : !!userDatabase[username].suaTuyenDung;
+            // Bật quyền Sửa thì tự động bật kèm quyền Xem (không thể sửa nếu không xem được).
+            if (field === "suaTuyenDung" && checked) newXem = true;
+            // Tắt quyền Xem thì tự động tắt luôn quyền Sửa.
+            if (field === "xemTuyenDung" && !checked) newSua = false;
+
+            let ok = await pushToCloud({ action: "setRecruitmentPermission", username: username, xemTuyenDung: newXem, suaTuyenDung: newSua });
+            if (ok) {
+                userDatabase[username].xemTuyenDung = newXem;
+                userDatabase[username].suaTuyenDung = newSua;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
         // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
         // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
@@ -5711,6 +5736,31 @@
                     </span>`;
                 }
 
+                // [MỚI - TAB "TUYỂN DỤNG" - PHÂN QUYỀN RIÊNG] Độc lập hoàn toàn với "hrControl"
+                // (Quản Lý Nhân Sự) ở trên — Admin có thể cấp quyền xem/sửa Tab Tuyển Dụng cho 1
+                // tài khoản mà KHÔNG cần cấp thêm quyền Quản Lý Nhân Sự. Dùng action riêng
+                // "setRecruitmentPermission" (chỉ ghi đúng cột 33-34 của sheet "TaiKhoan"). LƯU
+                // Ý: tài khoản đã có quyền "Xem tab"/"Sửa" ở "hrControl" phía trên vẫn tiếp tục
+                // xem/sửa được Tab Tuyển Dụng như cũ (tương thích ngược) dù 2 checkbox dưới đây
+                // đang tắt — 2 checkbox này chỉ CẤP THÊM quyền riêng, không thay thế quyền cũ.
+                let tuyenDungControl = "";
+                if (u === "admin") {
+                    tuyenDungControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-user-tie"></i> Toàn quyền Tuyển Dụng</span>';
+                } else {
+                    let tdVChecked = userDatabase[u].xemTuyenDung ? "checked" : "";
+                    let tdEChecked = userDatabase[u].suaTuyenDung ? "checked" : "";
+                    tuyenDungControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-user-tie" title="Tuyển Dụng"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${tdVChecked} onchange="toggleUserRecruitmentPermission('${safeU}', 'xemTuyenDung', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${tdEChecked} onchange="toggleUserRecruitmentPermission('${safeU}', 'suaTuyenDung', this.checked)"> Thêm/Sửa hồ sơ
+                        </label>
+                    </span>`;
+                }
+
+
                 // [TAB "TỔNG QUAN"] Quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
                 let contractAlertControl = "";
                 if (u === "admin") {
@@ -5975,6 +6025,7 @@
                         ${docsControl}
                         ${eqControl}
                         ${hrControl}
+                        ${tuyenDungControl}
                         ${contractAlertControl}
                         ${resignedControl}
                         ${cksoControl}
@@ -6101,7 +6152,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -6223,7 +6274,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [] };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -6325,25 +6376,30 @@
             currentUserCanViewResignedContacts = canViewResignedContacts;
             document.getElementById("menu-hr").style.display = canViewHR ? "flex" : "none";
 
-            // ==== [TAB "TUYỂN DỤNG"] Dùng lại ĐÚNG quyền "Quản Lý Nhân Sự" ở trên (KHÔNG thêm
-            // cột/quyền mới trong sheet "TaiKhoan"): Xem tab/danh sách = canViewHR, Thêm/Sửa
-            // hồ sơ = canEditHRUI, Xóa hồ sơ = canDeleteHRUI. ====
-            currentUserCanViewRecruitment = canViewHR;
-            currentUserCanEditRecruitment = canEditHRUI;
+            // ==== [TAB "TUYỂN DỤNG"] Nay có quyền RIÊNG "xemTuyenDung"/"suaTuyenDung" (Admin cấp
+            // qua action "setRecruitmentPermission"), KHÔNG còn bắt buộc phải dùng chung quyền
+            // "Quản Lý Nhân Sự" nữa. TƯƠNG THÍCH NGƯỢC: tài khoản đang có canViewHR/canEditHRUI
+            // (hrView/hrEdit) từ trước VẪN xem/sửa được Tab Tuyển Dụng như cũ (OR logic), không
+            // mất quyền nào đã có. Xóa hồ sơ vẫn dùng canDeleteHRUI như cũ (ngoài phạm vi đổi). ====
+            let canViewRecruitmentUI = (currentUser.role === "Admin") || !!currentUser.xemTuyenDung || canViewHR;
+            let canEditRecruitmentUI = (currentUser.role === "Admin") || !!currentUser.suaTuyenDung || canEditHRUI;
+            currentUserCanViewRecruitment = canViewRecruitmentUI;
+            currentUserCanEditRecruitment = canEditRecruitmentUI;
             currentUserCanDeleteRecruitment = canDeleteHRUI;
             let elMenuRecruitment = document.getElementById("menu-recruitment");
-            if (elMenuRecruitment) elMenuRecruitment.style.display = canViewHR ? "flex" : "none";
+            if (elMenuRecruitment) elMenuRecruitment.style.display = canViewRecruitmentUI ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
-            if (tdFormBox) tdFormBox.style.display = canEditHRUI ? "block" : "none";
+            if (tdFormBox) tdFormBox.style.display = canEditRecruitmentUI ? "block" : "none";
             // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO", TÁCH RIÊNG, CHỈ ADMIN THẤY] Ẩn/hiện khối
             // riêng "td-nguoidanhgia-box" theo đúng Role đang đăng nhập (KHÔNG dùng quyền
-            // canEditHRUI - dù có quyền Sửa hồ sơ ứng viên, tài khoản không phải Admin vẫn KHÔNG
-            // thấy mục này). Gọi lại với hồ sơ đang Sửa trên form hiện tại (nếu có) để không mất
-            // trạng thái khi applyUserPermissions() được gọi lại (VD sau khi đồng bộ dữ liệu).
+            // canEditRecruitmentUI - dù có quyền Sửa hồ sơ ứng viên, tài khoản không phải Admin
+            // vẫn KHÔNG thấy mục này). Gọi lại với hồ sơ đang Sửa trên form hiện tại (nếu có) để
+            // không mất trạng thái khi applyUserPermissions() được gọi lại (VD sau khi đồng bộ
+            // dữ liệu).
             let tdMaHoSoHienTai = document.getElementById("edit-mahoso-tuyendung");
             let tdHoTenHienTai = document.getElementById("inp-td-hoten");
             toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai ? tdMaHoSoHienTai.value : "", tdHoTenHienTai ? tdHoTenHienTai.value : "");
-            if (canViewHR) loadRecruitmentData();
+            if (canViewRecruitmentUI) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
             // [ĐÃ ẨN KHỎI MENU GIAO DIỆN CHÍNH] Mục menu "Chữ Ký Số" không còn trong sidebar nên
