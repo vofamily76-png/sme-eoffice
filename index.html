@@ -836,6 +836,31 @@
 
             <div id="page-crew" class="page-content">
                 <h2 class="page-title">Theo dõi thông tin Đội tàu</h2>
+
+                <!-- [MỚI - BIẾN ĐỘNG THUYỀN VIÊN TRONG THÁNG] Đếm số Thuyền viên Đội tàu (crewData,
+                     ĐÚNG dữ liệu đang hiển thị ở Tab này theo quyền/giới hạn tàu của tài khoản đang
+                     đăng nhập — KHÔNG gọi thêm API, KHÔNG đọc/ghi gì thêm trên Sheet, KHÔNG đổi
+                     phân quyền) "Vào làm mới" (dateJoin rơi vào tháng đang chọn) và "Nghỉ việc"
+                     (resignDate rơi vào tháng đang chọn) — mặc định xem THÁNG HIỆN TẠI, có thể đổi
+                     qua tháng khác bằng ô chọn tháng. Chỉ tính toán lại ở trình duyệt trên dữ liệu
+                     đã có sẵn, hoàn toàn không ảnh hưởng dữ liệu gốc hay bảo mật hệ thống. -->
+                <div class="admin-box" style="border-left: 5px solid #328cc1; background:#f0f7fc; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                        <h4 style="margin:0;"><i class="fa-solid fa-arrow-right-arrow-left" style="color:#328cc1;"></i> Biến động thuyền viên trong tháng</h4>
+                        <input type="month" id="crew-turnover-month" class="search-box" style="max-width:180px;" onchange="renderCrewMonthlyTurnover()">
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                        <div class="admin-box" style="border-left: 4px solid #1e7e34; background:#fff; margin:0;">
+                            <h5 style="margin:0 0 8px 0; color:#1e7e34;"><i class="fa-solid fa-user-plus"></i> Thuyền viên vào làm mới: <span id="crew-turnover-new-count">0</span></h5>
+                            <ul id="crew-turnover-new-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
+                        </div>
+                        <div class="admin-box" style="border-left: 4px solid #b91c1c; background:#fff; margin:0;">
+                            <h5 style="margin:0 0 8px 0; color:#b91c1c;"><i class="fa-solid fa-user-minus"></i> Thuyền viên nghỉ việc: <span id="crew-turnover-resign-count">0</span></h5>
+                            <ul id="crew-turnover-resign-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-crew" class="search-box" oninput="debouncedFilterCrewTable()" placeholder="Tìm theo tên, MSNV, chức danh...">
                     <select id="filter-vessel" class="search-box" onchange="filterCrewTable()" style="max-width: 250px;"></select>
@@ -15450,6 +15475,46 @@
             `;
             }).join('');
             document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
+            renderCrewMonthlyTurnover();
+        }
+
+        // [MỚI - BIẾN ĐỘNG THUYỀN VIÊN TRONG THÁNG] Đếm + liệt kê thuyền viên đội tàu (crewData)
+        // "Vào làm mới" (dateJoin - "Ngày xuống tàu" - rơi vào tháng đang chọn) và "Nghỉ việc"
+        // (resignDate rơi vào tháng đang chọn). Mặc định tự chọn THÁNG HIỆN TẠI (chỉ set 1 LẦN
+        // DUY NHẤT lúc khởi tạo, dùng dataset.inited để không ghi đè tháng người dùng đang xem
+        // mỗi khi dữ liệu đồng bộ lại). Toàn bộ CHỈ tính toán lại trên crewData đã tải sẵn ở
+        // trình duyệt theo ĐÚNG quyền/giới hạn tàu hiện có (currentUser.doiTauTauDuocXem) — không
+        // gọi thêm API, không đọc/ghi gì thêm trên Sheet, không đổi dữ liệu gốc và không đổi cơ
+        // chế phân quyền/bảo mật hiện có.
+        function renderCrewMonthlyTurnover() {
+            let monthEl = document.getElementById("crew-turnover-month");
+            let newCountEl = document.getElementById("crew-turnover-new-count");
+            let newListEl = document.getElementById("crew-turnover-new-list");
+            let resignCountEl = document.getElementById("crew-turnover-resign-count");
+            let resignListEl = document.getElementById("crew-turnover-resign-list");
+            if (!monthEl || !newCountEl || !newListEl || !resignCountEl || !resignListEl) return;
+
+            if (!monthEl.dataset.inited) {
+                let now = new Date();
+                monthEl.value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+                monthEl.dataset.inited = "1";
+            }
+            let ym = monthEl.value; // "yyyy-MM"
+            if (!ym) { newCountEl.innerText = "0"; resignCountEl.innerText = "0"; newListEl.innerHTML = ""; resignListEl.innerHTML = ""; return; }
+
+            let newHires = crewData.filter(c => normalizeDateStr(c.dateJoin).slice(0, 7) === ym)
+                .sort((a, b) => normalizeDateStr(a.dateJoin).localeCompare(normalizeDateStr(b.dateJoin)));
+            let resigned = crewData.filter(c => c.resignDate && normalizeDateStr(c.resignDate).slice(0, 7) === ym)
+                .sort((a, b) => normalizeDateStr(a.resignDate).localeCompare(normalizeDateStr(b.resignDate)));
+
+            newCountEl.innerText = newHires.length;
+            resignCountEl.innerText = resigned.length;
+            newListEl.innerHTML = newHires.length
+                ? newHires.map(c => `<li style="padding:6px 8px; border-bottom:1px solid #eee;"><b>${escapeHtml(c.name)}</b>${c.msnv ? ' (MSNV: ' + escapeHtml(c.msnv) + ')' : ''} - ${escapeHtml(c.vessel)} - ${formatDateDisplay(c.dateJoin)}</li>`).join('')
+                : `<li style="padding:6px 8px; color:#666;">Không có thuyền viên vào làm mới trong tháng này.</li>`;
+            resignListEl.innerHTML = resigned.length
+                ? resigned.map(c => `<li style="padding:6px 8px; border-bottom:1px solid #eee;"><b>${escapeHtml(c.name)}</b>${c.msnv ? ' (MSNV: ' + escapeHtml(c.msnv) + ')' : ''} - ${escapeHtml(c.vessel)} - ${formatDateDisplay(c.resignDate)}</li>`).join('')
+                : `<li style="padding:6px 8px; color:#666;">Không có thuyền viên nghỉ việc trong tháng này.</li>`;
         }
 
         /* ===== QUẢN LÝ THIẾT BỊ ===== */
