@@ -734,6 +734,30 @@
                 <h2 class="page-title">Quản Lý Nhân Sự - Hợp đồng Lao động</h2>
                 <div id="hr-expiring-alert-box" class="admin-box" style="display:none; border-left: 5px solid #e67e22; background:#fff8e1;"></div>
 
+                <!-- [MỚI - BIẾN ĐỘNG NHÂN VIÊN TRONG THÁNG] Đếm số Nhân sự VĂN PHÒNG (staffData,
+                     ĐÚNG dữ liệu đang hiển thị ở Tab này theo quyền của tài khoản đang đăng nhập —
+                     KHÔNG gọi thêm API, KHÔNG đọc/ghi gì thêm trên Sheet, KHÔNG đổi phân quyền)
+                     "Vào làm mới" (dateJoin rơi vào tháng đang chọn) và "Nghỉ việc" (resignDate
+                     rơi vào tháng đang chọn) — mặc định xem THÁNG HIỆN TẠI, có thể đổi qua tháng
+                     khác bằng ô chọn tháng. Chỉ tính toán lại ở trình duyệt trên dữ liệu đã có sẵn,
+                     hoàn toàn không ảnh hưởng dữ liệu gốc hay bảo mật hệ thống. -->
+                <div class="admin-box" style="border-left: 5px solid #328cc1; background:#f0f7fc; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                        <h4 style="margin:0;"><i class="fa-solid fa-arrow-right-arrow-left" style="color:#328cc1;"></i> Biến động nhân viên trong tháng</h4>
+                        <input type="month" id="hr-turnover-month" class="search-box" style="max-width:180px;" onchange="renderHRMonthlyTurnover()">
+                    </div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:14px;">
+                        <div class="admin-box" style="border-left: 4px solid #1e7e34; background:#fff; margin:0;">
+                            <h5 style="margin:0 0 8px 0; color:#1e7e34;"><i class="fa-solid fa-user-plus"></i> Nhân viên vào làm mới: <span id="hr-turnover-new-count">0</span></h5>
+                            <ul id="hr-turnover-new-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
+                        </div>
+                        <div class="admin-box" style="border-left: 4px solid #b91c1c; background:#fff; margin:0;">
+                            <h5 style="margin:0 0 8px 0; color:#b91c1c;"><i class="fa-solid fa-user-minus"></i> Nhân viên nghỉ việc: <span id="hr-turnover-resign-count">0</span></h5>
+                            <ul id="hr-turnover-resign-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- [XUẤT EXCEL] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ dùng LẠI dữ liệu
                      staffData đã tải theo đúng quyền của tài khoản đang đăng nhập (không gọi
                      thêm API nào, không đổi/xóa dữ liệu gốc trên Sheet). -->
@@ -14932,7 +14956,46 @@
                 `<tr><td colspan="9" style="text-align:center; color:#666; padding:20px;">Chưa có dữ liệu nhân sự đang làm việc.</td></tr>`;
 
             renderHRExpiringAlert();
+            renderHRMonthlyTurnover();
             filterHRTable();
+        }
+
+        // [MỚI - BIẾN ĐỘNG NHÂN VIÊN TRONG THÁNG] Đếm + liệt kê nhân sự văn phòng (staffData)
+        // "Vào làm mới" (dateJoin rơi vào tháng đang chọn) và "Nghỉ việc" (resignDate rơi vào
+        // tháng đang chọn). Mặc định tự chọn THÁNG HIỆN TẠI (chỉ set 1 LẦN DUY NHẤT lúc khởi
+        // tạo, dùng dataset.inited để không ghi đè tháng người dùng đang xem mỗi khi dữ liệu
+        // đồng bộ lại). Toàn bộ CHỈ tính toán lại trên staffData đã tải sẵn ở trình duyệt theo
+        // ĐÚNG quyền hiện có — không gọi thêm API, không đọc/ghi gì thêm trên Sheet, không đổi
+        // dữ liệu gốc và không đổi cơ chế phân quyền/bảo mật hiện có.
+        function renderHRMonthlyTurnover() {
+            let monthEl = document.getElementById("hr-turnover-month");
+            let newCountEl = document.getElementById("hr-turnover-new-count");
+            let newListEl = document.getElementById("hr-turnover-new-list");
+            let resignCountEl = document.getElementById("hr-turnover-resign-count");
+            let resignListEl = document.getElementById("hr-turnover-resign-list");
+            if (!monthEl || !newCountEl || !newListEl || !resignCountEl || !resignListEl) return;
+
+            if (!monthEl.dataset.inited) {
+                let now = new Date();
+                monthEl.value = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+                monthEl.dataset.inited = "1";
+            }
+            let ym = monthEl.value; // "yyyy-MM"
+            if (!ym) { newCountEl.innerText = "0"; resignCountEl.innerText = "0"; newListEl.innerHTML = ""; resignListEl.innerHTML = ""; return; }
+
+            let newHires = staffData.filter(s => normalizeDateStr(s.dateJoin).slice(0, 7) === ym)
+                .sort((a, b) => normalizeDateStr(a.dateJoin).localeCompare(normalizeDateStr(b.dateJoin)));
+            let resigned = staffData.filter(s => s.resignDate && normalizeDateStr(s.resignDate).slice(0, 7) === ym)
+                .sort((a, b) => normalizeDateStr(a.resignDate).localeCompare(normalizeDateStr(b.resignDate)));
+
+            newCountEl.innerText = newHires.length;
+            resignCountEl.innerText = resigned.length;
+            newListEl.innerHTML = newHires.length
+                ? newHires.map(s => `<li style="padding:6px 8px; border-bottom:1px solid #eee;"><b>${escapeHtml(s.name)}</b> (MSNV: ${escapeHtml(s.msnv)}) - ${formatDateDisplay(s.dateJoin)}</li>`).join('')
+                : `<li style="padding:6px 8px; color:#666;">Không có nhân viên vào làm mới trong tháng này.</li>`;
+            resignListEl.innerHTML = resigned.length
+                ? resigned.map(s => `<li style="padding:6px 8px; border-bottom:1px solid #eee;"><b>${escapeHtml(s.name)}</b> (MSNV: ${escapeHtml(s.msnv)}) - ${formatDateDisplay(s.resignDate)}</li>`).join('')
+                : `<li style="padding:6px 8px; color:#666;">Không có nhân viên nghỉ việc trong tháng này.</li>`;
         }
 
         // Hộp cảnh báo ở đầu Tab "Quản Lý Nhân Sự" + số đếm ở Bảng điều khiển tổng quan:
