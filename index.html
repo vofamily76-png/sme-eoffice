@@ -833,7 +833,11 @@
                     </button>
                 </div>
                 <table id="tbl-crew">
-                    <thead><tr><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th>Tình trạng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <!-- [MỚI - CỘT "STT"] Thêm cột STT đầu bảng (đánh số thứ tự theo ĐÚNG thứ tự
+                         đang hiển thị, tức đã sắp xếp theo MSNV tăng dần — xem renderCrewTable()).
+                         Cột này CHỈ hiển thị số thứ tự hiển thị, KHÔNG lưu vào Sheet/crewData,
+                         nên không ảnh hưởng dữ liệu hay bảo mật. -->
+                    <thead><tr><th>STT</th><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th>Tình trạng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -15329,12 +15333,43 @@
             return `<span class="chip-dept" style="background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;">Đang làm việc</span>`;
         }
 
+        // [MỚI - SẮP XẾP MSNV TĂNG DẦN] So sánh 2 giá trị MSNV theo kiểu "tự nhiên" (numeric-aware,
+        // VD "SMEV001" < "SMEV002" < "SMEV010", KHÔNG bị lỗi so sánh chuỗi kiểu "SMEV10" < "SMEV2").
+        // MSNV để trống được xếp XUỐNG CUỐI danh sách (không có mã thì không có căn cứ để sắp xếp
+        // trước ai), KHÔNG ảnh hưởng gì tới dữ liệu đã lưu, chỉ ảnh hưởng THỨ TỰ HIỂN THỊ.
+        function compareMsnvAsc_(a, b) {
+            let ma = String(a || "").trim();
+            let mb = String(b || "").trim();
+            if (!ma && !mb) return 0;
+            if (!ma) return 1;
+            if (!mb) return -1;
+            return ma.localeCompare(mb, "vi", { numeric: true, sensitivity: "base" });
+        }
+
+        // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - THEO DÕI THÔNG TIN ĐỘI TÀU] Ghi lại ĐÚNG thứ tự các
+        // "idx" GỐC trong crewData đang được hiển thị trên bảng (sau khi đã sắp xếp theo MSNV
+        // tăng dần) — dùng để filterCrewTable() ẩn/hiện ĐÚNG dòng tương ứng khi người dùng gõ
+        // tìm kiếm/lọc (KHÔNG còn giả định "dòng thứ i trên bảng = crewData[i]" như trước, vì
+        // bảng nay hiển thị theo thứ tự ĐÃ SẮP XẾP, không còn đúng thứ tự gốc trong crewData).
+        let crewTableDisplayOrder_ = [];
+
         function renderCrewTable() {
             let canEdit = (currentUser && (currentUser.role === "Admin" || currentUser.role === "ReadWrite"));
             let btnCrewTransfer = document.getElementById("btn-crew-transfer");
             if (btnCrewTransfer) btnCrewTransfer.style.display = canEdit ? "" : "none";
-            let htmlCrew = crewData.map((c, idx) => `
+            // [MỚI - SẮP XẾP MSNV TĂNG DẦN] Sắp xếp bảng hiển thị theo MSNV tăng dần (xem
+            // compareMsnvAsc_ ở trên). CHỈ đổi THỨ TỰ HIỂN THỊ trên bảng — KHÔNG sắp xếp lại
+            // mảng crewData gốc (giữ nguyên thứ tự lưu trữ/đồng bộ với Google Sheet như cũ,
+            // không ảnh hưởng bất kỳ dữ liệu hay cơ chế nào khác đang dùng đến crewData).
+            let sortedCrew = crewData
+                .map((c, idx) => ({ c: c, idx: idx }))
+                .sort((a, b) => compareMsnvAsc_(a.c.msnv, b.c.msnv));
+            crewTableDisplayOrder_ = sortedCrew.map(item => item.idx);
+            let htmlCrew = sortedCrew.map((item, stt) => {
+                let c = item.c, idx = item.idx;
+                return `
                 <tr>
+                    <td>${stt + 1}</td>
                     <td><b>${escapeHtml(c.name)}</b></td>
                     <td>${escapeHtml(c.msnv || "-")}</td>
                     <td>${formatDateDisplay(c.dob)}</td>
@@ -15349,7 +15384,8 @@
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
             document.querySelector("#tbl-crew tbody").innerHTML = htmlCrew;
         }
 
@@ -17468,11 +17504,17 @@
             let statusFilter = statusFilterEl ? statusFilterEl.value : "Tất cả";
             let rows = document.querySelectorAll("#tbl-crew tbody tr");
 
-            crewData.forEach((c, idx) => {
+            // [SỬA - ĐỒNG BỘ VỚI THỨ TỰ ĐÃ SẮP XẾP THEO MSNV] Bảng nay hiển thị theo thứ tự ĐÃ
+            // SẮP XẾP (crewTableDisplayOrder_, xem renderCrewTable()), KHÔNG còn đúng thứ tự gốc
+            // trong crewData -> phải duyệt theo ĐÚNG thứ tự đang hiển thị (rows[i] tương ứng
+            // crewData[crewTableDisplayOrder_[i]]) thì mới ẩn/hiện đúng dòng, tránh lọc nhầm dòng.
+            crewTableDisplayOrder_.forEach((originalIdx, i) => {
+                let c = crewData[originalIdx];
+                if (!c || !rows[i]) return;
                 let matchSearch = c.name.toLowerCase().includes(search) || c.position.toLowerCase().includes(search) || String(c.msnv || "").toLowerCase().includes(search);
                 let matchVessel = (vessel === "Tất cả" || c.vessel === vessel);
                 let matchStatus = (statusFilter === "Tất cả" || (c.workStatus || "ON") === statusFilter);
-                if(rows[idx]) rows[idx].style.display = (matchSearch && matchVessel && matchStatus) ? "" : "none";
+                rows[i].style.display = (matchSearch && matchVessel && matchStatus) ? "" : "none";
             });
         }
 
