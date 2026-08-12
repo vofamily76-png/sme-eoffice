@@ -15369,7 +15369,7 @@
                 let c = item.c, idx = item.idx;
                 return `
                 <tr>
-                    <td>${stt + 1}</td>
+                    <td class="crew-stt-cell">${stt + 1}</td>
                     <td><b>${escapeHtml(c.name)}</b></td>
                     <td>${escapeHtml(c.msnv || "-")}</td>
                     <td>${formatDateDisplay(c.dob)}</td>
@@ -17515,6 +17515,20 @@
                 let matchVessel = (vessel === "Tất cả" || c.vessel === vessel);
                 let matchStatus = (statusFilter === "Tất cả" || (c.workStatus || "ON") === statusFilter);
                 rows[i].style.display = (matchSearch && matchVessel && matchStatus) ? "" : "none";
+            });
+
+            // [MỚI - ĐÁNH LẠI STT KHI LỌC THEO TÀU/TÌNH TRẠNG/TỪ KHÓA] Khi chọn 1 tàu cụ thể (hoặc
+            // lọc theo tình trạng/từ khóa), cột "STT" phải đếm lại từ 1 CHỈ TRÊN CÁC DÒNG ĐANG HIỂN
+            // THỊ (không giữ nguyên số thứ tự cũ của toàn bộ danh sách, tránh nhảy cóc kiểu 3, 7, 9).
+            // Vì các dòng đã được renderCrewTable() sắp xếp sẵn theo MSNV tăng dần (xem hàm đó),
+            // nên chỉ cần đếm tuần tự theo ĐÚNG thứ tự dòng đang hiển thị trên bảng là đủ để vừa
+            // đánh số lại từ 1, vừa vẫn giữ đúng thứ tự MSNV tăng dần trong phạm vi đang lọc.
+            let sttCounter = 0;
+            rows.forEach(row => {
+                if (row.style.display === "none") return;
+                sttCounter++;
+                let sttCell = row.querySelector(".crew-stt-cell");
+                if (sttCell) sttCell.textContent = sttCounter;
             });
         }
 
