@@ -756,6 +756,26 @@
                             <ul id="hr-turnover-resign-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
                         </div>
                     </div>
+
+                    <!-- [MỚI - XUẤT EXCEL BIẾN ĐỘNG NHÂN VIÊN TRONG THÁNG] Khối RIÊNG, chỉ xuất đúng
+                         danh sách đang hiển thị ở khối "Biến động nhân viên trong tháng" phía trên
+                         (theo đúng tháng đang chọn ở ô "hr-turnover-month") — cho phép chọn xuất
+                         "Nhân viên vào làm mới trong tháng" hoặc "Nhân viên nghỉ việc trong tháng".
+                         Dữ liệu lấy LẠI NGUYÊN VẸN từ staffData đã tải sẵn theo đúng quyền của tài
+                         khoản đang đăng nhập (dùng chung hàm mapStaffForExcelExport_ với khối xuất
+                         Excel đầy đủ hồ sơ bên dưới) — KHÔNG gọi thêm API, KHÔNG đọc/ghi thêm gì
+                         trên Sheet, KHÔNG đổi dữ liệu gốc và KHÔNG thay đổi cơ chế phân quyền/bảo
+                         mật hiện có (vẫn yêu cầu quyền "XemNhanSu" y hệt điều kiện đang dùng để
+                         hiện/ẩn cả Tab và các khối xuất Excel khác). -->
+                    <div style="margin-top:14px; padding-top:14px; border-top:1px dashed #b9d7ea; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <select id="hr-turnover-export-kind" class="search-box" style="max-width:280px;">
+                            <option value="new">Xuất DS Nhân viên vào làm mới trong tháng</option>
+                            <option value="resign">Xuất DS Nhân viên nghỉ việc trong tháng</option>
+                        </select>
+                        <button type="button" class="btn btn-success" style="width:auto; padding:8px 16px;" onclick="exportHRTurnoverToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                        </button>
+                    </div>
                 </div>
 
                 <!-- [XUẤT EXCEL] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ dùng LẠI dữ liệu
@@ -858,6 +878,25 @@
                             <h5 style="margin:0 0 8px 0; color:#b91c1c;"><i class="fa-solid fa-user-minus"></i> Thuyền viên nghỉ việc: <span id="crew-turnover-resign-count">0</span></h5>
                             <ul id="crew-turnover-resign-list" style="list-style:none; padding:0; margin:0; max-height:180px; overflow-y:auto;"></ul>
                         </div>
+                    </div>
+
+                    <!-- [MỚI - XUẤT EXCEL BIẾN ĐỘNG THUYỀN VIÊN TRONG THÁNG] Khối RIÊNG, chỉ xuất
+                         đúng danh sách đang hiển thị ở khối "Biến động thuyền viên trong tháng" phía
+                         trên (theo đúng tháng đang chọn ở ô "crew-turnover-month") — cho phép chọn
+                         xuất "Thuyền viên vào làm mới trong tháng" hoặc "Thuyền viên nghỉ việc trong
+                         tháng". Dữ liệu lấy LẠI NGUYÊN VẸN từ crewData đã tải sẵn theo đúng quyền/
+                         giới hạn tàu của tài khoản đang đăng nhập — KHÔNG gọi thêm API, KHÔNG đọc/
+                         ghi thêm gì trên Sheet, KHÔNG đổi dữ liệu gốc và KHÔNG thay đổi cơ chế phân
+                         quyền/bảo mật hiện có (Tab "Quản lý Đội tàu" vốn không giới hạn quyền xem
+                         riêng ngoài giới hạn tàu, giữ nguyên như hiện tại). -->
+                    <div style="margin-top:14px; padding-top:14px; border-top:1px dashed #b9d7ea; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <select id="crew-turnover-export-kind" class="search-box" style="max-width:280px;">
+                            <option value="new">Xuất DS Thuyền viên vào làm mới trong tháng</option>
+                            <option value="resign">Xuất DS Thuyền viên nghỉ việc trong tháng</option>
+                        </select>
+                        <button type="button" class="btn btn-success" style="width:auto; padding:8px 16px;" onclick="exportCrewTurnoverToExcel()">
+                            <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                        </button>
                     </div>
                 </div>
 
@@ -15197,12 +15236,39 @@
             // (đúng những gì người dùng đã cập nhật ở Form thêm/sửa nhân sự), không chỉ một phần
             // như trước đây. Toàn bộ dữ liệu lấy lại từ staffData đã tải sẵn — không đọc/ghi
             // thêm gì trên Sheet, không đổi cơ chế bảo mật.
+            let exportRows = rows.map(mapStaffForExcelExport_);
+
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            ws['!cols'] = buildStaffExportColWidths_();
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
+
+            let scopeLabelMap = {
+                all: "TatCaNhanSu",
+                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
+                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_"),
+                working: "DangLamViec",
+                resigned: "DaNghiViec",
+                expiring: "SapHetHanHopDong"
+            };
+            let now = new Date();
+            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+            let fileName = "QuanLyNhanSu_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
+
+            XLSX.writeFile(wb, fileName);
+        }
+
+        // [MỚI - TÁI SỬ DỤNG] Trích riêng phần "map 1 nhân sự (s) -> 1 dòng Excel" và "độ rộng cột"
+        // ra khỏi exportHRToExcel() ở trên thành 2 hàm dùng chung, để khối "Xuất Excel Biến động
+        // nhân viên trong tháng" (exportHRTurnoverToExcel() bên dưới) có thể dùng LẠI NGUYÊN VẸN
+        // đúng cách xuất/định dạng đã có sẵn — KHÔNG đổi bất kỳ trường/thứ tự cột nào đang có,
+        // KHÔNG ảnh hưởng dữ liệu gốc hay cơ chế phân quyền/bảo mật hiện có.
+        function mapStaffForExcelExport_(s) {
             let genderLabelMap = { "Nam": "Nam", "Nữ": "Nữ", "Khác": "Khác" };
-            let exportRows = rows.map(s => {
-                let info = getContractStatusInfo(s);
-                let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
-                return {
-                    "MSNV": s.msnv || "",
+            let info = getContractStatusInfo(s);
+            let deptText = Array.isArray(s.dept) ? s.dept.join(", ") : (s.dept || "");
+            return {
+                "MSNV": s.msnv || "",
                     "Họ và tên": s.name || "",
                     "Giới tính": genderLabelMap[s.gender] || s.gender || "",
                     "Ngày sinh": s.dob ? formatDateDisplay(s.dob) : "",
@@ -15253,41 +15319,74 @@
                     "Số ngày làm việc trong tháng": (s.soNgayLamViecThang || s.soNgayLamViecThang === 0) ? s.soNgayLamViecThang : "",
                     "Lương thực nhận trong tháng": (s.luongThucNhanThang || s.luongThucNhanThang === 0) ? s.luongThucNhanThang : ""
                 };
-            });
+        }
 
-            let ws = XLSX.utils.json_to_sheet(exportRows);
-            // [ĐỘ RỘNG CỘT] Danh sách độ rộng PHẢI khớp đúng thứ tự 43 cột dữ liệu ở trên (24 cột
-            // gốc + 6 cột "Lương & BHXH/Hôn nhân/Giảm trừ gia cảnh" chèn ngay sau "Mã số BHXH" +
-            // 11 cột giữ nguyên + 2 cột mới "Số ngày làm việc trong tháng"/"Lương thực nhận trong
-            // tháng" thêm ở CUỐI) để mỗi cột hiển thị đủ rộng, không bị cắt chữ.
-            ws['!cols'] = [
+        // [ĐỘ RỘNG CỘT] Danh sách độ rộng PHẢI khớp đúng thứ tự 43 cột dữ liệu ở mapStaffForExcelExport_()
+        // ở trên (24 cột gốc + 6 cột "Lương & BHXH/Hôn nhân/Giảm trừ gia cảnh" chèn ngay sau "Mã số
+        // BHXH" + 11 cột giữ nguyên + 2 cột mới "Số ngày làm việc trong tháng"/"Lương thực nhận trong
+        // tháng" thêm ở CUỐI) để mỗi cột hiển thị đủ rộng, không bị cắt chữ. GIỮ NGUYÊN, không đổi.
+        function buildStaffExportColWidths_() {
+            return [
                 { wch: 12 }, { wch: 26 }, { wch: 10 }, { wch: 12 }, { wch: 14 }, { wch: 30 },
                 { wch: 22 }, { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 30 }, { wch: 16 },
                 { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 18 },
                 { wch: 18 }, { wch: 16 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 16 },
-                // [BỔ SUNG MỚI] Mức lương cơ bản, Ngày đóng BHXH, Mức lương đóng BHXH, Tình trạng
-                // hôn nhân, Trạng thái làm việc (chi tiết), Thông tin giảm trừ gia cảnh.
                 { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 }, { wch: 22 }, { wch: 30 },
                 { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 28 },
                 { wch: 22 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
-                // [BỔ SUNG MỚI] Số ngày làm việc trong tháng, Lương thực nhận trong tháng.
                 { wch: 22 }, { wch: 24 }
             ];
+        }
+
+        /* ===== [TAB "QUẢN LÝ NHÂN SỰ"] XUẤT EXCEL "BIẾN ĐỘNG NHÂN VIÊN TRONG THÁNG" =====
+           Xuất RIÊNG đúng danh sách "Nhân viên vào làm mới trong tháng" hoặc "Nhân viên nghỉ việc
+           trong tháng" đang hiển thị ở khối "Biến động nhân viên trong tháng" (theo đúng tháng đang
+           chọn ở ô "hr-turnover-month"). Dùng LẠI đúng logic lọc của renderHRMonthlyTurnover() và
+           đúng hàm map/định dạng cột của exportHRToExcel() ở trên (mapStaffForExcelExport_() /
+           buildStaffExportColWidths_()) — chỉ đọc lại staffData đã tải sẵn theo đúng quyền của tài
+           khoản đang đăng nhập, KHÔNG gọi thêm API, KHÔNG đọc/ghi thêm gì trên Sheet, KHÔNG đổi dữ
+           liệu gốc và KHÔNG thay đổi cơ chế phân quyền/bảo mật hiện có. */
+        function exportHRTurnoverToExcel() {
+            if (!currentUserCanViewHR) {
+                alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Quản Lý Nhân Sự. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let monthEl = document.getElementById("hr-turnover-month");
+            let kindEl = document.getElementById("hr-turnover-export-kind");
+            let ym = monthEl ? monthEl.value : "";
+            let kind = kindEl ? kindEl.value : "new";
+            if (!ym) {
+                alert("⚠️ Vui lòng chọn tháng cần xuất.");
+                return;
+            }
+
+            // [DÙNG LẠI ĐÚNG LOGIC LỌC] Giống hệt renderHRMonthlyTurnover() ở trên: "vào làm mới"
+            // dựa theo dateJoin, "nghỉ việc" dựa theo resignDate, cùng rơi vào tháng ym đang chọn.
+            let rows = (kind === "resign")
+                ? staffData.filter(s => s.resignDate && normalizeDateStr(s.resignDate).slice(0, 7) === ym)
+                    .sort((a, b) => normalizeDateStr(a.resignDate).localeCompare(normalizeDateStr(b.resignDate)))
+                : staffData.filter(s => normalizeDateStr(s.dateJoin).slice(0, 7) === ym)
+                    .sort((a, b) => normalizeDateStr(a.dateJoin).localeCompare(normalizeDateStr(b.dateJoin)));
+
+            if (rows.length === 0) {
+                alert(kind === "resign"
+                    ? "Không có nhân viên nghỉ việc trong tháng đã chọn để xuất."
+                    : "Không có nhân viên vào làm mới trong tháng đã chọn để xuất.");
+                return;
+            }
+
+            let exportRows = rows.map(mapStaffForExcelExport_);
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            ws['!cols'] = buildStaffExportColWidths_();
             let wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "NhanSu");
+            XLSX.utils.book_append_sheet(wb, ws, kind === "resign" ? "NhanVienNghiViec" : "NhanVienVaoMoi");
 
-            let scopeLabelMap = {
-                all: "TatCaNhanSu",
-                dept: "PhongBan_" + String(deptValue).replace(/[^\w]+/g, "_"),
-                staff: "CaNhan_" + String(staffValue).replace(/[^\w]+/g, "_"),
-                working: "DangLamViec",
-                resigned: "DaNghiViec",
-                expiring: "SapHetHanHopDong"
-            };
-            let now = new Date();
-            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
-            let fileName = "QuanLyNhanSu_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
-
+            let fileName = "BienDongNhanSu_" + (kind === "resign" ? "NghiViec" : "VaoLamMoi") + "_" + ym + ".xlsx";
             XLSX.writeFile(wb, fileName);
         }
 
@@ -15515,6 +15614,82 @@
             resignListEl.innerHTML = resigned.length
                 ? resigned.map(c => `<li style="padding:6px 8px; border-bottom:1px solid #eee;"><b>${escapeHtml(c.name)}</b>${c.msnv ? ' (MSNV: ' + escapeHtml(c.msnv) + ')' : ''} - ${escapeHtml(c.vessel)} - ${formatDateDisplay(c.resignDate)}</li>`).join('')
                 : `<li style="padding:6px 8px; color:#666;">Không có thuyền viên nghỉ việc trong tháng này.</li>`;
+        }
+
+        /* ===== [TAB "QUẢN LÝ ĐỘI TÀU"] XUẤT EXCEL "BIẾN ĐỘNG THUYỀN VIÊN TRONG THÁNG" =====
+           Xuất RIÊNG đúng danh sách "Thuyền viên vào làm mới trong tháng" hoặc "Thuyền viên nghỉ
+           việc trong tháng" đang hiển thị ở khối "Biến động thuyền viên trong tháng" (theo đúng
+           tháng đang chọn ở ô "crew-turnover-month"). Xuất file NGAY TẠI TRÌNH DUYỆT bằng SheetJS,
+           dùng LẠI đúng logic lọc của renderCrewMonthlyTurnover() ở trên — chỉ đọc lại crewData đã
+           tải sẵn theo đúng quyền/giới hạn tàu của tài khoản đang đăng nhập (currentUser.doiTauTauDuocXem),
+           KHÔNG gọi thêm API, KHÔNG đọc/ghi thêm gì trên Sheet, KHÔNG đổi dữ liệu gốc và KHÔNG thay
+           đổi cơ chế phân quyền/bảo mật hiện có. */
+
+        // Map 1 thuyền viên (c) -> 1 dòng Excel, đầy đủ các trường hiện có trong hồ sơ Đội tàu
+        // (khớp đúng các trường đang lưu ở saveCrew(), xem index.html phần lưu form).
+        function mapCrewForExcelExport_(c) {
+            return {
+                "MSNV": c.msnv || "",
+                "Họ và tên": c.name || "",
+                "Ngày sinh": c.dob ? formatDateDisplay(c.dob) : "",
+                "Tàu công tác": c.vessel || "",
+                "Chức danh": c.position || "",
+                "Ngày xuống tàu": c.dateJoin ? formatDateDisplay(c.dateJoin) : "",
+                "Số tháng làm việc": (c.months || c.months === 0) ? c.months : "",
+                "Số điện thoại": c.phone || "",
+                "Email liên hệ": c.email || "",
+                "Tình trạng làm việc": (c.workStatus === "OFF") ? "Đã nghỉ việc" : (c.workStatus === "ON_LEAVE" ? "Đang nghỉ ca" : "Đang làm việc"),
+                "Ngày nghỉ việc": c.resignDate ? formatDateDisplay(c.resignDate) : "",
+                "Số người phụ thuộc": (c.soNguoiPhuThuoc || c.soNguoiPhuThuoc === 0) ? c.soNguoiPhuThuoc : ""
+            };
+        }
+
+        function buildCrewExportColWidths_() {
+            return [
+                { wch: 12 }, { wch: 26 }, { wch: 12 }, { wch: 22 }, { wch: 22 },
+                { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 26 }, { wch: 18 },
+                { wch: 14 }, { wch: 16 }
+            ];
+        }
+
+        function exportCrewTurnoverToExcel() {
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let monthEl = document.getElementById("crew-turnover-month");
+            let kindEl = document.getElementById("crew-turnover-export-kind");
+            let ym = monthEl ? monthEl.value : "";
+            let kind = kindEl ? kindEl.value : "new";
+            if (!ym) {
+                alert("⚠️ Vui lòng chọn tháng cần xuất.");
+                return;
+            }
+
+            // [DÙNG LẠI ĐÚNG LOGIC LỌC] Giống hệt renderCrewMonthlyTurnover() ở trên: "vào làm mới"
+            // dựa theo dateJoin, "nghỉ việc" dựa theo resignDate, cùng rơi vào tháng ym đang chọn.
+            let rows = (kind === "resign")
+                ? crewData.filter(c => c.resignDate && normalizeDateStr(c.resignDate).slice(0, 7) === ym)
+                    .sort((a, b) => normalizeDateStr(a.resignDate).localeCompare(normalizeDateStr(b.resignDate)))
+                : crewData.filter(c => normalizeDateStr(c.dateJoin).slice(0, 7) === ym)
+                    .sort((a, b) => normalizeDateStr(a.dateJoin).localeCompare(normalizeDateStr(b.dateJoin)));
+
+            if (rows.length === 0) {
+                alert(kind === "resign"
+                    ? "Không có thuyền viên nghỉ việc trong tháng đã chọn để xuất."
+                    : "Không có thuyền viên vào làm mới trong tháng đã chọn để xuất.");
+                return;
+            }
+
+            let exportRows = rows.map(mapCrewForExcelExport_);
+            let ws = XLSX.utils.json_to_sheet(exportRows);
+            ws['!cols'] = buildCrewExportColWidths_();
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, kind === "resign" ? "ThuyenVienNghiViec" : "ThuyenVienVaoMoi");
+
+            let fileName = "BienDongThuyenVien_" + (kind === "resign" ? "NghiViec" : "VaoLamMoi") + "_" + ym + ".xlsx";
+            XLSX.writeFile(wb, fileName);
         }
 
         /* ===== QUẢN LÝ THIẾT BỊ ===== */
