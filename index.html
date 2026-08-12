@@ -17148,13 +17148,34 @@
                 let name = document.getElementById("inp-name").value.trim();
                 if (!name) { alert("Vui lòng điền Họ tên thuyền viên!"); return; }
 
+                // [MỚI - CHỐNG TRÙNG MÃ NHÂN VIÊN (MSNV) CHO THUYỀN VIÊN ĐỘI TÀU] Trước đây
+                // "saveCrew" chỉ xác định dòng cần ghi theo Họ tên (findRowIndexByValue theo
+                // cột "HoTen"), nên nếu 2 thuyền viên khác tên nhưng lỡ nhập trùng MSNV, hệ
+                // thống KHÔNG hề cảnh báo mà cứ lưu trùng luôn. Nay kiểm tra trùng NGAY TRÊN
+                // TRÌNH DUYỆT trước (giống hệt cách đang làm với MSNV của Nhân sự văn phòng ở
+                // trên) để báo lỗi tức thì, RỒI server (action "saveCrew" ở Code.gs) vẫn tự
+                // kiểm tra lại lần nữa cho chắc chắn (đề phòng 2 người cùng lưu gần như đồng
+                // thời, hoặc trình duyệt đang chạy bản giao diện cũ chưa có bước kiểm tra này).
+                // CHỈ kiểm tra khi người dùng CÓ nhập MSNV (để trống vẫn được phép như cũ, do
+                // MSNV của Thuyền viên Đội tàu không bắt buộc).
+                let crewMsnv = document.getElementById("inp-msnv").value.trim();
+                let crewCheckIndex = isEdit ? parseInt(index) : -1;
+                if (crewMsnv) {
+                    let duplicateCrewMsnv = crewData.find((item, idx) =>
+                        idx !== crewCheckIndex && String(item.msnv || "").trim().toLowerCase() === crewMsnv.toLowerCase());
+                    if (duplicateCrewMsnv) {
+                        alert("❌ Lỗi: Mã nhân viên (MSNV) \"" + crewMsnv + "\" đã được sử dụng bởi thuyền viên \"" + duplicateCrewMsnv.name + "\". Vui lòng nhập MSNV khác.");
+                        return;
+                    }
+                }
+
                 let obj = {
                     name: name,
                     // [MỚI - THÊM "MÃ NHÂN VIÊN (MSNV)" CHO THUYỀN VIÊN ĐỘI TÀU] Gửi kèm giá trị
                     // đã nhập ở ô "inp-msnv" (nay đã hiện cho "Thuyền viên Đội tàu" — xem
                     // handleFormFieldsSwitch() ở trên) — server lưu vào cột MỚI "MSNV" (cột 11)
                     // của Sheet "Đội tàu", KHÔNG đụng/đổi các cột dữ liệu khác đã có.
-                    msnv: document.getElementById("inp-msnv").value.trim(),
+                    msnv: crewMsnv,
                     dob: document.getElementById("inp-dob").value,
                     vessel: document.getElementById("inp-vessel").value,
                     position: document.getElementById("inp-position").value.trim(),
@@ -17170,9 +17191,20 @@
                     soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0
                 };
 
+                // [SỬA LỖI - CHỈ CẬP NHẬT DỮ LIỆU CỤC BỘ (crewData) SAU KHI SERVER LƯU THÀNH
+                // CÔNG] Trước đây crewData được cập nhật/lưu cache NGAY TRƯỚC khi gọi server,
+                // nên nếu server từ chối lưu (VD lỗi mạng, hoặc bị chặn do trùng MSNV) thì màn
+                // hình vẫn hiện "✔️ Đã lưu thành công" và điều hướng đi như KHÔNG có chuyện gì
+                // xảy ra — gây hiểu lầm là đã lưu trong khi Google Sheet KHÔNG hề có dữ liệu
+                // mới. Nay: chỉ ghi vào crewData + hiện thông báo thành công SAU KHI server xác
+                // nhận lưu thành công (pushToCloud trả về true); nếu server báo lỗi (VD trùng
+                // MSNV), pushToCloud tự hiện rõ thông báo lỗi và hàm dừng lại luôn tại đây,
+                // KHÔNG mất dữ liệu đang nhập trên form (KHÔNG gọi resetForm/chuyển trang).
+                let crewSaveOk = await pushToCloud(Object.assign({ action: "saveCrew", type: "crew" }, obj));
+                if (!crewSaveOk) return;
+
                 if (isEdit) crewData[index] = obj; else crewData.push(obj);
                 saveLocalCache();
-                await pushToCloud(Object.assign({ action: "saveCrew", type: "crew" }, obj));
             }
 
             alert("✔️ Đã lưu thông tin lên hệ thống.");
