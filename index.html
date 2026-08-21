@@ -1065,7 +1065,16 @@
                             <input type="date" id="inp-resign-date">
                         </div>
                     </div>
-                    <div class="form-row contract-group">
+                    <!-- [MỚI - THUYỀN VIÊN ĐỘI TÀU: HỢP ĐỒNG LAO ĐỘNG] Gắn thêm class
+                         "crew-contract-group" (NGOÀI class "contract-group" cũ vốn CHỈ dành cho
+                         Nhân sự Văn phòng) để khối "Loại hợp đồng lao động / Số hợp đồng / Ngày
+                         ký hợp đồng / Ngày hết hạn hợp đồng" NAY cũng hiện ra khi Phân loại đối
+                         tượng = "Thuyền viên Đội tàu" — xem handleFormFieldsSwitch() (KHÔNG hiện
+                         thêm bất kỳ khối "contract-group" nào khác như Ngân hàng/CCCD/Học vấn...
+                         cho Thuyền viên, chỉ đúng phạm vi 2 khối có thêm class này). KHÔNG đổi
+                         id/cách đọc-ghi các ô bên trong (vẫn "inp-contract-type" -> contractType
+                         như cũ), nên KHÔNG ảnh hưởng dữ liệu Nhân sự Văn phòng đã lưu. -->
+                    <div class="form-row contract-group crew-contract-group">
                         <div class="input-group">
                             <label>Loại hợp đồng lao động</label>
                             <select id="inp-contract-type" onchange="onContractTypeChange()">
@@ -1088,7 +1097,14 @@
                             <span class="file-help-text">Hệ thống sẽ tự động cảnh báo khi hợp đồng còn 30 ngày trước hạn.</span>
                         </div>
                     </div>
-                    <div class="form-row contract-group">
+                    <!-- [MỚI - THUYỀN VIÊN ĐỘI TÀU: SỐ LẦN KÝ HỢP ĐỒNG] Tương tự khối phía trên,
+                         gắn thêm class "crew-contract-group" để khối "Số lần ký hợp đồng" cũng
+                         hiện được cho Thuyền viên Đội tàu — DÙNG CHUNG đúng danh sách tạm
+                         "currentContractHistory" + các hàm addContractHistoryRow()/
+                         renderContractHistoryList() đã có sẵn (KHÔNG thêm biến/hàm mới), hệ
+                         thống tự đánh số "Lần 1", "Lần 2"... theo thời gian ký (xem
+                         renderContractHistoryList() và normalizeContractHistory() ở Code.gs). -->
+                    <div class="form-row contract-group crew-contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-file-signature"></i> Số lần ký hợp đồng</label>
                             <span style="font-weight:normal; color:#888; font-size:11.5px;">Ghi lại toàn bộ các lần ký hợp đồng lao động (VD: ký lần đầu, ký lại/gia hạn...). Hệ thống tự đánh số thứ tự "Lần ký" theo đúng thời gian, dùng để tự tính đề xuất Tổng số ngày nghỉ phép bên dưới.</span>
@@ -4390,18 +4406,6 @@
                     payload.authToken = authToken;
                 }
                 let data = await fetchSystemData(payload);
-                // [SỬA LỖI - THOÁNG QUA NGAY SAU KHI ĐĂNG NHẬP] Rất hiếm khi (do CacheService của
-                // Google Apps Script có độ trễ nhất định), request đầu tiên NGAY SAU KHI vừa đăng
-                // nhập xong có thể tạm thời không tra ra token dù vừa được cấp hợp lệ. Trước khi
-                // kết luận "hết phiên đăng nhập" (và làm gián đoạn trải nghiệm người vừa đăng nhập),
-                // thử lại DUY NHẤT 1 lần sau một khoảng chờ ngắn — nếu token thật sự không hợp lệ/
-                // hết hạn thì lần thử lại này cũng sẽ báo lỗi y hệt, và lỗi vẫn được báo bình thường
-                // như trước (KHÔNG che giấu lỗi thật, chỉ tránh báo nhầm do độ trễ tạm thời).
-                if (data.status === "ERROR" && authToken &&
-                    /xác thực|hết hạn/i.test(data.message || "")) {
-                    await new Promise(r => setTimeout(r, 700));
-                    data = await fetchSystemData(payload);
-                }
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 staffData = (data.staff || []).map(item => {
@@ -4511,7 +4515,17 @@
                 if (data.status === "ERROR") throw new Error(data.message);
                 return true;
             } catch (err) {
-                alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
+                // [SỬA LỖI] Khi lỗi đúng là do phiên đăng nhập hết hạn/thiếu xác thực (server ném
+                // từ requireAuth() khi resolveAuthedUser() trả về null — xem Code.gs), hiện rõ
+                // thêm 1 dòng trấn an: dữ liệu đang nhập dở trên biểu mẫu vẫn còn nguyên trong
+                // trang (chỉ cần đăng nhập lại rồi bấm "Lưu" lại — KHÔNG cần gõ lại từ đầu, vì
+                // trang KHÔNG bị tải lại/xoá form ở bước này), tránh gây hoang mang tưởng mất hết
+                // dữ liệu vừa nhập.
+                if (err.message && err.message.indexOf("đăng nhập lại") !== -1) {
+                    alert("❌ Phiên đăng nhập đã hết hạn: " + err.message + "\n\n✅ Dữ liệu bạn vừa nhập vẫn còn nguyên trên biểu mẫu. Vui lòng đăng nhập lại (không cần tải lại trang), sau đó quay lại đây và bấm \"Lưu\" lại là được.");
+                } else {
+                    alert("❌ Lỗi khi lưu lên Google Sheet: " + err.message);
+                }
                 console.error(err);
                 return false;
             } finally {
@@ -14496,11 +14510,18 @@
                 document.querySelectorAll(".select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
                 document.querySelectorAll(".id-group, .email-group, .select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
-                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động, thông tin ngân hàng, liên hệ khẩn
-                // cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Thông tin ngân hàng, liên hệ khẩn cấp, CCCD, học vấn...
+                // gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
                 // Thuyền viên Đội tàu (gắn với Tàu). Dùng querySelectorAll vì có NHIỀU khối
-                // ".contract-group" (hợp đồng / ngân hàng / liên hệ khẩn cấp).
+                // ".contract-group" (hợp đồng / ngân hàng / liên hệ khẩn cấp / CCCD / học vấn...).
                 document.querySelectorAll(".contract-group").forEach(el => el.style.display = "none");
+                // [MỚI - THUYỀN VIÊN ĐỘI TÀU: HỢP ĐỒNG LAO ĐỘNG] Riêng 2 khối "Loại hợp đồng lao
+                // động/Số hợp đồng/Ngày ký/Ngày hết hạn" và "Số lần ký hợp đồng" (đánh dấu thêm
+                // class "crew-contract-group" ở trên) VẪN hiện cho Thuyền viên Đội tàu theo yêu
+                // cầu mới — ghi đè lại display "grid"/"block" cho ĐÚNG 2 khối này (KHÔNG hiện lại
+                // các khối "contract-group" khác như Ngân hàng/CCCD/Học vấn/Lương...).
+                document.querySelectorAll(".crew-contract-group").forEach(el => el.style.display = (el.classList.contains("form-row") ? "grid" : "block"));
+                onContractTypeChange();
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
                 document.querySelectorAll(".select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "none");
@@ -17520,6 +17541,16 @@
                     }
                 }
 
+                // [MỚI - THUYỀN VIÊN ĐỘI TÀU: HỢP ĐỒNG LAO ĐỘNG] Dùng lại ĐÚNG các ô/hàm đã có
+                // sẵn cho Nhân sự Văn phòng ("inp-contract-type"/contractTypeHasExpiry) — hợp
+                // đồng "Có thời hạn"/"Hợp đồng thử việc" vẫn bắt buộc phải có Ngày hết hạn.
+                let crewContractType = document.getElementById("inp-contract-type").value || "Không thời hạn";
+                let crewContractExpiryDate = document.getElementById("inp-contract-expiry-date").value;
+                if (contractTypeHasExpiry(crewContractType) && !crewContractExpiryDate) {
+                    alert("⚠️ Vui lòng nhập Ngày hết hạn hợp đồng cho loại hợp đồng \"" + crewContractType + "\"!");
+                    return;
+                }
+
                 let obj = {
                     name: name,
                     // [MỚI - THÊM "MÃ NHÂN VIÊN (MSNV)" CHO THUYỀN VIÊN ĐỘI TÀU] Gửi kèm giá trị
@@ -17539,7 +17570,19 @@
                     // [MỚI - NPT (NGƯỜI PHỤ THUỘC)] Gửi kèm giá trị đã nhập ở ô "inp-npt" (xem
                     // markup + handleFormFieldsSwitch() ở trên) — server lưu vào cột MỚI
                     // "SoNguoiPhuThuoc" của Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs).
-                    soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0
+                    soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0,
+                    // [MỚI - THUYỀN VIÊN ĐỘI TÀU: HỢP ĐỒNG LAO ĐỘNG] Loại hợp đồng lao động, Số
+                    // hợp đồng, Ngày ký hợp đồng, Ngày hết hạn hợp đồng — server lưu vào 4 cột
+                    // MỚI của Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs).
+                    contractType: crewContractType,
+                    contractNumber: document.getElementById("inp-contract-number").value.trim(),
+                    contractSignDate: document.getElementById("inp-contract-sign-date").value,
+                    contractExpiryDate: contractTypeHasExpiry(crewContractType) ? crewContractExpiryDate : "",
+                    // [MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Danh sách các lần ký hợp đồng (chỉ gửi các dòng
+                    // đã có ngày ký hợp lệ) — server tự sắp xếp theo thời gian và đánh lại số
+                    // "Lần ký" khi lưu (normalizeContractHistory ở Code.gs), giống hệt cách đang
+                    // làm cho Nhân sự Văn phòng.
+                    lichSuKyHopDong: currentContractHistory.filter(function (e) { return e.ngayKy; })
                 };
 
                 // [SỬA LỖI - CHỈ CẬP NHẬT DỮ LIỆU CỤC BỘ (crewData) SAU KHI SERVER LƯU THÀNH
@@ -17703,6 +17746,21 @@
                 document.getElementById("inp-work-status").value = d.workStatus || "ON";
                 document.getElementById("inp-resign-date").value = d.resignDate || "";
                 onWorkStatusChange();
+
+                // [MỚI - THUYỀN VIÊN ĐỘI TÀU: HỢP ĐỒNG LAO ĐỘNG] Đổ lại dữ liệu Loại hợp đồng/
+                // Số hợp đồng/Ngày ký/Ngày hết hạn vào form khi sửa — dùng lại ĐÚNG các ô/hàm đã
+                // có sẵn cho Nhân sự Văn phòng, KHÔNG thêm ô mới.
+                document.getElementById("inp-contract-type").value = d.contractType || "Không thời hạn";
+                document.getElementById("inp-contract-sign-date").value = d.contractSignDate || "";
+                document.getElementById("inp-contract-expiry-date").value = d.contractExpiryDate || "";
+                document.getElementById("inp-contract-number").value = d.contractNumber || "";
+                onContractTypeChange();
+
+                // [MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Đổ lại lịch sử các lần ký hợp đồng đã lưu. Truyền
+                // recalcLeave = false để KHÔNG ảnh hưởng tới ô "Tổng số ngày nghỉ phép" (khối này
+                // vốn CHỈ áp dụng cho Nhân sự Văn phòng, ẩn với Thuyền viên Đội tàu).
+                currentContractHistory = Array.isArray(d.lichSuKyHopDong) ? d.lichSuKyHopDong.map(function (e) { return { ngayKy: e && e.ngayKy ? e.ngayKy : "" }; }) : [];
+                renderContractHistoryList(false);
             }
             document.getElementById("btn-cancel-edit").style.display = "inline-block";
         }
@@ -18666,15 +18724,39 @@
         // --- BẮT ĐẦU CƠ CHẾ TỰ ĐỘNG ĐĂNG XUẤT KHI KHÔNG HOẠT ĐỘNG ---
         let autoLogoutTimer = function () {
             let time;
-            // Đặt thời gian tự động đăng xuất: 15 phút = 15 * 60 * 1000 = 900000 mili-giây
-            const MAX_IDLE_TIME = 900000; 
+            let warnTime;
+            // [SỬA LỖI] 15 phút là quá ngắn so với thời gian cần để nhập ĐẦY ĐỦ 1 hồ sơ nhân sự/
+            // thuyền viên mới (nhất là từ khi bổ sung thêm các trường Hợp đồng lao động) — người
+            // dùng bị âm thầm đăng xuất giữa chừng, tới lúc bấm "Lưu" thì bị chặn với lỗi "Thiếu
+            // thông tin xác thực hoặc phiên đăng nhập đã hết hạn". Nay tăng lên 30 phút KHÔNG
+            // hoạt động thật sự (không phải 30 phút kể từ khi mở form) mới tự đăng xuất.
+            const MAX_IDLE_TIME = 30 * 60 * 1000;
+            // [MỚI] Cảnh báo trước 2 phút để người dùng chủ động bấm giữ phiên, tránh bị đăng
+            // xuất bất ngờ ngay khi đang thao tác dở (không tính là "không hoạt động" nữa vì
+            // người dùng đã được hỏi và xác nhận vẫn còn ở đó).
+            const WARN_BEFORE_LOGOUT = 2 * 60 * 1000;
+            let warningShown = false;
 
             function resetTimer() {
                 clearTimeout(time);
+                clearTimeout(warnTime);
+                warningShown = false;
                 // Chỉ đếm giờ nếu người dùng đã đăng nhập (vào màn hình chính)
                 if (currentUser !== null) {
+                    warnTime = setTimeout(showIdleWarning, MAX_IDLE_TIME - WARN_BEFORE_LOGOUT);
                     time = setTimeout(forceLogout, MAX_IDLE_TIME);
                 }
+            }
+
+            // [MỚI] Hỏi trước khi thật sự đăng xuất — người dùng bấm OK (hoặc bất kỳ thao tác gì
+            // khác) sẽ tự làm mới bộ đếm (confirm() bên dưới cũng tự tính là 1 thao tác, gọi
+            // resetTimer() ngay sau đó) — KHÔNG tải lại trang, KHÔNG đụng tới dữ liệu đang nhập
+            // dở trên biểu mẫu, KHÔNG đổi cơ chế xác thực/token phía server.
+            function showIdleWarning() {
+                if (warningShown || currentUser === null) return;
+                warningShown = true;
+                alert("⏳ Phiên làm việc sắp hết hạn do không có thao tác trong " + Math.round((MAX_IDLE_TIME - WARN_BEFORE_LOGOUT) / 60000) + " phút.\n\nBấm OK để TIẾP TỤC làm việc (dữ liệu đang nhập vẫn còn nguyên) — nếu không sẽ tự đăng xuất sau " + Math.round(WARN_BEFORE_LOGOUT / 60000) + " phút nữa.");
+                resetTimer();
             }
 
             function forceLogout() {
@@ -18682,16 +18764,46 @@
                 handleLogout();
             }
 
-            // Lắng nghe mọi cử động của chuột/bàn phím để làm mới bộ đếm
-            window.onload = resetTimer;
-            document.onmousemove = resetTimer;
-            document.onkeypress = resetTimer;
-            document.onscroll = resetTimer;
-            document.onclick = resetTimer;
+            // [SỬA LỖI] Trước đây gán "document.onmousemove/onkeypress/onscroll/onclick = ..."
+            // — cách gán này CHỈ GIỮ ĐƯỢC 1 HANDLER, nếu có đoạn code khác trong hệ thống lỡ gán
+            // lại CÙNG thuộc tính đó thì cơ chế làm mới bộ đếm bị âm thầm vô hiệu hoá mà không
+            // báo lỗi gì. Nay đổi sang addEventListener (cộng dồn được nhiều handler, không lo bị
+            // ghi đè). Đồng thời "keypress" KHÔNG bắt được Backspace/Delete/Tab/phím mũi tên (các
+            // phím này không sinh ký tự) khiến người dùng vẫn đang sửa dữ liệu mà bộ đếm không
+            // được reset — nay theo dõi thêm "keydown" (bắt MỌI phím) và "input" (bắt mọi thay
+            // đổi giá trị ô nhập/chọn ngày/dropdown), cùng "touchstart" cho máy tính bảng/điện
+            // thoại chạm màn hình không có chuột.
+            ["mousemove", "keydown", "input", "scroll", "click", "touchstart"].forEach(function (evt) {
+                document.addEventListener(evt, resetTimer, { passive: true });
+            });
+            window.addEventListener("load", resetTimer);
         };
         
         // Kích hoạt tính năng đếm giờ
         autoLogoutTimer();
+
+        // [MỚI - LÀM MỚI PHIÊN NGẦM] Ngoài việc reset bộ đếm "không hoạt động" ở trên, còn cần
+        // làm mới TTL của token phía SERVER (CacheService tối đa 6 tiếng/lần, xem
+        // SESSION_TOKEN_TTL_SECONDS ở Code.gs) — nếu không, người dùng vẫn đang thao tác đều đặn
+        // (không bị đăng xuất do idle) nhưng nếu NHIỀU GIỜ liền không có yêu cầu ghi/tải dữ liệu
+        // nào (VD: chỉ mở form và đọc tài liệu tham khảo rất lâu trước khi gõ), token vẫn có thể
+        // hết hạn đúng lúc bấm "Lưu". Cứ mỗi 10 phút, nếu đang đăng nhập bằng token thật (không
+        // phải lối vào tạm "admin/123"), gọi ngầm ĐÚNG action "resumeSession" đã có sẵn (KHÔNG
+        // thêm action mới, KHÔNG cần mật khẩu, KHÔNG nới lỏng xác thực — chỉ xác nhận lại token
+        // hiện có còn hợp lệ hay không, giống hệt logic requireAuth ở mọi request khác) để gia
+        // hạn phiên (sliding expiration) — nếu token đã thực sự hết hạn/bị thu hồi (VD Admin khoá
+        // tài khoản), lệnh này thất bại và KHÔNG làm gì thêm (người dùng vẫn bị chặn khi thao tác
+        // thật như bình thường, không có gì bị bỏ qua về bảo mật).
+        setInterval(async function () {
+            if (!authToken || !currentUser || !isScriptUrlConfigured()) return;
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "resumeSession", authToken: authToken })
+                });
+            } catch (e) { /* lỗi mạng tạm thời -> bỏ qua, sẽ thử lại ở lần kế tiếp */ }
+        }, 10 * 60 * 1000);
         // --- KẾT THÚC CƠ CHẾ TỰ ĐỘNG ĐĂNG XUẤT ---
 
         window.addEventListener("load", () => {
