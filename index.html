@@ -4390,6 +4390,18 @@
                     payload.authToken = authToken;
                 }
                 let data = await fetchSystemData(payload);
+                // [SỬA LỖI - THOÁNG QUA NGAY SAU KHI ĐĂNG NHẬP] Rất hiếm khi (do CacheService của
+                // Google Apps Script có độ trễ nhất định), request đầu tiên NGAY SAU KHI vừa đăng
+                // nhập xong có thể tạm thời không tra ra token dù vừa được cấp hợp lệ. Trước khi
+                // kết luận "hết phiên đăng nhập" (và làm gián đoạn trải nghiệm người vừa đăng nhập),
+                // thử lại DUY NHẤT 1 lần sau một khoảng chờ ngắn — nếu token thật sự không hợp lệ/
+                // hết hạn thì lần thử lại này cũng sẽ báo lỗi y hệt, và lỗi vẫn được báo bình thường
+                // như trước (KHÔNG che giấu lỗi thật, chỉ tránh báo nhầm do độ trễ tạm thời).
+                if (data.status === "ERROR" && authToken &&
+                    /xác thực|hết hạn/i.test(data.message || "")) {
+                    await new Promise(r => setTimeout(r, 700));
+                    data = await fetchSystemData(payload);
+                }
                 if (data.status === "ERROR") throw new Error(data.message);
 
                 staffData = (data.staff || []).map(item => {
