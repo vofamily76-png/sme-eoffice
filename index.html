@@ -925,7 +925,7 @@
                          đang hiển thị, tức đã sắp xếp theo MSNV tăng dần — xem renderCrewTable()).
                          Cột này CHỈ hiển thị số thứ tự hiển thị, KHÔNG lưu vào Sheet/crewData,
                          nên không ảnh hưởng dữ liệu hay bảo mật. -->
-                    <thead><tr><th>STT</th><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th>Tình trạng làm việc</th><th class="admin-action-header">Thao tác</th></tr></thead>
+                    <thead><tr><th>STT</th><th>Họ & tên</th><th>Mã nhân viên (MSNV)</th><th>Ngày sinh</th><th>Tên tàu công tác</th><th>Chức danh</th><th>Ngày xuống tàu</th><th>Số tháng làm việc</th><th>Email liên hệ</th><th>Tình trạng làm việc</th><th>Hợp đồng lao động</th><th class="admin-action-header">Thao tác</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -1065,7 +1065,14 @@
                             <input type="date" id="inp-resign-date">
                         </div>
                     </div>
-                    <div class="form-row contract-group">
+                    <!-- [MỚI - THUYỀN VIÊN ĐỘI TÀU] 2 khối "form-row" bên dưới (Loại/Số/Ngày ký/Ngày hết hạn
+                         hợp đồng, và "Số lần ký hợp đồng") được đánh dấu THÊM class "crew-contract-group"
+                         (bên cạnh class "contract-group" cũ) để hiển thị được cho CẢ Nhân sự Văn phòng LẪN
+                         Thuyền viên Đội tàu — xem handleFormFieldsSwitch() ở index.html: khi chọn "Thuyền
+                         viên Đội tàu", CHỈ 2 khối có class "crew-contract-group" này còn hiện, các khối
+                         ".contract-group" khác (ngân hàng/CCCD/học vấn/lương...) vẫn ẨN như trước, KHÔNG đổi
+                         hành vi cũ của Nhân sự Văn phòng. -->
+                    <div class="form-row contract-group crew-contract-group">
                         <div class="input-group">
                             <label>Loại hợp đồng lao động</label>
                             <select id="inp-contract-type" onchange="onContractTypeChange()">
@@ -1088,10 +1095,10 @@
                             <span class="file-help-text">Hệ thống sẽ tự động cảnh báo khi hợp đồng còn 30 ngày trước hạn.</span>
                         </div>
                     </div>
-                    <div class="form-row contract-group">
+                    <div class="form-row contract-group crew-contract-group">
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <label style="font-weight:bold; color: var(--secondary-color, #c0392b);"><i class="fa-solid fa-file-signature"></i> Số lần ký hợp đồng</label>
-                            <span style="font-weight:normal; color:#888; font-size:11.5px;">Ghi lại toàn bộ các lần ký hợp đồng lao động (VD: ký lần đầu, ký lại/gia hạn...). Hệ thống tự đánh số thứ tự "Lần ký" theo đúng thời gian, dùng để tự tính đề xuất Tổng số ngày nghỉ phép bên dưới.</span>
+                            <span style="font-weight:normal; color:#888; font-size:11.5px;">Ghi lại toàn bộ các lần ký hợp đồng lao động (VD: ký lần đầu, ký lại/gia hạn...). Hệ thống tự đánh số thứ tự "Lần ký" theo đúng thời gian (tự động hiện "Lần 1" ngay khi có 1 lần ký đầu tiên), dùng để tự tính đề xuất Tổng số ngày nghỉ phép bên dưới (áp dụng cho Nhân sự Văn phòng; với Thuyền viên Đội tàu chỉ dùng để lưu lại lịch sử ký hợp đồng).</span>
                         </div>
                         <div class="input-group" style="grid-column: 1 / -1;">
                             <div id="contract-history-list"></div>
@@ -1330,19 +1337,21 @@
                         </div>
                     </div>
 
-                    <!-- [MỚI - TÁCH THÀNH MỤC RIÊNG, CHỈ ADMIN THẤY, CHO CHỌN CÙNG LÚC NHIỀU NGƯỜI]
+                    <!-- [CẬP NHẬT - TÁCH THÀNH MỤC RIÊNG, MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ ĐỀU THẤY,
+                         CHO CHỌN CÙNG LÚC NHIỀU NGƯỜI]
                          "Người đánh giá được giao": tách hẳn khỏi form Thêm/Sửa hồ sơ ở trên - đây là
                          1 THAO TÁC RIÊNG (action "saveRecruitmentAssignedEvaluators" ở Code.gs, có nút
                          Lưu RIÊNG), không còn gửi kèm mỗi khi Lưu hồ sơ nữa - giống hệt cách mục "Người
-                         được phê duyệt" ở Tab "Đăng ký nghỉ phép" đã tách riêng. Ẩn hoàn toàn với tài
-                         khoản không phải Admin (kể cả có quyền Sửa hồ sơ ứng viên) - xem
-                         applyUserPermissions(). Chỉ áp dụng được cho 1 hồ sơ ĐANG Ở CHẾ ĐỘ SỬA (bấm nút
-                         "Sửa" ở bảng danh sách trước) - khi đang ở chế độ Thêm mới (chưa có Mã hồ sơ) thì
-                         hiện gợi ý và khóa lại. Cho phép TICK CHỌN CÙNG LÚC NHIỀU tài khoản (dùng lại
-                         đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn trong hệ thống,
-                         giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ phép"). -->
+                         được phê duyệt" ở Tab "Đăng ký nghỉ phép" đã tách riêng. Hiện với MỌI tài khoản
+                         có quyền Sửa hồ sơ ứng viên (canEditRecruitment - KHÔNG còn giới hạn chỉ Admin
+                         như trước) - xem applyUserPermissions(). Chỉ áp dụng được cho 1 hồ sơ ĐANG Ở CHẾ
+                         ĐỘ SỬA (bấm nút "Sửa" ở bảng danh sách trước) - khi đang ở chế độ Thêm mới (chưa
+                         có Mã hồ sơ) thì hiện gợi ý và khóa lại. Cho phép TICK CHỌN CÙNG LÚC NHIỀU
+                         người (dùng lại đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn
+                         trong hệ thống, giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ
+                         phép"). Danh sách tên để chọn CHỈ Admin thêm/xóa được (Tab "Cài đặt hệ thống"). -->
                     <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
-                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(mục riêng, chỉ Admin thấy/sửa được - có thể chọn cùng lúc nhiều người)</span></h4>
+                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(có thể chọn cùng lúc nhiều người - danh sách do Admin quản lý ở Tab "Cài đặt hệ thống")</span></h4>
                         <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
                         <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
                         <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
@@ -3351,6 +3360,24 @@
                     </div>
                 </div>
 
+                <!-- [MỚI - TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Cho phép Admin tự
+                     THÊM/XÓA tên người đánh giá (không bắt buộc trùng tài khoản đăng nhập) — danh
+                     sách này dùng để mọi tài khoản có quyền Sửa hồ sơ ứng viên tick chọn CÙNG LÚC
+                     NHIỀU người ở mục "Người đánh giá được giao" của từng hồ sơ (xem Tab "Tuyển
+                     dụng"). Dùng lại ĐÚNG action "updateDanhMuc" đã có sẵn (giống hệt Phòng ban/
+                     Đội tàu ở trên), chỉ thêm dòng loại "NguoiDanhGia" — KHÔNG ảnh hưởng dữ liệu
+                     Phòng ban/Đội tàu/Phần mềm đang có. CHỈ Admin thấy được khối này (đã nằm trong
+                     Tab "Cài đặt hệ thống", vốn chỉ Admin truy cập được). -->
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-user-shield"></i> Quản lý danh sách "Người đánh giá" (Tab Tuyển dụng)</h3>
+                    <p style="font-size:13px; color:#666; margin-bottom:10px;">Danh sách tên người phụ trách đánh giá ứng viên — không bắt buộc phải trùng tài khoản đăng nhập của hệ thống. Sau khi thêm, mọi tài khoản có quyền Sửa hồ sơ ứng viên sẽ chọn được (cùng lúc nhiều người) ở mục "Người đánh giá được giao" khi sửa 1 hồ sơ ứng viên.</p>
+                    <div class="table-controls">
+                        <input type="text" id="inp-new-nguoidanhgia" class="search-box" style="width:70%;" placeholder="Tên người đánh giá mới...">
+                        <button class="btn" style="width:25%; padding: 8px;" onclick="addNguoiDanhGiaTuyenDung()">Thêm</button>
+                    </div>
+                    <div class="chip-list" id="list-nguoidanhgia"></div>
+                </div>
+
                 <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
                     <h3><i class="fa-solid fa-th-large"></i> Quản lý "Các phần mềm khác" (Liên kết hệ thống ngoài)</h3>
                     <p style="font-size:13px; color:#666; margin-bottom:12px;">Nhập Tên phần mềm và đường dẫn (URL) rồi bấm Thêm. Liên kết sẽ tự động xuất hiện dưới dạng thẻ (tab) trong mục "Các phần mềm khác" cho tất cả người dùng.</p>
@@ -3783,6 +3810,11 @@
         let staffData = [];
         let crewData = [];
         let otherApps = [];
+        // [TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Danh sách TÊN người đánh giá do
+        // Admin tự thêm/xóa ở Tab "Cài đặt hệ thống" (xem addNguoiDanhGiaTuyenDung()/
+        // deleteNguoiDanhGiaTuyenDung() bên dưới) — dùng để tick chọn "Người đánh giá được giao"
+        // cho từng hồ sơ ứng viên (xem populateRecruitmentNguoiDanhGiaCheckboxes()).
+        let nguoiDanhGiaTuyenDung = [];
         // [TAB "Các phần mềm khác" - Icon phần mềm] Ảnh icon (nếu Admin đã tải lên) được lưu
         // trên Google Drive (thư mục AVATAR_FOLDER_ID, dùng chung với ảnh đại diện Nhân sự) và
         // chỉ được lấy về qua action "getOtherAppIcons" (đã đăng nhập là xem được, giống mức xem
@@ -4297,7 +4329,7 @@
             try {
                 localStorage.setItem("sme_local_cache", JSON.stringify({
                     depts: depts, vessels: vessels, userDatabase: userDatabase,
-                    otherApps: otherApps, mailGroups: mailGroups
+                    otherApps: otherApps, mailGroups: mailGroups, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung
                 }));
             } catch (e) {
                 // Dù đã loại bỏ các mảng lớn, vẫn giữ try/catch phòng hờ (VD: trình duyệt ở chế
@@ -4317,6 +4349,7 @@
                 if (cache.depts && cache.depts.length) depts = cache.depts;
                 if (cache.vessels && cache.vessels.length) vessels = cache.vessels;
                 if (cache.otherApps && cache.otherApps.length) otherApps = cache.otherApps;
+                if (cache.nguoiDanhGiaTuyenDung && cache.nguoiDanhGiaTuyenDung.length) nguoiDanhGiaTuyenDung = cache.nguoiDanhGiaTuyenDung;
                 if (cache.mailGroups) mailGroups = cache.mailGroups;
                 if (cache.userDatabase) {
                     userDatabase = cache.userDatabase;
@@ -4412,6 +4445,11 @@
                 if (data.depts && data.depts.length) depts = data.depts;
                 if (data.vessels && data.vessels.length) vessels = data.vessels;
                 if (data.apps && data.apps.length) otherApps = data.apps;
+                // [TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Cập nhật danh sách "Người
+                // đánh giá" do Admin quản lý. Dùng "!== undefined" (không phải "if (data.x &&
+                // data.x.length)") để khi Admin xóa HẾT danh sách, giao diện cũng cập nhật về
+                // rỗng ngay thay vì giữ mãi danh sách cũ trên trình duyệt.
+                if (data.nguoiDanhGiaTuyenDung !== undefined) nguoiDanhGiaTuyenDung = data.nguoiDanhGiaTuyenDung;
                 if (data.mailGroups) mailGroups = data.mailGroups;
                 // [TAB "ĐĂNG KÝ NGHỈ PHÉP" - MỤC "NGƯỜI ĐƯỢC PHÊ DUYỆT", CHỈ ADMIN THẤY] Danh
                 // sách username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = Admin
@@ -6494,12 +6532,12 @@
             if (elMenuRecruitment) elMenuRecruitment.style.display = canViewRecruitmentUI ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
             if (tdFormBox) tdFormBox.style.display = canEditRecruitmentUI ? "block" : "none";
-            // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO", TÁCH RIÊNG, CHỈ ADMIN THẤY] Ẩn/hiện khối
-            // riêng "td-nguoidanhgia-box" theo đúng Role đang đăng nhập (KHÔNG dùng quyền
-            // canEditRecruitmentUI - dù có quyền Sửa hồ sơ ứng viên, tài khoản không phải Admin
-            // vẫn KHÔNG thấy mục này). Gọi lại với hồ sơ đang Sửa trên form hiện tại (nếu có) để
-            // không mất trạng thái khi applyUserPermissions() được gọi lại (VD sau khi đồng bộ
-            // dữ liệu).
+            // [CẬP NHẬT - MỞ RỘNG CHO MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ] Ẩn/hiện khối riêng
+            // "td-nguoidanhgia-box" theo đúng quyền "canEditRecruitmentUI" (KHÔNG còn giới hạn
+            // chỉ Role Admin như trước — mọi tài khoản có quyền Sửa hồ sơ ứng viên đều thấy/chọn
+            // được mục này, có thể chọn CÙNG LÚC NHIỀU người). Gọi lại với hồ sơ đang Sửa trên
+            // form hiện tại (nếu có) để không mất trạng thái khi applyUserPermissions() được gọi
+            // lại (VD sau khi đồng bộ dữ liệu).
             let tdMaHoSoHienTai = document.getElementById("edit-mahoso-tuyendung");
             let tdHoTenHienTai = document.getElementById("inp-td-hoten");
             toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai ? tdMaHoSoHienTai.value : "", tdHoTenHienTai ? tdHoTenHienTai.value : "");
@@ -13828,30 +13866,40 @@
         // Danh sách tài khoản lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm
         // action mới để liệt kê tài khoản). Tick sẵn đúng những tài khoản đang có trong
         // "selectedArr" (mảng username đã gán trước đó của hồ sơ đang sửa, có thể rỗng).
+        // [CẬP NHẬT - DÙNG DANH SÁCH "NGƯỜI ĐÁNH GIÁ" DO ADMIN TỰ QUẢN LÝ] Trước đây nguồn danh
+        // sách để tick chọn lấy từ TOÀN BỘ tài khoản đăng nhập của hệ thống (Object.keys(userDatabase)).
+        // Nay đổi sang dùng ĐÚNG danh sách "nguoiDanhGiaTuyenDung" do Admin tự thêm/xóa ở Tab "Cài
+        // đặt hệ thống" (xem addNguoiDanhGiaTuyenDung()) — không bắt buộc phải là tài khoản đăng
+        // nhập. TƯƠNG THÍCH NGƯỢC: nếu 1 hồ sơ đã có sẵn tên người đánh giá (gán từ trước, kể cả
+        // theo cách cũ dùng username) mà tên đó hiện KHÔNG còn trong danh sách "nguoiDanhGiaTuyenDung"
+        // (VD Admin đã xóa khỏi danh sách), tên đó vẫn được hiện thêm vào (đã tick sẵn) để KHÔNG
+        // làm "biến mất" dữ liệu đã gán trước đó khỏi giao diện.
         function populateRecruitmentNguoiDanhGiaCheckboxes(selectedArr) {
             let box = document.getElementById("td-nguoidanhgia-list");
             if (!box) return;
             let selected = Array.isArray(selectedArr) ? selectedArr : [];
-            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
-            if (!allUsernames.length) {
-                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+            let allNames = Array.from(new Set([...(nguoiDanhGiaTuyenDung || []), ...selected])).sort((a, b) => a.localeCompare(b, "vi"));
+            if (!allNames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có người đánh giá nào trong danh sách. Vui lòng vào Tab "Cài đặt hệ thống" (chỉ Admin) để thêm.</div>';
                 return;
             }
-            box.innerHTML = allUsernames.map(u =>
+            box.innerHTML = allNames.map(u =>
                 `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${selected.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
             ).join("");
         }
 
         // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG] Ẩn/hiện + khóa/mở khối chọn "Người
-        // đánh giá được giao" tùy theo: (1) tài khoản đang đăng nhập có phải Admin hay không -
-        // ẩn hoàn toàn với tài khoản không phải Admin (giống hệt hành vi cũ); (2) hồ sơ hiện có
-        // đang ở chế độ SỬA (có Mã hồ sơ) hay THÊM MỚI (chưa có Mã hồ sơ, chưa lưu lần nào) - vì
-        // mục này gắn với 1 hồ sơ ĐÃ TỒN TẠI, nên khi đang thêm mới sẽ hiện gợi ý + khóa nút Lưu
-        // lại thay vì cho thao tác ngay (tránh gán nhầm cho hồ sơ khác/hồ sơ chưa tồn tại).
+        // đánh giá được giao" tùy theo: (1) tài khoản đang đăng nhập có quyền Sửa hồ sơ ứng viên
+        // hay không (canEditRecruitment — dùng biến "currentUserCanEditRecruitment" đã tính sẵn ở
+        // applyUserPermissions(), KHÔNG còn giới hạn chỉ Admin nữa — MỌI tài khoản có quyền Sửa hồ
+        // sơ ứng viên đều được TỰ chọn "Người đánh giá được giao"); (2) hồ sơ hiện có đang ở chế độ
+        // SỬA (có Mã hồ sơ) hay THÊM MỚI (chưa có Mã hồ sơ, chưa lưu lần nào) - vì mục này gắn với
+        // 1 hồ sơ ĐÃ TỒN TẠI, nên khi đang thêm mới sẽ hiện gợi ý + khóa nút Lưu lại thay vì cho
+        // thao tác ngay (tránh gán nhầm cho hồ sơ khác/hồ sơ chưa tồn tại).
         function toggleRecruitmentNguoiDanhGiaBox(maHoSo, hoTen) {
             let box = document.getElementById("td-nguoidanhgia-box");
             if (!box) return;
-            let showBox = !!(currentUser && currentUser.role === "Admin");
+            let showBox = !!currentUserCanEditRecruitment;
             box.style.display = showBox ? "block" : "none";
             if (!showBox) return;
             let hintEl = document.getElementById("td-nguoidanhgia-target-hint");
@@ -14405,6 +14453,7 @@
             renderOtherAppsGrid();
             renderOtherAppsAdminList();
             renderDeptVesselLists();
+            renderNguoiDanhGiaTuyenDungList();
             renderMailGroupsAdminList();
             renderProfileDocDeptTabs();
             renderProfileDocStaffSelect();
@@ -14496,11 +14545,18 @@
                 document.querySelectorAll(".select-dept-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "none");
                 document.querySelectorAll(".id-group, .email-group, .select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "block");
                 document.getElementById("lbl-date-join").innerText = "Ngày xuống tàu";
-                // [TAB "QUẢN LÝ NHÂN SỰ"] Hợp đồng lao động, thông tin ngân hàng, liên hệ khẩn
-                // cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không áp dụng cho
-                // Thuyền viên Đội tàu (gắn với Tàu). Dùng querySelectorAll vì có NHIỀU khối
-                // ".contract-group" (hợp đồng / ngân hàng / liên hệ khẩn cấp).
-                document.querySelectorAll(".contract-group").forEach(el => el.style.display = "none");
+                // [TAB "QUẢN LÝ NHÂN SỰ"] Thông tin ngân hàng, CCCD/Passport, học vấn, lương/BHXH,
+                // liên hệ khẩn cấp gắn với Phòng ban -> chỉ áp dụng cho Nhân sự Văn phòng, không
+                // áp dụng cho Thuyền viên Đội tàu (gắn với Tàu). Dùng querySelectorAll vì có NHIỀU
+                // khối ".contract-group" (hợp đồng / ngân hàng / liên hệ khẩn cấp / CCCD / học
+                // vấn / lương...).
+                // [MỚI - HỢP ĐỒNG LAO ĐỘNG CHO THUYỀN VIÊN ĐỘI TÀU] Riêng 2 khối "Loại/Số/Ngày ký/
+                // Ngày hết hạn hợp đồng" và "Số lần ký hợp đồng" (đánh dấu thêm class
+                // "crew-contract-group") VẪN HIỆN cho Thuyền viên Đội tàu — các khối
+                // ".contract-group" còn lại tiếp tục ẩn như cũ.
+                document.querySelectorAll(".contract-group:not(.crew-contract-group)").forEach(el => el.style.display = "none");
+                document.querySelectorAll(".crew-contract-group").forEach(el => el.style.display = "grid");
+                onContractTypeChange();
             } else {
                 document.querySelectorAll(".id-group, .select-dept-group, .email-group, .phone-group, .staff-image-group").forEach(el => el.style.display = "block");
                 document.querySelectorAll(".select-vessel-group, .months-group, .npt-group").forEach(el => el.style.display = "none");
@@ -15578,6 +15634,7 @@
                     <td><span style="color: ${parseFloat(c.months) >= 4.5 ? 'red' : 'green'}; font-weight:bold;">${escapeHtml(c.months)} tháng</span></td>
                     <td>${escapeHtml(c.email || "-")}</td>
                     <td>${buildCrewWorkStatusBadgeHtml(c)}</td>
+                    <td>${(function() { let info = getContractStatusInfo(c); return `<span class="hr-badge ${info.cls}">${escapeHtml(c.contractType || "Không thời hạn")}${info.daysLeft !== null ? " - " + escapeHtml(info.label) : ""}</span>`; })()}</td>
                     <td style="display: ${canEdit ? '' : 'none'}">
                         <button class="btn btn-sm btn-warning" onclick="startEditData('crew', ${idx})"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-danger" onclick="deleteData('crew', ${idx})"><i class="fa-solid fa-trash"></i></button>
@@ -15652,7 +15709,14 @@
                 "Email liên hệ": c.email || "",
                 "Tình trạng làm việc": (c.workStatus === "OFF") ? "Đã nghỉ việc" : (c.workStatus === "ON_LEAVE" ? "Đang nghỉ ca" : "Đang làm việc"),
                 "Ngày nghỉ việc": c.resignDate ? formatDateDisplay(c.resignDate) : "",
-                "Số người phụ thuộc": (c.soNguoiPhuThuoc || c.soNguoiPhuThuoc === 0) ? c.soNguoiPhuThuoc : ""
+                "Số người phụ thuộc": (c.soNguoiPhuThuoc || c.soNguoiPhuThuoc === 0) ? c.soNguoiPhuThuoc : "",
+                // [MỚI - HỢP ĐỒNG LAO ĐỘNG CHO THUYỀN VIÊN ĐỘI TÀU] Thêm các cột hợp đồng lao
+                // động vào file xuất Excel, đồng bộ với các trường mới lưu ở action "saveCrew".
+                "Loại hợp đồng": c.contractType || "Không thời hạn",
+                "Số hợp đồng": c.contractNumber || "",
+                "Ngày ký hợp đồng": c.contractSignDate ? formatDateDisplay(c.contractSignDate) : "",
+                "Ngày hết hạn hợp đồng": c.contractExpiryDate ? formatDateDisplay(c.contractExpiryDate) : "",
+                "Số lần ký hợp đồng": (Array.isArray(c.lichSuKyHopDong) && c.lichSuKyHopDong.length > 0) ? c.lichSuKyHopDong.map(e => "Lần " + e.lanKy + ": " + formatDateDisplay(e.ngayKy)).join(" | ") : ""
             };
         }
 
@@ -15660,7 +15724,8 @@
             return [
                 { wch: 12 }, { wch: 26 }, { wch: 12 }, { wch: 22 }, { wch: 22 },
                 { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 26 }, { wch: 18 },
-                { wch: 14 }, { wch: 16 }
+                { wch: 14 }, { wch: 16 },
+                { wch: 16 }, { wch: 22 }, { wch: 16 }, { wch: 18 }, { wch: 34 }
             ];
         }
 
@@ -17520,6 +17585,17 @@
                     }
                 }
 
+                // [MỚI - HỢP ĐỒNG LAO ĐỘNG CHO THUYỀN VIÊN ĐỘI TÀU] Kiểm tra trước ở trình duyệt
+                // (giống hệt logic đang áp dụng cho Nhân sự Văn phòng ở nhánh trên): hợp đồng "Có
+                // thời hạn" và "Hợp đồng thử việc" bắt buộc phải có Ngày hết hạn. Server (action
+                // "saveCrew" ở Code.gs) vẫn tự kiểm tra lại lần nữa cho chắc chắn.
+                let crewContractType = document.getElementById("inp-contract-type").value || "Không thời hạn";
+                let crewContractExpiryDate = document.getElementById("inp-contract-expiry-date").value;
+                if (contractTypeHasExpiry(crewContractType) && !crewContractExpiryDate) {
+                    alert("⚠️ Vui lòng nhập Ngày hết hạn hợp đồng cho loại hợp đồng \"" + crewContractType + "\"!");
+                    return;
+                }
+
                 let obj = {
                     name: name,
                     // [MỚI - THÊM "MÃ NHÂN VIÊN (MSNV)" CHO THUYỀN VIÊN ĐỘI TÀU] Gửi kèm giá trị
@@ -17539,7 +17615,20 @@
                     // [MỚI - NPT (NGƯỜI PHỤ THUỘC)] Gửi kèm giá trị đã nhập ở ô "inp-npt" (xem
                     // markup + handleFormFieldsSwitch() ở trên) — server lưu vào cột MỚI
                     // "SoNguoiPhuThuoc" của Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs).
-                    soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0
+                    soNguoiPhuThuoc: parseInt(document.getElementById("inp-npt").value, 10) || 0,
+                    // [MỚI - HỢP ĐỒNG LAO ĐỘNG CHO THUYỀN VIÊN ĐỘI TÀU] Loại hợp đồng, Số hợp
+                    // đồng, Ngày ký hợp đồng (lần gần nhất), Ngày hết hạn hợp đồng — server lưu
+                    // vào 4 cột MỚI (13-16) của Sheet "Đội tàu" (xem action "saveCrew" ở Code.gs).
+                    contractType: crewContractType,
+                    contractNumber: document.getElementById("inp-contract-number").value.trim(),
+                    contractSignDate: document.getElementById("inp-contract-sign-date").value,
+                    contractExpiryDate: contractTypeHasExpiry(crewContractType) ? crewContractExpiryDate : "",
+                    // [MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Danh sách các lần ký hợp đồng (chỉ gửi các dòng
+                    // đã có ngày ký hợp lệ) — server sẽ tự sắp xếp theo thời gian và đánh lại số
+                    // "Lần ký" khi lưu (hệ thống TỰ ĐỘNG hiện "Lần 1" ngay khi thuyền viên có 1
+                    // lần ký hợp đồng đầu tiên), dùng chung ĐÚNG cơ chế đang áp dụng cho Nhân sự
+                    // Văn phòng (xem normalizeContractHistory ở Code.gs).
+                    lichSuKyHopDong: currentContractHistory.filter(function (e) { return e.ngayKy; })
                 };
 
                 // [SỬA LỖI - CHỈ CẬP NHẬT DỮ LIỆU CỤC BỘ (crewData) SAU KHI SERVER LƯU THÀNH
@@ -17703,6 +17792,20 @@
                 document.getElementById("inp-work-status").value = d.workStatus || "ON";
                 document.getElementById("inp-resign-date").value = d.resignDate || "";
                 onWorkStatusChange();
+
+                // [MỚI - HỢP ĐỒNG LAO ĐỘNG CHO THUYỀN VIÊN ĐỘI TÀU] Đổ lại dữ liệu hợp đồng lao
+                // động vào form khi sửa (dùng chung ĐÚNG cơ chế đang áp dụng cho Nhân sự Văn phòng).
+                document.getElementById("inp-contract-type").value = d.contractType || "Không thời hạn";
+                document.getElementById("inp-contract-number").value = d.contractNumber || "";
+                document.getElementById("inp-contract-sign-date").value = d.contractSignDate || "";
+                document.getElementById("inp-contract-expiry-date").value = d.contractExpiryDate || "";
+                onContractTypeChange();
+
+                // [MỚI - SỐ LẦN KÝ HỢP ĐỒNG] Đổ lại lịch sử các lần ký hợp đồng đã lưu. Truyền
+                // recalcLeave = false vì "Số ngày nghỉ phép" không áp dụng cho Thuyền viên Đội tàu
+                // (chỉ dùng để hiển thị/lưu lại lịch sử ký hợp đồng).
+                currentContractHistory = Array.isArray(d.lichSuKyHopDong) ? d.lichSuKyHopDong.map(function (e) { return { ngayKy: e && e.ngayKy ? e.ngayKy : "" }; }) : [];
+                renderContractHistoryList(false);
             }
             document.getElementById("btn-cancel-edit").style.display = "inline-block";
         }
@@ -18049,7 +18152,7 @@
             if (val && !depts.includes(val)) {
                 depts.push(val);
                 saveLocalCache();
-                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
                 document.getElementById("inp-new-dept").value = "";
             }
@@ -18059,7 +18162,47 @@
             if (confirm("Xóa phòng ban này?")) {
                 depts.splice(index, 1);
                 saveLocalCache();
-                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
+                updateSystemData();
+            }
+        }
+
+        // [MỚI - TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Admin thêm/xóa tên người
+        // đánh giá — dùng CHUNG action "updateDanhMuc" (giống hệt addDept/deleteDept ở trên), LUÔN
+        // gửi kèm đầy đủ "depts"/"vessels"/"apps" hiện có để KHÔNG làm mất dữ liệu Phòng ban/Đội
+        // tàu/Phần mềm đã lưu (action này ghi đè TOÀN BỘ sheet "DanhMuc" mỗi lần gọi).
+        function renderNguoiDanhGiaTuyenDungList() {
+            let box = document.getElementById("list-nguoidanhgia");
+            if (!box) return;
+            box.innerHTML = nguoiDanhGiaTuyenDung.length
+                ? nguoiDanhGiaTuyenDung.map((n, i) => `
+                    <span class="chip-removable">
+                        ${escapeHtml(n)}
+                        <span class="chip-remove-btn" onclick="deleteNguoiDanhGiaTuyenDung(${i})" title="Xóa người đánh giá này"><i class="fa-solid fa-xmark"></i></span>
+                    </span>
+                `).join('')
+                : `<span class="chip-empty-text">Chưa có người đánh giá nào. Vui lòng thêm ở ô phía trên.</span>`;
+        }
+
+        async function addNguoiDanhGiaTuyenDung() {
+            let inp = document.getElementById("inp-new-nguoidanhgia");
+            let val = inp.value.trim();
+            if (val && !nguoiDanhGiaTuyenDung.includes(val)) {
+                nguoiDanhGiaTuyenDung.push(val);
+                saveLocalCache();
+                renderNguoiDanhGiaTuyenDungList();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
+                updateSystemData();
+                inp.value = "";
+            }
+        }
+
+        async function deleteNguoiDanhGiaTuyenDung(index) {
+            if (confirm("Xóa người đánh giá này khỏi danh sách? (Các hồ sơ đã gán trước đó sẽ vẫn giữ nguyên tên đã gán, chỉ không còn xuất hiện trong danh sách để chọn mới.)")) {
+                nguoiDanhGiaTuyenDung.splice(index, 1);
+                saveLocalCache();
+                renderNguoiDanhGiaTuyenDungList();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
             }
         }
@@ -18109,7 +18252,7 @@
             if (val && !vessels.includes(val)) {
                 vessels.push(val);
                 saveLocalCache();
-                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
                 document.getElementById("inp-new-vessel").value = "";
             }
@@ -18119,7 +18262,7 @@
             if (confirm("Xóa tàu này?")) {
                 vessels.splice(index, 1);
                 saveLocalCache();
-                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
             }
         }
@@ -18273,7 +18416,7 @@
                 if (!fileId) return;
                 otherApps[idx].iconFileId = fileId;
                 saveLocalCache();
-                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
             } catch (errMsg) {
                 alert("❌ " + errMsg);
@@ -18305,7 +18448,7 @@
 
             otherApps.push({ name: name, url: url, openInNewTab: openInNewTab, iconFileId: iconFileId || "" });
             saveLocalCache();
-            let ok = await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+            let ok = await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
             alert(ok ? `✔️ Đã thêm liên kết "${name}" (Đã đồng bộ).` : `✔️ Đã thêm liên kết "${name}" (Lưu cục bộ).`);
 
             nameInput.value = "";
@@ -18319,7 +18462,7 @@
             if (!otherApps[idx]) return;
             otherApps[idx].openInNewTab = checked;
             saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
             updateSystemData();
         }
 
@@ -18337,7 +18480,7 @@
             if (!confirm(`Xóa liên kết "${otherApps[index].name}" khỏi hệ thống?`)) return;
             otherApps.splice(index, 1);
             saveLocalCache();
-            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps });
+            await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
             updateSystemData();
         }
 
