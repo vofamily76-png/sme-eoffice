@@ -14149,13 +14149,22 @@
             }
         }
 
-        // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG + CHỌN NHIỀU NGƯỜI, CHỈ ADMIN] Lưu
-        // danh sách tài khoản (có thể chọn CÙNG LÚC NHIỀU người) được giao phụ trách đánh giá hồ
-        // sơ ứng viên ĐANG SỬA trên form (action RIÊNG "saveRecruitmentAssignedEvaluators" ở
-        // Code.gs — server tự kiểm tra lại đúng Role Admin, không thể bị bỏ qua dù gọi thẳng
-        // API). Gửi mảng RỖNG (bỏ tick hết) = chủ động xóa hết người đánh giá đã gán, hợp lệ.
+        // [CẬP NHẬT - MỞ RỘNG CHO MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ] Lưu danh sách người đánh giá
+        // (có thể chọn CÙNG LÚC NHIỀU người) được giao phụ trách đánh giá hồ sơ ứng viên ĐANG SỬA
+        // trên form (action RIÊNG "saveRecruitmentAssignedEvaluators" ở Code.gs — server tự kiểm
+        // tra lại đúng quyền canEditRecruitment, không thể bị bỏ qua dù gọi thẳng API). Gửi mảng
+        // RỖNG (bỏ tick hết) = chủ động xóa hết người đánh giá đã gán, hợp lệ.
         async function saveRecruitmentAssignedEvaluators() {
-            if (!currentUser || currentUser.role !== "Admin") return;
+            // [SỬA LỖI - MỤC NÀY BỊ "KHÓA"/BẤM LƯU KHÔNG PHẢN ỨNG GÌ VỚI TÀI KHOẢN KHÔNG PHẢI
+            // ADMIN] Trước đây hàm này vẫn còn sót điều kiện CHỈ CHO PHÉP Role Admin
+            // ("currentUser.role !== 'Admin'" -> return im lặng, không báo lỗi gì) từ lúc tính
+            // năng này còn giới hạn Admin-only — dù khối giao diện (toggleRecruitmentNguoiDanhGiaBox)
+            // đã được mở cho MỌI tài khoản có quyền Sửa hồ sơ ứng viên, khiến các tài khoản đó tick
+            // chọn được nhưng bấm "Lưu người đánh giá" thì KHÔNG có gì xảy ra (như bị khóa). Nay
+            // đổi điều kiện sang ĐÚNG quyền "currentUserCanEditRecruitment" (đã tính sẵn ở
+            // applyUserPermissions(), khớp với quyền canEditRecruitment ở server) — đồng bộ đúng 1
+            // chuẩn quyền hạn duy nhất giữa giao diện/nút Lưu/server, KHÔNG nới lỏng hơn server.
+            if (!currentUserCanEditRecruitment) return;
             let maHoSo = document.getElementById("edit-mahoso-tuyendung").value;
             if (!maHoSo) { alert("⚠️ Vui lòng bấm \"Sửa\" ở 1 hồ sơ ứng viên trước khi gán người đánh giá."); return; }
             let box = document.getElementById("td-nguoidanhgia-list");
