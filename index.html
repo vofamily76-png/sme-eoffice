@@ -437,6 +437,10 @@
         .td-badge-dat { background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9; }
         .td-badge-khongdat { background:#fde8e8; color:#b91c1c; border:1px solid #f5c2c2; }
         .td-badge-nhanviec { background:#ede7f6; color:#5e35b1; border:1px solid #d1c4e9; }
+        /* [TAB "ĐÀO TẠO"] Sub-tab con (Khóa học / Học viên / Tổng kết), style giống các "tab con" khác đã có sẵn */
+        .daotao-subtab { cursor:pointer; padding:7px 14px; border-radius:16px; font-size:13px; white-space:nowrap; border:1px solid #ddd; background:#f5f5f5; color:#444; }
+        .daotao-subtab.active { border-color: var(--secondary-color); background: var(--secondary-color); color:#fff; }
+        .daotao-panel { animation: none; }
         #hr-expiring-alert-box ul { list-style: none; }
         #hr-expiring-alert-box li { padding: 8px 10px; background:#fff; border-radius:4px; margin-bottom:6px; border-left:3px solid #e67e22; }
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY"] Lưới hiển thị Thứ 2 -> Chủ nhật */
@@ -630,6 +634,7 @@
                     <li class="menu-item" id="menu-profile-docs" style="display:none;" onclick="switchPage('profile-docs')"><i class="fa-solid fa-folder-open"></i> Hồ sơ Nhân viên</li>
                     <li class="menu-item" id="menu-hr" onclick="switchPage('hr')"><i class="fa-solid fa-file-contract"></i> Quản Lý Nhân Sự</li>
                     <li class="menu-item" id="menu-recruitment" onclick="switchPage('recruitment')"><i class="fa-solid fa-user-tie"></i> Tuyển Dụng</li>
+                    <li class="menu-item" id="menu-daotao" onclick="switchPage('daotao')"><i class="fa-solid fa-chalkboard-user"></i> Đào Tạo</li>
                     <li class="menu-item" id="menu-crew" onclick="switchPage('crew')"><i class="fa-solid fa-users-gear"></i> Quản lý Đội tàu</li>
                     <li class="menu-item" id="menu-equipment" onclick="switchPage('equipment')"><i class="fa-solid fa-toolbox"></i> Quản lý Thiết bị</li>
                     <li class="menu-item" id="menu-other-apps" onclick="switchPage('other-apps')"><i class="fa-solid fa-th-large"></i> Các phần mềm khác</li>
@@ -1379,6 +1384,164 @@
                     </tr></thead>
                     <tbody></tbody>
                 </table>
+                </div>
+            </div>
+
+            <div id="page-daotao" class="page-content">
+                <h2 class="page-title"><i class="fa-solid fa-chalkboard-user"></i> Đào Tạo</h2>
+                <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Quản lý khóa đào tạo: thông tin khóa học, giảng viên/đối tác, học viên tham gia, đánh giá kết quả, ngân sách và tổng kết số nhân viên đã/chưa được đào tạo. Dữ liệu lưu ở 2 sheet riêng "DaoTao_KhoaHoc"/"DaoTao_HocVien" trên chính Google Sheet đang dùng, không ảnh hưởng dữ liệu khác.</p>
+
+                <div id="daotao-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin: 0 0 16px;">
+                    <span class="daotao-subtab active" data-tab="khoahoc" onclick="setDaoTaoSubTab('khoahoc')">📋 Khóa học</span>
+                    <span class="daotao-subtab" data-tab="hocvien" onclick="setDaoTaoSubTab('hocvien')">🧑‍🎓 Học viên &amp; Kết quả</span>
+                    <span class="daotao-subtab" data-tab="tongket" onclick="setDaoTaoSubTab('tongket')">📊 Tổng kết</span>
+                </div>
+
+                <!-- ===== SUB-TAB 1: KHÓA HỌC (thông tin khóa, giảng viên, ngân sách) ===== -->
+                <div id="daotao-panel-khoahoc" class="daotao-panel">
+                    <div class="admin-box" id="daotao-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
+                        <h3 id="daotao-form-title"><i class="fa-solid fa-plus"></i> Thêm khóa đào tạo mới</h3>
+                        <input type="hidden" id="edit-makhoahoc-daotao" value="">
+                        <div class="form-row">
+                            <div class="input-group" style="grid-column: 1 / -1;">
+                                <label>Tên khóa học *</label>
+                                <input type="text" id="inp-dt-ten" placeholder="Ví dụ: Kỹ năng giao tiếp khách hàng">
+                            </div>
+                            <div class="input-group">
+                                <label>Phân loại khóa học</label>
+                                <select id="inp-dt-phanloai"><option value="">-- Chọn phân loại --</option></select>
+                            </div>
+                            <div class="input-group">
+                                <label>Hình thức đào tạo</label>
+                                <select id="inp-dt-hinhthuc"><option value="">-- Chọn hình thức --</option></select>
+                            </div>
+                            <div class="input-group">
+                                <label>Ngày bắt đầu</label>
+                                <input type="date" id="inp-dt-ngaybatdau">
+                            </div>
+                            <div class="input-group">
+                                <label>Ngày kết thúc</label>
+                                <input type="date" id="inp-dt-ngayketthuc">
+                            </div>
+                            <div class="input-group">
+                                <label>Địa điểm đào tạo</label>
+                                <input type="text" id="inp-dt-diadiem" placeholder="Ví dụ: Phòng họp A - Văn phòng Đà Nẵng">
+                            </div>
+                            <div class="input-group">
+                                <label>Loại giảng viên</label>
+                                <select id="inp-dt-loaigv"><option value="">-- Chọn loại giảng viên --</option></select>
+                            </div>
+                            <div class="input-group">
+                                <label>Tên giảng viên / đối tác</label>
+                                <input type="text" id="inp-dt-tengv" placeholder="Họ tên giảng viên hoặc đơn vị đối tác">
+                            </div>
+                            <div class="input-group">
+                                <label>Chi phí dự kiến (VNĐ)</label>
+                                <input type="number" id="inp-dt-chiphi" min="0" step="1000" placeholder="0">
+                            </div>
+                            <div class="input-group">
+                                <label>Ngân sách dự trù đợt sau (VNĐ)</label>
+                                <input type="number" id="inp-dt-nganxach" min="0" step="1000" placeholder="0">
+                            </div>
+                            <div class="input-group" style="grid-column: 1 / -1;">
+                                <label>Tài liệu đính kèm</label>
+                                <input type="file" id="inp-dt-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.zip">
+                                <span id="dt-current-file-hint" style="font-size:12px; color:#888; display:block; margin-top:4px;"></span>
+                            </div>
+                            <div class="input-group" style="grid-column: 1 / -1;">
+                                <label>Ghi chú</label>
+                                <input type="text" id="inp-dt-ghichu" placeholder="Ghi chú thêm (nếu có)...">
+                            </div>
+                            <div class="input-group" style="grid-column: 1 / -1;">
+                                <label>Danh sách nhân viên đào tạo</label>
+                                <p style="font-size:12px; color:#888; margin:0 0 8px;">Chọn từng nhân viên, hoặc tick "Chọn cả phòng ban" để chọn nhanh nguyên phòng ban. Họ tên/Phòng ban/Chức danh luôn lấy đúng theo Danh bạ CBCNV. Khi sửa khóa học đã có sẵn học viên, những người đã có trong khóa sẽ hiện tick sẵn (không thể bỏ tick ở đây — vào tab "Học viên &amp; Kết quả" nếu muốn xóa).</p>
+                                <input type="text" id="dt-form-hv-search" class="search-box" placeholder="🔍 Tìm nhân viên theo tên/MSNV/phòng ban..." oninput="renderDaoTaoCourseFormStaffPicker()" style="margin-bottom:10px;">
+                                <div id="dt-form-hv-picker" class="checkbox-dropdown-list" style="max-height:260px;"></div>
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top:10px">
+                            <div class="input-group" style="justify-content: flex-end; display: flex; align-items: flex-end; grid-column: 1 / -1;">
+                                <button class="btn btn-success" style="width:auto;" onclick="submitDaoTaoCourse()">Lưu khóa học ✔️</button>
+                                <button class="btn btn-danger" id="btn-cancel-edit-daotao" onclick="resetDaoTaoForm()" style="display:none; margin-left:10px; width:auto; padding:12px;">Hủy chỉnh sửa</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="margin: 16px 0; align-items:flex-end;">
+                        <div class="input-group" style="grid-column: 1 / -1;">
+                            <input type="text" id="dt-search" class="search-box" placeholder="🔍 Tìm theo tên khóa học, địa điểm, giảng viên..." oninput="renderDaoTaoCourseTable()">
+                        </div>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-daotao-khoahoc">
+                        <thead><tr>
+                            <th>Mã khóa học</th><th>Tên khóa học</th><th>Phân loại</th><th>Hình thức</th>
+                            <th>Bắt đầu</th><th>Kết thúc</th><th>Địa điểm</th><th>Giảng viên</th>
+                            <th>Chi phí dự kiến</th><th>NS dự trù đợt sau</th><th>Học viên</th><th>Tài liệu</th>
+                            <th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
+                <!-- ===== SUB-TAB 2: HỌC VIÊN & KẾT QUẢ (chọn khóa -> quản lý danh sách + điểm/chứng chỉ) ===== -->
+                <div id="daotao-panel-hocvien" class="daotao-panel" style="display:none;">
+                    <div class="admin-box" style="border-left: 5px solid var(--secondary-color);">
+                        <label style="font-weight:600;">Chọn khóa đào tạo để quản lý học viên:</label>
+                        <select id="sel-dt-khoahoc-hocvien" style="max-width:480px;" onchange="onDaoTaoCourseSelectChange()"><option value="">-- Chọn khóa học --</option></select>
+                    </div>
+
+                    <div id="daotao-hocvien-content" style="display:none;">
+                        <div class="admin-box" id="daotao-addhv-box" style="border-top: 4px solid #1e7e34; margin-top:16px;">
+                            <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-user-plus"></i> Thêm học viên vào khóa này</h4>
+                            <p style="font-size:13px; color:#666; margin:0 0 10px;">Tick chọn nhân viên (đang làm việc) từ Danh bạ CBCNV, rồi bấm "Thêm học viên đã chọn". Họ tên/Phòng ban/Chức danh luôn được hệ thống tự lấy đúng theo Danh bạ CBCNV.</p>
+                            <input type="text" id="dt-hv-picker-search" class="search-box" placeholder="🔍 Tìm nhân viên theo tên/MSNV/phòng ban..." oninput="renderDaoTaoStaffPicker()" style="margin-bottom:10px;">
+                            <div class="checkbox-dropdown-list" id="dt-hv-picker-list" style="max-height:220px;"></div>
+                            <button class="btn btn-success" style="width:auto; margin-top:10px;" onclick="addDaoTaoHocVienBulkSubmit()"><i class="fa-solid fa-plus"></i> Thêm học viên đã chọn</button>
+                        </div>
+
+                        <div style="overflow-x:auto; margin-top:16px;">
+                        <table id="tbl-daotao-hocvien">
+                            <thead><tr>
+                                <th>MSNV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th>
+                                <th>Điểm số</th><th>Xếp loại</th><th>Chứng chỉ / Bằng cấp</th>
+                                <th class="admin-action-header">Thao tác</th>
+                            </tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== SUB-TAB 3: TỔNG KẾT ===== -->
+                <div id="daotao-panel-tongket" class="daotao-panel" style="display:none;">
+                    <div class="dashboard-grid" style="margin-bottom: 20px;">
+                        <div class="card"><div class="card-info"><p>Tổng số nhân viên đang làm việc</p><h3 id="dt-tk-tong">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
+                        <div class="card"><div class="card-info"><p>Đã tham gia ít nhất 1 khóa</p><h3 id="dt-tk-dadaotao">0</h3></div><i class="fa-solid fa-user-check card-icon"></i></div>
+                        <div class="card"><div class="card-info"><p>Chưa được đào tạo</p><h3 id="dt-tk-chuadaotao">0</h3></div><i class="fa-solid fa-user-xmark card-icon"></i></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div>
+                            <h4><i class="fa-solid fa-user-check" style="color:#1e7e34;"></i> Đã được đào tạo</h4>
+                            <div style="overflow-x:auto;">
+                            <table id="tbl-daotao-dadaotao">
+                                <thead><tr><th>MSNV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th><th>Số khóa đã tham gia</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                            </div>
+                        </div>
+                        <div>
+                            <h4><i class="fa-solid fa-user-xmark" style="color:#c62828;"></i> Chưa được đào tạo</h4>
+                            <div style="overflow-x:auto;">
+                            <table id="tbl-daotao-chuadaotao">
+                                <thead><tr><th>MSNV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -3992,6 +4155,21 @@
         let currentUserCanViewRecruitment = false;
         let currentUserCanEditRecruitment = false;
         let currentUserCanDeleteRecruitment = false;
+        // [MỚI - TAB "ĐÀO TẠO"] Dữ liệu lấy riêng qua action "getDaoTaoData" (xem loadDaoTaoData()),
+        // KHÔNG nằm trong getData chung — lưu trên 2 sheet MỚI "DaoTao_KhoaHoc"/"DaoTao_HocVien"
+        // trên CHÍNH Google Sheet đang dùng (xem Code.gs).
+        let daoTaoCourses = [];
+        let daoTaoHocVien = [];
+        let daoTaoNhanVien = [];
+        let daoTaoTongKet = { tongNhanVien: 0, soLuongDaDaoTao: 0, soLuongChuaDaoTao: 0, daDaoTao: [], chuaDaoTao: [] };
+        const DAOTAO_PHANLOAI_LIST_FE = ["Kỹ năng mềm", "Nâng cao nghiệp vụ", "Đào tạo bắt buộc"];
+        const DAOTAO_HINHTHUC_LIST_FE = ["Nội bộ", "Thuê ngoài", "Trực tuyến", "Trực tiếp"];
+        const DAOTAO_LOAIGIANGVIEN_LIST_FE = ["Nội bộ", "Thuê ngoài"];
+        const DAOTAO_XEPLOAI_LIST_FE = ["Xuất sắc", "Giỏi", "Khá", "Trung bình", "Không đạt"];
+        let daoTaoActiveCourseId = ""; // Mã khóa học đang được chọn để xem/quản lý học viên
+        let currentUserCanViewDaoTao = false;
+        let currentUserCanEditDaoTao = false;
+        let currentUserCanDeleteDaoTao = false;
         let currentUserCanViewLichLamViec = false;
         let currentUserCanEditLichLamViec = false;
         // [TAB "BẢNG CHẤM CÔNG"]
@@ -4277,7 +4455,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -5603,6 +5781,32 @@
             renderUserListViewForAdmin();
         }
 
+        // [MỚI - TAB "ĐÀO TẠO" - PHÂN QUYỀN RIÊNG] Bật/tắt 3 quyền "Xem tab"/"Thêm/Sửa"/"Xóa"
+        // của Tab "Đào Tạo" cho 1 tài khoản — hoàn toàn ĐỘC LẬP, dùng action riêng
+        // "setDaoTaoPermission" (chỉ ghi đúng cột 35-37 của sheet "TaiKhoan"), giống hệt cách
+        // làm với "toggleUserRecruitmentPermission".
+        async function toggleUserDaoTaoPermission(username, field, checked) {
+            if (!userDatabase[username]) return;
+            let newXem = (field === "xemDaoTao") ? checked : !!userDatabase[username].xemDaoTao;
+            let newSua = (field === "suaDaoTao") ? checked : !!userDatabase[username].suaDaoTao;
+            let newXoa = (field === "xoaDaoTao") ? checked : !!userDatabase[username].xoaDaoTao;
+            // Bật quyền Sửa/Xóa thì tự động bật kèm quyền Xem (không thể thao tác nếu không xem được).
+            if ((field === "suaDaoTao" || field === "xoaDaoTao") && checked) newXem = true;
+            // Tắt quyền Xem thì tự động tắt luôn quyền Sửa/Xóa.
+            if (field === "xemDaoTao" && !checked) { newSua = false; newXoa = false; }
+
+            let ok = await pushToCloud({ action: "setDaoTaoPermission", username: username, xemDaoTao: newXem, suaDaoTao: newSua, xoaDaoTao: newXoa });
+            if (ok) {
+                userDatabase[username].xemDaoTao = newXem;
+                userDatabase[username].suaDaoTao = newSua;
+                userDatabase[username].xoaDaoTao = newXoa;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
         // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
         // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
@@ -5902,6 +6106,30 @@
                     </span>`;
                 }
 
+                // [MỚI - TAB "ĐÀO TẠO" - PHÂN QUYỀN RIÊNG] Hoàn toàn ĐỘC LẬP (Tab hoàn toàn mới,
+                // không tương thích ngược với quyền nào khác). Dùng action riêng
+                // "setDaoTaoPermission" (chỉ ghi đúng cột 35-37 của sheet "TaiKhoan").
+                let daoTaoControl = "";
+                if (u === "admin") {
+                    daoTaoControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-chalkboard-user"></i> Toàn quyền Đào Tạo</span>';
+                } else {
+                    let dtVChecked = userDatabase[u].xemDaoTao ? "checked" : "";
+                    let dtEChecked = userDatabase[u].suaDaoTao ? "checked" : "";
+                    let dtDChecked = userDatabase[u].xoaDaoTao ? "checked" : "";
+                    daoTaoControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-chalkboard-user" title="Đào Tạo"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${dtVChecked} onchange="toggleUserDaoTaoPermission('${safeU}', 'xemDaoTao', this.checked)"> Xem tab
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${dtEChecked} onchange="toggleUserDaoTaoPermission('${safeU}', 'suaDaoTao', this.checked)"> Thêm/Sửa
+                        </label>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${dtDChecked} onchange="toggleUserDaoTaoPermission('${safeU}', 'xoaDaoTao', this.checked)"> Xóa
+                        </label>
+                    </span>`;
+                }
+
 
                 // [TAB "TỔNG QUAN"] Quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
                 let contractAlertControl = "";
@@ -6168,6 +6396,7 @@
                         ${eqControl}
                         ${hrControl}
                         ${tuyenDungControl}
+                        ${daoTaoControl}
                         ${contractAlertControl}
                         ${resignedControl}
                         ${cksoControl}
@@ -6294,7 +6523,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -6416,7 +6645,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true, xemDaoTao: true, suaDaoTao: true, xoaDaoTao: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -6532,6 +6761,22 @@
             if (elMenuRecruitment) elMenuRecruitment.style.display = canViewRecruitmentUI ? "flex" : "none";
             let tdFormBox = document.getElementById("tuyendung-form-box");
             if (tdFormBox) tdFormBox.style.display = canEditRecruitmentUI ? "block" : "none";
+
+            // ==== [TAB "ĐÀO TẠO"] Quyền RIÊNG hoàn toàn độc lập (Admin cấp qua action
+            // "setDaoTaoPermission") — không có tương thích ngược với quyền nào khác vì đây là
+            // Tab hoàn toàn MỚI. ====
+            let canViewDaoTaoUI = (currentUser.role === "Admin") || !!currentUser.xemDaoTao;
+            let canEditDaoTaoUI = (currentUser.role === "Admin") || !!currentUser.suaDaoTao;
+            let canDeleteDaoTaoUI = (currentUser.role === "Admin") || !!currentUser.xoaDaoTao;
+            currentUserCanViewDaoTao = canViewDaoTaoUI;
+            currentUserCanEditDaoTao = canEditDaoTaoUI;
+            currentUserCanDeleteDaoTao = canDeleteDaoTaoUI;
+            let elMenuDaoTao = document.getElementById("menu-daotao");
+            if (elMenuDaoTao) elMenuDaoTao.style.display = canViewDaoTaoUI ? "flex" : "none";
+            let dtFormBox = document.getElementById("daotao-form-box");
+            if (dtFormBox) dtFormBox.style.display = canEditDaoTaoUI ? "block" : "none";
+            let dtAddHvBox = document.getElementById("daotao-addhv-box");
+            if (dtAddHvBox) dtAddHvBox.style.display = canEditDaoTaoUI ? "block" : "none";
             // [CẬP NHẬT - MỞ RỘNG CHO MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ] Ẩn/hiện khối riêng
             // "td-nguoidanhgia-box" theo đúng quyền "canEditRecruitmentUI" (KHÔNG còn giới hạn
             // chỉ Role Admin như trước — mọi tài khoản có quyền Sửa hồ sơ ứng viên đều thấy/chọn
@@ -6870,6 +7115,11 @@
                 populateLeaveApproverList();
                 loadLeaveRequests();
                 if (currentUser && currentUser.role === "Admin") populateAdminApprovalSettingsList();
+            }
+            if (pageId === "daotao") {
+                let canViewDaoTaoPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemDaoTao);
+                if (!canViewDaoTaoPage) { alert("⚠️ Bạn không có quyền xem Tab Đào Tạo. Liên hệ Admin để được cấp quyền."); return; }
+                loadDaoTaoData();
             }
             if (pageId === "contacts") {
                 // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
@@ -14253,6 +14503,494 @@
                 console.error(err);
             } finally {
                 hideSyncBanner();
+            }
+        }
+
+        /* =====================================================================================
+         * [MỚI] TAB "ĐÀO TẠO" — toàn bộ JS phía dưới thao tác qua action "getDaoTaoData" /
+         * "saveDaoTaoCourse" / "deleteDaoTaoCourse" / "addDaoTaoHocVienBulk" / "saveDaoTaoHocVien"
+         * / "deleteDaoTaoHocVien" / "getDaoTaoFileContent" (xem Code.gs). Không đụng tới bất kỳ
+         * biến/hàm nào của các Tab khác.
+         * ===================================================================================== */
+        async function callDaoTaoApi(payload) {
+            if (!isScriptUrlConfigured()) { alert("⚠️ Chưa kết nối Google Apps Script. Vào tab Admin để cấu hình URL trước."); return null; }
+            if (authToken && !payload.authToken) payload.authToken = authToken;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(payload)
+                });
+                let data = await parseServerResponse(res);
+                if (data.status === "ERROR") throw new Error(data.message);
+                return data;
+            } catch (err) {
+                alert("❌ Lỗi: " + err.message);
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function loadDaoTaoData() {
+            if (!currentUserCanViewDaoTao || !isScriptUrlConfigured() || !authToken) return;
+            let data = await callDaoTaoApi({ action: "getDaoTaoData" });
+            if (!data) return;
+            daoTaoCourses = data.courses || [];
+            daoTaoHocVien = data.hocVien || [];
+            daoTaoNhanVien = data.nhanVien || [];
+            daoTaoTongKet = data.tongKet || daoTaoTongKet;
+            populateDaoTaoSelects();
+            renderDaoTaoCourseTable();
+            populateDaoTaoCourseSelectForHocVien();
+            renderDaoTaoHocVienPanel();
+            renderDaoTaoTongKet();
+            // [MỚI] Cập nhật lại bộ chọn "Danh sách nhân viên đào tạo" trong form thêm/sửa khóa
+            // (danh sách nhân viên / danh sách học viên đã có của khóa có thể vừa mới được tải về)
+            renderDaoTaoCourseFormStaffPicker();
+        }
+
+        function populateDaoTaoSelects() {
+            let plSel = document.getElementById("inp-dt-phanloai");
+            if (plSel) plSel.innerHTML = `<option value="">-- Chọn phân loại --</option>` + DAOTAO_PHANLOAI_LIST_FE.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            let htSel = document.getElementById("inp-dt-hinhthuc");
+            if (htSel) htSel.innerHTML = `<option value="">-- Chọn hình thức --</option>` + DAOTAO_HINHTHUC_LIST_FE.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+            let gvSel = document.getElementById("inp-dt-loaigv");
+            if (gvSel) gvSel.innerHTML = `<option value="">-- Chọn loại giảng viên --</option>` + DAOTAO_LOAIGIANGVIEN_LIST_FE.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+        }
+
+        function setDaoTaoSubTab(tabName) {
+            document.querySelectorAll(".daotao-subtab").forEach(el => el.classList.toggle("active", el.getAttribute("data-tab") === tabName));
+            document.querySelectorAll(".daotao-panel").forEach(el => el.style.display = "none");
+            let panel = document.getElementById("daotao-panel-" + tabName);
+            if (panel) panel.style.display = "block";
+            if (tabName === "tongket") renderDaoTaoTongKet();
+        }
+
+        function daoTaoSoHocVienCuaKhoa(maKhoaHoc) {
+            return daoTaoHocVien.filter(h => h.maKhoaHoc === maKhoaHoc).length;
+        }
+
+        function renderDaoTaoCourseTable() {
+            let tbody = document.querySelector("#tbl-daotao-khoahoc tbody");
+            if (!tbody) return;
+            let rows = daoTaoCourses.slice();
+            let kw = (document.getElementById("dt-search")?.value || "").trim().toLowerCase();
+            if (kw) {
+                rows = rows.filter(r =>
+                    (r.tenKhoaHoc || "").toLowerCase().includes(kw) ||
+                    (r.diaDiem || "").toLowerCase().includes(kw) ||
+                    (r.tenGiangVien || "").toLowerCase().includes(kw)
+                );
+            }
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; color:#888; padding:20px;">Chưa có khóa đào tạo nào.</td></tr>`;
+                return;
+            }
+            let fmtMoney = n => (Number(n) || 0).toLocaleString("vi-VN");
+            tbody.innerHTML = rows.map(r => {
+                let tlCell = r.taiLieuFileId
+                    ? `<a href="#" onclick="viewDaoTaoFile('${r.taiLieuFileId}', '${escapeHtml(r.taiLieuFileName).replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(r.taiLieuFileName)}</a>`
+                    : "-";
+                let actions = "";
+                actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="switchDaoTaoToHocVien('${r.maKhoaHoc}')" title="Quản lý học viên"><i class="fa-solid fa-user-group"></i> Học viên</button> `;
+                if (currentUserCanEditDaoTao) actions += `<button class="btn" style="width:auto; padding:6px 10px;" onclick="editDaoTaoCourse('${r.maKhoaHoc}')" title="Sửa khóa học này"><i class="fa-solid fa-pen"></i> Sửa</button> `;
+                if (currentUserCanDeleteDaoTao) actions += `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteDaoTaoCourseRow('${r.maKhoaHoc}')" title="Xóa khóa học này"><i class="fa-solid fa-trash"></i> Xóa</button>`;
+                return `<tr>
+                    <td>${escapeHtml(r.maKhoaHoc)}</td>
+                    <td>${escapeHtml(r.tenKhoaHoc)}</td>
+                    <td>${escapeHtml(r.phanLoai || "")}</td>
+                    <td>${escapeHtml(r.hinhThuc || "")}</td>
+                    <td>${escapeHtml(r.ngayBatDau ? formatDateDisplay(r.ngayBatDau) : "")}</td>
+                    <td>${escapeHtml(r.ngayKetThuc ? formatDateDisplay(r.ngayKetThuc) : "")}</td>
+                    <td>${escapeHtml(r.diaDiem || "")}</td>
+                    <td>${escapeHtml(r.tenGiangVien || "")}${r.loaiGiangVien ? ` <span style="color:#888; font-size:11px;">(${escapeHtml(r.loaiGiangVien)})</span>` : ""}</td>
+                    <td>${fmtMoney(r.chiPhiDuKien)}</td>
+                    <td>${fmtMoney(r.nganSachDuTruDotSau)}</td>
+                    <td style="text-align:center;">${daoTaoSoHocVienCuaKhoa(r.maKhoaHoc)}</td>
+                    <td>${tlCell}</td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // [MỚI - CHỌN HỌC VIÊN NGAY TRONG FORM "Thêm/Sửa khóa học"] Danh sách MSNV đã có sẵn
+        // trong khóa đang sửa (chỉ dùng khi editDaoTaoCourse) — những người này hiện tick sẵn
+        // + khóa (disabled) trong bộ chọn, để KHÔNG thể vô tình bỏ tick làm mất dữ liệu điểm/
+        // xếp loại/chứng chỉ đã lưu của họ (muốn xóa phải qua tab "Học viên & Kết quả").
+        let daoTaoFormAlreadyEnrolledMsnv = new Set();
+
+        // Hiển thị danh sách nhân viên để chọn NGAY trong form thêm/sửa khóa học, gom nhóm theo
+        // Phòng ban, mỗi nhóm có 1 checkbox "Chọn cả phòng ban" để tick nhanh toàn bộ nhân viên
+        // của phòng ban đó (có thể bỏ tick từng người sau khi chọn cả phòng ban).
+        function renderDaoTaoCourseFormStaffPicker() {
+            let box = document.getElementById("dt-form-hv-picker");
+            if (!box) return;
+            let kw = (document.getElementById("dt-form-hv-search")?.value || "").trim().toLowerCase();
+            let list = daoTaoNhanVien.slice();
+            if (kw) {
+                list = list.filter(nv =>
+                    (nv.hoTen || "").toLowerCase().includes(kw) ||
+                    (nv.msnv || "").toLowerCase().includes(kw) ||
+                    (nv.phongBan || "").toLowerCase().includes(kw)
+                );
+            }
+            if (!list.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Không tìm thấy nhân viên phù hợp.</div>';
+                return;
+            }
+            // Gom nhóm theo Phòng ban (nhân viên chưa gán phòng ban -> nhóm "Chưa phân phòng ban")
+            let groups = {};
+            list.forEach(nv => {
+                let dept = nv.phongBan || "Chưa phân phòng ban";
+                if (!groups[dept]) groups[dept] = [];
+                groups[dept].push(nv);
+            });
+            let deptNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'vi'));
+            box.innerHTML = deptNames.map(dept => {
+                let deptSafeId = 'dtdept_' + dept.replace(/[^a-zA-Z0-9]/g, '_');
+                let members = groups[dept];
+                let memberRows = members.map(nv => {
+                    let already = daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv);
+                    return `<label class="checkbox-item" style="padding-left:22px;">
+                        <input type="checkbox" class="dt-form-hv-member" data-dept="${escapeHtml(dept)}" value="${escapeHtml(nv.msnv)}" ${already ? "checked disabled" : ""}>
+                        ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)})</span>
+                        ${already ? '<span style="color:#1e7e34; font-size:11px;"> — đã có trong khóa</span>' : ''}
+                    </label>`;
+                }).join("");
+                return `<div style="margin-bottom:6px;">
+                    <label class="checkbox-item" style="font-weight:600;">
+                        <input type="checkbox" id="${deptSafeId}" onchange="toggleDaoTaoFormDept('${escapeHtml(dept).replace(/'/g, "\\'")}', this.checked)">
+                        📁 ${escapeHtml(dept)} <span style="color:#888; font-weight:normal; font-size:11px;">(${members.length} người — chọn cả phòng ban)</span>
+                    </label>
+                    ${memberRows}
+                </div>`;
+            }).join("");
+        }
+
+        // Tick/bỏ tick "Chọn cả phòng ban" -> tick/bỏ tick toàn bộ nhân viên (còn bấm được, tức
+        // KHÔNG phải người đã có sẵn trong khóa) thuộc đúng phòng ban đó.
+        function toggleDaoTaoFormDept(dept, checked) {
+            let box = document.getElementById("dt-form-hv-picker");
+            if (!box) return;
+            box.querySelectorAll('.dt-form-hv-member[data-dept="' + CSS.escape(dept) + '"]').forEach(cb => {
+                if (!cb.disabled) cb.checked = checked;
+            });
+        }
+
+        // Trả về danh sách MSNV đang được tick VÀ chưa có sẵn trong khóa (bỏ qua checkbox
+        // disabled) — dùng để gọi "addDaoTaoHocVienBulk" sau khi lưu khóa học.
+        function getDaoTaoFormSelectedNewMsnv() {
+            let box = document.getElementById("dt-form-hv-picker");
+            if (!box) return [];
+            return Array.from(box.querySelectorAll('.dt-form-hv-member:checked:not(:disabled)')).map(cb => cb.value);
+        }
+
+        function resetDaoTaoForm() {
+            document.getElementById("edit-makhoahoc-daotao").value = "";
+            document.getElementById("inp-dt-ten").value = "";
+            document.getElementById("inp-dt-phanloai").value = "";
+            document.getElementById("inp-dt-hinhthuc").value = "";
+            document.getElementById("inp-dt-ngaybatdau").value = "";
+            document.getElementById("inp-dt-ngayketthuc").value = "";
+            document.getElementById("inp-dt-diadiem").value = "";
+            document.getElementById("inp-dt-loaigv").value = "";
+            document.getElementById("inp-dt-tengv").value = "";
+            document.getElementById("inp-dt-chiphi").value = "";
+            document.getElementById("inp-dt-nganxach").value = "";
+            document.getElementById("inp-dt-ghichu").value = "";
+            document.getElementById("inp-dt-file").value = "";
+            document.getElementById("dt-current-file-hint").innerText = "";
+            document.getElementById("daotao-form-title").innerHTML = '<i class="fa-solid fa-plus"></i> Thêm khóa đào tạo mới';
+            document.getElementById("btn-cancel-edit-daotao").style.display = "none";
+            // [MỚI] Reset bộ chọn "Danh sách nhân viên đào tạo" về trạng thái trống (chế độ Thêm mới)
+            daoTaoFormAlreadyEnrolledMsnv = new Set();
+            let hvSearch = document.getElementById("dt-form-hv-search");
+            if (hvSearch) hvSearch.value = "";
+            renderDaoTaoCourseFormStaffPicker();
+        }
+
+        function editDaoTaoCourse(maKhoaHoc) {
+            let r = daoTaoCourses.find(x => x.maKhoaHoc === maKhoaHoc);
+            if (!r) return;
+            document.getElementById("edit-makhoahoc-daotao").value = r.maKhoaHoc;
+            document.getElementById("inp-dt-ten").value = r.tenKhoaHoc || "";
+            document.getElementById("inp-dt-phanloai").value = r.phanLoai || "";
+            document.getElementById("inp-dt-hinhthuc").value = r.hinhThuc || "";
+            document.getElementById("inp-dt-ngaybatdau").value = r.ngayBatDau || "";
+            document.getElementById("inp-dt-ngayketthuc").value = r.ngayKetThuc || "";
+            document.getElementById("inp-dt-diadiem").value = r.diaDiem || "";
+            document.getElementById("inp-dt-loaigv").value = r.loaiGiangVien || "";
+            document.getElementById("inp-dt-tengv").value = r.tenGiangVien || "";
+            document.getElementById("inp-dt-chiphi").value = r.chiPhiDuKien || "";
+            document.getElementById("inp-dt-nganxach").value = r.nganSachDuTruDotSau || "";
+            document.getElementById("inp-dt-ghichu").value = r.ghiChu || "";
+            document.getElementById("inp-dt-file").value = "";
+            document.getElementById("dt-current-file-hint").innerText = r.taiLieuFileName ? ("File hiện tại: " + r.taiLieuFileName + " (chọn file mới nếu muốn thay thế)") : "";
+            document.getElementById("daotao-form-title").innerHTML = '<i class="fa-solid fa-pen"></i> Sửa khóa đào tạo: ' + escapeHtml(r.tenKhoaHoc);
+            document.getElementById("btn-cancel-edit-daotao").style.display = "inline-block";
+            // [MỚI] Đánh dấu sẵn những nhân viên ĐÃ CÓ trong khóa này (tick + khóa, không xóa được ở đây)
+            daoTaoFormAlreadyEnrolledMsnv = new Set(daoTaoHocVien.filter(h => h.maKhoaHoc === r.maKhoaHoc).map(h => h.msnv));
+            let hvSearch2 = document.getElementById("dt-form-hv-search");
+            if (hvSearch2) hvSearch2.value = "";
+            renderDaoTaoCourseFormStaffPicker();
+            document.getElementById("daotao-form-box").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        async function submitDaoTaoCourse() {
+            if (!currentUserCanEditDaoTao) { alert("⚠️ Bạn không có quyền thêm/sửa khóa đào tạo. Liên hệ Admin để được cấp quyền."); return; }
+            let maKhoaHoc = document.getElementById("edit-makhoahoc-daotao").value;
+            let ten = document.getElementById("inp-dt-ten").value.trim();
+            if (!ten) { alert("Vui lòng nhập Tên khóa học!"); return; }
+
+            let fileInput = document.getElementById("inp-dt-file");
+            let file = fileInput.files[0];
+            if (file && file.size > 25 * 1024 * 1024) { alert("File tài liệu quá lớn (giới hạn 25MB)."); return; }
+
+            // [MỚI] Lấy trước danh sách MSNV mới được tick chọn trong form (chưa có sẵn trong khóa)
+            let selectedNewMsnv = getDaoTaoFormSelectedNewMsnv();
+
+            let payload = {
+                action: "saveDaoTaoCourse",
+                maKhoaHoc: maKhoaHoc || undefined,
+                tenKhoaHoc: ten,
+                phanLoai: document.getElementById("inp-dt-phanloai").value,
+                hinhThuc: document.getElementById("inp-dt-hinhthuc").value,
+                ngayBatDau: document.getElementById("inp-dt-ngaybatdau").value,
+                ngayKetThuc: document.getElementById("inp-dt-ngayketthuc").value,
+                diaDiem: document.getElementById("inp-dt-diadiem").value.trim(),
+                loaiGiangVien: document.getElementById("inp-dt-loaigv").value,
+                tenGiangVien: document.getElementById("inp-dt-tengv").value.trim(),
+                chiPhiDuKien: document.getElementById("inp-dt-chiphi").value || 0,
+                nganSachDuTruDotSau: document.getElementById("inp-dt-nganxach").value || 0,
+                ghiChu: document.getElementById("inp-dt-ghichu").value.trim()
+            };
+
+            if (file) {
+                let base64Data = await new Promise((resolve, reject) => {
+                    let reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = () => reject(new Error("Không thể đọc file."));
+                    reader.readAsDataURL(file);
+                }).catch(err => { alert(err.message); return null; });
+                if (base64Data === null) return;
+                payload.fileName = file.name;
+                payload.mimeType = file.type || "application/octet-stream";
+                payload.fileData = base64Data;
+            }
+
+            let data = await callDaoTaoApi(payload);
+            if (!data) return;
+
+            // [MỚI] Sau khi lưu khóa học thành công (kể cả khóa MỚI vừa được cấp Mã khóa học),
+            // tự động thêm những nhân viên vừa được tick chọn ở form vào khóa này — dùng LẠI
+            // đúng action "addDaoTaoHocVienBulk" đã có sẵn (tự bỏ qua người đã có, không tạo
+            // trùng, không mất dữ liệu điểm/xếp loại của người đã có từ trước).
+            let savedMaKhoaHoc = data.maKhoaHoc || maKhoaHoc;
+            let soLuongThemHV = 0;
+            if (selectedNewMsnv.length && savedMaKhoaHoc) {
+                let hvData = await callDaoTaoApi({ action: "addDaoTaoHocVienBulk", maKhoaHoc: savedMaKhoaHoc, msnvList: selectedNewMsnv });
+                if (hvData) soLuongThemHV = hvData.soLuongThem || 0;
+            }
+
+            resetDaoTaoForm();
+            await loadDaoTaoData();
+            alert("✔️ Đã lưu khóa đào tạo thành công." + (soLuongThemHV > 0 ? (" Đã thêm " + soLuongThemHV + " học viên vào khóa.") : ""));
+        }
+
+        async function deleteDaoTaoCourseRow(maKhoaHoc) {
+            if (!currentUserCanDeleteDaoTao) { alert("⚠️ Bạn không có quyền xóa khóa đào tạo. Liên hệ Admin để được cấp quyền."); return; }
+            if (!confirm("Xác nhận xóa hẳn khóa đào tạo này (kể cả tài liệu đính kèm và toàn bộ danh sách học viên/kết quả của khóa này)?")) return;
+            let data = await callDaoTaoApi({ action: "deleteDaoTaoCourse", maKhoaHoc: maKhoaHoc });
+            if (data) {
+                if (daoTaoActiveCourseId === maKhoaHoc) daoTaoActiveCourseId = "";
+                await loadDaoTaoData();
+            }
+        }
+
+        async function viewDaoTaoFile(fileId, fileName) {
+            if (!fileId) { alert("⚠️ File này chưa có dữ liệu."); return; }
+            try {
+                showSyncBanner("Đang mở file...");
+                let data = await callDaoTaoApi({ action: "getDaoTaoFileContent", fileId: fileId });
+                if (!data) return;
+                let byteChars = atob(data.fileData);
+                let byteNumbers = new Array(byteChars.length);
+                for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+                let byteArray = new Uint8Array(byteNumbers);
+                let blob = new Blob([byteArray], { type: data.mimeType || "application/octet-stream" });
+                let blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, "_blank", "noopener");
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            } catch (err) {
+                alert("❌ Không thể mở file \"" + (fileName || "") + "\": " + err.message);
+                console.error(err);
+            } finally {
+                hideSyncBanner();
+            }
+        }
+
+        // ===== SUB-TAB "HỌC VIÊN & KẾT QUẢ" =====
+        function switchDaoTaoToHocVien(maKhoaHoc) {
+            daoTaoActiveCourseId = maKhoaHoc;
+            setDaoTaoSubTab("hocvien");
+            let sel = document.getElementById("sel-dt-khoahoc-hocvien");
+            if (sel) sel.value = maKhoaHoc;
+            onDaoTaoCourseSelectChange();
+        }
+
+        function populateDaoTaoCourseSelectForHocVien() {
+            let sel = document.getElementById("sel-dt-khoahoc-hocvien");
+            if (!sel) return;
+            let current = sel.value || daoTaoActiveCourseId;
+            sel.innerHTML = `<option value="">-- Chọn khóa học --</option>` +
+                daoTaoCourses.map(r => `<option value="${escapeHtml(r.maKhoaHoc)}">${escapeHtml(r.tenKhoaHoc)}${r.ngayBatDau ? " (" + escapeHtml(formatDateDisplay(r.ngayBatDau)) + ")" : ""}</option>`).join('');
+            sel.value = current || "";
+        }
+
+        function onDaoTaoCourseSelectChange() {
+            let sel = document.getElementById("sel-dt-khoahoc-hocvien");
+            daoTaoActiveCourseId = sel ? sel.value : "";
+            let content = document.getElementById("daotao-hocvien-content");
+            if (content) content.style.display = daoTaoActiveCourseId ? "block" : "none";
+            if (daoTaoActiveCourseId) {
+                renderDaoTaoStaffPicker();
+                renderDaoTaoHocVienTable();
+            }
+        }
+
+        function renderDaoTaoHocVienPanel() {
+            if (daoTaoActiveCourseId) {
+                renderDaoTaoStaffPicker();
+                renderDaoTaoHocVienTable();
+                let content = document.getElementById("daotao-hocvien-content");
+                if (content) content.style.display = "block";
+            }
+        }
+
+        // Danh sách nhân viên để tick chọn thêm vào khóa đang xem — loại bỏ những người ĐÃ có
+        // sẵn trong khóa này (tránh trùng), có ô tìm kiếm nhanh theo tên/MSNV/phòng ban.
+        function renderDaoTaoStaffPicker() {
+            let box = document.getElementById("dt-hv-picker-list");
+            if (!box) return;
+            let existingMsnv = new Set(daoTaoHocVien.filter(h => h.maKhoaHoc === daoTaoActiveCourseId).map(h => h.msnv));
+            let kw = (document.getElementById("dt-hv-picker-search")?.value || "").trim().toLowerCase();
+            let candidates = daoTaoNhanVien.filter(nv => !existingMsnv.has(nv.msnv));
+            if (kw) {
+                candidates = candidates.filter(nv =>
+                    (nv.hoTen || "").toLowerCase().includes(kw) ||
+                    (nv.msnv || "").toLowerCase().includes(kw) ||
+                    (nv.phongBan || "").toLowerCase().includes(kw)
+                );
+            }
+            if (!candidates.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Không còn nhân viên nào để thêm (hoặc tất cả đã có trong khóa này).</div>';
+                return;
+            }
+            box.innerHTML = candidates.map(nv =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(nv.msnv)}"> ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)}${nv.phongBan ? " - " + escapeHtml(nv.phongBan) : ""})</span></label>`
+            ).join("");
+        }
+
+        async function addDaoTaoHocVienBulkSubmit() {
+            if (!currentUserCanEditDaoTao) { alert("⚠️ Bạn không có quyền thêm học viên. Liên hệ Admin để được cấp quyền."); return; }
+            if (!daoTaoActiveCourseId) { alert("⚠️ Vui lòng chọn khóa đào tạo trước."); return; }
+            let box = document.getElementById("dt-hv-picker-list");
+            if (!box) return;
+            let msnvList = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            if (!msnvList.length) { alert("⚠️ Vui lòng tick chọn ít nhất 1 nhân viên."); return; }
+            let data = await callDaoTaoApi({ action: "addDaoTaoHocVienBulk", maKhoaHoc: daoTaoActiveCourseId, msnvList: msnvList });
+            if (data) {
+                await loadDaoTaoData();
+                let sel = document.getElementById("sel-dt-khoahoc-hocvien");
+                if (sel) sel.value = daoTaoActiveCourseId;
+                onDaoTaoCourseSelectChange();
+                alert("✔️ Đã thêm " + (data.soLuongThem || 0) + " học viên vào khóa học.");
+            }
+        }
+
+        function renderDaoTaoHocVienTable() {
+            let tbody = document.querySelector("#tbl-daotao-hocvien tbody");
+            if (!tbody) return;
+            let rows = daoTaoHocVien.filter(h => h.maKhoaHoc === daoTaoActiveCourseId);
+            if (!rows.length) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888; padding:20px;">Chưa có học viên nào trong khóa này.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = rows.map(h => {
+                let editable = currentUserCanEditDaoTao;
+                let diemCell = editable
+                    ? `<input type="number" step="0.1" min="0" max="10" value="${h.diemSo === "" ? "" : escapeHtml(String(h.diemSo))}" style="width:70px;" onchange="updateDaoTaoHocVienField('${h.id}', 'diemSo', this.value)">`
+                    : escapeHtml(h.diemSo === "" ? "" : String(h.diemSo));
+                let xepLoaiCell = editable
+                    ? `<select style="min-width:120px;" onchange="updateDaoTaoHocVienField('${h.id}', 'xepLoai', this.value)">
+                        <option value="">-- Chọn --</option>
+                        ${DAOTAO_XEPLOAI_LIST_FE.map(x => `<option value="${escapeHtml(x)}" ${h.xepLoai === x ? "selected" : ""}>${escapeHtml(x)}</option>`).join('')}
+                       </select>`
+                    : escapeHtml(h.xepLoai || "");
+                let chungChiCell = editable
+                    ? `<input type="text" value="${escapeHtml(h.chungChi || "")}" style="min-width:150px;" onchange="updateDaoTaoHocVienField('${h.id}', 'chungChi', this.value)">`
+                    : escapeHtml(h.chungChi || "");
+                let actions = currentUserCanDeleteDaoTao
+                    ? `<button class="btn btn-danger" style="width:auto; padding:6px 10px;" onclick="deleteDaoTaoHocVienRow('${h.id}')" title="Xóa học viên này khỏi khóa"><i class="fa-solid fa-trash"></i> Xóa</button>`
+                    : "-";
+                return `<tr>
+                    <td>${escapeHtml(h.msnv)}</td>
+                    <td>${escapeHtml(h.hoTen)}</td>
+                    <td>${escapeHtml(h.phongBan || "")}</td>
+                    <td>${escapeHtml(h.chucDanh || "")}</td>
+                    <td>${diemCell}</td>
+                    <td>${xepLoaiCell}</td>
+                    <td>${chungChiCell}</td>
+                    <td>${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Sửa nhanh 1 ô (Điểm số/Xếp loại/Chứng chỉ) ngay trong bảng — chỉ ghi đúng dòng học
+        // viên đó (đã có "id"), không đụng các dòng khác.
+        async function updateDaoTaoHocVienField(id, field, value) {
+            if (!currentUserCanEditDaoTao) { alert("⚠️ Bạn không có quyền sửa kết quả học viên. Liên hệ Admin để được cấp quyền."); await loadDaoTaoData(); return; }
+            let h = daoTaoHocVien.find(x => x.id === id);
+            if (!h) return;
+            let payload = { action: "saveDaoTaoHocVien", id: id, maKhoaHoc: h.maKhoaHoc, msnv: h.msnv, diemSo: h.diemSo, xepLoai: h.xepLoai, chungChi: h.chungChi };
+            payload[field] = value;
+            let data = await callDaoTaoApi(payload);
+            if (data) {
+                h.diemSo = (field === "diemSo") ? (value === "" ? "" : Number(value)) : h.diemSo;
+                h.xepLoai = (field === "xepLoai") ? value : h.xepLoai;
+                h.chungChi = (field === "chungChi") ? value : h.chungChi;
+            } else {
+                await loadDaoTaoData();
+            }
+        }
+
+        async function deleteDaoTaoHocVienRow(id) {
+            if (!currentUserCanDeleteDaoTao) { alert("⚠️ Bạn không có quyền xóa học viên. Liên hệ Admin để được cấp quyền."); return; }
+            if (!confirm("Xác nhận xóa học viên này khỏi khóa đào tạo?")) return;
+            let data = await callDaoTaoApi({ action: "deleteDaoTaoHocVien", id: id });
+            if (data) await loadDaoTaoData();
+        }
+
+        // ===== SUB-TAB "TỔNG KẾT" =====
+        function renderDaoTaoTongKet() {
+            let tk = daoTaoTongKet || { tongNhanVien: 0, soLuongDaDaoTao: 0, soLuongChuaDaoTao: 0, daDaoTao: [], chuaDaoTao: [] };
+            let elTong = document.getElementById("dt-tk-tong"); if (elTong) elTong.innerText = tk.tongNhanVien || 0;
+            let elDa = document.getElementById("dt-tk-dadaotao"); if (elDa) elDa.innerText = tk.soLuongDaDaoTao || 0;
+            let elChua = document.getElementById("dt-tk-chuadaotao"); if (elChua) elChua.innerText = tk.soLuongChuaDaoTao || 0;
+
+            let tbodyDa = document.querySelector("#tbl-daotao-dadaotao tbody");
+            if (tbodyDa) {
+                let list = tk.daDaoTao || [];
+                tbodyDa.innerHTML = list.length
+                    ? list.map(nv => `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(nv.phongBan || "")}</td><td>${escapeHtml(nv.chucDanh || "")}</td><td style="text-align:center;">${nv.soKhoaDaThamGia || 0}</td></tr>`).join('')
+                    : `<tr><td colspan="5" style="text-align:center; color:#888; padding:16px;">Chưa có dữ liệu.</td></tr>`;
+            }
+            let tbodyChua = document.querySelector("#tbl-daotao-chuadaotao tbody");
+            if (tbodyChua) {
+                let list = tk.chuaDaoTao || [];
+                tbodyChua.innerHTML = list.length
+                    ? list.map(nv => `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(nv.phongBan || "")}</td><td>${escapeHtml(nv.chucDanh || "")}</td></tr>`).join('')
+                    : `<tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Không còn ai — tất cả nhân viên đều đã được đào tạo. 🎉</td></tr>`;
             }
         }
 
