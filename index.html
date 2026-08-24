@@ -1362,8 +1362,23 @@
                          trong hệ thống, giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ
                          phép"). Danh sách tên để chọn CHỈ Admin thêm/xóa được (Tab "Cài đặt hệ thống"). -->
                     <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
-                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(có thể chọn cùng lúc nhiều người - danh sách do Admin quản lý ở Tab "Cài đặt hệ thống")</span></h4>
+                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(có thể chọn cùng lúc nhiều người — gồm cả tài khoản hệ thống hiện có và danh sách tên do Admin tự thêm ở Tab "Cài đặt hệ thống")</span></h4>
                         <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
+                        <!-- [MỚI - ADMIN THÊM NHANH TÊN NGƯỜI ĐÁNH GIÁ NGAY TẠI ĐÂY] Trước đây Admin
+                             PHẢI rời Tab "Tuyển dụng" sang Tab "Cài đặt hệ thống" mới thêm được tên vào
+                             danh sách "Người đánh giá" (nguoiDanhGiaTuyenDung) — nếu danh sách đó đang
+                             TRỐNG thì khối bên dưới không có ai để tick, nhìn giống như bị "khóa". Nay
+                             CHỈ RIÊNG tài khoản Role Admin (id="td-nguoidanhgia-quickadd", ẩn với mọi
+                             tài khoản khác — xem toggleRecruitmentNguoiDanhGiaBox()) thấy thêm 1 ô nhập
+                             nhanh NGAY TẠI ĐÂY, dùng LẠI đúng action "updateDanhMuc" đã có sẵn (server
+                             vẫn tự kiểm tra requireAuth(data, isAdmin) — KHÔNG nới lỏng quyền, Admin
+                             vốn đã là người duy nhất quản lý được danh sách này). -->
+                        <div id="td-nguoidanhgia-quickadd" style="display:none; margin-bottom:10px;">
+                            <div class="table-controls" style="margin:0;">
+                                <input type="text" id="inp-td-nguoidanhgia-quickadd" class="search-box" placeholder="[Chỉ Admin] Thêm nhanh tên người đánh giá mới..." style="max-width:320px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickAddNguoiDanhGiaTuyenDung();}">
+                                <button type="button" class="btn" style="width:auto; padding:8px 14px;" onclick="quickAddNguoiDanhGiaTuyenDung()"><i class="fa-solid fa-plus"></i> Thêm vào danh sách</button>
+                            </div>
+                        </div>
                         <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
                         <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
                         <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
@@ -14147,26 +14162,63 @@
         // Danh sách tài khoản lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin (không gọi thêm
         // action mới để liệt kê tài khoản). Tick sẵn đúng những tài khoản đang có trong
         // "selectedArr" (mảng username đã gán trước đó của hồ sơ đang sửa, có thể rỗng).
-        // [CẬP NHẬT - DÙNG DANH SÁCH "NGƯỜI ĐÁNH GIÁ" DO ADMIN TỰ QUẢN LÝ] Trước đây nguồn danh
-        // sách để tick chọn lấy từ TOÀN BỘ tài khoản đăng nhập của hệ thống (Object.keys(userDatabase)).
-        // Nay đổi sang dùng ĐÚNG danh sách "nguoiDanhGiaTuyenDung" do Admin tự thêm/xóa ở Tab "Cài
-        // đặt hệ thống" (xem addNguoiDanhGiaTuyenDung()) — không bắt buộc phải là tài khoản đăng
-        // nhập. TƯƠNG THÍCH NGƯỢC: nếu 1 hồ sơ đã có sẵn tên người đánh giá (gán từ trước, kể cả
-        // theo cách cũ dùng username) mà tên đó hiện KHÔNG còn trong danh sách "nguoiDanhGiaTuyenDung"
-        // (VD Admin đã xóa khỏi danh sách), tên đó vẫn được hiện thêm vào (đã tick sẵn) để KHÔNG
-        // làm "biến mất" dữ liệu đã gán trước đó khỏi giao diện.
+        // [CẬP NHẬT - HIỆN LẠI CẢ "TÀI KHOẢN HỆ THỐNG HIỆN CÓ"] Theo yêu cầu, khôi phục lại việc
+        // hiện TOÀN BỘ tài khoản đăng nhập hệ thống (Object.keys(userDatabase)) để Admin chọn làm
+        // người đánh giá — gộp CHUNG với danh sách tên tự thêm "nguoiDanhGiaTuyenDung" (Admin quản
+        // lý ở Tab "Cài đặt hệ thống", dùng cho người KHÔNG có tài khoản đăng nhập), chia thành 2
+        // nhóm rõ ràng để dễ phân biệt. BẢO MẬT: "userDatabase" ở trình duyệt CHỈ được server trả
+        // về đầy đủ cho tài khoản Role Admin (xem nhánh "TaiKhoan" trong Code.gs — authedUser.role
+        // === "Admin"); với tài khoản khác, biến này rỗng ({}) nên KHÔNG hề lộ thêm danh sách tài
+        // khoản nào ngoài phạm vi đã được cấp sẵn từ trước — không nới lỏng bảo mật. TƯƠNG THÍCH
+        // NGƯỢC: nếu 1 hồ sơ đã có sẵn tên người đánh giá (gán từ trước) mà tên đó hiện KHÔNG còn
+        // trong cả 2 danh sách trên (VD tài khoản đã bị xóa, hoặc tên đã bị Admin xóa khỏi danh
+        // sách tự thêm), tên đó vẫn được hiện thêm vào (đã tick sẵn, nhóm "Khác") để KHÔNG làm
+        // "biến mất" dữ liệu đã gán trước đó khỏi giao diện.
         function populateRecruitmentNguoiDanhGiaCheckboxes(selectedArr) {
             let box = document.getElementById("td-nguoidanhgia-list");
             if (!box) return;
             let selected = Array.isArray(selectedArr) ? selectedArr : [];
-            let allNames = Array.from(new Set([...(nguoiDanhGiaTuyenDung || []), ...selected])).sort((a, b) => a.localeCompare(b, "vi"));
-            if (!allNames.length) {
-                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có người đánh giá nào trong danh sách. Vui lòng vào Tab "Cài đặt hệ thống" (chỉ Admin) để thêm.</div>';
+
+            let taiKhoanNames = Object.keys(userDatabase || {}).sort((a, b) => {
+                if (a === "admin") return -1;
+                if (b === "admin") return 1;
+                return a.localeCompare(b, "vi");
+            });
+            let tuThemNames = (nguoiDanhGiaTuyenDung || []).filter(n => taiKhoanNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, "vi"));
+            let khongCoNhomNames = selected.filter(n => taiKhoanNames.indexOf(n) === -1 && tuThemNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, "vi"));
+
+            if (!taiKhoanNames.length && !tuThemNames.length && !khongCoNhomNames.length) {
+                // [CẬP NHẬT] Với Admin, trỏ thẳng tới ô "Thêm nhanh" mới thêm ở ngay phía trên (thay
+                // vì chỉ nhắc chung chung phải sang Tab "Cài đặt hệ thống") — với tài khoản khác vẫn
+                // giữ nguyên hướng dẫn cũ vì họ không quản lý được danh sách này.
+                box.innerHTML = (currentUser && currentUser.role === "Admin")
+                    ? '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản/người đánh giá nào để chọn. Vui lòng dùng ô "Thêm nhanh tên người đánh giá mới" ngay phía trên, hoặc Tab "Cài đặt hệ thống" để tạo tài khoản.</div>'
+                    : '<div style="color:#aaa; font-size:13px;">Chưa có người đánh giá nào trong danh sách. Vui lòng vào Tab "Cài đặt hệ thống" (chỉ Admin) để thêm.</div>';
                 return;
             }
-            box.innerHTML = allNames.map(u =>
-                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${selected.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
-            ).join("");
+
+            function groupHeaderHtml_(label, isFirst) {
+                let borderStyle = isFirst ? "margin:0 0 4px;" : "margin:8px 0 4px; padding-top:4px; border-top:1px solid #eee;";
+                return `<div style="font-size:11px; font-weight:600; color:#888; text-transform:uppercase; ${borderStyle}">${escapeHtml(label)}</div>`;
+            }
+            function checkboxItemHtml_(u) {
+                return `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${selected.includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`;
+            }
+
+            let html = "";
+            if (taiKhoanNames.length) {
+                html += groupHeaderHtml_("Tài khoản hệ thống hiện có (" + taiKhoanNames.length + ")", true);
+                html += taiKhoanNames.map(checkboxItemHtml_).join("");
+            }
+            if (tuThemNames.length) {
+                html += groupHeaderHtml_("Người đánh giá tự thêm (không phải tài khoản đăng nhập)", !taiKhoanNames.length);
+                html += tuThemNames.map(checkboxItemHtml_).join("");
+            }
+            if (khongCoNhomNames.length) {
+                html += groupHeaderHtml_("Đã gán trước đó (không còn trong 2 danh sách trên)", !taiKhoanNames.length && !tuThemNames.length);
+                html += khongCoNhomNames.map(checkboxItemHtml_).join("");
+            }
+            box.innerHTML = html;
         }
 
         // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG] Ẩn/hiện + khóa/mở khối chọn "Người
@@ -14183,6 +14235,10 @@
             let showBox = !!currentUserCanEditRecruitment;
             box.style.display = showBox ? "block" : "none";
             if (!showBox) return;
+            // [MỚI] Ô "Thêm nhanh tên người đánh giá" chỉ hiện với Role Admin — KHÔNG đổi quyền gì,
+            // chỉ là lối tắt cho đúng thao tác Admin vốn đã làm được ở Tab "Cài đặt hệ thống".
+            let quickAddBox = document.getElementById("td-nguoidanhgia-quickadd");
+            if (quickAddBox) quickAddBox.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
             let hintEl = document.getElementById("td-nguoidanhgia-target-hint");
             let saveBtn = document.getElementById("btn-save-td-nguoidanhgia");
             if (maHoSo) {
@@ -14469,6 +14525,45 @@
                 statusEl.style.color = "#c62828";
                 statusEl.innerText = "❌ Lưu thất bại, vui lòng thử lại.";
             }
+        }
+
+        // [MỚI - CHỈ ADMIN] Thêm nhanh 1 tên vào danh sách "Người đánh giá" (nguoiDanhGiaTuyenDung)
+        // NGAY TẠI Tab "Tuyển dụng" (ô "td-nguoidanhgia-quickadd", chỉ Role Admin nhìn thấy — xem
+        // toggleRecruitmentNguoiDanhGiaBox()), không cần rời sang Tab "Cài đặt hệ thống" nữa. Dùng
+        // LẠI ĐÚNG action "updateDanhMuc" đã có sẵn (server vẫn tự kiểm tra requireAuth(data,
+        // isAdmin) — KHÔNG nới lỏng quyền, Admin vốn đã là người duy nhất quản lý được danh sách
+        // này), LUÔN gửi kèm đầy đủ "depts"/"vessels"/"apps" hiện có để KHÔNG làm mất dữ liệu Phòng
+        // ban/Đội tàu/Phần mềm đã lưu (action này ghi đè TOÀN BỘ sheet "DanhMuc" mỗi lần gọi, giống
+        // hệt addNguoiDanhGiaTuyenDung() ở Tab "Cài đặt hệ thống"). Sau khi thêm xong, VẼ LẠI ngay
+        // checkbox tại khối đang mở (giữ nguyên hồ sơ đang sửa + những người đã tick trước đó) thay
+        // vì bắt Admin phải tự bấm lại "Sửa".
+        async function quickAddNguoiDanhGiaTuyenDung() {
+            if (!currentUser || currentUser.role !== "Admin") return; // đã ẩn ở giao diện, chặn thêm 1 lớp phòng hờ
+            let inp = document.getElementById("inp-td-nguoidanhgia-quickadd");
+            if (!inp) return;
+            let val = inp.value.trim();
+            if (!val) return;
+            if (nguoiDanhGiaTuyenDung.includes(val)) { inp.value = ""; return; }
+
+            // Giữ lại đúng những người đang được tick trước khi thêm, để không làm mất lựa chọn
+            // đang dang dở của Admin.
+            let listBox = document.getElementById("td-nguoidanhgia-list");
+            let currentlyChecked = listBox ? Array.from(listBox.querySelectorAll("input:checked")).map(i => i.value) : [];
+
+            nguoiDanhGiaTuyenDung.push(val);
+            saveLocalCache();
+            renderNguoiDanhGiaTuyenDungList(); // đồng bộ luôn khối quản lý ở Tab "Cài đặt hệ thống" nếu đang mở
+            let ok = await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
+            inp.value = "";
+            if (!ok) {
+                // pushToCloud() đã tự alert lỗi rồi — ở đây chỉ cần rút tên vừa thêm ra khỏi danh
+                // sách cục bộ để tránh hiển thị sai lệch với dữ liệu thật trên server.
+                let idx = nguoiDanhGiaTuyenDung.lastIndexOf(val);
+                if (idx !== -1) nguoiDanhGiaTuyenDung.splice(idx, 1);
+                saveLocalCache();
+                renderNguoiDanhGiaTuyenDungList();
+            }
+            populateRecruitmentNguoiDanhGiaCheckboxes(currentlyChecked);
         }
 
         async function deleteRecruitmentRow(maHoSo) {
