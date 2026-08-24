@@ -441,6 +441,12 @@
         .daotao-subtab { cursor:pointer; padding:7px 14px; border-radius:16px; font-size:13px; white-space:nowrap; border:1px solid #ddd; background:#f5f5f5; color:#444; }
         .daotao-subtab.active { border-color: var(--secondary-color); background: var(--secondary-color); color:#fff; }
         .daotao-panel { animation: none; }
+        /* [TAB "ĐÀO TẠO" - CHỌN NHÂN VIÊN] Danh sách phòng ban (cột trái) trong form thêm/sửa khóa học */
+        .dt-dept-item { padding:9px 12px; cursor:pointer; border-bottom:1px solid #eee; font-size:13px; display:flex; justify-content:space-between; align-items:center; gap:6px; }
+        .dt-dept-item:hover { background:#f0f0f0; }
+        .dt-dept-item.active { background: var(--secondary-color); color:#fff; font-weight:600; }
+        .dt-dept-item .dt-dept-badge { font-size:11px; padding:1px 7px; border-radius:10px; background:#e0e0e0; color:#555; white-space:nowrap; }
+        .dt-dept-item.active .dt-dept-badge { background:rgba(255,255,255,0.3); color:#fff; }
         #hr-expiring-alert-box ul { list-style: none; }
         #hr-expiring-alert-box li { padding: 8px 10px; background:#fff; border-radius:4px; margin-bottom:6px; border-left:3px solid #e67e22; }
         /* [TAB "LỊCH LÀM VIỆC CÔNG TY"] Lưới hiển thị Thứ 2 -> Chủ nhật */
@@ -1454,9 +1460,16 @@
                             </div>
                             <div class="input-group" style="grid-column: 1 / -1;">
                                 <label>Danh sách nhân viên đào tạo</label>
-                                <p style="font-size:12px; color:#888; margin:0 0 8px;">Chọn từng nhân viên, hoặc tick "Chọn cả phòng ban" để chọn nhanh nguyên phòng ban. Họ tên/Phòng ban/Chức danh luôn lấy đúng theo Danh bạ CBCNV. Khi sửa khóa học đã có sẵn học viên, những người đã có trong khóa sẽ hiện tick sẵn (không thể bỏ tick ở đây — vào tab "Học viên &amp; Kết quả" nếu muốn xóa).</p>
-                                <input type="text" id="dt-form-hv-search" class="search-box" placeholder="🔍 Tìm nhân viên theo tên/MSNV/phòng ban..." oninput="renderDaoTaoCourseFormStaffPicker()" style="margin-bottom:10px;">
-                                <div id="dt-form-hv-picker" class="checkbox-dropdown-list" style="max-height:260px;"></div>
+                                <p style="font-size:12px; color:#888; margin:0 0 8px;">Bên trái: chọn phòng ban. Bên phải: tick chọn từng nhân viên thuộc phòng ban đó (hoặc bấm "Chọn tất cả" để chọn nhanh cả phòng). Họ tên/Phòng ban/Chức danh luôn lấy đúng theo Danh bạ CBCNV. Khi sửa khóa học đã có sẵn học viên, những người đã có trong khóa sẽ hiện tick sẵn (không thể bỏ tick ở đây — vào tab "Học viên &amp; Kết quả" nếu muốn xóa).</p>
+                                <input type="text" id="dt-form-hv-search" class="search-box" placeholder="🔍 Tìm nhân viên hoặc phòng ban theo tên/MSNV..." oninput="renderDaoTaoCourseFormStaffPicker()" style="margin-bottom:10px;">
+                                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                    <div id="dt-form-dept-list" style="flex: 0 0 240px; max-width:240px; border:1px solid #e0e0e0; border-radius:6px; max-height:320px; overflow-y:auto; background:#fafafa;"></div>
+                                    <div style="flex: 1 1 280px; min-width:280px;">
+                                        <div id="dt-form-dept-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"></div>
+                                        <div id="dt-form-dept-members" class="checkbox-dropdown-list" style="max-height:280px;"></div>
+                                    </div>
+                                </div>
+                                <div id="dt-form-selected-summary" style="font-size:12px; color:#1e7e34; margin-top:6px; font-weight:600;"></div>
                             </div>
                         </div>
                         <div class="form-row" style="margin-top:10px">
@@ -1517,6 +1530,24 @@
 
                 <!-- ===== SUB-TAB 3: TỔNG KẾT ===== -->
                 <div id="daotao-panel-tongket" class="daotao-panel" style="display:none;">
+                    <!-- [MỚI - XUẤT EXCEL "TỔNG KẾT"] Khối chọn phạm vi + nút xuất file .xlsx. Chỉ
+                         dùng LẠI đúng dữ liệu "daoTaoTongKet" đã tải sẵn theo đúng quyền xem Tab
+                         Đào Tạo của tài khoản đang đăng nhập (không gọi thêm API nào, không
+                         đọc/ghi/xóa gì thêm trên Sheet, không đổi cơ chế phân quyền hiện có). -->
+                    <div class="admin-box" style="border-left: 5px solid #1e7e34; background:#f3fbf5; margin-bottom:16px;">
+                        <h4 style="margin:0 0 10px 0;"><i class="fa-solid fa-file-excel" style="color:#1e7e34;"></i> Xuất dữ liệu Tổng kết ra Excel</h4>
+                        <div class="table-controls" style="margin:0;">
+                            <select id="dt-tk-export-scope" class="search-box" style="max-width: 300px;">
+                                <option value="ca_hai">Cả 2 mục (Đã tham gia + Chưa tham gia)</option>
+                                <option value="da">Chỉ nhân viên đã tham gia khóa học</option>
+                                <option value="chua">Chỉ nhân viên chưa tham gia khóa học</option>
+                            </select>
+                            <button type="button" class="btn btn-success" onclick="exportDaoTaoTongKetToExcel()">
+                                <i class="fa-solid fa-file-export"></i> Xuất Excel (.xlsx)
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="dashboard-grid" style="margin-bottom: 20px;">
                         <div class="card"><div class="card-info"><p>Tổng số nhân viên đang làm việc</p><h3 id="dt-tk-tong">0</h3></div><i class="fa-solid fa-users card-icon"></i></div>
                         <div class="card"><div class="card-info"><p>Đã tham gia ít nhất 1 khóa</p><h3 id="dt-tk-dadaotao">0</h3></div><i class="fa-solid fa-user-check card-icon"></i></div>
@@ -1527,7 +1558,7 @@
                             <h4><i class="fa-solid fa-user-check" style="color:#1e7e34;"></i> Đã được đào tạo</h4>
                             <div style="overflow-x:auto;">
                             <table id="tbl-daotao-dadaotao">
-                                <thead><tr><th>MSNV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th><th>Số khóa đã tham gia</th></tr></thead>
+                                <thead><tr><th>MSNV</th><th>Họ tên</th><th>Phòng ban</th><th>Chức danh</th><th>Tên khóa học</th><th>Số khóa đã tham gia</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                             </div>
@@ -14618,71 +14649,200 @@
         // + khóa (disabled) trong bộ chọn, để KHÔNG thể vô tình bỏ tick làm mất dữ liệu điểm/
         // xếp loại/chứng chỉ đã lưu của họ (muốn xóa phải qua tab "Học viên & Kết quả").
         let daoTaoFormAlreadyEnrolledMsnv = new Set();
+        // [MỚI] Những MSNV đang được NGƯỜI DÙNG chọn thêm mới (khác với người đã có sẵn ở trên)
+        // — lưu ở biến riêng (không đọc DOM checkbox trực tiếp) để KHÔNG bị mất lựa chọn khi
+        // chuyển qua lại giữa các phòng ban ở cột bên trái.
+        let daoTaoFormSelectedMsnv = new Set();
+        // Phòng ban đang được chọn để xem/tick nhân viên ở cột bên phải.
+        let daoTaoFormActiveDept = "";
 
-        // Hiển thị danh sách nhân viên để chọn NGAY trong form thêm/sửa khóa học, gom nhóm theo
-        // Phòng ban, mỗi nhóm có 1 checkbox "Chọn cả phòng ban" để tick nhanh toàn bộ nhân viên
-        // của phòng ban đó (có thể bỏ tick từng người sau khi chọn cả phòng ban).
+        // Chuẩn hóa tên phòng ban để HIỂN THỊ — Cột "PhongBan" trong Danh bạ CBCNV cho phép 1
+        // nhân viên thuộc NHIỀU phòng ban, được lưu dạng JSON (ví dụ ["O&M"], có thể bị lồng 2
+        // lớp do dữ liệu cũ) — hàm này giải mã về dạng mảng rồi nối lại thành chuỗi thường, bỏ
+        // hẳn dấu ngoặc kép/ngoặc vuông khi hiển thị (không sửa/ghi lại dữ liệu gốc trong Danh
+        // bạ CBCNV, chỉ chuẩn hóa lúc HIỂN THỊ ở Tab Đào Tạo).
+        function chuanHoaTenPhongBanDaoTao(raw) {
+            let value = raw;
+            for (let i = 0; i < 3 && typeof value === "string"; i++) {
+                try {
+                    let parsed = JSON.parse(value);
+                    if (parsed === value) break;
+                    value = parsed;
+                } catch (e) { break; }
+            }
+            if (Array.isArray(value)) return value.filter(v => v).join(", ");
+            return value ? String(value) : "";
+        }
+
+        // [MỚI - ĐỒNG BỘ TÊN PHÒNG BAN/SỐ LƯỢNG VỚI TAB "DANH BẠ CBCNV"] Tách chuỗi phòng ban đã
+        // nối bằng ", " (xem chuanHoaTenPhongBanDaoTao ở trên) trở lại thành MẢNG từng phòng ban
+        // riêng lẻ — dùng để GOM NHÓM nhân viên theo TỪNG phòng ban thực tế, giống hệt cách tab
+        // "Danh bạ CBCNV" đang đếm số lượng nhân viên theo phòng ban (xem biến
+        // "activeStaffCountByDept" trong updateSystemData()/renderStaffData(): 1 nhân viên thuộc
+        // NHIỀU phòng ban sẽ được TÍNH Ở TỪNG phòng ban đó). Chỉ dùng để HIỂN THỊ/GOM NHÓM tại Tab
+        // Đào Tạo — KHÔNG sửa/ghi lại dữ liệu gốc ở Danh bạ CBCNV.
+        function daoTaoTachDanhSachPhongBan(phongBanHienThi) {
+            if (!phongBanHienThi) return [];
+            return String(phongBanHienThi).split(",").map(s => s.trim()).filter(s => s);
+        }
+
+        // Gom nhóm 1 danh sách nhân viên (mỗi phần tử đã có field "phongBanHienThi") theo TỪNG
+        // phòng ban riêng lẻ. Nhân viên thuộc nhiều phòng ban sẽ xuất hiện ở TẤT CẢ các nhóm phòng
+        // ban tương ứng — khiến tên phòng ban + số lượng nhân viên hiển thị ở Tab Đào Tạo LUÔN
+        // khớp đúng với số liệu đang hiển thị ở Tab "Danh bạ CBCNV".
+        function daoTaoGomNhomTheoPhongBan(list) {
+            let groups = {};
+            list.forEach(nv => {
+                let deptArr = daoTaoTachDanhSachPhongBan(nv.phongBanHienThi);
+                if (!deptArr.length) deptArr = ["Chưa phân phòng ban"];
+                deptArr.forEach(d => {
+                    if (!groups[d]) groups[d] = [];
+                    groups[d].push(nv);
+                });
+            });
+            return groups;
+        }
+
+        // Hiển thị bộ chọn nhân viên NGAY trong form thêm/sửa khóa học dạng 2 cột: cột trái là
+        // danh sách PHÒNG BAN để chọn, cột phải hiển thị nhân viên thuộc đúng phòng ban đang
+        // chọn để tick từng người (hoặc bấm "Chọn tất cả" để chọn nhanh nguyên phòng).
         function renderDaoTaoCourseFormStaffPicker() {
-            let box = document.getElementById("dt-form-hv-picker");
-            if (!box) return;
+            let deptListBox = document.getElementById("dt-form-dept-list");
+            let headerBox = document.getElementById("dt-form-dept-header");
+            let membersBox = document.getElementById("dt-form-dept-members");
+            let summaryBox = document.getElementById("dt-form-selected-summary");
+            if (!deptListBox || !membersBox) return;
+
             let kw = (document.getElementById("dt-form-hv-search")?.value || "").trim().toLowerCase();
-            let list = daoTaoNhanVien.slice();
+            let list = daoTaoNhanVien.map(nv => Object.assign({}, nv, { phongBanHienThi: chuanHoaTenPhongBanDaoTao(nv.phongBan) || "Chưa phân phòng ban" }));
             if (kw) {
                 list = list.filter(nv =>
                     (nv.hoTen || "").toLowerCase().includes(kw) ||
                     (nv.msnv || "").toLowerCase().includes(kw) ||
-                    (nv.phongBan || "").toLowerCase().includes(kw)
+                    (nv.phongBanHienThi || "").toLowerCase().includes(kw)
                 );
             }
-            if (!list.length) {
-                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Không tìm thấy nhân viên phù hợp.</div>';
+
+            // [ĐỒNG BỘ VỚI TAB "DANH BẠ CBCNV"] Gom nhóm theo TỪNG phòng ban riêng lẻ (không gom
+            // theo cụm chuỗi đã nối như trước đây), rồi hợp với đúng danh mục phòng ban gốc (biến
+            // "depts" toàn cục, đọc từ Sheet "DanhMuc" — CHÍNH danh mục Tab "Danh bạ CBCNV" đang
+            // dùng để đổ vào ô lọc "filter-dept") để tên phòng ban + số lượng nhân viên hiển thị ở
+            // đây LUÔN khớp đúng với Tab "Danh bạ CBCNV" (kể cả phòng ban chưa có ai tham gia
+            // Đào Tạo cũng vẫn hiện ra, giống hệt ô lọc phòng ban ở Danh bạ CBCNV).
+            let groups = daoTaoGomNhomTheoPhongBan(list);
+            let deptNameSet = {};
+            (typeof depts !== "undefined" && Array.isArray(depts) ? depts : []).forEach(d => { if (d) deptNameSet[d] = true; });
+            Object.keys(groups).forEach(d => { deptNameSet[d] = true; });
+            let deptNames = Object.keys(deptNameSet).sort((a, b) => a.localeCompare(b, 'vi'));
+            if (kw) {
+                // Khi đang gõ tìm kiếm: chỉ hiện phòng ban thực sự CÓ nhân viên khớp từ khóa
+                // (tránh liệt kê thêm các phòng ban trống không liên quan tới từ khóa đang gõ).
+                deptNames = deptNames.filter(d => groups[d] && groups[d].length);
+            }
+
+            if (!deptNames.length) {
+                deptListBox.innerHTML = '<div style="padding:12px; color:#aaa; font-size:13px;">Không tìm thấy phòng ban/nhân viên phù hợp.</div>';
+                membersBox.innerHTML = "";
+                if (headerBox) headerBox.innerHTML = "";
+                if (summaryBox) summaryBox.innerText = "";
                 return;
             }
-            // Gom nhóm theo Phòng ban (nhân viên chưa gán phòng ban -> nhóm "Chưa phân phòng ban")
-            let groups = {};
-            list.forEach(nv => {
-                let dept = nv.phongBan || "Chưa phân phòng ban";
-                if (!groups[dept]) groups[dept] = [];
-                groups[dept].push(nv);
-            });
-            let deptNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'vi'));
-            box.innerHTML = deptNames.map(dept => {
-                let deptSafeId = 'dtdept_' + dept.replace(/[^a-zA-Z0-9]/g, '_');
-                let members = groups[dept];
-                let memberRows = members.map(nv => {
-                    let already = daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv);
-                    return `<label class="checkbox-item" style="padding-left:22px;">
-                        <input type="checkbox" class="dt-form-hv-member" data-dept="${escapeHtml(dept)}" value="${escapeHtml(nv.msnv)}" ${already ? "checked disabled" : ""}>
-                        ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)})</span>
-                        ${already ? '<span style="color:#1e7e34; font-size:11px;"> — đã có trong khóa</span>' : ''}
-                    </label>`;
-                }).join("");
-                return `<div style="margin-bottom:6px;">
-                    <label class="checkbox-item" style="font-weight:600;">
-                        <input type="checkbox" id="${deptSafeId}" onchange="toggleDaoTaoFormDept('${escapeHtml(dept).replace(/'/g, "\\'")}', this.checked)">
-                        📁 ${escapeHtml(dept)} <span style="color:#888; font-weight:normal; font-size:11px;">(${members.length} người — chọn cả phòng ban)</span>
-                    </label>
-                    ${memberRows}
+            // Nếu phòng ban đang chọn không còn trong danh sách lọc hiện tại -> tự chọn phòng đầu tiên
+            if (!daoTaoFormActiveDept || deptNames.indexOf(daoTaoFormActiveDept) === -1) {
+                daoTaoFormActiveDept = deptNames[0];
+            }
+
+            deptListBox.innerHTML = deptNames.map(dept => {
+                let members = groups[dept] || [];
+                let soDaChon = members.filter(nv => daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv) || daoTaoFormSelectedMsnv.has(nv.msnv)).length;
+                let activeClass = (dept === daoTaoFormActiveDept) ? "active" : "";
+                return `<div class="dt-dept-item ${activeClass}" onclick="selectDaoTaoFormDept('${escapeHtml(dept).replace(/'/g, "\\'")}')">
+                    <span><i class="fa-solid fa-folder"></i> ${escapeHtml(dept)}</span>
+                    <span class="dt-dept-badge">${soDaChon > 0 ? soDaChon + "/" : ""}${members.length}</span>
                 </div>`;
+            }).join("");
+
+            renderDaoTaoFormDeptMembers(groups[daoTaoFormActiveDept] || [], headerBox, membersBox);
+            renderDaoTaoFormSelectedSummary(summaryBox);
+        }
+
+        function renderDaoTaoFormDeptMembers(members, headerBox, membersBox) {
+            if (headerBox) {
+                let coDangChonDuoc = members.some(nv => !daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv));
+                headerBox.innerHTML = `<strong style="font-size:13px;"><i class="fa-solid fa-folder-open"></i> ${escapeHtml(daoTaoFormActiveDept)}</strong>` +
+                    (coDangChonDuoc ? `<button type="button" class="btn" style="width:auto; padding:4px 10px; font-size:12px;" onclick="toggleDaoTaoFormDeptSelectAll(true)">Chọn tất cả</button>
+                       <button type="button" class="btn" style="width:auto; padding:4px 10px; font-size:12px; margin-left:4px;" onclick="toggleDaoTaoFormDeptSelectAll(false)">Bỏ chọn</button>` : '');
+            }
+            if (!members.length) {
+                membersBox.innerHTML = '<div style="color:#aaa; font-size:13px;">Không có nhân viên nào trong phòng ban này.</div>';
+                return;
+            }
+            membersBox.innerHTML = members.map(nv => {
+                let already = daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv);
+                let checked = already || daoTaoFormSelectedMsnv.has(nv.msnv);
+                return `<label class="checkbox-item">
+                    <input type="checkbox" class="dt-form-hv-member" value="${escapeHtml(nv.msnv)}" ${checked ? "checked" : ""} ${already ? "disabled" : ""} onchange="toggleDaoTaoFormMember('${escapeHtml(nv.msnv).replace(/'/g, "\\'")}', this.checked)">
+                    ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)}${nv.chucDanh ? " - " + escapeHtml(nv.chucDanh) : ""})</span>
+                    ${already ? '<span style="color:#1e7e34; font-size:11px;"> — đã có trong khóa</span>' : ''}
+                </label>`;
             }).join("");
         }
 
-        // Tick/bỏ tick "Chọn cả phòng ban" -> tick/bỏ tick toàn bộ nhân viên (còn bấm được, tức
-        // KHÔNG phải người đã có sẵn trong khóa) thuộc đúng phòng ban đó.
-        function toggleDaoTaoFormDept(dept, checked) {
-            let box = document.getElementById("dt-form-hv-picker");
-            if (!box) return;
-            box.querySelectorAll('.dt-form-hv-member[data-dept="' + CSS.escape(dept) + '"]').forEach(cb => {
-                if (!cb.disabled) cb.checked = checked;
-            });
+        function renderDaoTaoFormSelectedSummary(summaryBox) {
+            if (!summaryBox) return;
+            let soMoi = daoTaoFormSelectedMsnv.size;
+            let soCu = daoTaoFormAlreadyEnrolledMsnv.size;
+            if (soMoi === 0 && soCu === 0) { summaryBox.innerText = ""; return; }
+            let parts = [];
+            if (soMoi > 0) parts.push(soMoi + " nhân viên mới được chọn");
+            if (soCu > 0) parts.push(soCu + " nhân viên đã có sẵn trong khóa");
+            summaryBox.innerText = "✔️ " + parts.join(", ") + ".";
         }
 
-        // Trả về danh sách MSNV đang được tick VÀ chưa có sẵn trong khóa (bỏ qua checkbox
-        // disabled) — dùng để gọi "addDaoTaoHocVienBulk" sau khi lưu khóa học.
+        // Bấm chọn 1 phòng ban ở cột trái -> hiển thị đúng danh sách nhân viên phòng ban đó ở cột phải.
+        function selectDaoTaoFormDept(dept) {
+            daoTaoFormActiveDept = dept;
+            renderDaoTaoCourseFormStaffPicker();
+        }
+
+        // Tick/bỏ tick 1 nhân viên -> cập nhật vào Set "daoTaoFormSelectedMsnv" (không đụng tới
+        // người đã có sẵn trong khóa — checkbox của họ luôn bị khóa/disabled).
+        function toggleDaoTaoFormMember(msnv, checked) {
+            if (checked) daoTaoFormSelectedMsnv.add(msnv);
+            else daoTaoFormSelectedMsnv.delete(msnv);
+            // Cập nhật lại số đếm ở cột trái + dòng tóm tắt mà KHÔNG cần vẽ lại toàn bộ cột phải
+            // (tránh giật/mất vị trí cuộn khi người dùng đang tick nhiều người liên tiếp).
+            renderDaoTaoCourseFormStaffPicker();
+        }
+
+        // Nút "Chọn tất cả" / "Bỏ chọn" toàn bộ nhân viên (còn tick được, tức KHÔNG phải người
+        // đã có sẵn trong khóa) của phòng ban đang xem ở cột phải.
+        function toggleDaoTaoFormDeptSelectAll(checked) {
+            let kw = (document.getElementById("dt-form-hv-search")?.value || "").trim().toLowerCase();
+            // [ĐỒNG BỘ VỚI TAB "DANH BẠ CBCNV"] Dùng lại đúng daoTaoGomNhomTheoPhongBan() để lấy
+            // đúng danh sách nhân viên của phòng ban đang chọn — giống hệt danh sách đang hiển thị
+            // ở cột phải (renderDaoTaoCourseFormStaffPicker), tránh lệch số khi nhân viên thuộc
+            // nhiều phòng ban.
+            let list = daoTaoNhanVien.map(nv => Object.assign({}, nv, { phongBanHienThi: chuanHoaTenPhongBanDaoTao(nv.phongBan) || "Chưa phân phòng ban" }));
+            let members = daoTaoGomNhomTheoPhongBan(list)[daoTaoFormActiveDept] || [];
+            if (kw) {
+                members = members.filter(nv =>
+                    (nv.hoTen || "").toLowerCase().includes(kw) ||
+                    (nv.msnv || "").toLowerCase().includes(kw)
+                );
+            }
+            members.forEach(nv => {
+                if (daoTaoFormAlreadyEnrolledMsnv.has(nv.msnv)) return;
+                if (checked) daoTaoFormSelectedMsnv.add(nv.msnv);
+                else daoTaoFormSelectedMsnv.delete(nv.msnv);
+            });
+            renderDaoTaoCourseFormStaffPicker();
+        }
+
+        // Trả về danh sách MSNV đang được tick chọn MỚI (chưa có sẵn trong khóa) — dùng để gọi
+        // "addDaoTaoHocVienBulk" sau khi lưu khóa học.
         function getDaoTaoFormSelectedNewMsnv() {
-            let box = document.getElementById("dt-form-hv-picker");
-            if (!box) return [];
-            return Array.from(box.querySelectorAll('.dt-form-hv-member:checked:not(:disabled)')).map(cb => cb.value);
+            return Array.from(daoTaoFormSelectedMsnv);
         }
 
         function resetDaoTaoForm() {
@@ -14704,6 +14864,8 @@
             document.getElementById("btn-cancel-edit-daotao").style.display = "none";
             // [MỚI] Reset bộ chọn "Danh sách nhân viên đào tạo" về trạng thái trống (chế độ Thêm mới)
             daoTaoFormAlreadyEnrolledMsnv = new Set();
+            daoTaoFormSelectedMsnv = new Set();
+            daoTaoFormActiveDept = "";
             let hvSearch = document.getElementById("dt-form-hv-search");
             if (hvSearch) hvSearch.value = "";
             renderDaoTaoCourseFormStaffPicker();
@@ -14730,6 +14892,8 @@
             document.getElementById("btn-cancel-edit-daotao").style.display = "inline-block";
             // [MỚI] Đánh dấu sẵn những nhân viên ĐÃ CÓ trong khóa này (tick + khóa, không xóa được ở đây)
             daoTaoFormAlreadyEnrolledMsnv = new Set(daoTaoHocVien.filter(h => h.maKhoaHoc === r.maKhoaHoc).map(h => h.msnv));
+            daoTaoFormSelectedMsnv = new Set();
+            daoTaoFormActiveDept = "";
             let hvSearch2 = document.getElementById("dt-form-hv-search");
             if (hvSearch2) hvSearch2.value = "";
             renderDaoTaoCourseFormStaffPicker();
@@ -14874,12 +15038,14 @@
             if (!box) return;
             let existingMsnv = new Set(daoTaoHocVien.filter(h => h.maKhoaHoc === daoTaoActiveCourseId).map(h => h.msnv));
             let kw = (document.getElementById("dt-hv-picker-search")?.value || "").trim().toLowerCase();
-            let candidates = daoTaoNhanVien.filter(nv => !existingMsnv.has(nv.msnv));
+            let candidates = daoTaoNhanVien
+                .filter(nv => !existingMsnv.has(nv.msnv))
+                .map(nv => Object.assign({}, nv, { phongBanHienThi: chuanHoaTenPhongBanDaoTao(nv.phongBan) }));
             if (kw) {
                 candidates = candidates.filter(nv =>
                     (nv.hoTen || "").toLowerCase().includes(kw) ||
                     (nv.msnv || "").toLowerCase().includes(kw) ||
-                    (nv.phongBan || "").toLowerCase().includes(kw)
+                    (nv.phongBanHienThi || "").toLowerCase().includes(kw)
                 );
             }
             if (!candidates.length) {
@@ -14887,7 +15053,7 @@
                 return;
             }
             box.innerHTML = candidates.map(nv =>
-                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(nv.msnv)}"> ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)}${nv.phongBan ? " - " + escapeHtml(nv.phongBan) : ""})</span></label>`
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(nv.msnv)}"> ${escapeHtml(nv.hoTen)} <span style="color:#888; font-size:11px;">(${escapeHtml(nv.msnv)}${nv.phongBanHienThi ? " - " + escapeHtml(nv.phongBanHienThi) : ""})</span></label>`
             ).join("");
         }
 
@@ -14936,7 +15102,7 @@
                 return `<tr>
                     <td>${escapeHtml(h.msnv)}</td>
                     <td>${escapeHtml(h.hoTen)}</td>
-                    <td>${escapeHtml(h.phongBan || "")}</td>
+                    <td>${escapeHtml(chuanHoaTenPhongBanDaoTao(h.phongBan))}</td>
                     <td>${escapeHtml(h.chucDanh || "")}</td>
                     <td>${diemCell}</td>
                     <td>${xepLoaiCell}</td>
@@ -14982,16 +15148,95 @@
             if (tbodyDa) {
                 let list = tk.daDaoTao || [];
                 tbodyDa.innerHTML = list.length
-                    ? list.map(nv => `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(nv.phongBan || "")}</td><td>${escapeHtml(nv.chucDanh || "")}</td><td style="text-align:center;">${nv.soKhoaDaThamGia || 0}</td></tr>`).join('')
-                    : `<tr><td colspan="5" style="text-align:center; color:#888; padding:16px;">Chưa có dữ liệu.</td></tr>`;
+                    ? list.map(nv => {
+                        // [MỚI - CỘT "Tên khóa học"] "tenCacKhoaHoc" là mảng tên các khóa học nhân
+                        // viên này đã tham gia (server trả về, xem computeDaoTaoTongKet_) — hiển
+                        // thị nối bằng dấu phẩy; mỗi tên đã được escapeHtml riêng trước khi nối.
+                        let dsKhoaHoc = (nv.tenCacKhoaHoc || []).map(t => escapeHtml(t)).join(", ") || "-";
+                        return `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(chuanHoaTenPhongBanDaoTao(nv.phongBan))}</td><td>${escapeHtml(nv.chucDanh || "")}</td><td>${dsKhoaHoc}</td><td style="text-align:center;">${nv.soKhoaDaThamGia || 0}</td></tr>`;
+                    }).join('')
+                    : `<tr><td colspan="6" style="text-align:center; color:#888; padding:16px;">Chưa có dữ liệu.</td></tr>`;
             }
             let tbodyChua = document.querySelector("#tbl-daotao-chuadaotao tbody");
             if (tbodyChua) {
                 let list = tk.chuaDaoTao || [];
                 tbodyChua.innerHTML = list.length
-                    ? list.map(nv => `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(nv.phongBan || "")}</td><td>${escapeHtml(nv.chucDanh || "")}</td></tr>`).join('')
+                    ? list.map(nv => `<tr><td>${escapeHtml(nv.msnv)}</td><td>${escapeHtml(nv.hoTen)}</td><td>${escapeHtml(chuanHoaTenPhongBanDaoTao(nv.phongBan))}</td><td>${escapeHtml(nv.chucDanh || "")}</td></tr>`).join('')
                     : `<tr><td colspan="4" style="text-align:center; color:#888; padding:16px;">Không còn ai — tất cả nhân viên đều đã được đào tạo. 🎉</td></tr>`;
             }
+        }
+
+        // [MỚI - XUẤT EXCEL "TỔNG KẾT"] Xuất danh sách nhân viên "Đã tham gia khóa học" và/hoặc
+        // "Chưa tham gia khóa học" ra file .xlsx — chạy hoàn toàn ở trình duyệt (thư viện SheetJS
+        // đã có sẵn trong trang, giống hệt kỹ thuật đang dùng cho các mục xuất Excel khác của hệ
+        // thống). Dữ liệu lấy LẠI ĐÚNG "daoTaoTongKet" đã tải sẵn qua action "getDaoTaoData" (chỉ
+        // gọi được khi tài khoản có quyền "xemDaoTao"/Admin — xem loadDaoTaoData()) — KHÔNG gọi
+        // thêm API nào, KHÔNG đọc/ghi/xóa thêm bất kỳ dữ liệu nào trên Sheet, nên không ảnh hưởng
+        // dữ liệu hệ thống và không nới lỏng bảo mật hiện có (chỉ xuất đúng những gì tài khoản
+        // đang đăng nhập đã được phép xem trên màn hình).
+        function exportDaoTaoTongKetToExcel() {
+            if (!currentUserCanViewDaoTao) {
+                alert("⚠️ Bạn không có quyền xem/xuất dữ liệu Tab Đào Tạo. Liên hệ Admin để được cấp quyền.");
+                return;
+            }
+            if (typeof XLSX === "undefined") {
+                alert("⚠️ Không tải được thư viện xuất Excel (kiểm tra kết nối mạng) — vui lòng thử lại.");
+                return;
+            }
+
+            let tk = daoTaoTongKet || { daDaoTao: [], chuaDaoTao: [] };
+            let scopeEl = document.getElementById("dt-tk-export-scope");
+            let scope = scopeEl ? scopeEl.value : "ca_hai"; // "da" | "chua" | "ca_hai"
+
+            let daList = tk.daDaoTao || [];
+            let chuaList = tk.chuaDaoTao || [];
+
+            if ((scope === "da" && daList.length === 0) ||
+                (scope === "chua" && chuaList.length === 0) ||
+                (scope === "ca_hai" && daList.length === 0 && chuaList.length === 0)) {
+                alert("Không có dữ liệu phù hợp với mục đã chọn để xuất.");
+                return;
+            }
+
+            // Mỗi dòng xuất ra đúng các cột đang hiển thị trên bảng tương ứng ở giao diện —
+            // KHÔNG thêm/bớt trường dữ liệu ngoài những gì server đã trả về.
+            function mapDaRow_(nv) {
+                return {
+                    "MSNV": nv.msnv || "",
+                    "Họ tên": nv.hoTen || "",
+                    "Phòng ban": chuanHoaTenPhongBanDaoTao(nv.phongBan),
+                    "Chức danh": nv.chucDanh || "",
+                    "Tên khóa học": (nv.tenCacKhoaHoc || []).join(", "),
+                    "Số khóa đã tham gia": nv.soKhoaDaThamGia || 0
+                };
+            }
+            function mapChuaRow_(nv) {
+                return {
+                    "MSNV": nv.msnv || "",
+                    "Họ tên": nv.hoTen || "",
+                    "Phòng ban": chuanHoaTenPhongBanDaoTao(nv.phongBan),
+                    "Chức danh": nv.chucDanh || ""
+                };
+            }
+
+            let wb = XLSX.utils.book_new();
+            if (scope === "da" || scope === "ca_hai") {
+                let wsDa = XLSX.utils.json_to_sheet(daList.map(mapDaRow_));
+                wsDa['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 26 }, { wch: 20 }, { wch: 40 }, { wch: 16 }];
+                XLSX.utils.book_append_sheet(wb, wsDa, "DaThamGia");
+            }
+            if (scope === "chua" || scope === "ca_hai") {
+                let wsChua = XLSX.utils.json_to_sheet(chuaList.map(mapChuaRow_));
+                wsChua['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 26 }, { wch: 20 }];
+                XLSX.utils.book_append_sheet(wb, wsChua, "ChuaThamGia");
+            }
+
+            let scopeLabelMap = { da: "DaThamGia", chua: "ChuaThamGia", ca_hai: "TongKet" };
+            let now = new Date();
+            let dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+            let fileName = "DaoTao_TongKet_" + (scopeLabelMap[scope] || "Export") + "_" + dateStr + ".xlsx";
+
+            XLSX.writeFile(wb, fileName);
         }
 
         // [MỚI - TỔNG QUAN] Khối "Chúc mừng sinh nhật": tính nhân viên (Văn phòng + Đội tàu)
