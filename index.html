@@ -1363,7 +1363,27 @@
                          phép"). Danh sách tên để chọn CHỈ Admin thêm/xóa được (Tab "Cài đặt hệ thống"). -->
                     <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
                         <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(có thể chọn cùng lúc nhiều người — gồm cả tài khoản hệ thống hiện có và danh sách tên do Admin tự thêm ở Tab "Cài đặt hệ thống")</span></h4>
+                        <!-- [MỚI - MỞ KHÓA: CHỌN NHANH HỒ SƠ NGAY TẠI ĐÂY] Trước đây bắt buộc phải bấm
+                             "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới thì khối này mới hoạt động
+                             (nút "Lưu người đánh giá" luôn ở trạng thái khóa/disabled cho tới lúc đó).
+                             Nay có thêm ô chọn nhanh hồ sơ NGAY TẠI ĐÂY (xem chonHoSoNguoiDanhGia()) —
+                             chọn xong là khối bên dưới mở khóa ngay, không cần rời khỏi khối này. Vẫn
+                             giữ nguyên cách hoạt động cũ (bấm "Sửa" ở bảng cũng mở khóa y hệt) để
+                             KHÔNG phá vỡ luồng thao tác đang quen dùng. -->
+                        <div style="margin-bottom:10px;">
+                            <label style="font-size:13px; color:#555; display:block; margin-bottom:4px;">Chọn nhanh hồ sơ ứng viên cần gán người đánh giá:</label>
+                            <select id="sel-td-nguoidanhgia-hoso" class="search-box" style="max-width:420px;" onchange="chonHoSoNguoiDanhGia(this.value)">
+                                <option value="">-- Chọn hồ sơ ứng viên --</option>
+                            </select>
+                        </div>
                         <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
+                        <!-- [MỚI] Hồ sơ đang được gán người đánh giá — TÁCH RIÊNG hoàn toàn khỏi
+                             "edit-mahoso-tuyendung" (hidden field của form Sửa THÔNG TIN hồ sơ chính)
+                             để: (1) dùng được ô "Chọn nhanh hồ sơ" ở trên MÀ KHÔNG cần mở form Sửa
+                             chính, và (2) tránh rủi ro nếu 2 hồ sơ khác nhau bị lẫn giữa 2 thao tác
+                             (gán người đánh giá vs sửa thông tin hồ sơ), có thể khiến lưu nhầm/mất
+                             dữ liệu của hồ sơ khác. Được set bởi toggleRecruitmentNguoiDanhGiaBox(). -->
+                        <input type="hidden" id="td-nguoidanhgia-mahoso" value="">
                         <!-- [MỚI - ADMIN THÊM NHANH TÊN NGƯỜI ĐÁNH GIÁ NGAY TẠI ĐÂY] Trước đây Admin
                              PHẢI rời Tab "Tuyển dụng" sang Tab "Cài đặt hệ thống" mới thêm được tên vào
                              danh sách "Người đánh giá" (nguoiDanhGiaTuyenDung) — nếu danh sách đó đang
@@ -1381,6 +1401,18 @@
                         </div>
                         <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
                         <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
+                        <!-- [MỚI - MỤC "GỬI ĐÁNH GIÁ"] Lưu LẠI danh sách người đánh giá đang tick chọn
+                             (dùng CHUNG action "saveRecruitmentAssignedEvaluators" — KHÔNG thêm action
+                             mới/KHÔNG đổi cách lưu dữ liệu), đồng thời xác nhận rõ với người bấm là
+                             NGAY SAU KHI GỬI, những tài khoản được chọn sẽ thấy thông báo "Ứng viên cần
+                             bạn đánh giá" ở chuông thông báo + Tab "Nhận Việc" của họ (xem
+                             guiYeuCauDanhGiaTuyenDung()) — làm rõ ý nghĩa "gửi" thay vì chỉ "lưu" đơn
+                             thuần, đúng theo góp ý người dùng, KHÔNG thay đổi bảo mật/luồng dữ liệu. -->
+                        <button class="btn btn-success" id="btn-gui-td-nguoidanhgia" style="width:auto; margin-top:10px; margin-left:8px;" onclick="guiYeuCauDanhGiaTuyenDung()" disabled><i class="fa-solid fa-paper-plane"></i> Gửi đánh giá</button>
+                        <!-- [MỚI - BỎ CHỌN NGƯỜI ĐÁNH GIÁ] Bỏ tick TẤT CẢ checkbox đang hiển thị (chỉ ở
+                             giao diện, CHƯA lưu lên hệ thống) — vẫn cần bấm "Lưu người đánh giá" thì
+                             thay đổi (gán về rỗng = không còn ai được giao) mới thực sự được ghi lại. -->
+                        <button class="btn" id="btn-boChon-td-nguoidanhgia" style="width:auto; margin-top:10px; margin-left:8px; background:#78909c;" onclick="boChonTatCaNguoiDanhGia()" disabled><i class="fa-solid fa-eraser"></i> Bỏ chọn người đánh giá</button>
                         <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
                     </div>
                 </div>
@@ -3273,6 +3305,24 @@
                     </div>
                 </div>
 
+                <!-- [TAB "TUYỂN DỤNG" - NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO] Chỉ hiện khi có ít nhất 1 hồ sơ
+                     ứng viên đang được giao CHÍNH tài khoản này đánh giá (server đã tự lọc đúng
+                     hồ sơ có tên mình trong "Người đánh giá được giao" — không hiện hồ sơ của
+                     ứng viên khác không liên quan tới mình). Cấu trúc/hành vi giống HỆT khối
+                     "Đơn xin nghỉ phép chờ bạn duyệt" ở trên. -->
+                <div id="nv-recruitment-eval-section" style="display:none; margin-bottom:24px;">
+                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-user-check"></i> Ứng viên cần bạn đánh giá</h3>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-nhanviec-tuyendung">
+                        <thead><tr>
+                            <th>Họ tên ứng viên</th><th>SĐT</th><th>Email</th><th>Vị trí ứng tuyển</th>
+                            <th>Phòng ban</th><th>CV đính kèm</th><th>Kết quả đánh giá</th><th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="table-controls">
                     <input type="text" id="search-nv" class="search-box" oninput="renderMyTaskTable()" placeholder="Tìm theo tên công việc, người giao...">
                 </div>
@@ -3580,11 +3630,42 @@
                 <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
                     <h3><i class="fa-solid fa-user-shield"></i> Quản lý danh sách "Người đánh giá" (Tab Tuyển dụng)</h3>
                     <p style="font-size:13px; color:#666; margin-bottom:10px;">Danh sách tên người phụ trách đánh giá ứng viên — không bắt buộc phải trùng tài khoản đăng nhập của hệ thống. Sau khi thêm, mọi tài khoản có quyền Sửa hồ sơ ứng viên sẽ chọn được (cùng lúc nhiều người) ở mục "Người đánh giá được giao" khi sửa 1 hồ sơ ứng viên.</p>
+                    <!-- [MỚI - THÊM TỪ TÀI KHOẢN HỆ THỐNG HIỆN CÓ] Bên cạnh cách nhập tên tự do (ô
+                         phía dưới), Admin có thể chọn NHANH 1 tài khoản đăng nhập đã có sẵn của hệ
+                         thống (userDatabase — ĐÃ TẢI SẴN cho Admin, không gọi thêm API) để thêm
+                         thẳng vào danh sách "Người đánh giá" mà không cần gõ lại tên tài khoản. -->
+                    <div class="table-controls" style="margin-bottom:8px;">
+                        <select id="sel-new-nguoidanhgia-user" class="search-box" style="width:70%;">
+                            <option value="">-- Chọn 1 tài khoản hệ thống hiện có --</option>
+                        </select>
+                        <button class="btn" style="width:25%; padding: 8px;" onclick="addNguoiDanhGiaTuyenDungFromUser()">Thêm từ tài khoản</button>
+                    </div>
                     <div class="table-controls">
-                        <input type="text" id="inp-new-nguoidanhgia" class="search-box" style="width:70%;" placeholder="Tên người đánh giá mới...">
+                        <input type="text" id="inp-new-nguoidanhgia" class="search-box" style="width:70%;" placeholder="Hoặc nhập tên người đánh giá mới (không cần là tài khoản đăng nhập)...">
                         <button class="btn" style="width:25%; padding: 8px;" onclick="addNguoiDanhGiaTuyenDung()">Thêm</button>
                     </div>
                     <div class="chip-list" id="list-nguoidanhgia"></div>
+                </div>
+
+                <!-- [MỚI - MỤC "TÀI KHOẢN ĐƯỢC PHÉP LÀM NGƯỜI ĐÁNH GIÁ"] TÁCH RIÊNG hoàn toàn với
+                     khối "Người đánh giá" (tên tự thêm) ở trên. Đây là nơi Admin chọn 1 danh sách
+                     CON trong TẤT CẢ tài khoản đăng nhập hệ thống -> CHỈ đúng những tài khoản đó
+                     mới hiện ra ở nhóm "Tài khoản hệ thống hiện có" khi 1 tài khoản KHÔNG PHẢI
+                     ADMIN (nhưng có quyền Sửa hồ sơ ứng viên) chọn "Người đánh giá được giao" cho
+                     1 hồ sơ (xem populateRecruitmentNguoiDanhGiaCheckboxes() ở Tab "Tuyển dụng").
+                     Để TRỐNG (không chọn ai) = tài khoản không phải Admin CHỈ thấy nhóm tên tự
+                     thêm ở trên, giống hệt hành vi trước khi có tính năng này — KHÔNG mất/không
+                     đổi trải nghiệm nếu Admin chưa dùng tới mục này. Dữ liệu lưu ở sheet RIÊNG
+                     "CaiDatNguoiDanhGiaTuyenDung" (xem saveRecruitmentEvaluatorAccountSettings ở
+                     Code.gs), KHÔNG đụng tới sheet "TaiKhoan"/"DanhMuc"/"CaiDatPheDuyet". Tài
+                     khoản Admin KHÔNG bị ảnh hưởng bởi mục này — Admin luôn thấy TOÀN BỘ tài
+                     khoản hệ thống như cũ. -->
+                <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
+                    <h3><i class="fa-solid fa-user-check"></i> Tài khoản được phép làm "Người đánh giá được giao" (Tab Tuyển dụng)</h3>
+                    <p style="font-size:13px; color:#666; margin-bottom:10px;">Chọn những tài khoản đăng nhập THẬT sẽ hiện ra ở nhóm "Tài khoản hệ thống hiện có" khi tài khoản <b>KHÔNG PHẢI Admin</b> (nhưng có quyền Sửa hồ sơ ứng viên) chọn "Người đánh giá được giao" cho 1 hồ sơ ứng viên. Tài khoản không được chọn ở đây sẽ <b>KHÔNG hiện ra</b> để họ chọn. Để trống = họ chỉ thấy được danh sách tên tự thêm ở mục phía trên (như trước đây). Mục này không ảnh hưởng tới quyền của chính tài khoản Admin — Admin luôn thấy/chọn được toàn bộ tài khoản.</p>
+                    <div class="checkbox-dropdown-list" id="list-recruitment-evaluator-accounts"></div>
+                    <button class="btn" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentEvaluatorAccountSettings()"><i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình tài khoản được phép đánh giá</button>
+                    <span id="recruitment-evaluator-accounts-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
                 </div>
 
                 <div class="admin-box" style="border-left: 4px solid var(--primary-color);">
@@ -4162,6 +4243,13 @@
         // username Admin đã chọn để giới hạn mục "Người phê duyệt" (rỗng = CHƯA cấu hình gì,
         // mọi tài khoản vẫn được chọn TẤT CẢ tài khoản khác như trước — xem populateLeaveApproverList()).
         let approvedApproversList = [];
+        // [MỚI - TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO", CHỈ ADMIN THẤY/SỬA] Danh
+        // sách TÀI KHOẢN THẬT Admin đã chọn cho phép hiện ra ở nhóm "Tài khoản hệ thống hiện có"
+        // khi tài khoản KHÔNG PHẢI ADMIN chọn người đánh giá (rỗng = CHƯA cấu hình gì, tài khoản
+        // không phải Admin chỉ thấy nhóm tên tự thêm như hành vi CŨ — xem
+        // populateRecruitmentNguoiDanhGiaCheckboxes()). TÁCH BIỆT hoàn toàn với
+        // "approvedApproversList" (đơn nghỉ phép) và "nguoiDanhGiaTuyenDung" (tên tự thêm).
+        let approvedRecruitmentEvaluatorAccounts = [];
         // [TAB "BẢNG CHẤM CÔNG" - MỤC "NGƯỜI NHẬN", CHỈ ADMIN CẤU HÌNH] Danh sách username Admin
         // đã chọn để giới hạn lựa chọn ở mục "Người nhận" — TÁCH BIỆT hoàn toàn với
         // "approvedApproversList" ở trên (mục "Người phê duyệt" ở Tab "Đăng ký nghỉ phép").
@@ -4192,6 +4280,16 @@
         // RECRUITMENT_SPREADSHEET_ID/RECRUITMENT_FOLDER_ID ở code.gs) — không nằm trong getData
         // chung, phải gọi riêng action "getRecruitmentData" (xem loadRecruitmentData()).
         let recruitmentData = [];
+        // [MỚI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ", GIỐNG HỆT CƠ CHẾ "ĐƠN NGHỈ PHÉP CHỜ DUYỆT"]
+        // Danh sách hồ sơ ứng viên ĐANG được giao cho CHÍNH tài khoản đang đăng nhập đánh giá
+        // (tải riêng qua action "getMyRecruitmentEvaluations" — xem loadMyRecruitmentEvaluations()
+        // bên dưới), HOÀN TOÀN TÁCH BIỆT với "recruitmentData" ở trên (biến đó CHỈ tải khi tài
+        // khoản có quyền "XemTuyenDung"/"SuaTuyenDung"/hrView chung — xem canViewRecruitmentUI).
+        // Biến này tải cho MỌI tài khoản đã đăng nhập, kể cả khi KHÔNG có quyền xem cả Tab
+        // "Tuyển Dụng", để tài khoản được giao đánh giá vẫn nhận được thông báo + tự đánh giá
+        // được ĐÚNG ứng viên mình phụ trách, giống hệt cách "leaveRequestsData" đang hoạt động
+        // với người phê duyệt nghỉ phép.
+        let myRecruitmentEvaluations = [];
         const TUYENDUNG_STATUS_LIST_FE = ["Mới tiếp nhận", "Hẹn phỏng vấn", "Đạt", "Không đạt", "Đã nhận việc"];
         // [MỚI - MỤC "ĐÁNH GIÁ ỨNG VIÊN"] Danh sách kết quả đánh giá hợp lệ — server cũng kiểm
         // tra lại giá trị này ở action "saveRecruitmentEvaluation" (xem TUYENDUNG_DANHGIA_LIST
@@ -4681,6 +4779,7 @@
                 // để vẫn nhận đúng mảng RỖNG khi Admin vừa bỏ chọn hết (xóa cấu hình), giống cách
                 // xử lý "myAssignableStaffNames" ở trên.
                 if (data.approvedApprovers !== undefined) approvedApproversList = data.approvedApprovers;
+                if (data.approvedRecruitmentEvaluatorAccounts !== undefined) approvedRecruitmentEvaluatorAccounts = data.approvedRecruitmentEvaluatorAccounts;
                 if (data.approvedChamCongNguoiNhan !== undefined) approvedChamCongNguoiNhanList = data.approvedChamCongNguoiNhan;
                 // [MỚI - MỤC "NGƯỜI PHÊ DUYỆT" - BẢNG CHẤM CÔNG THUYỀN VIÊN, CHỈ ADMIN CẤU HÌNH]
                 // Danh sách username Admin đã chọn để giới hạn ô "Người phê duyệt" ở mục "Phê
@@ -4889,6 +4988,23 @@
                         color: "#ef6c00",
                         title: "Đơn nghỉ phép chờ duyệt: " + (r.hoTen || r.nguoiTao || ""),
                         desc: (r.tuNgay ? ("Từ " + gvFormatDateVN(r.tuNgay) + " đến " + gvFormatDateVN(r.denNgay || r.tuNgay)) : ""),
+                        onClick: function () { switchPage("nhanviec"); }
+                    });
+                });
+            }
+
+            // 2b) [MỚI] Hồ sơ ứng viên (Tab "Tuyển Dụng") đang được giao cho CHÍNH mình đánh
+            //     giá, chưa có kết quả — cũng hiện ở tab "Nhận Việc", y hệt cách làm với đơn
+            //     nghỉ phép ở mục (2) ngay trên (dùng chung getPendingRecruitmentEvaluationsForMe()).
+            if (typeof getPendingRecruitmentEvaluationsForMe === "function") {
+                getPendingRecruitmentEvaluationsForMe().forEach(r => {
+                    items.push({
+                        tab: "nhanviec",
+                        sortKey: r.ngayTao || "",
+                        icon: "fa-user-check",
+                        color: "#6a1b9a",
+                        title: "Ứng viên cần đánh giá: " + (r.hoTen || ""),
+                        desc: (r.viTriUngTuyen ? ("Vị trí: " + r.viTriUngTuyen) : "") + (r.phongBan ? (" — Phòng ban: " + r.phongBan) : ""),
                         onClick: function () { switchPage("nhanviec"); }
                     });
                 });
@@ -6829,9 +6945,18 @@
             // được mục này, có thể chọn CÙNG LÚC NHIỀU người). Gọi lại với hồ sơ đang Sửa trên
             // form hiện tại (nếu có) để không mất trạng thái khi applyUserPermissions() được gọi
             // lại (VD sau khi đồng bộ dữ liệu).
-            let tdMaHoSoHienTai = document.getElementById("edit-mahoso-tuyendung");
-            let tdHoTenHienTai = document.getElementById("inp-td-hoten");
-            toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai ? tdMaHoSoHienTai.value : "", tdHoTenHienTai ? tdHoTenHienTai.value : "");
+            // [SỬA - TÁCH RIÊNG HỒ SƠ ĐÍCH] Đọc lại từ field riêng "td-nguoidanhgia-mahoso" (KHÔNG
+            // còn phụ thuộc "edit-mahoso-tuyendung" của form Sửa thông tin hồ sơ chính) — để trạng
+            // thái được giữ nguyên dù người dùng đang gán người đánh giá qua ô "Chọn nhanh hồ sơ"
+            // (không mở form Sửa chính) hay qua đường "Sửa" truyền thống.
+            let tdMaHoSoHienTaiField = document.getElementById("td-nguoidanhgia-mahoso");
+            let tdMaHoSoHienTai = tdMaHoSoHienTaiField ? tdMaHoSoHienTaiField.value : "";
+            let tdHoTenHienTai = "";
+            if (tdMaHoSoHienTai) {
+                let rTdHienTai = recruitmentData.find(x => x.maHoSo === tdMaHoSoHienTai);
+                tdHoTenHienTai = rTdHienTai ? (rTdHienTai.hoTen || "") : "";
+            }
+            toggleRecruitmentNguoiDanhGiaBox(tdMaHoSoHienTai, tdHoTenHienTai);
             if (canViewRecruitmentUI) loadRecruitmentData();
 
             // ==== [TAB "CHỮ KÝ SỐ"] Quyền riêng, cấp theo TỪNG tài khoản (độc lập Role chung) ====
@@ -6922,6 +7047,11 @@
             document.getElementById("menu-nhanviec").style.display = "flex";
             renderMyTaskTable();
             updateNhanViecBadge();
+            // [MỚI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ"] Tải NGAY khi đăng nhập, cho MỌI tài
+            // khoản (không phụ thuộc quyền "XemTuyenDung"/"SuaTuyenDung" chung của Tab "Tuyển
+            // Dụng") — để tài khoản được giao đánh giá 1 ứng viên cụ thể luôn nhận được thông
+            // báo, giống hệt cách loadLeaveRequests() đang làm với đơn nghỉ phép ngay bên dưới.
+            loadMyRecruitmentEvaluations();
 
             // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mọi tài khoản đã đăng nhập đều được tự đăng ký nghỉ
             // phép cho chính mình. Tự điền sẵn Họ tên/Email từ hồ sơ nhân sự đã liên kết (nếu
@@ -7155,6 +7285,9 @@
                 // [ĐƠN NGHỈ PHÉP CHỜ DUYỆT] Tải lại dữ liệu mới nhất mỗi lần mở tab, để không bỏ
                 // sót đơn vừa được người khác gửi trong lúc mình chưa mở trang này.
                 loadLeaveRequests();
+                // [MỚI - ỨNG VIÊN CẦN ĐÁNH GIÁ] Tương tự, tải lại mỗi lần mở tab để không bỏ sót
+                // hồ sơ vừa được Admin/người có quyền Sửa hồ sơ ứng viên mới gán cho mình.
+                loadMyRecruitmentEvaluations();
             }
             if (pageId === "leave") {
                 // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mở tab -> tải lại danh sách approver + đơn của mình.
@@ -12174,9 +12307,10 @@
             // (badge nv-badge-count) đang bị ẩn vì lý do khác.
             updateNotificationBell();
             if (!badge) return;
-            // [ĐƠN NGHỈ PHÉP] Badge "Nhận Việc" nay tính GỘP cả công việc chưa xem lẫn đơn nghỉ
-            // phép đang chờ CHÍNH tài khoản này duyệt, để không ai bỏ sót đơn cần xử lý.
-            let n = countUnseenMyTasks() + countPendingLeaveApprovals();
+            // [ĐƠN NGHỈ PHÉP + ỨNG VIÊN CẦN ĐÁNH GIÁ] Badge "Nhận Việc" nay tính GỘP cả công
+            // việc chưa xem, đơn nghỉ phép đang chờ CHÍNH tài khoản này duyệt, LẪN hồ sơ ứng
+            // viên đang được giao CHÍNH tài khoản này đánh giá, để không ai bỏ sót việc cần xử lý.
+            let n = countUnseenMyTasks() + countPendingLeaveApprovals() + countPendingRecruitmentEvaluations();
             if (n > 0) {
                 badge.style.display = "inline-block";
                 badge.innerText = n > 99 ? "99+" : String(n);
@@ -12430,6 +12564,50 @@
             }
         }
 
+        // [MỚI - MỤC "TÀI KHOẢN ĐƯỢC PHÉP LÀM NGƯỜI ĐÁNH GIÁ" - CHỈ HIỆN VỚI ADMIN] Vẽ checkbox
+        // cho TẤT CẢ tài khoản hiện có (lấy lại từ "userDatabase" ĐÃ TẢI SẴN cho Admin — không
+        // gọi thêm action mới), tick sẵn đúng những tài khoản đang nằm trong
+        // "approvedRecruitmentEvaluatorAccounts" (đã tải sẵn qua loadFromCloud/getData). Dùng
+        // CHUNG kỹ thuật với populateAdminApprovalSettingsList() ở trên.
+        function populateRecruitmentEvaluatorAccountSettingsList() {
+            let box = document.getElementById("list-recruitment-evaluator-accounts");
+            if (!box || !currentUser || currentUser.role !== "Admin") return;
+            let allUsernames = Object.keys(userDatabase || {}).sort((a, b) => a.localeCompare(b));
+            if (!allUsernames.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản nào trong hệ thống.</div>';
+                return;
+            }
+            box.innerHTML = allUsernames.map(u =>
+                `<label class="checkbox-item"><input type="checkbox" value="${escapeHtml(u)}" ${(approvedRecruitmentEvaluatorAccounts || []).includes(u) ? "checked" : ""}> ${escapeHtml(u)}</label>`
+            ).join("");
+        }
+
+        // Lưu lại danh sách "Tài khoản được phép làm Người đánh giá" mà Admin vừa chọn (action
+        // RIÊNG "saveRecruitmentEvaluatorAccountSettings", chỉ Admin gọi được — server đã tự
+        // kiểm tra qua requireAuth(data, isAdmin), xem Code.gs). Gửi mảng RỖNG (bỏ chọn hết) =
+        // Admin chủ động xóa cấu hình, tài khoản không phải Admin quay lại chỉ thấy nhóm tên tự
+        // thêm ở mục "Người đánh giá" (như hành vi CŨ trước khi có tính năng này).
+        async function saveRecruitmentEvaluatorAccountSettings() {
+            let box = document.getElementById("list-recruitment-evaluator-accounts");
+            if (!box) return;
+            let statusEl = document.getElementById("recruitment-evaluator-accounts-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            let ok = await pushToCloud({ action: "saveRecruitmentEvaluatorAccountSettings", usernames: usernames });
+            if (ok) {
+                approvedRecruitmentEvaluatorAccounts = usernames;
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("✅ Đã lưu (" + usernames.length + " tài khoản được phép hiện ở mục \"Người đánh giá được giao\" cho tài khoản khác).")
+                        : "✅ Đã lưu (tài khoản khác quay lại CHỈ thấy danh sách tên tự thêm như trước).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 6000);
+                }
+            } else if (statusEl) {
+                statusEl.style.color = "#c62828";
+                statusEl.innerText = "❌ Lưu thất bại, vui lòng thử lại.";
+            }
+        }
+
         function resetLeaveRequestForm() {
             ["inp-np-tungay", "inp-np-denngay", "inp-np-tongsongay", "inp-np-lydo"].forEach(id => {
                 let el = document.getElementById(id);
@@ -12634,6 +12812,92 @@
                 updateNhanViecBadge();
             } catch (err) {
                 console.error("Lỗi tải danh sách đơn nghỉ phép:", err);
+            }
+        }
+
+        // [MỚI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ", GIỐNG HỆT loadLeaveRequests() Ở TRÊN] Tải
+        // danh sách hồ sơ ứng viên ĐANG được giao cho CHÍNH tài khoản đang đăng nhập đánh giá
+        // (action MỚI "getMyRecruitmentEvaluations" — mọi tài khoản đã đăng nhập đều gọi được,
+        // KHÔNG cần quyền "XemTuyenDung"/"SuaTuyenDung"), rồi vẽ lại khối "Ứng viên cần bạn đánh
+        // giá" ở tab "Nhận Việc" + cập nhật lại badge/chuông thông báo. Gọi CÙNG lúc đăng nhập
+        // với loadLeaveRequests() (xem điểm gọi ở khối "==== [TAB NHẬN VIỆC] ====").
+        async function loadMyRecruitmentEvaluations() {
+            if (!currentUsername || !isScriptUrlConfigured()) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "getMyRecruitmentEvaluations", authToken: authToken })
+                });
+                let data = await parseServerResponse(res);
+                if (data.status !== "SUCCESS") return;
+                myRecruitmentEvaluations = data.items || [];
+                renderRecruitmentEvaluationSection();
+                updateNhanViecBadge();
+            } catch (err) {
+                console.error("Lỗi tải danh sách ứng viên cần đánh giá:", err);
+            }
+        }
+
+        // Đếm/lọc các hồ sơ ứng viên đang thực sự CHỜ tài khoản đang đăng nhập đánh giá (bỏ qua
+        // hồ sơ đã có kết quả đánh giá rồi) — dùng CHUNG kỹ thuật với getPendingLeaveApprovalsForMe().
+        function getPendingRecruitmentEvaluationsForMe() {
+            if (!currentUsername) return [];
+            return (myRecruitmentEvaluations || []).filter(r => !r.ketQuaDanhGia);
+        }
+
+        function countPendingRecruitmentEvaluations() {
+            return getPendingRecruitmentEvaluationsForMe().length;
+        }
+
+        // Mục "Ứng viên cần bạn đánh giá" ở tab "Nhận Việc" — chỉ hiện khối này khi có ít nhất
+        // 1 hồ sơ đang thực sự CHỜ chính tài khoản đang đăng nhập đánh giá. Cấu trúc/hành vi
+        // giống HỆT renderLeaveApprovalSection() ở trên (đơn nghỉ phép chờ duyệt).
+        function renderRecruitmentEvaluationSection() {
+            let section = document.getElementById("nv-recruitment-eval-section");
+            let tbody = document.querySelector("#tbl-nhanviec-tuyendung tbody");
+            if (!section || !tbody) return;
+            let list = myRecruitmentEvaluations || [];
+            if (!list.length) { section.style.display = "none"; tbody.innerHTML = ""; return; }
+            section.style.display = "block";
+            tbody.innerHTML = list.map(r => `<tr>
+                <td>${escapeHtml(r.hoTen || "")}</td>
+                <td>${escapeHtml(r.sdt || "")}</td>
+                <td>${escapeHtml(r.email || "")}</td>
+                <td>${escapeHtml(r.viTriUngTuyen || "")}</td>
+                <td>${escapeHtml(r.phongBan || "")}</td>
+                <td>${r.cvFileId ? `<a href="#" onclick="viewRecruitmentFile('${r.cvFileId}', '${escapeHtml(r.cvFileName || "").replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(r.cvFileName || "CV")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                <td>${r.ketQuaDanhGia ? `<b style="color:${r.ketQuaDanhGia === 'Đạt' ? '#2e7d32' : '#c62828'};">${escapeHtml(r.ketQuaDanhGia)}</b>` : '<span style="color:#f0ad4e;">Chưa đánh giá</span>'}</td>
+                <td>
+                    ${r.ketQuaDanhGia ? '<span style="color:#999;">— Đã đánh giá —</span>' : `
+                    <button class="btn btn-success btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Đạt')"><i class="fa-solid fa-check"></i> Đạt</button>
+                    <button class="btn btn-danger btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Không đạt')"><i class="fa-solid fa-xmark"></i> Không đạt</button>`}
+                </td>
+            </tr>`).join("");
+        }
+
+        // Xử lý bấm "Đạt" / "Không đạt" trên 1 hồ sơ ứng viên được giao đánh giá ở khối thông
+        // báo (tab "Nhận Việc") — dùng lại ĐÚNG action "saveRecruitmentEvaluation" đã có, server
+        // tự kiểm tra lại đúng quyền (canEditRecruitment HOẶC đang được giao đánh giá hồ sơ này)
+        // nên không thể bị lợi dụng để đánh giá hồ sơ khác không được giao.
+        async function decideRecruitmentEvaluationUI(maHoSo, ketQua) {
+            if (!confirm(`Xác nhận đánh giá ứng viên này là "${ketQua}"?`)) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "saveRecruitmentEvaluation", authToken: authToken, maHoSo: maHoSo, ketQuaDanhGia: ketQua })
+                });
+                let data = await parseServerResponse(res);
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                await loadMyRecruitmentEvaluations();
+                // Nếu tài khoản này CŨNG đang có quyền xem cả Tab "Tuyển Dụng" (đã tải sẵn
+                // recruitmentData), làm mới luôn bảng đó cho khớp — không bắt buộc, chỉ để đồng
+                // bộ hiển thị, KHÔNG ảnh hưởng tới tài khoản chỉ được giao đánh giá đơn thuần.
+                if (typeof currentUserCanViewRecruitment !== "undefined" && currentUserCanViewRecruitment && typeof loadRecruitmentData === "function") {
+                    loadRecruitmentData();
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi lưu đánh giá ứng viên!");
             }
         }
 
@@ -14117,6 +14381,11 @@
             populateRecruitmentStatusSelect();
             populateRecruitmentDeptSelect();
             populateRecruitmentInterviewRoomSelect();
+            // [MỚI - MỞ KHÓA MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" NGAY TẠI ĐÂY] Đổ danh sách hồ sơ vào ô
+            // chọn nhanh "sel-td-nguoidanhgia-hoso" mỗi khi dữ liệu tuyển dụng được tải/làm mới —
+            // để KHÔNG bắt buộc phải bấm "Sửa" ở bảng bên dưới trước mới thao tác được (xem thêm
+            // chonHoSoNguoiDanhGia()).
+            populateRecruitmentNguoiDanhGiaHoSoSelect();
             renderRecruitmentTabs();
             renderRecruitmentTable();
         }
@@ -14174,16 +14443,33 @@
         // trong cả 2 danh sách trên (VD tài khoản đã bị xóa, hoặc tên đã bị Admin xóa khỏi danh
         // sách tự thêm), tên đó vẫn được hiện thêm vào (đã tick sẵn, nhóm "Khác") để KHÔNG làm
         // "biến mất" dữ liệu đã gán trước đó khỏi giao diện.
+        // [CẬP NHẬT - GIỚI HẠN THEO DANH SÁCH ADMIN CHO PHÉP] Trước đây nhóm "Tài khoản hệ thống
+        // hiện có" chỉ dựa vào "userDatabase" (vốn dĩ đã rỗng với tài khoản KHÔNG PHẢI ADMIN vì lý
+        // do bảo mật — xem chú thích ở trên), nên nhóm này TRƯỚC NAY vẫn luôn trống với tài khoản
+        // khác — nay thay bằng "approvedRecruitmentEvaluatorAccounts" (danh sách tài khoản THẬT
+        // Admin đã chủ động chọn cho phép hiện ra ở mục này — xem action MỚI
+        // "saveRecruitmentEvaluatorAccountSettings"/sheet "CaiDatNguoiDanhGiaTuyenDung"), để tài
+        // khoản KHÔNG PHẢI ADMIN (nhưng có quyền Sửa hồ sơ ứng viên) giờ CÓ THỂ chọn được tài
+        // khoản thật làm người đánh giá — nhưng CHỈ ĐÚNG những tài khoản Admin đã chọn, KHÔNG
+        // được thấy/chọn tài khoản nào khác ngoài danh sách đó (đúng yêu cầu: "user không được
+        // Admin chọn thì sẽ không hiện ra"). TÀI KHOẢN ADMIN KHÔNG bị giới hạn — vẫn luôn thấy
+        // TOÀN BỘ tài khoản hệ thống như cũ (Object.keys(userDatabase), đã tải đầy đủ riêng cho
+        // Admin). Admin CHƯA cấu hình gì (approvedRecruitmentEvaluatorAccounts rỗng) -> tài khoản
+        // khác quay lại hành vi CŨ (không thấy nhóm này, chỉ thấy nhóm tên tự thêm) — KHÔNG mất/
+        // không đổi trải nghiệm nếu Admin chưa dùng tới tính năng này.
         function populateRecruitmentNguoiDanhGiaCheckboxes(selectedArr) {
             let box = document.getElementById("td-nguoidanhgia-list");
             if (!box) return;
             let selected = Array.isArray(selectedArr) ? selectedArr : [];
+            let isAdminUser = !!(currentUser && currentUser.role === "Admin");
 
-            let taiKhoanNames = Object.keys(userDatabase || {}).sort((a, b) => {
-                if (a === "admin") return -1;
-                if (b === "admin") return 1;
-                return a.localeCompare(b, "vi");
-            });
+            let taiKhoanNames = isAdminUser
+                ? Object.keys(userDatabase || {}).sort((a, b) => {
+                    if (a === "admin") return -1;
+                    if (b === "admin") return 1;
+                    return a.localeCompare(b, "vi");
+                })
+                : (approvedRecruitmentEvaluatorAccounts || []).slice().sort((a, b) => a.localeCompare(b, "vi"));
             let tuThemNames = (nguoiDanhGiaTuyenDung || []).filter(n => taiKhoanNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, "vi"));
             let khongCoNhomNames = selected.filter(n => taiKhoanNames.indexOf(n) === -1 && tuThemNames.indexOf(n) === -1).sort((a, b) => a.localeCompare(b, "vi"));
 
@@ -14191,9 +14477,9 @@
                 // [CẬP NHẬT] Với Admin, trỏ thẳng tới ô "Thêm nhanh" mới thêm ở ngay phía trên (thay
                 // vì chỉ nhắc chung chung phải sang Tab "Cài đặt hệ thống") — với tài khoản khác vẫn
                 // giữ nguyên hướng dẫn cũ vì họ không quản lý được danh sách này.
-                box.innerHTML = (currentUser && currentUser.role === "Admin")
+                box.innerHTML = isAdminUser
                     ? '<div style="color:#aaa; font-size:13px;">Chưa có tài khoản/người đánh giá nào để chọn. Vui lòng dùng ô "Thêm nhanh tên người đánh giá mới" ngay phía trên, hoặc Tab "Cài đặt hệ thống" để tạo tài khoản.</div>'
-                    : '<div style="color:#aaa; font-size:13px;">Chưa có người đánh giá nào trong danh sách. Vui lòng vào Tab "Cài đặt hệ thống" (chỉ Admin) để thêm.</div>';
+                    : '<div style="color:#aaa; font-size:13px;">Chưa có người đánh giá nào trong danh sách. Vui lòng liên hệ Admin (Tab "Cài đặt hệ thống") để được cấp quyền hiện tài khoản/thêm tên người đánh giá.</div>';
                 return;
             }
 
@@ -14241,14 +14527,73 @@
             if (quickAddBox) quickAddBox.style.display = (currentUser && currentUser.role === "Admin") ? "block" : "none";
             let hintEl = document.getElementById("td-nguoidanhgia-target-hint");
             let saveBtn = document.getElementById("btn-save-td-nguoidanhgia");
+            let boChonBtn = document.getElementById("btn-boChon-td-nguoidanhgia");
+            // [MỚI - NÚT "GỬI ĐÁNH GIÁ"] Khóa/mở khóa ĐỒNG BỘ với 2 nút trên — chỉ dùng được khi
+            // đã xác định đúng 1 hồ sơ đích, giống hệt điều kiện của "Lưu người đánh giá".
+            let guiBtn = document.getElementById("btn-gui-td-nguoidanhgia");
+            // [MỚI] Hồ sơ đích lưu vào field riêng "td-nguoidanhgia-mahoso" (KHÔNG dùng chung với
+            // "edit-mahoso-tuyendung" của form Sửa thông tin hồ sơ chính — xem chú thích ở HTML).
+            let maHoSoField = document.getElementById("td-nguoidanhgia-mahoso");
+            if (maHoSoField) maHoSoField.value = maHoSo || "";
+            // [MỚI] Đồng bộ ô chọn nhanh hồ sơ ("sel-td-nguoidanhgia-hoso") theo đúng hồ sơ đang gán —
+            // dù người dùng vào bằng đường "Sửa" ở bảng hay bằng chính ô chọn nhanh này.
+            let selHoSo = document.getElementById("sel-td-nguoidanhgia-hoso");
+            if (selHoSo) selHoSo.value = maHoSo || "";
             if (maHoSo) {
                 if (hintEl) hintEl.innerHTML = 'Đang gán cho hồ sơ: <b>' + escapeHtml(hoTen || "") + '</b> (Mã hồ sơ: ' + escapeHtml(maHoSo) + ')';
                 if (saveBtn) saveBtn.disabled = false;
+                if (boChonBtn) boChonBtn.disabled = false;
+                if (guiBtn) guiBtn.disabled = false;
             } else {
-                if (hintEl) hintEl.innerHTML = '<i>Vui lòng bấm "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới trước, sau đó quay lại đây để gán người đánh giá cho đúng hồ sơ đó.</i>';
+                if (hintEl) hintEl.innerHTML = '<i>Vui lòng bấm "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới, hoặc chọn 1 hồ sơ ở ô "Chọn nhanh hồ sơ ứng viên" phía trên, để gán người đánh giá cho đúng hồ sơ đó.</i>';
                 if (saveBtn) saveBtn.disabled = true;
+                if (boChonBtn) boChonBtn.disabled = true;
+                if (guiBtn) guiBtn.disabled = true;
                 let box2 = document.getElementById("td-nguoidanhgia-list");
                 if (box2) box2.innerHTML = "";
+            }
+        }
+
+        // [MỚI - MỞ KHÓA MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" NGAY TẠI ĐÂY] Đổ toàn bộ hồ sơ ứng viên
+        // (recruitmentData ĐÃ TẢI SẴN, KHÔNG gọi thêm API) vào ô chọn nhanh, sắp xếp theo Họ tên A-Z
+        // để dễ tìm. Được gọi lại mỗi khi loadRecruitmentData() tải/làm mới dữ liệu.
+        function populateRecruitmentNguoiDanhGiaHoSoSelect() {
+            let sel = document.getElementById("sel-td-nguoidanhgia-hoso");
+            if (!sel) return;
+            let current = sel.value;
+            let sorted = [...recruitmentData].sort((a, b) => (a.hoTen || "").localeCompare(b.hoTen || "", "vi"));
+            sel.innerHTML = '<option value="">-- Chọn hồ sơ ứng viên --</option>' +
+                sorted.map(r => `<option value="${escapeHtml(r.maHoSo)}">${escapeHtml(r.hoTen || "(Chưa rõ tên)")} — ${escapeHtml(r.viTriUngTuyen || "")} (${escapeHtml(r.maHoSo)})</option>`).join('');
+            // Giữ nguyên lựa chọn đang có (nếu hồ sơ đó vẫn còn tồn tại sau khi làm mới dữ liệu).
+            if (current && sorted.some(r => r.maHoSo === current)) sel.value = current;
+        }
+
+        // [MỚI - MỞ KHÓA: CHỌN NHANH HỒ SƠ NGAY TẠI KHỐI "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Cho phép gán
+        // người đánh giá cho 1 hồ sơ MÀ KHÔNG bắt buộc phải bấm "Sửa" ở bảng danh sách bên dưới
+        // trước (khối này trước đây luôn ở trạng thái khóa/disabled cho tới khi làm vậy). Hàm này
+        // CHỈ cập nhật đúng khối "Người đánh giá được giao" — KHÔNG mở/điền toàn bộ form Sửa hồ sơ
+        // (để tránh gây nhầm lẫn nếu người dùng đang dở dang nhập liệu ở form thêm/sửa hồ sơ khác).
+        function chonHoSoNguoiDanhGia(maHoSo) {
+            if (!maHoSo) { toggleRecruitmentNguoiDanhGiaBox("", ""); return; }
+            let r = recruitmentData.find(x => x.maHoSo === maHoSo);
+            if (!r) return;
+            toggleRecruitmentNguoiDanhGiaBox(r.maHoSo, r.hoTen);
+            populateRecruitmentNguoiDanhGiaCheckboxes(r.nguoiDuocGiaoDanhGia || []);
+        }
+
+        // [MỚI - "BỎ CHỌN NGƯỜI ĐÁNH GIÁ"] Bỏ tick TẤT CẢ checkbox đang hiển thị ở khối này — CHỈ ở
+        // giao diện, CHƯA ghi gì lên server. Người dùng vẫn cần bấm "Lưu người đánh giá" thì thay
+        // đổi (gán hồ sơ về KHÔNG còn ai được giao) mới thực sự được lưu — tránh trường hợp bấm
+        // nhầm làm mất dữ liệu đã gán mà không hay biết.
+        function boChonTatCaNguoiDanhGia() {
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            box.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+            let statusEl = document.getElementById("td-nguoidanhgia-status");
+            if (statusEl) {
+                statusEl.style.color = "#78909c";
+                statusEl.innerText = "Đã bỏ chọn — bấm \"Lưu người đánh giá\" để áp dụng.";
+                setTimeout(() => { statusEl.innerText = ""; }, 5000);
             }
         }
 
@@ -14502,8 +14847,12 @@
             // applyUserPermissions(), khớp với quyền canEditRecruitment ở server) — đồng bộ đúng 1
             // chuẩn quyền hạn duy nhất giữa giao diện/nút Lưu/server, KHÔNG nới lỏng hơn server.
             if (!currentUserCanEditRecruitment) return;
-            let maHoSo = document.getElementById("edit-mahoso-tuyendung").value;
-            if (!maHoSo) { alert("⚠️ Vui lòng bấm \"Sửa\" ở 1 hồ sơ ứng viên trước khi gán người đánh giá."); return; }
+            // [SỬA - TÁCH RIÊNG HỒ SƠ ĐÍCH] Đọc từ field riêng "td-nguoidanhgia-mahoso" (đã tách
+            // khỏi "edit-mahoso-tuyendung" của form Sửa thông tin hồ sơ chính) — cho phép gán người
+            // đánh giá qua ô "Chọn nhanh hồ sơ" mà KHÔNG bắt buộc phải mở form Sửa chính, đồng thời
+            // tránh lưu nhầm sang hồ sơ khác nếu 2 thao tác này từng trỏ tới 2 hồ sơ khác nhau.
+            let maHoSo = document.getElementById("td-nguoidanhgia-mahoso").value;
+            if (!maHoSo) { alert("⚠️ Vui lòng chọn 1 hồ sơ ứng viên (bấm \"Sửa\" ở bảng bên dưới, hoặc dùng ô \"Chọn nhanh hồ sơ ứng viên\" ở trên) trước khi gán người đánh giá."); return; }
             let box = document.getElementById("td-nguoidanhgia-list");
             if (!box) return;
             let statusEl = document.getElementById("td-nguoidanhgia-status");
@@ -14527,6 +14876,41 @@
             }
         }
 
+        // [MỚI - MỤC "GỬI ĐÁNH GIÁ"] Cùng LƯU danh sách người đánh giá đang tick chọn cho ĐÚNG hồ
+        // sơ đang thao tác (dùng lại CHÍNH XÁC action "saveRecruitmentAssignedEvaluators" ở
+        // Code.gs — KHÔNG thêm action mới, KHÔNG đổi cách lưu dữ liệu ở sheet "TuyenDung"), rồi
+        // xác nhận rõ ràng với người bấm rằng yêu cầu đánh giá ĐÃ ĐƯỢC GỬI: ngay sau khi lưu, mỗi
+        // tài khoản có tên trong danh sách sẽ tự thấy hồ sơ này ở khối "Ứng viên cần bạn đánh giá"
+        // (chuông thông báo + Tab "Nhận Việc") lần tới họ đăng nhập/tải lại trang — xem
+        // loadMyRecruitmentEvaluations()/getMyRecruitmentEvaluations. KHÔNG bắt buộc phải tick ít
+        // nhất 1 người (bấm khi chưa tick ai = xác nhận KHÔNG gửi cho ai, tương đương xóa hết
+        // người đánh giá đã gán trước đó — giữ đúng hành vi của "Lưu người đánh giá").
+        async function guiYeuCauDanhGiaTuyenDung() {
+            if (!currentUserCanEditRecruitment) return;
+            let maHoSo = document.getElementById("td-nguoidanhgia-mahoso").value;
+            if (!maHoSo) { alert("⚠️ Vui lòng chọn 1 hồ sơ ứng viên (bấm \"Sửa\" ở bảng bên dưới, hoặc dùng ô \"Chọn nhanh hồ sơ ứng viên\" ở trên) trước khi gửi đánh giá."); return; }
+            let box = document.getElementById("td-nguoidanhgia-list");
+            if (!box) return;
+            let statusEl = document.getElementById("td-nguoidanhgia-status");
+            let usernames = Array.from(box.querySelectorAll("input:checked")).map(i => i.value);
+            if (!usernames.length && !confirm("Bạn chưa chọn người đánh giá nào. Tiếp tục sẽ XÓA hết người đánh giá đã gán trước đó (nếu có) cho hồ sơ này. Bạn có chắc chắn?")) return;
+            let data = await callRecruitmentApi({ action: "saveRecruitmentAssignedEvaluators", maHoSo: maHoSo, nguoiDuocGiaoDanhGia: usernames });
+            if (data) {
+                let r = recruitmentData.find(x => x.maHoSo === maHoSo);
+                if (r) r.nguoiDuocGiaoDanhGia = usernames;
+                renderRecruitmentTable();
+                if (statusEl) {
+                    statusEl.style.color = "#2e7d32";
+                    statusEl.innerText = usernames.length
+                        ? ("📨 Đã gửi yêu cầu đánh giá tới " + usernames.length + " tài khoản (họ sẽ thấy thông báo ở Tab \"Nhận Việc\").")
+                        : "✅ Đã gửi (KHÔNG gán ai đánh giá).";
+                    setTimeout(() => { statusEl.innerText = ""; }, 6000);
+                }
+            } else if (statusEl) {
+                statusEl.style.color = "#c62828";
+                statusEl.innerText = "❌ Gửi đánh giá thất bại, vui lòng thử lại.";
+            }
+        }
         // [MỚI - CHỈ ADMIN] Thêm nhanh 1 tên vào danh sách "Người đánh giá" (nguoiDanhGiaTuyenDung)
         // NGAY TẠI Tab "Tuyển dụng" (ô "td-nguoidanhgia-quickadd", chỉ Role Admin nhìn thấy — xem
         // toggleRecruitmentNguoiDanhGiaBox()), không cần rời sang Tab "Cài đặt hệ thống" nữa. Dùng
@@ -15541,6 +15925,10 @@
             renderOtherAppsAdminList();
             renderDeptVesselLists();
             renderNguoiDanhGiaTuyenDungList();
+            // [MỚI - MỤC "TÀI KHOẢN ĐƯỢC PHÉP LÀM NGƯỜI ĐÁNH GIÁ"] Đồng bộ luôn khối checkbox
+            // này mỗi khi dữ liệu được tải/làm mới (hàm tự kiểm tra Role Admin bên trong, tài
+            // khoản khác gọi vào sẽ tự bỏ qua — KHÔNG cần bọc thêm điều kiện ở đây).
+            populateRecruitmentEvaluatorAccountSettingsList();
             renderMailGroupsAdminList();
             renderProfileDocDeptTabs();
             renderProfileDocStaffSelect();
@@ -19269,6 +19657,24 @@
                     </span>
                 `).join('')
                 : `<span class="chip-empty-text">Chưa có người đánh giá nào. Vui lòng thêm ở ô phía trên.</span>`;
+            // [MỚI] Đổ danh sách tài khoản hệ thống hiện có (userDatabase — chỉ Admin mới có dữ liệu
+            // này) vào ô chọn nhanh, LOẠI BỎ những tài khoản đã có sẵn trong "Người đánh giá" rồi
+            // (tránh thêm trùng). Được gọi lại mỗi khi danh sách "Người đánh giá" thay đổi để luôn
+            // khớp dữ liệu mới nhất.
+            let sel = document.getElementById("sel-new-nguoidanhgia-user");
+            if (sel) {
+                let current = sel.value;
+                let sortedUsers = Object.keys(userDatabase || {})
+                    .filter(u => !nguoiDanhGiaTuyenDung.includes(u))
+                    .sort((a, b) => {
+                        if (a === "admin") return -1;
+                        if (b === "admin") return 1;
+                        return a.localeCompare(b, "vi");
+                    });
+                sel.innerHTML = '<option value="">-- Chọn 1 tài khoản hệ thống hiện có --</option>' +
+                    sortedUsers.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+                if (current && sortedUsers.includes(current)) sel.value = current;
+            }
         }
 
         async function addNguoiDanhGiaTuyenDung() {
@@ -19281,6 +19687,25 @@
                 await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
                 updateSystemData();
                 inp.value = "";
+            }
+        }
+
+        // [MỚI - THÊM TỪ TÀI KHOẢN HỆ THỐNG HIỆN CÓ] Thêm 1 tài khoản đăng nhập đã có sẵn (chọn từ
+        // ô "sel-new-nguoidanhgia-user") thẳng vào danh sách "Người đánh giá" — dùng LẠI ĐÚNG action
+        // "updateDanhMuc" và luồng lưu y hệt addNguoiDanhGiaTuyenDung() ở trên (KHÔNG tạo action
+        // mới, KHÔNG đổi quyền: vẫn chỉ Admin gọi được vì khối này nằm trong Tab "Cài đặt hệ thống",
+        // và server vẫn tự kiểm tra requireAuth(data, isAdmin) cho action "updateDanhMuc").
+        async function addNguoiDanhGiaTuyenDungFromUser() {
+            let sel = document.getElementById("sel-new-nguoidanhgia-user");
+            if (!sel) return;
+            let val = sel.value;
+            if (val && !nguoiDanhGiaTuyenDung.includes(val)) {
+                nguoiDanhGiaTuyenDung.push(val);
+                saveLocalCache();
+                renderNguoiDanhGiaTuyenDungList();
+                await pushToCloud({ action: "updateDanhMuc", depts: depts, vessels: vessels, apps: otherApps, nguoiDanhGiaTuyenDung: nguoiDanhGiaTuyenDung });
+                updateSystemData();
+                sel.value = "";
             }
         }
 
