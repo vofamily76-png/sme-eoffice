@@ -4311,6 +4311,15 @@
         // được ĐÚNG ứng viên mình phụ trách, giống hệt cách "leaveRequestsData" đang hoạt động
         // với người phê duyệt nghỉ phép.
         let myRecruitmentEvaluations = [];
+        // [SỬA LỖI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ" KHÔNG TỰ HIỆN] ID bộ đếm setInterval dùng
+        // để tự động tải lại "myRecruitmentEvaluations" định kỳ trong lúc tài khoản đang đăng
+        // nhập (xem giải thích đầy đủ ở nơi khởi tạo/hủy — applyUserPermissions()/handleLogout()).
+        // Trước đây dữ liệu này CHỈ được tải lại khi đăng nhập HOẶC khi tự tay mở tab "Nhận Việc"/
+        // "Tuyển Dụng", nên nếu người được giao đánh giá ĐANG MỞ SẴN trình duyệt ở tab khác (không
+        // đăng nhập lại, không bấm vào 2 tab đó) thì SẼ KHÔNG THẤY thông báo cho tới khi họ tự
+        // điều hướng qua lại — đây chính là nguyên nhân gây ra hiện tượng "người nhận không thấy
+        // thông báo" mà không phải do lưu sai dữ liệu (dữ liệu vẫn được lưu đúng ở server).
+        let recruitmentEvalPollTimer = null;
         const TUYENDUNG_STATUS_LIST_FE = ["Mới tiếp nhận", "Hẹn phỏng vấn", "Đạt", "Không đạt", "Đã nhận việc"];
         // [MỚI - MỤC "ĐÁNH GIÁ ỨNG VIÊN"] Danh sách kết quả đánh giá hợp lệ — server cũng kiểm
         // tra lại giá trị này ở action "saveRecruitmentEvaluation" (xem TUYENDUNG_DANHGIA_LIST
@@ -5233,7 +5242,15 @@
             if (!el) return;
             let willOpen = !el.classList.contains("open");
             el.classList.toggle("open");
-            if (willOpen) updateNotificationBell();
+            if (willOpen) {
+                updateNotificationBell();
+                // [SỬA LỖI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ" KHÔNG TỰ HIỆN] Ngoài bộ đếm 30
+                // giây/lần ở nền, mỗi lần bấm MỞ chuông cũng tự tải lại NGAY LẬP TỨC (không đợi
+                // hết chu kỳ), để phản hồi tức thời khi người dùng chủ động kiểm tra. Hàm này tự
+                // vẽ lại chuông sau khi tải xong (renderRecruitmentEvaluationSection() ->
+                // updateNhanViecBadge() -> updateNotificationBell()) nên không cần gọi lại gì thêm.
+                if (typeof loadMyRecruitmentEvaluations === "function") loadMyRecruitmentEvaluations();
+            }
         }
         function closeNotificationBell() {
             const el = document.getElementById("notif-bell");
@@ -6853,6 +6870,10 @@
         }
 
         function handleLogout() {
+            // [SỬA LỖI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ"] Hủy NGAY bộ đếm polling (nếu đang
+            // chạy) trước khi xóa authToken — tránh bộ đếm tiếp tục gọi action
+            // "getMyRecruitmentEvaluations" bằng authToken rỗng/đã hết hiệu lực sau khi đăng xuất.
+            if (recruitmentEvalPollTimer) { clearInterval(recruitmentEvalPollTimer); recruitmentEvalPollTimer = null; }
             // [MẢNG 1] Báo server hủy token ngay lập tức (không chờ tự hết hạn), để nếu
             // token này chẳng may bị lộ trước đó thì cũng không còn dùng được nữa.
             if (authToken && isScriptUrlConfigured()) {
@@ -7080,6 +7101,16 @@
             // Dụng") — để tài khoản được giao đánh giá 1 ứng viên cụ thể luôn nhận được thông
             // báo, giống hệt cách loadLeaveRequests() đang làm với đơn nghỉ phép ngay bên dưới.
             loadMyRecruitmentEvaluations();
+            // [SỬA LỖI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ" KHÔNG TỰ HIỆN] Khởi động lại (hủy bộ
+            // đếm cũ nếu có, tránh chạy trùng nhiều bộ đếm khi đăng nhập lại/đổi tài khoản trong
+            // cùng 1 tab trình duyệt) 1 bộ đếm TỰ ĐỘNG tải lại dữ liệu này mỗi 30 giây trong lúc
+            // tài khoản đang đăng nhập — để khi người khác gán mình làm người đánh giá, thông báo
+            // TỰ HIỆN ra ở chuông + Tab "Nhận Việc"/"Tuyển Dụng" mà KHÔNG cần đăng nhập lại hay
+            // tự tay mở lại 2 tab đó. Đây là action CHỈ ĐỌC (đã liệt kê trong
+            // READ_ONLY_ACTIONS_NO_LOCK ở Code.gs), tần suất 30 giây/lần là rất nhẹ, không ảnh
+            // hưởng hiệu năng/quota Google Sheet. Hủy bộ đếm này khi đăng xuất — xem handleLogout().
+            if (recruitmentEvalPollTimer) clearInterval(recruitmentEvalPollTimer);
+            recruitmentEvalPollTimer = setInterval(loadMyRecruitmentEvaluations, 30000);
 
             // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mọi tài khoản đã đăng nhập đều được tự đăng ký nghỉ
             // phép cho chính mình. Tự điền sẵn Họ tên/Email từ hồ sơ nhân sự đã liên kết (nếu
