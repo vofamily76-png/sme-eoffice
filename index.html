@@ -1287,8 +1287,14 @@
                      ĐÚNG khối này khi mở Tab (menu "Tuyển Dụng" cũng tự hiện ra cho họ — xem
                      loadMyRecruitmentEvaluations()), nhưng KHÔNG thấy khối quản lý toàn bộ hồ sơ
                      ứng viên bên dưới (vẫn ẩn/hiện theo đúng quyền như cũ, KHÔNG đổi). -->
-                <div id="td-my-evaluation-requests-section" style="display:none; margin-bottom:24px;">
-                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-user-check"></i> Yêu cầu đánh giá gửi đến bạn</h3>
+                <div id="td-my-evaluation-requests-section" style="display:none; margin-bottom:24px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <h3 style="color: var(--primary-color); margin:0;"><i class="fa-solid fa-user-check"></i> Yêu cầu đánh giá gửi đến bạn</h3>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span id="td-my-eval-last-checked" style="font-size:12px; color:#888;"></span>
+                            <button class="btn btn-sm" style="width:auto; padding:6px 12px; background:#f9a825;" onclick="loadMyRecruitmentEvaluations(true)"><i class="fa-solid fa-arrows-rotate"></i> Kiểm tra ngay</button>
+                        </div>
+                    </div>
                     <div style="overflow-x:auto;">
                     <table id="tbl-td-my-evaluations">
                         <thead><tr>
@@ -3331,8 +3337,20 @@
                      hồ sơ có tên mình trong "Người đánh giá được giao" — không hiện hồ sơ của
                      ứng viên khác không liên quan tới mình). Cấu trúc/hành vi giống HỆT khối
                      "Đơn xin nghỉ phép chờ bạn duyệt" ở trên. -->
-                <div id="nv-recruitment-eval-section" style="display:none; margin-bottom:24px;">
-                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-user-check"></i> Ứng viên cần bạn đánh giá</h3>
+                <!-- [CẢI TIẾN GIAO DIỆN - LÀM NỔI BẬT KHỐI THÔNG BÁO] Bọc trong khung màu vàng nhạt
+                     (giống khối cảnh báo "nv-link-warning" đã có sẵn trong hệ thống) để dễ nhận ra
+                     ngay, kèm nút "Kiểm tra ngay" (gọi thủ công loadMyRecruitmentEvaluations(),
+                     không cần chờ 15 giây tự động) + mốc thời gian lần tải gần nhất, giúp người
+                     dùng tự xác nhận dữ liệu ĐÃ được làm mới hay chưa (loại trừ nguyên nhân do
+                     trình duyệt hiển thị bản cache cũ). KHÔNG đổi cấu trúc dữ liệu/API. -->
+                <div id="nv-recruitment-eval-section" style="display:none; margin-bottom:24px; background:#fff8e1; border:1px solid #ffe082; border-radius:10px; padding:16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <h3 style="color: var(--primary-color); margin:0;"><i class="fa-solid fa-user-check"></i> Ứng viên cần bạn đánh giá</h3>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span id="nv-td-last-checked" style="font-size:12px; color:#888;"></span>
+                            <button class="btn btn-sm" style="width:auto; padding:6px 12px; background:#f9a825;" onclick="loadMyRecruitmentEvaluations(true)"><i class="fa-solid fa-arrows-rotate"></i> Kiểm tra ngay</button>
+                        </div>
+                    </div>
                     <div style="overflow-x:auto;">
                     <table id="tbl-nhanviec-tuyendung">
                         <thead><tr>
@@ -7109,8 +7127,11 @@
             // tự tay mở lại 2 tab đó. Đây là action CHỈ ĐỌC (đã liệt kê trong
             // READ_ONLY_ACTIONS_NO_LOCK ở Code.gs), tần suất 30 giây/lần là rất nhẹ, không ảnh
             // hưởng hiệu năng/quota Google Sheet. Hủy bộ đếm này khi đăng xuất — xem handleLogout().
+            // [CẢI TIẾN - RÚT NGẮN CHU KỲ 30s -> 15s] Vẫn là action CHỈ ĐỌC, tần suất 15 giây/lần
+            // vẫn rất nhẹ (không ảnh hưởng hiệu năng/quota Google Sheet), giúp thông báo xuất hiện
+            // nhanh hơn, gần với trải nghiệm "tức thời" hơn.
             if (recruitmentEvalPollTimer) clearInterval(recruitmentEvalPollTimer);
-            recruitmentEvalPollTimer = setInterval(loadMyRecruitmentEvaluations, 30000);
+            recruitmentEvalPollTimer = setInterval(() => loadMyRecruitmentEvaluations(false), 15000);
 
             // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mọi tài khoản đã đăng nhập đều được tự đăng ký nghỉ
             // phép cho chính mình. Tự điền sẵn Họ tên/Email từ hồ sơ nhân sự đã liên kết (nếu
@@ -12888,19 +12909,31 @@
         // chuông thông báo + (MỚI) tự hiện menu "Tuyển Dụng" nếu tài khoản đang có hồ sơ được
         // giao mà trước đó KHÔNG có quyền Xem/Sửa Tuyển Dụng chung. Gọi CÙNG lúc đăng nhập với
         // loadLeaveRequests() (xem điểm gọi ở khối "==== [TAB NHẬN VIỆC] ====").
-        async function loadMyRecruitmentEvaluations() {
+        // [CẢI TIẾN - NÚT "KIỂM TRA NGAY"] Tham số "manual" (true khi người dùng tự bấm nút "Kiểm
+        // tra ngay", false/không truyền khi gọi tự động từ bộ đếm/mở tab) — CHỈ dùng để hiện phản
+        // hồi rõ ràng hơn cho thao tác thủ công (disable nút + đổi icon xoay trong lúc chờ, báo lỗi
+        // bằng alert nếu request thất bại) và LUÔN cập nhật mốc "Cập nhật lúc HH:mm:ss" sau khi tải
+        // xong (dù thành công hay lỗi) để người dùng tự xác nhận dữ liệu đã thực sự được làm mới,
+        // loại trừ khả năng do trình duyệt hiển thị bản cache cũ. KHÔNG đổi logic lọc/hiển thị dữ
+        // liệu — chỉ thêm phản hồi trực quan.
+        async function loadMyRecruitmentEvaluations(manual) {
             if (!currentUsername || !isScriptUrlConfigured()) return;
+            let btns = manual ? document.querySelectorAll('button[onclick^="loadMyRecruitmentEvaluations"]') : [];
+            if (manual) btns.forEach(b => { b.disabled = true; b.querySelector("i").classList.add("fa-spin"); });
             try {
                 let res = await fetch(SCRIPT_URL, {
                     method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: "getMyRecruitmentEvaluations", authToken: authToken })
                 });
                 let data = await parseServerResponse(res);
-                if (data.status !== "SUCCESS") return;
+                if (data.status !== "SUCCESS") { if (manual) alert("❌ Không tải được — vui lòng thử lại: " + (data.message || "Lỗi không xác định")); return; }
                 myRecruitmentEvaluations = data.items || [];
                 renderRecruitmentEvaluationSection();
                 renderMyRecruitmentEvaluationsInRecruitmentTab();
                 updateNhanViecBadge();
+                let stamp = "Cập nhật lúc " + new Date().toLocaleTimeString("vi-VN");
+                let elA = document.getElementById("nv-td-last-checked"); if (elA) elA.innerText = stamp;
+                let elB = document.getElementById("td-my-eval-last-checked"); if (elB) elB.innerText = stamp;
                 // [MỚI] Có ít nhất 1 hồ sơ được giao đánh giá -> LUÔN hiện menu "Tuyển Dụng" (dù
                 // tài khoản không có quyền Xem/Sửa Tuyển Dụng chung), để họ mở được tab và xử lý
                 // yêu cầu ngay tại đó. KHÔNG ảnh hưởng gì tới quyền xem toàn bộ danh sách ứng
@@ -12912,6 +12945,9 @@
                 }
             } catch (err) {
                 console.error("Lỗi tải danh sách ứng viên cần đánh giá:", err);
+                if (manual) alert("❌ Có lỗi khi kiểm tra, vui lòng thử lại.");
+            } finally {
+                if (manual) btns.forEach(b => { b.disabled = false; b.querySelector("i").classList.remove("fa-spin"); });
             }
         }
 
