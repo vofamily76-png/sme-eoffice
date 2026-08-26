@@ -63,6 +63,17 @@
         /* Khung Checkbox chọn nhiều phòng ban */
         .checkbox-dropdown-list { border: 1px solid #ccc; border-radius: 4px; max-height: 130px; overflow-y: auto; padding: 8px; background: #fff; }
         .checkbox-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; cursor: pointer; }
+        /* [MỚI - TAB "TUYỂN DỤNG" - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Bố cục 2 cột: cột 1 "Ứng viên
+           mới", cột 2 "User đánh giá ứng viên". Dùng repeat(auto-fit, minmax(...)) giống hệt cách
+           ".form-row" đang dùng cho toàn hệ thống -> tự động xuống 1 cột trên màn hình hẹp/điện
+           thoại mà KHÔNG cần thêm @media riêng. */
+        .td-nguoidanhgia-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        /* Dòng ứng viên ở CỘT 1 - bấm để chọn (thay cho <select> trước đây). ".is-active" đánh dấu
+           ứng viên đang được chọn để gán người đánh giá. */
+        .td-candidate-item { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px; border: 1px solid #eee; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; font-family: inherit; }
+        .td-candidate-item:hover { background: #f5f7fa; border-color: #cfd8dc; }
+        .td-candidate-item.is-active { background: #e3f2fd; border-color: #64b5f6; font-weight: 600; }
+        .td-candidate-item .td-candidate-item-sub { display: block; font-weight: 400; color: #888; font-size: 11px; margin-top: 2px; }
         .checkbox-item input { width: auto; cursor: pointer; }
 
         .btn { background-color: var(--primary-color); color: white; padding: 12px; border: none; border-radius: 4px; width: 100%; pointer-events: auto; cursor: pointer; font-size: 16px; font-weight: bold; transition: 0.3s; }
@@ -1375,72 +1386,73 @@
                         </div>
                     </div>
 
-                    <!-- [CẬP NHẬT - TÁCH THÀNH MỤC RIÊNG, MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ ĐỀU THẤY,
-                         CHO CHỌN CÙNG LÚC NHIỀU NGƯỜI]
-                         "Người đánh giá được giao": tách hẳn khỏi form Thêm/Sửa hồ sơ ở trên - đây là
-                         1 THAO TÁC RIÊNG (action "saveRecruitmentAssignedEvaluators" ở Code.gs, có nút
-                         Lưu RIÊNG), không còn gửi kèm mỗi khi Lưu hồ sơ nữa - giống hệt cách mục "Người
-                         được phê duyệt" ở Tab "Đăng ký nghỉ phép" đã tách riêng. Hiện với MỌI tài khoản
-                         có quyền Sửa hồ sơ ứng viên (canEditRecruitment - KHÔNG còn giới hạn chỉ Admin
-                         như trước) - xem applyUserPermissions(). Chỉ áp dụng được cho 1 hồ sơ ĐANG Ở CHẾ
-                         ĐỘ SỬA (bấm nút "Sửa" ở bảng danh sách trước) - khi đang ở chế độ Thêm mới (chưa
-                         có Mã hồ sơ) thì hiện gợi ý và khóa lại. Cho phép TICK CHỌN CÙNG LÚC NHIỀU
-                         người (dùng lại đúng class "checkbox-dropdown-list"/"checkbox-item" đang có sẵn
-                         trong hệ thống, giống khung chọn nhiều "Người phê duyệt" ở Tab "Đăng ký nghỉ
-                         phép"). Danh sách tên để chọn CHỈ Admin thêm/xóa được (Tab "Cài đặt hệ thống"). -->
+                    <!-- [CẬP NHẬT - GIAO DIỆN 2 CỘT] "Người đánh giá được giao": tách hẳn khỏi form
+                         Thêm/Sửa hồ sơ ở trên - đây là 1 THAO TÁC RIÊNG (action
+                         "saveRecruitmentAssignedEvaluators" ở Code.gs, có nút Lưu RIÊNG), không đổi
+                         action/cột dữ liệu ("NguoiDuocGiaoDanhGia" cột 20) so với trước, KHÔNG mất dữ
+                         liệu đã gán. Hiện với MỌI tài khoản có quyền Sửa hồ sơ ứng viên
+                         (canEditRecruitment) - xem applyUserPermissions(). Chỉ áp dụng được cho 1 hồ
+                         sơ ĐANG được chọn (bấm "Sửa" ở bảng danh sách, hoặc chọn thẳng ở CỘT 1 dưới
+                         đây) - khi chưa chọn hồ sơ nào thì hiện gợi ý và khóa lại.
+                         GIAO DIỆN chia làm 2 CỘT (chỉ đổi cách hiển thị/thao tác ở trình duyệt, KHÔNG
+                         đổi action/dữ liệu ở server):
+                           - CỘT 1 "Ứng viên mới": danh sách hồ sơ ứng viên (lấy từ đúng dữ liệu
+                             "recruitmentData" đã tải sẵn, KHÔNG gọi thêm action nào), mới tạo lên
+                             trước để dễ tìm ứng viên vừa nộp hồ sơ. Bấm vào 1 dòng để chọn hồ sơ đó
+                             (xem renderRecruitmentCandidateListForAssign()/chonHoSoNguoiDanhGia()),
+                             thay cho ô <select> thả xuống trước đây.
+                           - CỘT 2 "User đánh giá ứng viên": GIỮ NGUYÊN đúng khung chọn nhiều người
+                             (class "checkbox-dropdown-list"/"checkbox-item" có sẵn) như trước - cho
+                             TICK CHỌN CÙNG LÚC NHIỀU người (gồm tài khoản hệ thống hiện có và danh
+                             sách tên do Admin tự thêm ở Tab "Cài đặt hệ thống"). -->
                     <div id="td-nguoidanhgia-box" style="display:none; margin-top:16px; padding:16px; border:1px dashed #b0bec5; border-radius:8px; background:#fafafa;">
-                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(có thể chọn cùng lúc nhiều người — gồm cả tài khoản hệ thống hiện có và danh sách tên do Admin tự thêm ở Tab "Cài đặt hệ thống")</span></h4>
-                        <!-- [MỚI - MỞ KHÓA: CHỌN NHANH HỒ SƠ NGAY TẠI ĐÂY] Trước đây bắt buộc phải bấm
-                             "Sửa" ở 1 hồ sơ trong bảng danh sách bên dưới thì khối này mới hoạt động
-                             (nút "Lưu người đánh giá" luôn ở trạng thái khóa/disabled cho tới lúc đó).
-                             Nay có thêm ô chọn nhanh hồ sơ NGAY TẠI ĐÂY (xem chonHoSoNguoiDanhGia()) —
-                             chọn xong là khối bên dưới mở khóa ngay, không cần rời khỏi khối này. Vẫn
-                             giữ nguyên cách hoạt động cũ (bấm "Sửa" ở bảng cũng mở khóa y hệt) để
-                             KHÔNG phá vỡ luồng thao tác đang quen dùng. -->
-                        <div style="margin-bottom:10px;">
-                            <label style="font-size:13px; color:#555; display:block; margin-bottom:4px;">Chọn nhanh hồ sơ ứng viên cần gán người đánh giá:</label>
-                            <select id="sel-td-nguoidanhgia-hoso" class="search-box" style="max-width:420px;" onchange="chonHoSoNguoiDanhGia(this.value)">
-                                <option value="">-- Chọn hồ sơ ứng viên --</option>
-                            </select>
-                        </div>
-                        <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:8px;"></div>
-                        <!-- [MỚI] Hồ sơ đang được gán người đánh giá — TÁCH RIÊNG hoàn toàn khỏi
+                        <h4 style="margin:0 0 8px; color: var(--primary-color);"><i class="fa-solid fa-user-shield"></i> Người đánh giá được giao <span style="font-weight:400; color:#888; font-size:12px;">(chọn 1 ứng viên ở cột trái, rồi chọn cùng lúc nhiều người ở cột phải)</span></h4>
+                        <div id="td-nguoidanhgia-target-hint" style="font-size:13px; color:#555; margin-bottom:10px;"></div>
+                        <!-- [GIỮ NGUYÊN] Hồ sơ đang được gán người đánh giá — TÁCH RIÊNG hoàn toàn khỏi
                              "edit-mahoso-tuyendung" (hidden field của form Sửa THÔNG TIN hồ sơ chính)
-                             để: (1) dùng được ô "Chọn nhanh hồ sơ" ở trên MÀ KHÔNG cần mở form Sửa
-                             chính, và (2) tránh rủi ro nếu 2 hồ sơ khác nhau bị lẫn giữa 2 thao tác
-                             (gán người đánh giá vs sửa thông tin hồ sơ), có thể khiến lưu nhầm/mất
-                             dữ liệu của hồ sơ khác. Được set bởi toggleRecruitmentNguoiDanhGiaBox(). -->
+                             để tránh rủi ro nếu 2 hồ sơ khác nhau bị lẫn giữa 2 thao tác (gán người
+                             đánh giá vs sửa thông tin hồ sơ). Được set bởi toggleRecruitmentNguoiDanhGiaBox(). -->
                         <input type="hidden" id="td-nguoidanhgia-mahoso" value="">
-                        <!-- [MỚI - ADMIN THÊM NHANH TÊN NGƯỜI ĐÁNH GIÁ NGAY TẠI ĐÂY] Trước đây Admin
-                             PHẢI rời Tab "Tuyển dụng" sang Tab "Cài đặt hệ thống" mới thêm được tên vào
-                             danh sách "Người đánh giá" (nguoiDanhGiaTuyenDung) — nếu danh sách đó đang
-                             TRỐNG thì khối bên dưới không có ai để tick, nhìn giống như bị "khóa". Nay
-                             CHỈ RIÊNG tài khoản Role Admin (id="td-nguoidanhgia-quickadd", ẩn với mọi
-                             tài khoản khác — xem toggleRecruitmentNguoiDanhGiaBox()) thấy thêm 1 ô nhập
-                             nhanh NGAY TẠI ĐÂY, dùng LẠI đúng action "updateDanhMuc" đã có sẵn (server
-                             vẫn tự kiểm tra requireAuth(data, isAdmin) — KHÔNG nới lỏng quyền, Admin
-                             vốn đã là người duy nhất quản lý được danh sách này). -->
-                        <div id="td-nguoidanhgia-quickadd" style="display:none; margin-bottom:10px;">
-                            <div class="table-controls" style="margin:0;">
-                                <input type="text" id="inp-td-nguoidanhgia-quickadd" class="search-box" placeholder="[Chỉ Admin] Thêm nhanh tên người đánh giá mới..." style="max-width:320px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickAddNguoiDanhGiaTuyenDung();}">
-                                <button type="button" class="btn" style="width:auto; padding:8px 14px;" onclick="quickAddNguoiDanhGiaTuyenDung()"><i class="fa-solid fa-plus"></i> Thêm vào danh sách</button>
+
+                        <div class="td-nguoidanhgia-cols">
+                            <!-- CỘT 1: ỨNG VIÊN MỚI -->
+                            <div style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fff;">
+                                <h5 style="margin:0 0 8px; font-size:14px; color:var(--primary-color);"><i class="fa-solid fa-user-plus"></i> Ứng viên mới</h5>
+                                <input type="text" id="inp-td-nguoidanhgia-candidate-search" class="search-box" placeholder="🔍 Tìm ứng viên theo tên, vị trí, mã hồ sơ..." style="margin-bottom:8px;" oninput="renderRecruitmentCandidateListForAssign()">
+                                <div id="td-nguoidanhgia-candidatelist" class="checkbox-dropdown-list" style="max-height:220px;"></div>
+                            </div>
+
+                            <!-- CỘT 2: USER ĐÁNH GIÁ ỨNG VIÊN -->
+                            <div style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fff;">
+                                <h5 style="margin:0 0 8px; font-size:14px; color:var(--primary-color);"><i class="fa-solid fa-users"></i> User đánh giá ứng viên <span style="font-weight:400; color:#888; font-size:11px;">(có thể chọn nhiều)</span></h5>
+                                <!-- [MỚI - ADMIN THÊM NHANH TÊN NGƯỜI ĐÁNH GIÁ NGAY TẠI ĐÂY] CHỈ Role
+                                     Admin thấy (ẩn với mọi tài khoản khác - xem
+                                     toggleRecruitmentNguoiDanhGiaBox()), dùng LẠI đúng action
+                                     "updateDanhMuc" đã có sẵn (server vẫn tự kiểm tra
+                                     requireAuth(data, isAdmin) — KHÔNG nới lỏng quyền). -->
+                                <div id="td-nguoidanhgia-quickadd" style="display:none; margin-bottom:10px;">
+                                    <div class="table-controls" style="margin:0;">
+                                        <input type="text" id="inp-td-nguoidanhgia-quickadd" class="search-box" placeholder="[Chỉ Admin] Thêm nhanh tên người đánh giá mới..." style="max-width:100%;" onkeydown="if(event.key==='Enter'){event.preventDefault(); quickAddNguoiDanhGiaTuyenDung();}">
+                                        <button type="button" class="btn" style="width:auto; padding:8px 14px;" onclick="quickAddNguoiDanhGiaTuyenDung()"><i class="fa-solid fa-plus"></i> Thêm vào danh sách</button>
+                                    </div>
+                                </div>
+                                <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:220px;"></div>
                             </div>
                         </div>
-                        <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:160px;"></div>
-                        <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; margin-top:10px; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
-                        <!-- [MỚI - MỤC "GỬI ĐÁNH GIÁ"] Lưu LẠI danh sách người đánh giá đang tick chọn
-                             (dùng CHUNG action "saveRecruitmentAssignedEvaluators" — KHÔNG thêm action
-                             mới/KHÔNG đổi cách lưu dữ liệu), đồng thời xác nhận rõ với người bấm là
-                             NGAY SAU KHI GỬI, những tài khoản được chọn sẽ thấy thông báo "Ứng viên cần
-                             bạn đánh giá" ở chuông thông báo + Tab "Nhận Việc" của họ (xem
-                             guiYeuCauDanhGiaTuyenDung()) — làm rõ ý nghĩa "gửi" thay vì chỉ "lưu" đơn
-                             thuần, đúng theo góp ý người dùng, KHÔNG thay đổi bảo mật/luồng dữ liệu. -->
-                        <button class="btn btn-success" id="btn-gui-td-nguoidanhgia" style="width:auto; margin-top:10px; margin-left:8px;" onclick="guiYeuCauDanhGiaTuyenDung()" disabled><i class="fa-solid fa-paper-plane"></i> Gửi đánh giá</button>
-                        <!-- [MỚI - BỎ CHỌN NGƯỜI ĐÁNH GIÁ] Bỏ tick TẤT CẢ checkbox đang hiển thị (chỉ ở
-                             giao diện, CHƯA lưu lên hệ thống) — vẫn cần bấm "Lưu người đánh giá" thì
-                             thay đổi (gán về rỗng = không còn ai được giao) mới thực sự được ghi lại. -->
-                        <button class="btn" id="btn-boChon-td-nguoidanhgia" style="width:auto; margin-top:10px; margin-left:8px; background:#78909c;" onclick="boChonTatCaNguoiDanhGia()" disabled><i class="fa-solid fa-eraser"></i> Bỏ chọn người đánh giá</button>
-                        <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
+
+                        <div style="margin-top:12px;">
+                            <button class="btn" id="btn-save-td-nguoidanhgia" style="width:auto; background:#37474f;" onclick="saveRecruitmentAssignedEvaluators()" disabled><i class="fa-solid fa-floppy-disk"></i> Lưu người đánh giá</button>
+                            <!-- [GIỮ NGUYÊN] Lưu LẠI danh sách người đánh giá đang tick chọn (dùng CHUNG
+                                 action "saveRecruitmentAssignedEvaluators"), đồng thời gửi thông báo
+                                 "Ứng viên cần bạn đánh giá" tới những tài khoản được chọn (chuông thông
+                                 báo + Tab "Nhận Việc" của họ - xem guiYeuCauDanhGiaTuyenDung()). -->
+                            <button class="btn btn-success" id="btn-gui-td-nguoidanhgia" style="width:auto; margin-left:8px;" onclick="guiYeuCauDanhGiaTuyenDung()" disabled><i class="fa-solid fa-paper-plane"></i> Gửi đánh giá</button>
+                            <!-- [GIỮ NGUYÊN] Bỏ tick TẤT CẢ checkbox đang hiển thị (chỉ ở giao diện,
+                                 CHƯA lưu lên hệ thống) — vẫn cần bấm "Lưu người đánh giá" thì thay đổi
+                                 mới thực sự được ghi lại. -->
+                            <button class="btn" id="btn-boChon-td-nguoidanhgia" style="width:auto; margin-left:8px; background:#78909c;" onclick="boChonTatCaNguoiDanhGia()" disabled><i class="fa-solid fa-eraser"></i> Bỏ chọn người đánh giá</button>
+                            <span id="td-nguoidanhgia-status" style="font-size:12px; color:#2e7d32; margin-left:10px;"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -14569,11 +14581,10 @@
             populateRecruitmentStatusSelect();
             populateRecruitmentDeptSelect();
             populateRecruitmentInterviewRoomSelect();
-            // [MỚI - MỞ KHÓA MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" NGAY TẠI ĐÂY] Đổ danh sách hồ sơ vào ô
-            // chọn nhanh "sel-td-nguoidanhgia-hoso" mỗi khi dữ liệu tuyển dụng được tải/làm mới —
-            // để KHÔNG bắt buộc phải bấm "Sửa" ở bảng bên dưới trước mới thao tác được (xem thêm
-            // chonHoSoNguoiDanhGia()).
-            populateRecruitmentNguoiDanhGiaHoSoSelect();
+            // [CẬP NHẬT - GIAO DIỆN 2 CỘT] Vẽ lại danh sách ứng viên ở CỘT 1 ("Ứng viên mới") mỗi
+            // khi dữ liệu tuyển dụng được tải/làm mới — để KHÔNG bắt buộc phải bấm "Sửa" ở bảng bên
+            // dưới trước mới thao tác được (xem thêm chonHoSoNguoiDanhGia()).
+            renderRecruitmentCandidateListForAssign();
             renderRecruitmentTabs();
             renderRecruitmentTable();
         }
@@ -14729,10 +14740,10 @@
             // "edit-mahoso-tuyendung" của form Sửa thông tin hồ sơ chính — xem chú thích ở HTML).
             let maHoSoField = document.getElementById("td-nguoidanhgia-mahoso");
             if (maHoSoField) maHoSoField.value = maHoSo || "";
-            // [MỚI] Đồng bộ ô chọn nhanh hồ sơ ("sel-td-nguoidanhgia-hoso") theo đúng hồ sơ đang gán —
-            // dù người dùng vào bằng đường "Sửa" ở bảng hay bằng chính ô chọn nhanh này.
-            let selHoSo = document.getElementById("sel-td-nguoidanhgia-hoso");
-            if (selHoSo) selHoSo.value = maHoSo || "";
+            // [CẬP NHẬT - GIAO DIỆN 2 CỘT] Vẽ lại CỘT 1 "Ứng viên mới" để tô sáng ("is-active") đúng
+            // dòng đang được gán — dù người dùng vào bằng đường "Sửa" ở bảng hay bằng cách bấm thẳng
+            // vào 1 dòng ở CỘT 1.
+            renderRecruitmentCandidateListForAssign();
             if (maHoSo) {
                 if (hintEl) hintEl.innerHTML = 'Đang gán cho hồ sơ: <b>' + escapeHtml(hoTen || "") + '</b> (Mã hồ sơ: ' + escapeHtml(maHoSo) + ')';
                 if (saveBtn) saveBtn.disabled = false;
@@ -14748,25 +14759,53 @@
             }
         }
 
-        // [MỚI - MỞ KHÓA MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" NGAY TẠI ĐÂY] Đổ toàn bộ hồ sơ ứng viên
-        // (recruitmentData ĐÃ TẢI SẴN, KHÔNG gọi thêm API) vào ô chọn nhanh, sắp xếp theo Họ tên A-Z
-        // để dễ tìm. Được gọi lại mỗi khi loadRecruitmentData() tải/làm mới dữ liệu.
-        function populateRecruitmentNguoiDanhGiaHoSoSelect() {
-            let sel = document.getElementById("sel-td-nguoidanhgia-hoso");
-            if (!sel) return;
-            let current = sel.value;
-            let sorted = [...recruitmentData].sort((a, b) => (a.hoTen || "").localeCompare(b.hoTen || "", "vi"));
-            sel.innerHTML = '<option value="">-- Chọn hồ sơ ứng viên --</option>' +
-                sorted.map(r => `<option value="${escapeHtml(r.maHoSo)}">${escapeHtml(r.hoTen || "(Chưa rõ tên)")} — ${escapeHtml(r.viTriUngTuyen || "")} (${escapeHtml(r.maHoSo)})</option>`).join('');
-            // Giữ nguyên lựa chọn đang có (nếu hồ sơ đó vẫn còn tồn tại sau khi làm mới dữ liệu).
-            if (current && sorted.some(r => r.maHoSo === current)) sel.value = current;
+        // [CẬP NHẬT - GIAO DIỆN 2 CỘT, MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Vẽ CỘT 1 "Ứng viên mới"
+        // thành danh sách các dòng bấm-để-chọn (thay cho ô <select> thả xuống trước đây) — dữ liệu
+        // lấy đúng từ "recruitmentData" ĐÃ TẢI SẴN (KHÔNG gọi thêm action mới, KHÔNG đổi dữ liệu
+        // trên Sheet). Ứng viên mới tạo hồ sơ gần đây nhất hiển thị lên TRƯỚC (đúng tên "Ứng viên
+        // mới"); có thể gõ tìm theo tên/vị trí/mã hồ sơ ở ô tìm kiếm phía trên. Được gọi lại mỗi
+        // khi loadRecruitmentData() tải/làm mới dữ liệu, và mỗi khi hồ sơ đang chọn thay đổi (để
+        // cập nhật đúng dòng đang được tô sáng "is-active").
+        function renderRecruitmentCandidateListForAssign() {
+            let box = document.getElementById("td-nguoidanhgia-candidatelist");
+            if (!box) return;
+            let searchEl = document.getElementById("inp-td-nguoidanhgia-candidate-search");
+            let kw = ((searchEl && searchEl.value) || "").trim().toLowerCase();
+            let maHoSoField = document.getElementById("td-nguoidanhgia-mahoso");
+            let currentMaHoSo = maHoSoField ? maHoSoField.value : "";
+
+            let list = [...(recruitmentData || [])];
+            if (kw) {
+                list = list.filter(r =>
+                    (r.hoTen || "").toLowerCase().indexOf(kw) !== -1 ||
+                    (r.viTriUngTuyen || "").toLowerCase().indexOf(kw) !== -1 ||
+                    (r.maHoSo || "").toLowerCase().indexOf(kw) !== -1
+                );
+            }
+            // Mới tạo hồ sơ gần đây nhất lên trước (cùng cách sắp xếp "ngayTao" đang dùng ở các nơi
+            // khác trong hệ thống, VD renderRecruitmentTable()).
+            list.sort((a, b) => (b.ngayTao || "").localeCompare(a.ngayTao || ""));
+
+            if (!list.length) {
+                box.innerHTML = '<div style="color:#aaa; font-size:13px; padding:4px;">' +
+                    (kw ? 'Không tìm thấy ứng viên phù hợp.' : 'Chưa có hồ sơ ứng viên nào.') + '</div>';
+                return;
+            }
+
+            box.innerHTML = list.map(r => {
+                let isActive = r.maHoSo === currentMaHoSo;
+                return `<button type="button" class="td-candidate-item${isActive ? ' is-active' : ''}" onclick="chonHoSoNguoiDanhGia('${escapeHtml(r.maHoSo).replace(/'/g, "\\'")}')">` +
+                    escapeHtml(r.hoTen || "(Chưa rõ tên)") +
+                    `<span class="td-candidate-item-sub">${escapeHtml(r.viTriUngTuyen || "")} — Mã hồ sơ: ${escapeHtml(r.maHoSo)}${r.ngayTao ? " — " + escapeHtml(r.ngayTao) : ""}</span>` +
+                    `</button>`;
+            }).join('');
         }
 
-        // [MỚI - MỞ KHÓA: CHỌN NHANH HỒ SƠ NGAY TẠI KHỐI "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO"] Cho phép gán
-        // người đánh giá cho 1 hồ sơ MÀ KHÔNG bắt buộc phải bấm "Sửa" ở bảng danh sách bên dưới
-        // trước (khối này trước đây luôn ở trạng thái khóa/disabled cho tới khi làm vậy). Hàm này
-        // CHỈ cập nhật đúng khối "Người đánh giá được giao" — KHÔNG mở/điền toàn bộ form Sửa hồ sơ
-        // (để tránh gây nhầm lẫn nếu người dùng đang dở dang nhập liệu ở form thêm/sửa hồ sơ khác).
+        // [CẬP NHẬT - GIAO DIỆN 2 CỘT] Được gọi khi bấm vào 1 dòng ứng viên ở CỘT 1 "Ứng viên mới"
+        // (trước đây gọi khi đổi ô <select> "Chọn nhanh hồ sơ"). Cho phép gán người đánh giá cho 1
+        // hồ sơ MÀ KHÔNG bắt buộc phải bấm "Sửa" ở bảng danh sách bên dưới trước. Hàm này CHỈ cập
+        // nhật đúng khối "Người đánh giá được giao" — KHÔNG mở/điền toàn bộ form Sửa hồ sơ (để
+        // tránh gây nhầm lẫn nếu người dùng đang dở dang nhập liệu ở form thêm/sửa hồ sơ khác).
         function chonHoSoNguoiDanhGia(maHoSo) {
             if (!maHoSo) { toggleRecruitmentNguoiDanhGiaBox("", ""); return; }
             let r = recruitmentData.find(x => x.maHoSo === maHoSo);
