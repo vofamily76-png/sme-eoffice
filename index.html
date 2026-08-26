@@ -14650,6 +14650,12 @@
             }
             if (tuThemNames.length) {
                 html += groupHeaderHtml_("Người đánh giá tự thêm (không phải tài khoản đăng nhập)", !taiKhoanNames.length);
+                // [SỬA LỖI - "GỬI YÊU CẦU NHƯNG KHÔNG THẤY THÔNG BÁO"] Cảnh báo NGAY tại đây (trước
+                // khi HR kịp tick chọn), vì đây chính là nguyên nhân phổ biến nhất khiến người được
+                // gán KHÔNG bao giờ nhận được thông báo: tên trong nhóm này chỉ là chuỗi text, không
+                // gắn với tài khoản đăng nhập nào để hệ thống gửi thông báo tới. KHÔNG đổi danh sách/
+                // hành vi chọn, chỉ thêm dòng chú thích trực quan.
+                html += '<div style="font-size:11px; color:#ef6c00; margin:2px 0 4px;"><i class="fa-solid fa-triangle-exclamation"></i> Chọn tên trong nhóm này sẽ KHÔNG tự gửi được thông báo trên hệ thống (vì không phải tài khoản đăng nhập) — cần báo trực tiếp cho người đó.</div>';
                 html += tuThemNames.map(checkboxItemHtml_).join("");
             }
             if (khongCoNhomNames.length) {
@@ -15016,11 +15022,21 @@
                 if (r) r.nguoiDuocGiaoDanhGia = usernames;
                 renderRecruitmentTable();
                 if (statusEl) {
-                    statusEl.style.color = "#2e7d32";
-                    statusEl.innerText = usernames.length
-                        ? ("✅ Đã lưu (" + usernames.length + " người đánh giá được giao).")
-                        : "✅ Đã lưu (KHÔNG gán ai).";
-                    setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                    // [SỬA LỖI - "GỬI YÊU CẦU NHƯNG KHÔNG THẤY THÔNG BÁO"] Nếu server báo có tên
+                    // KHÔNG khớp tài khoản đăng nhập thật nào (data.chuaCoTaiKhoan) -> cảnh báo rõ
+                    // ràng ngay tại đây, vì những tên này KHÔNG thể tự nhận thông báo trên hệ thống
+                    // (không phải lỗi chuông/badge — bản chất không có ai đăng nhập bằng tên đó).
+                    if (data.chuaCoTaiKhoan && data.chuaCoTaiKhoan.length) {
+                        statusEl.style.color = "#ef6c00";
+                        statusEl.innerHTML = "⚠️ Đã lưu, nhưng <b>" + data.chuaCoTaiKhoan.map(escapeHtml).join(", ") +
+                            "</b> chưa có tài khoản đăng nhập nên sẽ KHÔNG tự nhận được thông báo trên hệ thống — vui lòng báo trực tiếp cho người này, hoặc nhờ Admin tạo tài khoản/cấp quyền ở mục \"Tài khoản được phép làm Người đánh giá được giao\".";
+                    } else {
+                        statusEl.style.color = "#2e7d32";
+                        statusEl.innerText = usernames.length
+                            ? ("✅ Đã lưu (" + usernames.length + " người đánh giá được giao).")
+                            : "✅ Đã lưu (KHÔNG gán ai).";
+                        setTimeout(() => { statusEl.innerText = ""; }, 5000);
+                    }
                 }
             } else if (statusEl) {
                 statusEl.style.color = "#c62828";
@@ -15052,11 +15068,21 @@
                 if (r) r.nguoiDuocGiaoDanhGia = usernames;
                 renderRecruitmentTable();
                 if (statusEl) {
-                    statusEl.style.color = "#2e7d32";
-                    statusEl.innerText = usernames.length
-                        ? ("📨 Đã gửi yêu cầu đánh giá tới " + usernames.length + " tài khoản (họ sẽ thấy thông báo ở Tab \"Nhận Việc\").")
-                        : "✅ Đã gửi (KHÔNG gán ai đánh giá).";
-                    setTimeout(() => { statusEl.innerText = ""; }, 6000);
+                    // [SỬA LỖI - "GỬI YÊU CẦU NHƯNG KHÔNG THẤY THÔNG BÁO"] Xem chú thích chi tiết ở
+                    // hàm saveRecruitmentAssignedEvaluators() ngay phía trên — tên KHÔNG khớp tài
+                    // khoản đăng nhập thật nào sẽ KHÔNG thể tự nhận thông báo, cảnh báo NGAY để
+                    // người gửi biết chủ động báo trực tiếp, tránh chờ mãi không hiểu vì sao.
+                    if (data.chuaCoTaiKhoan && data.chuaCoTaiKhoan.length) {
+                        statusEl.style.color = "#ef6c00";
+                        statusEl.innerHTML = "⚠️ Đã gửi, nhưng <b>" + data.chuaCoTaiKhoan.map(escapeHtml).join(", ") +
+                            "</b> chưa có tài khoản đăng nhập nên sẽ KHÔNG tự nhận được thông báo trên hệ thống — vui lòng báo trực tiếp cho người này, hoặc nhờ Admin tạo tài khoản/cấp quyền ở mục \"Tài khoản được phép làm Người đánh giá được giao\".";
+                    } else {
+                        statusEl.style.color = "#2e7d32";
+                        statusEl.innerText = usernames.length
+                            ? ("📨 Đã gửi yêu cầu đánh giá tới " + usernames.length + " tài khoản (họ sẽ thấy thông báo ở Tab \"Nhận Việc\").")
+                            : "✅ Đã gửi (KHÔNG gán ai đánh giá).";
+                        setTimeout(() => { statusEl.innerText = ""; }, 6000);
+                    }
                 }
             } else if (statusEl) {
                 statusEl.style.color = "#c62828";
