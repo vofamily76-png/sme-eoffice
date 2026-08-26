@@ -73,6 +73,15 @@
         .td-candidate-item { display: block; width: 100%; text-align: left; padding: 8px 10px; margin-bottom: 4px; border: 1px solid #eee; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; font-family: inherit; }
         .td-candidate-item:hover { background: #f5f7fa; border-color: #cfd8dc; }
         .td-candidate-item.is-active { background: #e3f2fd; border-color: #64b5f6; font-weight: 600; }
+        /* [MỚI - CỘT 3 "ĐÃ CHỌN"] Chỉ hiển thị TRỰC QUAN những người đang được tick ở CỘT 2 (đọc
+           lại đúng checkbox đang checked trong "#td-nguoidanhgia-list" mỗi khi có thay đổi -
+           KHÔNG phải nguồn dữ liệu riêng, KHÔNG gọi thêm action nào, KHÔNG đổi cách lưu). Bấm "x"
+           trên 1 chip = bỏ tick ĐÚNG checkbox tương ứng ở CỘT 2 (vẫn cần bấm "Lưu người đánh giá"
+           thì thay đổi mới thực sự ghi lên server, giống hệt hành vi "Bỏ chọn người đánh giá"). */
+        .td-nguoidanhgia-selected-list { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; min-height: 32px; }
+        .td-chip { display: inline-flex; align-items: center; gap: 6px; background: #e8f0fe; border: 1px solid #90caf9; color: #1565c0; border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 12px; line-height: 1.4; }
+        .td-chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: transparent; border: none; color: #1565c0; cursor: pointer; font-size: 12px; padding: 0; }
+        .td-chip-remove:hover { background: #bbdefb; }
         .td-candidate-item .td-candidate-item-sub { display: block; font-weight: 400; color: #888; font-size: 11px; margin-top: 2px; }
         .checkbox-item input { width: auto; cursor: pointer; }
 
@@ -1437,6 +1446,14 @@
                                     </div>
                                 </div>
                                 <div class="checkbox-dropdown-list" id="td-nguoidanhgia-list" style="max-height:220px;"></div>
+                            </div>
+
+                            <!-- [MỚI] CỘT 3: NGƯỜI ĐÃ CHỌN - chỉ để XEM lại nhanh (không phải nơi
+                                 nhập liệu chính, dữ liệu thật vẫn nằm ở checkbox CỘT 2), tick ở CỘT
+                                 2 thì tự hiện thêm ở đây, bấm "x" ở đây thì tự bỏ tick ở CỘT 2. -->
+                            <div style="border:1px solid #e0e0e0; border-radius:8px; padding:12px; background:#fff;">
+                                <h5 style="margin:0 0 8px; font-size:14px; color:var(--primary-color);"><i class="fa-solid fa-list-check"></i> Đã chọn <span id="td-nguoidanhgia-selected-count" style="font-weight:400; color:#888; font-size:11px;"></span></h5>
+                                <div id="td-nguoidanhgia-selected" class="td-nguoidanhgia-selected-list"></div>
                             </div>
                         </div>
 
@@ -14710,6 +14727,52 @@
                 html += khongCoNhomNames.map(checkboxItemHtml_).join("");
             }
             box.innerHTML = html;
+
+            // [MỚI - CỘT 3 "ĐÃ CHỌN"] Vẽ lại NGAY theo đúng trạng thái checkbox vừa render (giữ
+            // đúng những người đã gán trước đó khi mở lại 1 hồ sơ), đồng thời gắn 1 listener DUY
+            // NHẤT kiểu "event delegation" trên chính khung checkbox - KHÔNG gắn lại nhiều lần mỗi
+            // khi tick (tránh nhân đôi sự kiện), tự bắt được mọi thay đổi tick/bỏ tick sau này.
+            renderRecruitmentSelectedNguoiDanhGiaChips();
+            if (!box.dataset.chipListenerAttached) {
+                box.addEventListener("change", function (ev) {
+                    if (ev.target && ev.target.matches('input[type="checkbox"]')) {
+                        renderRecruitmentSelectedNguoiDanhGiaChips();
+                    }
+                });
+                box.dataset.chipListenerAttached = "1";
+            }
+        }
+
+        // [MỚI - CỘT 3 "ĐÃ CHỌN"] Đọc lại ĐÚNG những checkbox đang được tick ở CỘT 2
+        // ("#td-nguoidanhgia-list") rồi vẽ thành các "chip" để Admin/HR xem nhanh TOÀN BỘ danh
+        // sách đang chọn (khi danh sách checkbox dài, tick rải rác nhiều nhóm sẽ khó nhìn lại
+        // hết) - CHỈ hiển thị, KHÔNG phải nguồn dữ liệu lưu (nguồn thật vẫn là checkbox), nên
+        // không có rủi ro lệch dữ liệu. Bấm "x" trên 1 chip = bỏ tick checkbox tương ứng rồi tự
+        // vẽ lại (dùng chung sự kiện "change" ở trên), giống hệt việc tự bỏ tick thủ công.
+        function renderRecruitmentSelectedNguoiDanhGiaChips() {
+            let listBox = document.getElementById("td-nguoidanhgia-list");
+            let chipBox = document.getElementById("td-nguoidanhgia-selected");
+            let countEl = document.getElementById("td-nguoidanhgia-selected-count");
+            if (!chipBox) return;
+            let checked = listBox ? Array.from(listBox.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value) : [];
+            if (countEl) countEl.textContent = checked.length ? ("(" + checked.length + ")") : "";
+            if (!checked.length) {
+                chipBox.innerHTML = '<div style="color:#aaa; font-size:13px;">Chưa chọn ai — tick chọn ở cột "User đánh giá ứng viên" bên cạnh.</div>';
+                return;
+            }
+            chipBox.innerHTML = checked.sort((a, b) => a.localeCompare(b, "vi")).map(u =>
+                `<span class="td-chip">${escapeHtml(u)}<button type="button" class="td-chip-remove" title="Bỏ chọn" onclick="boChonMotNguoiDanhGia('${escapeHtml(u).replace(/'/g, "\\'")}')"><i class="fa-solid fa-xmark"></i></button></span>`
+            ).join("");
+        }
+
+        // [MỚI - CỘT 3 "ĐÃ CHỌN"] Bỏ tick ĐÚNG 1 checkbox (theo username) ở CỘT 2 khi bấm "x" trên
+        // chip tương ứng - CHỈ ở giao diện, CHƯA ghi lên server (giống "Bỏ chọn người đánh giá",
+        // vẫn cần bấm "Lưu người đánh giá" thì thay đổi mới thực sự được lưu).
+        function boChonMotNguoiDanhGia(username) {
+            let listBox = document.getElementById("td-nguoidanhgia-list");
+            if (!listBox) return;
+            let cb = Array.from(listBox.querySelectorAll('input[type="checkbox"]')).find(i => i.value === username);
+            if (cb) { cb.checked = false; renderRecruitmentSelectedNguoiDanhGiaChips(); }
         }
 
         // [MỚI - MỤC "NGƯỜI ĐÁNH GIÁ ĐƯỢC GIAO" - TÁCH RIÊNG] Ẩn/hiện + khóa/mở khối chọn "Người
@@ -14756,6 +14819,7 @@
                 if (guiBtn) guiBtn.disabled = true;
                 let box2 = document.getElementById("td-nguoidanhgia-list");
                 if (box2) box2.innerHTML = "";
+                renderRecruitmentSelectedNguoiDanhGiaChips(); // [MỚI] xoá luôn cột 3 "Đã chọn" khi chưa chọn hồ sơ nào
             }
         }
 
@@ -14822,6 +14886,7 @@
             let box = document.getElementById("td-nguoidanhgia-list");
             if (!box) return;
             box.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+            renderRecruitmentSelectedNguoiDanhGiaChips(); // [MỚI] đồng bộ lại cột 3 "Đã chọn" về rỗng
             let statusEl = document.getElementById("td-nguoidanhgia-status");
             if (statusEl) {
                 statusEl.style.color = "#78909c";
