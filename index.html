@@ -1279,6 +1279,27 @@
                 <h2 class="page-title"><i class="fa-solid fa-user-tie"></i> Tuyển Dụng</h2>
                 <p style="margin-bottom: 16px; color: #666; font-size: 14px;">Quản lý hồ sơ ứng viên: tiếp nhận, hẹn phỏng vấn, đánh giá kết quả và theo dõi tới khi nhận việc. Dữ liệu và file CV đính kèm của tính năng này được lưu ở 1 Google Sheet + Google Drive RIÊNG, tách biệt hoàn toàn với dữ liệu Danh bạ/Nhân sự/Thiết bị. Dùng chung quyền "Quản Lý Nhân Sự" đã có sẵn (Xem/Sửa/Xóa).</p>
 
+                <!-- [MỚI - HIỆN NGAY TẠI TAB "TUYỂN DỤNG", THEO ĐÚNG YÊU CẦU] Khối này hiện/ẩn
+                     HOÀN TOÀN dựa vào "myRecruitmentEvaluations" (xem loadMyRecruitmentEvaluations()/
+                     renderMyRecruitmentEvaluationsInRecruitmentTab() ở index.html) — ĐỘC LẬP với
+                     quyền "canViewRecruitmentUI"/"canEditRecruitmentUI" bên dưới. Tài khoản CHỈ
+                     được giao đánh giá (không có quyền Xem/Sửa Tuyển Dụng chung) vẫn thấy được
+                     ĐÚNG khối này khi mở Tab (menu "Tuyển Dụng" cũng tự hiện ra cho họ — xem
+                     loadMyRecruitmentEvaluations()), nhưng KHÔNG thấy khối quản lý toàn bộ hồ sơ
+                     ứng viên bên dưới (vẫn ẩn/hiện theo đúng quyền như cũ, KHÔNG đổi). -->
+                <div id="td-my-evaluation-requests-section" style="display:none; margin-bottom:24px;">
+                    <h3 style="color: var(--primary-color); margin-bottom:10px;"><i class="fa-solid fa-user-check"></i> Yêu cầu đánh giá gửi đến bạn</h3>
+                    <div style="overflow-x:auto;">
+                    <table id="tbl-td-my-evaluations">
+                        <thead><tr>
+                            <th>Họ tên ứng viên</th><th>SĐT</th><th>Email</th><th>Vị trí ứng tuyển</th>
+                            <th>Phòng ban</th><th>CV đính kèm</th><th>Trạng thái</th><th class="admin-action-header">Thao tác</th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    </div>
+                </div>
+
                 <div class="admin-box" id="tuyendung-form-box" style="border-top: 4px solid var(--secondary-color); display:none;">
                     <h3 id="tuyendung-form-title"><i class="fa-solid fa-user-plus"></i> Thêm hồ sơ ứng viên mới</h3>
                     <input type="hidden" id="edit-mahoso-tuyendung" value="">
@@ -4994,18 +5015,25 @@
             }
 
             // 2b) [MỚI] Hồ sơ ứng viên (Tab "Tuyển Dụng") đang được giao cho CHÍNH mình đánh
-            //     giá, chưa có kết quả — cũng hiện ở tab "Nhận Việc", y hệt cách làm với đơn
-            //     nghỉ phép ở mục (2) ngay trên (dùng chung getPendingRecruitmentEvaluationsForMe()).
+            //     giá, chưa xử lý xong — cũng hiện ở tab "Nhận Việc" LẪN NGAY TẠI Tab "Tuyển
+            //     Dụng" (khối "Yêu cầu đánh giá gửi đến bạn"), y hệt cách làm với đơn nghỉ phép ở
+            //     mục (2) ngay trên (dùng chung getPendingRecruitmentEvaluationsForMe()). Tiêu đề
+            //     phân biệt rõ 2 bước: CHƯA phản hồi Đồng ý/Không đồng ý, hay ĐÃ đồng ý nhưng
+            //     chưa gửi kết quả Đạt/Không đạt.
             if (typeof getPendingRecruitmentEvaluationsForMe === "function") {
                 getPendingRecruitmentEvaluationsForMe().forEach(r => {
+                    let rMy = (r.trangThaiTungNguoiDanhGia && r.trangThaiTungNguoiDanhGia[currentUsername]) ? r.trangThaiTungNguoiDanhGia[currentUsername].status : "";
+                    let rTieuDe = rMy === "dong_y"
+                        ? ("Cần gửi kết quả đánh giá: " + (r.hoTen || ""))
+                        : ("Yêu cầu đánh giá ứng viên: " + (r.hoTen || ""));
                     items.push({
-                        tab: "nhanviec",
+                        tab: "recruitment",
                         sortKey: r.ngayTao || "",
                         icon: "fa-user-check",
                         color: "#6a1b9a",
-                        title: "Ứng viên cần đánh giá: " + (r.hoTen || ""),
+                        title: rTieuDe,
                         desc: (r.viTriUngTuyen ? ("Vị trí: " + r.viTriUngTuyen) : "") + (r.phongBan ? (" — Phòng ban: " + r.phongBan) : ""),
-                        onClick: function () { switchPage("nhanviec"); }
+                        onClick: function () { switchPage("recruitment"); }
                     });
                 });
             }
@@ -7294,6 +7322,12 @@
                 populateLeaveApproverList();
                 loadLeaveRequests();
                 if (currentUser && currentUser.role === "Admin") populateAdminApprovalSettingsList();
+            }
+            // [MỚI - HIỆN NGAY TẠI TAB "TUYỂN DỤNG"] Mở tab -> LUÔN tải lại "Yêu cầu đánh giá gửi
+            // đến bạn" mới nhất (dù tài khoản có quyền Xem/Sửa Tuyển Dụng chung hay không — hàm
+            // tự xử lý an toàn nếu chưa đăng nhập/chưa cấu hình SCRIPT_URL).
+            if (pageId === "recruitment") {
+                loadMyRecruitmentEvaluations();
             }
             if (pageId === "daotao") {
                 let canViewDaoTaoPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemDaoTao);
@@ -12819,8 +12853,10 @@
         // danh sách hồ sơ ứng viên ĐANG được giao cho CHÍNH tài khoản đang đăng nhập đánh giá
         // (action MỚI "getMyRecruitmentEvaluations" — mọi tài khoản đã đăng nhập đều gọi được,
         // KHÔNG cần quyền "XemTuyenDung"/"SuaTuyenDung"), rồi vẽ lại khối "Ứng viên cần bạn đánh
-        // giá" ở tab "Nhận Việc" + cập nhật lại badge/chuông thông báo. Gọi CÙNG lúc đăng nhập
-        // với loadLeaveRequests() (xem điểm gọi ở khối "==== [TAB NHẬN VIỆC] ====").
+        // giá" ở CẢ tab "Nhận Việc" LẪN (MỚI) ngay đầu Tab "Tuyển Dụng" + cập nhật lại badge/
+        // chuông thông báo + (MỚI) tự hiện menu "Tuyển Dụng" nếu tài khoản đang có hồ sơ được
+        // giao mà trước đó KHÔNG có quyền Xem/Sửa Tuyển Dụng chung. Gọi CÙNG lúc đăng nhập với
+        // loadLeaveRequests() (xem điểm gọi ở khối "==== [TAB NHẬN VIỆC] ====").
         async function loadMyRecruitmentEvaluations() {
             if (!currentUsername || !isScriptUrlConfigured()) return;
             try {
@@ -12832,26 +12868,85 @@
                 if (data.status !== "SUCCESS") return;
                 myRecruitmentEvaluations = data.items || [];
                 renderRecruitmentEvaluationSection();
+                renderMyRecruitmentEvaluationsInRecruitmentTab();
                 updateNhanViecBadge();
+                // [MỚI] Có ít nhất 1 hồ sơ được giao đánh giá -> LUÔN hiện menu "Tuyển Dụng" (dù
+                // tài khoản không có quyền Xem/Sửa Tuyển Dụng chung), để họ mở được tab và xử lý
+                // yêu cầu ngay tại đó. KHÔNG ảnh hưởng gì tới quyền xem toàn bộ danh sách ứng
+                // viên/khối quản lý hồ sơ (vẫn kiểm soát riêng bởi canViewRecruitmentUI như cũ —
+                // xem applyUserPermissions()/renderMyRecruitmentEvaluationsInRecruitmentTab()).
+                let elMenuTD = document.getElementById("menu-recruitment");
+                if (elMenuTD && myRecruitmentEvaluations.length && elMenuTD.style.display === "none") {
+                    elMenuTD.style.display = "flex";
+                }
             } catch (err) {
                 console.error("Lỗi tải danh sách ứng viên cần đánh giá:", err);
             }
         }
 
-        // Đếm/lọc các hồ sơ ứng viên đang thực sự CHỜ tài khoản đang đăng nhập đánh giá (bỏ qua
-        // hồ sơ đã có kết quả đánh giá rồi) — dùng CHUNG kỹ thuật với getPendingLeaveApprovalsForMe().
+        // Đếm/lọc các hồ sơ ứng viên đang thực sự CẦN tài khoản đang đăng nhập xử lý (chưa có
+        // kết quả Đạt/Không đạt cuối cùng, VÀ chính tài khoản này chưa "Không đồng ý" từ chối) —
+        // dùng CHUNG kỹ thuật với getPendingLeaveApprovalsForMe(). Bao gồm CẢ 2 trạng thái: (1)
+        // chưa phản hồi Đồng ý/Không đồng ý, (2) đã Đồng ý nhưng chưa gửi kết quả Đạt/Không đạt.
         function getPendingRecruitmentEvaluationsForMe() {
             if (!currentUsername) return [];
-            return (myRecruitmentEvaluations || []).filter(r => !r.ketQuaDanhGia);
+            return (myRecruitmentEvaluations || []).filter(r => {
+                if (r.ketQuaDanhGia) return false;
+                let my = (r.trangThaiTungNguoiDanhGia && r.trangThaiTungNguoiDanhGia[currentUsername]) ? r.trangThaiTungNguoiDanhGia[currentUsername].status : "";
+                return my !== "tu_choi";
+            });
         }
 
         function countPendingRecruitmentEvaluations() {
             return getPendingRecruitmentEvaluationsForMe().length;
         }
 
+        // [MỚI] Sinh HTML 1 dòng <tr> cho 1 hồ sơ ứng viên được giao đánh giá — DÙNG CHUNG cho cả
+        // khối ở tab "Nhận Việc" (renderRecruitmentEvaluationSection) LẪN khối MỚI ngay đầu Tab
+        // "Tuyển Dụng" (renderMyRecruitmentEvaluationsInRecruitmentTab), để 2 nơi LUÔN hiển thị
+        // đồng bộ, không lặp code. Logic 3 bước, ĐÚNG theo yêu cầu:
+        //   1) Chưa phản hồi gì -> hiện 2 nút "Đồng ý" / "Không đồng ý" (action MỚI
+        //      "respondRecruitmentEvaluationRequest").
+        //   2) Đã "Đồng ý" nhưng CHƯA có kết quả cuối cùng -> hiện 2 nút "Đạt" / "Không đạt"
+        //      (action CŨ "saveRecruitmentEvaluation", không đổi).
+        //   3) Đã "Không đồng ý" HOẶC đã có kết quả cuối cùng -> chỉ hiện trạng thái, không còn
+        //      nút thao tác nào (đã xử lý xong phần việc của mình).
+        function buildRecruitmentEvalRowHtml(r) {
+            let my = (r.trangThaiTungNguoiDanhGia && r.trangThaiTungNguoiDanhGia[currentUsername]) ? r.trangThaiTungNguoiDanhGia[currentUsername].status : "";
+            let trangThaiHtml;
+            let actionsHtml;
+            if (r.ketQuaDanhGia) {
+                trangThaiHtml = `<b style="color:${r.ketQuaDanhGia === 'Đạt' ? '#2e7d32' : '#c62828'};">${escapeHtml(r.ketQuaDanhGia)}</b>`;
+                actionsHtml = '<span style="color:#999;">— Đã có kết quả —</span>';
+            } else if (my === "tu_choi") {
+                trangThaiHtml = '<span style="color:#c62828;">Đã từ chối đánh giá</span>';
+                actionsHtml = '<span style="color:#999;">—</span>';
+            } else if (my === "dong_y") {
+                trangThaiHtml = '<span style="color:#1565c0;">Đã đồng ý — chờ đánh giá</span>';
+                actionsHtml = `
+                    <button class="btn btn-success btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Đạt')"><i class="fa-solid fa-check"></i> Đạt</button>
+                    <button class="btn btn-danger btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Không đạt')"><i class="fa-solid fa-xmark"></i> Không đạt</button>`;
+            } else {
+                trangThaiHtml = '<span style="color:#f0ad4e;">Chờ bạn phản hồi yêu cầu</span>';
+                actionsHtml = `
+                    <button class="btn btn-success btn-sm" onclick="respondRecruitmentEvaluationRequestUI('${r.maHoSo}','approve')"><i class="fa-solid fa-check"></i> Đồng ý</button>
+                    <button class="btn btn-danger btn-sm" onclick="respondRecruitmentEvaluationRequestUI('${r.maHoSo}','reject')"><i class="fa-solid fa-xmark"></i> Không đồng ý</button>`;
+            }
+            return `<tr>
+                <td>${escapeHtml(r.hoTen || "")}</td>
+                <td>${escapeHtml(r.sdt || "")}</td>
+                <td>${escapeHtml(r.email || "")}</td>
+                <td>${escapeHtml(r.viTriUngTuyen || "")}</td>
+                <td>${escapeHtml(r.phongBan || "")}</td>
+                <td>${r.cvFileId ? `<a href="#" onclick="viewRecruitmentFile('${r.cvFileId}', '${escapeHtml(r.cvFileName || "").replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(r.cvFileName || "CV")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
+                <td>${trangThaiHtml}</td>
+                <td>${actionsHtml}</td>
+            </tr>`;
+        }
+
         // Mục "Ứng viên cần bạn đánh giá" ở tab "Nhận Việc" — chỉ hiện khối này khi có ít nhất
-        // 1 hồ sơ đang thực sự CHỜ chính tài khoản đang đăng nhập đánh giá. Cấu trúc/hành vi
-        // giống HỆT renderLeaveApprovalSection() ở trên (đơn nghỉ phép chờ duyệt).
+        // 1 hồ sơ được giao (kể cả đã xử lý xong, để tài khoản xem lại lịch sử phản hồi). Cấu
+        // trúc/hành vi giống HỆT renderLeaveApprovalSection() ở trên (đơn nghỉ phép chờ duyệt).
         function renderRecruitmentEvaluationSection() {
             let section = document.getElementById("nv-recruitment-eval-section");
             let tbody = document.querySelector("#tbl-nhanviec-tuyendung tbody");
@@ -12859,26 +12954,52 @@
             let list = myRecruitmentEvaluations || [];
             if (!list.length) { section.style.display = "none"; tbody.innerHTML = ""; return; }
             section.style.display = "block";
-            tbody.innerHTML = list.map(r => `<tr>
-                <td>${escapeHtml(r.hoTen || "")}</td>
-                <td>${escapeHtml(r.sdt || "")}</td>
-                <td>${escapeHtml(r.email || "")}</td>
-                <td>${escapeHtml(r.viTriUngTuyen || "")}</td>
-                <td>${escapeHtml(r.phongBan || "")}</td>
-                <td>${r.cvFileId ? `<a href="#" onclick="viewRecruitmentFile('${r.cvFileId}', '${escapeHtml(r.cvFileName || "").replace(/'/g, "\\'")}'); return false;"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(r.cvFileName || "CV")}</a>` : '<span style="color:#ccc;">—</span>'}</td>
-                <td>${r.ketQuaDanhGia ? `<b style="color:${r.ketQuaDanhGia === 'Đạt' ? '#2e7d32' : '#c62828'};">${escapeHtml(r.ketQuaDanhGia)}</b>` : '<span style="color:#f0ad4e;">Chưa đánh giá</span>'}</td>
-                <td>
-                    ${r.ketQuaDanhGia ? '<span style="color:#999;">— Đã đánh giá —</span>' : `
-                    <button class="btn btn-success btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Đạt')"><i class="fa-solid fa-check"></i> Đạt</button>
-                    <button class="btn btn-danger btn-sm" onclick="decideRecruitmentEvaluationUI('${r.maHoSo}','Không đạt')"><i class="fa-solid fa-xmark"></i> Không đạt</button>`}
-                </td>
-            </tr>`).join("");
+            tbody.innerHTML = list.map(buildRecruitmentEvalRowHtml).join("");
+        }
+
+        // [MỚI] Y HỆT renderRecruitmentEvaluationSection() ở trên nhưng vẽ vào khối MỚI ngay ĐẦU
+        // Tab "Tuyển Dụng" (id "td-my-evaluation-requests-section") — theo đúng yêu cầu: thông
+        // báo phải hiện NGAY TẠI Tab Tuyển Dụng, không chỉ ở tab "Nhận Việc"/chuông thông báo.
+        // Khối này HIỆN/ẨN dựa HOÀN TOÀN vào "myRecruitmentEvaluations" — độc lập với quyền
+        // "canViewRecruitmentUI"/"canEditRecruitmentUI" (tài khoản chỉ được giao đánh giá, không
+        // có quyền Xem/Sửa Tuyển Dụng chung, vẫn thấy được ĐÚNG khối này — KHÔNG thấy được khối
+        // quản lý toàn bộ hồ sơ ứng viên bên dưới, khối đó vẫn ẩn/hiện theo đúng quyền như cũ).
+        function renderMyRecruitmentEvaluationsInRecruitmentTab() {
+            let section = document.getElementById("td-my-evaluation-requests-section");
+            let tbody = document.querySelector("#tbl-td-my-evaluations tbody");
+            if (!section || !tbody) return;
+            let list = myRecruitmentEvaluations || [];
+            if (!list.length) { section.style.display = "none"; tbody.innerHTML = ""; return; }
+            section.style.display = "block";
+            tbody.innerHTML = list.map(buildRecruitmentEvalRowHtml).join("");
+        }
+
+        // [MỚI] Xử lý bấm "Đồng ý" / "Không đồng ý" với YÊU CẦU đánh giá (action MỚI
+        // "respondRecruitmentEvaluationRequest") — TÁCH BIỆT hoàn toàn với việc gửi kết quả
+        // Đạt/Không đạt CUỐI CÙNG (decideRecruitmentEvaluationUI bên dưới, không đổi). Server tự
+        // kiểm tra lại đúng quyền (phải đang được giao đánh giá ĐÚNG hồ sơ này) nên không thể bị
+        // lợi dụng để phản hồi thay cho hồ sơ khác không được giao.
+        async function respondRecruitmentEvaluationRequestUI(maHoSo, decision) {
+            let label = decision === "approve" ? "Đồng ý" : "Không đồng ý";
+            if (!confirm(`Xác nhận "${label}" với yêu cầu đánh giá hồ sơ ứng viên này?`)) return;
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ action: "respondRecruitmentEvaluationRequest", authToken: authToken, maHoSo: maHoSo, decision: decision })
+                });
+                let data = await parseServerResponse(res);
+                if (data.status === "ERROR") { alert("❌ " + data.message); return; }
+                await loadMyRecruitmentEvaluations();
+            } catch (err) {
+                console.error(err);
+                alert("Có lỗi xảy ra khi gửi phản hồi!");
+            }
         }
 
         // Xử lý bấm "Đạt" / "Không đạt" trên 1 hồ sơ ứng viên được giao đánh giá ở khối thông
-        // báo (tab "Nhận Việc") — dùng lại ĐÚNG action "saveRecruitmentEvaluation" đã có, server
-        // tự kiểm tra lại đúng quyền (canEditRecruitment HOẶC đang được giao đánh giá hồ sơ này)
-        // nên không thể bị lợi dụng để đánh giá hồ sơ khác không được giao.
+        // báo (tab "Nhận Việc" HOẶC Tab "Tuyển Dụng") — dùng lại ĐÚNG action "saveRecruitmentEvaluation"
+        // đã có, server tự kiểm tra lại đúng quyền (canEditRecruitment HOẶC đang được giao đánh
+        // giá hồ sơ này) nên không thể bị lợi dụng để đánh giá hồ sơ khác không được giao.
         async function decideRecruitmentEvaluationUI(maHoSo, ketQua) {
             if (!confirm(`Xác nhận đánh giá ứng viên này là "${ketQua}"?`)) return;
             try {
