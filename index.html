@@ -582,6 +582,26 @@
                 <a href="#" onclick="toggleForgotPasswordForm(false)" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
             </div>
         </div>
+
+        <!-- [MỚI - GIỚI HẠN 3 THIẾT BỊ ĐĂNG NHẬP ĐỒNG THỜI/TÀI KHOẢN] Chỉ hiện ra khi server
+             từ chối đăng nhập vì tài khoản đã đăng nhập đủ số thiết bị cho phép (action
+             "login"/"loginVerify2FA" trả về deviceLimitExceeded=true). Cho phép người dùng tự
+             chọn 1 thiết bị cũ để đăng xuất từ xa (gọi action "forceLogoutDevice", yêu cầu
+             nhập lại đúng mật khẩu để xác thực) rồi tự động thử đăng nhập lại ngay. -->
+        <div class="login-box" id="sub-device-limit-box" style="display: none; max-width: 380px;">
+            <i class="fa-solid fa-display" style="color: var(--secondary-color);"></i>
+            <h2>ĐÃ ĐỦ SỐ THIẾT BỊ</h2>
+            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">
+                Tài khoản này đang đăng nhập cùng lúc trên tối đa <b id="dl-max-devices">3</b>
+                thiết bị (giới hạn để tránh làm nghẽn hệ thống). Vui lòng chọn 1 thiết bị bên
+                dưới để đăng xuất từ xa, rồi hệ thống sẽ tự đăng nhập lại cho bạn ở thiết bị này.
+            </p>
+            <div id="dl-device-list" style="text-align:left; margin-bottom: 10px;"></div>
+            <p id="dl-error" style="color: red; margin-top: 10px; display: none;"></p>
+            <div style="margin-top: 10px;">
+                <a href="#" onclick="cancelDeviceLimitScreen()" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
+            </div>
+        </div>
     </div>
 
     <div id="main-system">
@@ -4087,6 +4107,38 @@
     <script>
         let SCRIPT_URL = localStorage.getItem("sme_script_url") || "https://script.google.com/macros/s/AKfycbyR07froS5Izl7cKOX9Ugy6rKGbmsPfM2BnkeyZg7bKVQDZOfx5rVwr6Z0y4RLdeIK6/exec";
 
+        // [MỚI - GIỚI HẠN 3 THIẾT BỊ ĐĂNG NHẬP ĐỒNG THỜI/TÀI KHOẢN] "DEVICE_ID" là 1 chuỗi
+        // ngẫu nhiên được sinh ra DUY NHẤT 1 LẦN cho mỗi trình duyệt/máy, rồi lưu vào
+        // localStorage (KHÔNG phải sessionStorage) để tồn tại LÂU DÀI qua mọi lần đóng/mở lại
+        // trình duyệt — nhờ vậy server luôn nhận diện đúng "đây vẫn là thiết bị cũ" mỗi khi
+        // đăng nhập lại trên cùng máy này, KHÔNG bị tính nhầm thành 1 thiết bị mới mỗi lần
+        // đăng nhập. Không chứa bất kỳ thông tin cá nhân nào, chỉ dùng để đếm số thiết bị.
+        function getOrCreateDeviceId() {
+            try {
+                let existing = localStorage.getItem("sme_device_id");
+                if (existing) return existing;
+                let fresh = "dev_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 12);
+                localStorage.setItem("sme_device_id", fresh);
+                return fresh;
+            } catch (e) {
+                // Trình duyệt chặn localStorage (VD chế độ ẩn danh) -> vẫn tạo 1 mã tạm cho
+                // riêng phiên làm việc này, để server có gì đó để đếm (không chặn đăng nhập).
+                return "dev_temp_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 12);
+            }
+        }
+        const DEVICE_ID = getOrCreateDeviceId();
+
+        // Nhãn dễ đọc (trình duyệt + hệ điều hành, ước lượng đơn giản từ User-Agent) để hiển
+        // thị cho người dùng khi cần chọn "đăng xuất thiết bị nào" — KHÔNG dùng để định danh
+        // chính xác (việc đó là của DEVICE_ID), chỉ để gợi nhớ.
+        function getDeviceLabel() {
+            let ua = navigator.userAgent || "";
+            let os = /Windows/i.test(ua) ? "Windows" : /Mac OS/i.test(ua) ? "macOS" : /Android/i.test(ua) ? "Android" : /iPhone|iPad/i.test(ua) ? "iOS" : "Không rõ HĐH";
+            let browser = /Edg\//i.test(ua) ? "Edge" : /Chrome\//i.test(ua) ? "Chrome" : /Firefox\//i.test(ua) ? "Firefox" : /Safari\//i.test(ua) ? "Safari" : "Trình duyệt";
+            return browser + " trên " + os;
+        }
+        const DEVICE_LABEL = getDeviceLabel();
+
         // [SỬA LỖI ĐỒNG BỘ - "Unexpected token '<', ..."] Lỗi này xảy ra khi trình duyệt gọi
         // res.json() nhưng phản hồi trả về KHÔNG PHẢI JSON mà là HTML (bắt đầu bằng ký tự "<").
         // Đây KHÔNG phải lỗi trong logic action/dữ liệu của code.gs (doGet/doPost ở đó đã tự bọc
@@ -6923,9 +6975,20 @@
                     let res = await fetch(SCRIPT_URL, {
                         method: "POST",
                         headers: { "Content-Type": "text/plain;charset=utf-8" },
-                        body: JSON.stringify({ action: "login", username: u, password: p })
+                        // [MỚI] Gửi kèm deviceId/deviceLabel để server đếm đúng số thiết bị
+                        // đang đăng nhập đồng thời (giới hạn tối đa 3 thiết bị/tài khoản).
+                        body: JSON.stringify({ action: "login", username: u, password: p, deviceId: DEVICE_ID, deviceLabel: DEVICE_LABEL })
                     });
                     let data = await parseServerResponse(res);
+                    // [MỚI - GIỚI HẠN 3 THIẾT BỊ] Tài khoản đã đăng nhập đủ số thiết bị cho
+                    // phép -> hiện màn hình chọn đăng xuất bớt 1 thiết bị thay vì báo lỗi
+                    // chung chung, để người dùng tự xử lý ngay mà không cần gọi Admin.
+                    if (data.status === "ERROR" && data.deviceLimitExceeded) {
+                        showDeviceLimitScreen(u, p, data.devices || [], data.maxDevices || 3);
+                        btn.disabled = false;
+                        btn.innerText = "Đăng nhập";
+                        return;
+                    }
                     if (data.status === "ERROR") throw new Error(data.message || "Sai tên đăng nhập hoặc mật khẩu.");
 
                     // [BẢO MẬT - 2FA] Tài khoản này đã bật xác thực 2 lớp -> mật khẩu đúng chỉ
@@ -6964,6 +7027,114 @@
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Đăng nhập";
+            }
+        }
+
+        // [MỚI - GIỚI HẠN 3 THIẾT BỊ] Biến tạm giữ mật khẩu vừa nhập đúng (chỉ trong bộ nhớ
+        // trình duyệt, KHÔNG lưu lại) để dùng LẠI khi người dùng chọn đăng xuất 1 thiết bị cũ
+        // rồi tự động thử đăng nhập lại ngay, khỏi phải gõ lại mật khẩu lần 2.
+        var pendingDeviceLimitUsername = null;
+        var pendingDeviceLimitPassword = null;
+
+        function showDeviceLimitScreen(username, password, devices, maxDevices) {
+            pendingDeviceLimitUsername = username;
+            pendingDeviceLimitPassword = password;
+            document.getElementById("sub-login-box").style.display = "none";
+            document.getElementById("sub-2fa-box").style.display = "none";
+            document.getElementById("sub-forgot-box").style.display = "none";
+            document.getElementById("dl-max-devices").innerText = maxDevices;
+            let listEl = document.getElementById("dl-device-list");
+            listEl.innerHTML = "";
+            devices.forEach(function (d) {
+                let row = document.createElement("div");
+                row.className = "dl-device-row";
+                row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid #e2e2e2; border-radius:6px; margin-bottom:8px;";
+                let isThis = d.deviceId === DEVICE_ID;
+                row.innerHTML =
+                    '<span style="font-size:13.5px;"><i class="fa-solid fa-display" style="color:#888; margin-right:6px;"></i>' +
+                    escapeHtml(d.deviceLabel || "Thiết bị không rõ tên") +
+                    (isThis ? ' <b style="color:var(--secondary-color);">(thiết bị này)</b>' : '') +
+                    '</span>';
+                let kickBtn = document.createElement("button");
+                kickBtn.className = "btn";
+                kickBtn.style.cssText = "width:auto; padding:6px 12px; font-size:12.5px; margin:0;";
+                kickBtn.innerText = "Đăng xuất";
+                kickBtn.onclick = function () { kickDeviceAndRetryLogin(d.deviceId, kickBtn); };
+                row.appendChild(kickBtn);
+                listEl.appendChild(row);
+            });
+            document.getElementById("dl-error").style.display = "none";
+            document.getElementById("sub-device-limit-box").style.display = "block";
+        }
+
+        function cancelDeviceLimitScreen() {
+            pendingDeviceLimitUsername = null;
+            pendingDeviceLimitPassword = null;
+            document.getElementById("sub-device-limit-box").style.display = "none";
+            document.getElementById("sub-login-box").style.display = "block";
+        }
+
+        async function kickDeviceAndRetryLogin(deviceIdToKick, btnEl) {
+            let errEl = document.getElementById("dl-error");
+            errEl.style.display = "none";
+            if (btnEl) { btnEl.disabled = true; btnEl.innerText = "Đang xử lý..."; }
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "forceLogoutDevice",
+                        username: pendingDeviceLimitUsername,
+                        password: pendingDeviceLimitPassword,
+                        deviceId: deviceIdToKick
+                    })
+                });
+                let data = await parseServerResponse(res);
+                if (data.status === "ERROR") throw new Error(data.message || "Không thể đăng xuất thiết bị này.");
+
+                // Đã nhường được 1 "suất" thiết bị -> thử đăng nhập lại ngay, tự động, không
+                // cần người dùng bấm lại nút "Đăng nhập".
+                let res2 = await fetch(SCRIPT_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({
+                        action: "login", username: pendingDeviceLimitUsername, password: pendingDeviceLimitPassword,
+                        deviceId: DEVICE_ID, deviceLabel: DEVICE_LABEL
+                    })
+                });
+                let data2 = await parseServerResponse(res2);
+                if (data2.status === "ERROR" && data2.deviceLimitExceeded) {
+                    // Trường hợp hiếm: có thiết bị khác vừa chen vào đúng lúc -> hiện lại danh
+                    // sách mới nhất để người dùng chọn lại.
+                    showDeviceLimitScreen(pendingDeviceLimitUsername, pendingDeviceLimitPassword, data2.devices || [], data2.maxDevices || 3);
+                    return;
+                }
+                if (data2.status === "ERROR") throw new Error(data2.message || "Đăng nhập không thành công.");
+
+                let username = pendingDeviceLimitUsername;
+                let pwd = pendingDeviceLimitPassword;
+                pendingDeviceLimitUsername = null;
+                pendingDeviceLimitPassword = null;
+                document.getElementById("sub-device-limit-box").style.display = "none";
+
+                if (data2.require2FA) {
+                    pending2FATicket = data2.pendingTicket;
+                    pending2FAUsername = username;
+                    document.getElementById("tfa-login-username").innerText = escapeHtml(username);
+                    document.getElementById("tfa-login-code").value = "";
+                    document.getElementById("tfa-login-error").style.display = "none";
+                    document.getElementById("sub-2fa-box").style.display = "block";
+                    document.getElementById("tfa-login-code").focus();
+                    return;
+                }
+
+                await finishLoginWithData(username, data2);
+                showMainSystemAfterLogin(username);
+            } catch (e) {
+                errEl.innerText = "❌ " + e.message;
+                errEl.style.display = "block";
+            } finally {
+                if (btnEl) { btnEl.disabled = false; btnEl.innerText = "Đăng xuất"; }
             }
         }
 
