@@ -4403,6 +4403,8 @@
         let currentUserCanViewDaoTao = false;
         let currentUserCanEditDaoTao = false;
         let currentUserCanDeleteDaoTao = false;
+        // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG]
+        let currentUserCanViewCrew = false;
         let currentUserCanViewLichLamViec = false;
         let currentUserCanEditLichLamViec = false;
         // [TAB "BẢNG CHẤM CÔNG"]
@@ -4688,7 +4690,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 await loadFromCloud(false);
@@ -6073,6 +6075,24 @@
             renderUserListViewForAdmin();
         }
 
+        // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Bật/tắt quyền "Xem mục
+        // Quản lý Đội tàu" cho 1 tài khoản — hoàn toàn ĐỘC LẬP, dùng action riêng
+        // "setDoiTauViewPermission" (chỉ ghi đúng cột 38 của sheet "TaiKhoan"), giống hệt cách
+        // làm với "toggleUserDaoTaoPermission". KHÔNG đụng tới giới hạn theo tàu
+        // ("doiTauTauDuocXem") đã cấp riêng cho tài khoản đó — Admin có thể tắt/bật lại quyền
+        // xem mục này bao nhiêu lần cũng được mà không mất giới hạn theo tàu đã thiết lập.
+        async function toggleUserCrewViewPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setDoiTauViewPermission", username: username, xemDoiTau: checked });
+            if (ok) {
+                userDatabase[username].xemDoiTau = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
         // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
         // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
@@ -6396,6 +6416,24 @@
                     </span>`;
                 }
 
+                // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Chỉ 1 checkbox
+                // "Xem tab" (menu "Quản lý Đội tàu" có/không hiện với tài khoản này). Dùng
+                // action riêng "setDoiTauViewPermission" (chỉ ghi đúng cột 38 của sheet
+                // "TaiKhoan") — độc lập hoàn toàn với giới hạn theo tàu ("doiTauVesselControl"
+                // bên dưới), vốn chỉ áp dụng SAU KHI tài khoản đã được cấp quyền xem tab này.
+                let crewViewControl = "";
+                if (u === "admin") {
+                    crewViewControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-users-gear"></i> Toàn quyền xem Quản lý Đội tàu</span>';
+                } else {
+                    let cvChecked = userDatabase[u].xemDoiTau ? "checked" : "";
+                    crewViewControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-users-gear" title="Quản lý Đội tàu"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${cvChecked} onchange="toggleUserCrewViewPermission('${safeU}', this.checked)"> Xem mục "Quản lý Đội tàu"
+                        </label>
+                    </span>`;
+                }
+
 
                 // [TAB "TỔNG QUAN"] Quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
                 let contractAlertControl = "";
@@ -6671,6 +6709,7 @@
                         ${ccControl}
                         ${cctvControl}
                         ${cctvVesselControl}
+                        ${crewViewControl}
                         ${doiTauVesselControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
@@ -6789,7 +6828,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -6911,7 +6950,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true, xemDaoTao: true, suaDaoTao: true, xoaDaoTao: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true, xemDaoTao: true, suaDaoTao: true, xoaDaoTao: true, xemDoiTau: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -6976,7 +7015,6 @@
 
         function applyUserPermissions() {
             document.getElementById("menu-contacts").style.display = "flex";
-            document.getElementById("menu-crew").style.display = "flex";
             document.getElementById("menu-other-apps").style.display = "flex";
             document.getElementById("menu-groupmail").style.display = "flex";
             document.getElementById("menu-internal-docs").style.display = "flex";
@@ -7047,6 +7085,17 @@
             if (dtFormBox) dtFormBox.style.display = canEditDaoTaoUI ? "block" : "none";
             let dtAddHvBox = document.getElementById("daotao-addhv-box");
             if (dtAddHvBox) dtAddHvBox.style.display = canEditDaoTaoUI ? "block" : "none";
+
+            // ==== [TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Admin luôn thấy & toàn
+            // quyền. Các tài khoản khác do Admin cấp riêng qua checkbox "XemDoiTau" (độc lập
+            // với Role chung ReadWrite/ReadOnly và với giới hạn theo tàu "DoiTauTauDuocXem" đã
+            // có — tài khoản có quyền xem mục menu này vẫn tiếp tục bị giới hạn đúng các tàu đã
+            // được Admin cấp riêng như trước, KHÔNG đổi cơ chế đó). Admin cấp qua action riêng
+            // "setDoiTauViewPermission". ====
+            let canViewCrewUI = (currentUser.role === "Admin") || !!currentUser.xemDoiTau;
+            currentUserCanViewCrew = canViewCrewUI;
+            let elMenuCrew = document.getElementById("menu-crew");
+            if (elMenuCrew) elMenuCrew.style.display = canViewCrewUI ? "flex" : "none";
             // [CẬP NHẬT - MỞ RỘNG CHO MỌI TÀI KHOẢN CÓ QUYỀN SỬA HỒ SƠ] Ẩn/hiện khối riêng
             // "td-nguoidanhgia-box" theo đúng quyền "canEditRecruitmentUI" (KHÔNG còn giới hạn
             // chỉ Role Admin như trước — mọi tài khoản có quyền Sửa hồ sơ ứng viên đều thấy/chọn
@@ -7426,6 +7475,14 @@
                 let canViewDaoTaoPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemDaoTao);
                 if (!canViewDaoTaoPage) { alert("⚠️ Bạn không có quyền xem Tab Đào Tạo. Liên hệ Admin để được cấp quyền."); return; }
                 loadDaoTaoData();
+            }
+            // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Chặn luôn cả trường hợp
+            // gọi thẳng switchPage('crew') qua console (mục menu đã ẩn ở applyUserPermissions()
+            // với tài khoản không có quyền, đây là lớp bảo vệ thứ 2 — giống hệt cách làm với
+            // "daotao"/"equipment"/"hr" ở trên).
+            if (pageId === "crew") {
+                let canViewCrewPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemDoiTau);
+                if (!canViewCrewPage) { alert("⚠️ Bạn không có quyền xem Quản lý Đội tàu. Liên hệ Admin để được cấp quyền."); return; }
             }
             if (pageId === "contacts") {
                 // [DANH BẠ CBCNV] Mỗi lần MỞ LẠI tab này đều bắt đầu từ lưới danh bạ đầy đủ
