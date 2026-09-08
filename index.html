@@ -4751,8 +4751,11 @@
                 currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, msnv: data.msnv || "" };
                 authToken = saved.token;
 
-                await loadFromCloud(false);
-
+                // [TỐI ƯU TỐC ĐỘ - F5 KHÔNG PHẢI CHỜ TẢI LẠI TOÀN BỘ DỮ LIỆU] Giống hệt cách
+                // tối ưu ở finishLoginWithData(): hiển thị lại giao diện chính NGAY sau khi
+                // server xác nhận token còn hợp lệ (KHÔNG chờ loadFromCloud tải hết dữ liệu
+                // nghiệp vụ), rồi tải dữ liệu đầy đủ Ở NỀN bên dưới — KHÔNG bớt bước tải/đồng bộ
+                // dữ liệu nào, chỉ đổi thời điểm hiển thị giao diện.
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("main-system").style.display = "flex";
                 document.getElementById("user-display").innerText = escapeHtml(saved.username);
@@ -4762,6 +4765,18 @@
                 applyUserPermissions();
                 updateSystemData();
                 switchPage('dashboard');
+
+                showSyncBanner("Đang tải dữ liệu hệ thống...");
+                loadFromCloud(false).then(function (ok) {
+                    if (ok) {
+                        updateSystemData();
+                        let activeEl = document.querySelector('.page-content.active');
+                        if (activeEl) {
+                            let pageId = activeEl.id.replace(/^page-/, '');
+                            switchPage(pageId);
+                        }
+                    }
+                });
                 return true;
             } catch (e) {
                 console.warn("Không thể khôi phục phiên đăng nhập (có thể do mất mạng):", e);
@@ -6891,8 +6906,49 @@
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
 
-            await loadFromCloud(false); // giờ đã xác thực -> tải đầy đủ dữ liệu được phép xem
-            saveSessionToStorage(); // [F5 KHÔNG BỊ ĐĂNG XUẤT] lưu phiên để F5/tải lại vẫn còn đăng nhập
+            // [F5 KHÔNG BỊ ĐĂNG XUẤT] Lưu phiên NGAY khi có token hợp lệ (không phụ thuộc việc
+            // tải dữ liệu nghiệp vụ bên dưới có xong hay chưa) — lỡ mất mạng ngay sau khi vào
+            // được phần mềm, F5 lại vẫn khôi phục đúng phiên vừa đăng nhập.
+            saveSessionToStorage();
+
+            // ===== [TỐI ƯU TỐC ĐỘ ĐĂNG NHẬP - GIẢM TỪ ~20 GIÂY XUỐNG CÒN VÀI GIÂY] =====
+            // TRƯỚC ĐÂY: hàm này "await loadFromCloud(false)" ngay tại đây — nghĩa là màn hình
+            // chính (do handleLogin/handleLogin2FAVerify/retryLoginAfterDeviceLimit gọi
+            // showMainSystemAfterLogin() NGAY SAU khi "await finishLoginWithData(...)" xong)
+            // phải ĐỢI loadFromCloud() đọc hết TOÀN BỘ các Sheet nghiệp vụ (nhân sự, đội tàu,
+            // chấm công, lương, thiết bị, tài liệu, lịch làm việc, giao việc, tuyển dụng, đào
+            // tạo...) rồi mới được hiển thị. Với dữ liệu nhiều/nhiều người dùng cùng lúc, riêng
+            // bước đọc-xử lý này có thể tốn tới hàng chục giây — CHIẾM GẦN NHƯ TOÀN BỘ thời
+            // gian "chờ đăng nhập" mà người dùng thấy, dù bước XÁC THỰC (mật khẩu/2FA/giới hạn
+            // thiết bị, đã hoàn tất TRƯỚC KHI hàm này được gọi) chỉ mất 1-2 giây.
+            //
+            // NAY: hàm này KHÔNG còn "await" loadFromCloud() nữa — trả về ngay lập tức sau khi
+            // lưu token, để các hàm gọi hiển thị giao diện chính (showMainSystemAfterLogin) NGAY,
+            // đúng bằng thời gian của riêng bước xác thực (thường 2-5 giây, không còn cộng dồn
+            // thêm hàng chục giây đọc dữ liệu). Việc tải dữ liệu nghiệp vụ đầy đủ (loadFromCloud)
+            // vẫn chạy TIẾP ở NỀN ngay bên dưới — KHÔNG bỏ bớt, KHÔNG rút gọn bất kỳ bước tải/
+            // đồng bộ dữ liệu nào so với trước (staffData/crewData/documentsData/... vẫn được
+            // gọi/gán/lưu (saveLocalCache) y hệt như cũ bên trong loadFromCloud → KHÔNG mất dữ
+            // liệu, dữ liệu vẫn đồng bộ đầy đủ, chỉ đổi THỜI ĐIỂM hiển thị giao diện so với thời
+            // điểm tải xong). Có banner "Đang tải dữ liệu hệ thống..." để người dùng biết dữ
+            // liệu đang được đồng bộ, và trang đang mở (kể cả nếu người dùng đã lỡ bấm sang
+            // trang khác trong lúc chờ) TỰ vẽ lại ngay khi tải xong — không cần F5. KHÔNG thay
+            // đổi bất kỳ bước xác thực/bảo mật nào (mật khẩu, token, 2FA, giới hạn thiết bị vẫn
+            // y hệt như cũ, tất cả đều đã hoàn tất TRƯỚC KHI gọi hàm này).
+            showSyncBanner("Đang tải dữ liệu hệ thống...");
+            loadFromCloud(false).then(function (ok) {
+                if (ok) {
+                    updateSystemData();
+                    // Vẽ lại ĐÚNG trang đang hiển thị (mặc định là "dashboard" ngay sau đăng
+                    // nhập, nhưng có thể người dùng đã chuyển sang trang khác trong lúc chờ tải)
+                    // để hiện dữ liệu vừa tải xong thay vì để trống/cũ.
+                    let activeEl = document.querySelector('.page-content.active');
+                    if (activeEl) {
+                        let pageId = activeEl.id.replace(/^page-/, '');
+                        switchPage(pageId);
+                    }
+                }
+            });
         }
 
         // Chuyển giao diện từ màn hình đăng nhập sang màn hình chính — dùng chung cho cả 2
