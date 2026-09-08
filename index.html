@@ -4463,6 +4463,13 @@
         let currentUserCanDeleteDaoTao = false;
         // [MỚI - TAB "QUẢN LÝ ĐỘI TÀU" - PHÂN QUYỀN HIỂN THỊ RIÊNG]
         let currentUserCanViewCrew = false;
+        // [MỚI - TAB "GIAO VIỆC"/"NHẬN VIỆC"/"ĐĂNG KÝ NGHỈ PHÉP" - PHÂN QUYỀN HIỂN THỊ RIÊNG]
+        // Chỉ kiểm soát việc hiển thị menu/trang — KHÔNG ảnh hưởng quyền "Giao việc"
+        // (currentUserCanAssignTask), dữ liệu riêng theo MSNV ở "Nhận Việc", hay quy trình
+        // duyệt ở "Đăng ký nghỉ phép" (vẫn giữ nguyên như cũ).
+        let currentUserCanViewGiaoViec = false;
+        let currentUserCanViewNhanViec = false;
+        let currentUserCanViewLeave = false;
         let currentUserCanViewLichLamViec = false;
         let currentUserCanEditLichLamViec = false;
         // [TAB "BẢNG CHẤM CÔNG"]
@@ -4748,7 +4755,7 @@
                 if (data.status === "ERROR") { clearSessionStorageSession(); return false; }
 
                 currentUsername = saved.username;
-                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, msnv: data.msnv || "" };
+                currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, xemGiaoViec: data.xemGiaoViec, xemNhanViec: data.xemNhanViec, xemNghiPhep: data.xemNghiPhep, msnv: data.msnv || "" };
                 authToken = saved.token;
 
                 // [TỐI ƯU TỐC ĐỘ - F5 KHÔNG PHẢI CHỜ TẢI LẠI TOÀN BỘ DỮ LIỆU] Giống hệt cách
@@ -6166,6 +6173,47 @@
             renderUserListViewForAdmin();
         }
 
+        // [MỚI - TAB "GIAO VIỆC"/"NHẬN VIỆC"/"ĐĂNG KÝ NGHỈ PHÉP" - PHÂN QUYỀN HIỂN THỊ RIÊNG]
+        // Bật/tắt quyền "Xem menu" cho từng tab, mỗi tab 1 hàm + 1 action RIÊNG (chỉ ghi đúng 1
+        // cột tương ứng của sheet "TaiKhoan"), giống hệt cách làm với "toggleUserCrewViewPermission".
+        // KHÔNG đụng tới quyền "Giao việc" (DuocGiaoViec), dữ liệu riêng theo MSNV ở "Nhận Việc",
+        // hay quy trình duyệt ở "Đăng ký nghỉ phép" — chỉ ẩn/hiện đúng mục menu tương ứng.
+        async function toggleUserGiaoViecViewPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setGiaoViecViewPermission", username: username, xemGiaoViec: checked });
+            if (ok) {
+                userDatabase[username].xemGiaoViec = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        async function toggleUserNhanViecViewPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setNhanViecViewPermission", username: username, xemNhanViec: checked });
+            if (ok) {
+                userDatabase[username].xemNhanViec = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
+        async function toggleUserLeaveViewPermission(username, checked) {
+            if (!userDatabase[username]) return;
+            let ok = await pushToCloud({ action: "setLeaveViewPermission", username: username, xemNghiPhep: checked });
+            if (ok) {
+                userDatabase[username].xemNghiPhep = checked;
+                saveLocalCache();
+            } else {
+                alert(`⚠️ Không thể cập nhật quyền cho "${username}" (kiểm tra quyền Admin / kết nối mạng).`);
+            }
+            renderUserListViewForAdmin();
+        }
+
         // [MỚI - TAB "BẢNG CHẤM CÔNG THUYỀN VIÊN" - GIỚI HẠN THEO TÀU] Bật/tắt 1 tàu trong danh
         // sách "được xem/thao tác" của tài khoản "username" (Admin tick/bỏ tick từng checkbox,
         // giống hệt cơ chế "toggleUserTaskAssignLink"). Gửi lại TOÀN BỘ danh sách hiện có (đã
@@ -6507,6 +6555,42 @@
                     </span>`;
                 }
 
+                // [MỚI - TAB "GIAO VIỆC"/"NHẬN VIỆC"/"ĐĂNG KÝ NGHỈ PHÉP" - PHÂN QUYỀN HIỂN THỊ
+                // RIÊNG] 3 checkbox "Xem tab" độc lập (mỗi checkbox 1 action riêng, chỉ ghi đúng
+                // 1 cột tương ứng của sheet "TaiKhoan"), giống hệt cách làm với
+                // "crewViewControl" ở trên. KHÔNG đụng tới quyền "Giao việc" (DuocGiaoViec,
+                // hiện ở khối "gvControl" phía trên) hay bất kỳ quyền/dữ liệu nào khác.
+                let giaoViecViewControl = "";
+                let nhanViecViewControl = "";
+                let leaveViewControl = "";
+                if (u === "admin") {
+                    giaoViecViewControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-list-check"></i> Toàn quyền xem Giao việc</span>';
+                    nhanViecViewControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-inbox"></i> Toàn quyền xem Nhận việc</span>';
+                    leaveViewControl = '<span style="font-size:11px; color:#888;"><i class="fa-solid fa-plane-departure"></i> Toàn quyền xem Đăng ký nghỉ phép</span>';
+                } else {
+                    let gvvChecked = userDatabase[u].xemGiaoViec ? "checked" : "";
+                    giaoViecViewControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-list-check" title="Giao việc"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${gvvChecked} onchange="toggleUserGiaoViecViewPermission('${safeU}', this.checked)"> Xem mục "Giao việc"
+                        </label>
+                    </span>`;
+                    let nvvChecked = userDatabase[u].xemNhanViec ? "checked" : "";
+                    nhanViecViewControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-inbox" title="Nhận việc"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${nvvChecked} onchange="toggleUserNhanViecViewPermission('${safeU}', this.checked)"> Xem mục "Nhận việc"
+                        </label>
+                    </span>`;
+                    let lvChecked = userDatabase[u].xemNghiPhep ? "checked" : "";
+                    leaveViewControl = `<span style="font-size:11px; color:#555; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <i class="fa-solid fa-plane-departure" title="Đăng ký nghỉ phép"></i>
+                        <label style="font-weight:normal; display:flex; align-items:center; gap:3px; cursor:pointer;">
+                            <input type="checkbox" style="width:auto;" ${lvChecked} onchange="toggleUserLeaveViewPermission('${safeU}', this.checked)"> Xem mục "Đăng ký nghỉ phép"
+                        </label>
+                    </span>`;
+                }
+
 
                 // [TAB "TỔNG QUAN"] Quyền thấy mục "Thông báo hợp đồng lao động sắp hết hạn"
                 let contractAlertControl = "";
@@ -6784,6 +6868,9 @@
                         ${cctvVesselControl}
                         ${crewViewControl}
                         ${doiTauVesselControl}
+                        ${giaoViecViewControl}
+                        ${nhanViecViewControl}
+                        ${leaveViewControl}
                         ${gvLinksControl}
                         ${staffLinkControl}
                         <div class="admusr-perm-confirm-row" style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbe3ec; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -6901,7 +6988,7 @@
         // đăng nhập thường (không có 2FA) và đăng nhập sau khi đã xác thực xong 2FA.
         async function finishLoginWithData(username, data) {
             currentUsername = username;
-            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, msnv: data.msnv || "" };
+            currentUser = { role: data.role, docsView: data.docsView, docsUpload: data.docsUpload, docsDelete: data.docsDelete, eqView: data.eqView, eqManage: data.eqManage, hrView: data.hrView, hrEdit: data.hrEdit, hrDelete: data.hrDelete, contractAlert: data.contractAlert, viewResignedContacts: data.viewResignedContacts, xemChuKySo: data.xemChuKySo, xemLichLamViec: data.xemLichLamViec, suaLichLamViec: data.suaLichLamViec, duocGiaoViec: data.duocGiaoViec, xemChamCong: data.xemChamCong, suaChamCong: data.suaChamCong, xemChamCongThuyenVien: data.xemChamCongThuyenVien, suaChamCongThuyenVien: data.suaChamCongThuyenVien, chamCongThuyenVienTauDuocXem: data.chamCongThuyenVienTauDuocXem || [], doiTauTauDuocXem: data.doiTauTauDuocXem || [], xemTuyenDung: data.xemTuyenDung, suaTuyenDung: data.suaTuyenDung, xemDaoTao: data.xemDaoTao, suaDaoTao: data.suaDaoTao, xoaDaoTao: data.xoaDaoTao, xemDoiTau: data.xemDoiTau, xemGiaoViec: data.xemGiaoViec, xemNhanViec: data.xemNhanViec, xemNghiPhep: data.xemNghiPhep, msnv: data.msnv || "" };
             // [MẢNG 1] Chỉ giữ lại authToken do server cấp — mật khẩu KHÔNG còn được lưu lại
             // trong bộ nhớ trình duyệt sau bước đăng nhập này.
             authToken = data.token || null;
@@ -7075,7 +7162,7 @@
                     // Chưa cấu hình Google Sheet: chỉ cho phép tài khoản Admin mặc định để vào cấu hình lần đầu
                     if (u === "admin" && p === "123") {
                         currentUsername = "admin";
-                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true, xemDaoTao: true, suaDaoTao: true, xoaDaoTao: true, xemDoiTau: true };
+                        currentUser = { role: "Admin", docsView: true, docsUpload: true, docsDelete: true, eqView: true, eqManage: true, hrView: true, hrEdit: true, hrDelete: true, contractAlert: true, viewResignedContacts: true, xemChuKySo: true, xemLichLamViec: true, suaLichLamViec: true, duocGiaoViec: true, xemChamCong: true, suaChamCong: true, xemChamCongThuyenVien: true, suaChamCongThuyenVien: true, chamCongThuyenVienTauDuocXem: [], doiTauTauDuocXem: [], xemTuyenDung: true, suaTuyenDung: true, xemDaoTao: true, suaDaoTao: true, xoaDaoTao: true, xemDoiTau: true, xemGiaoViec: true, xemNhanViec: true, xemNghiPhep: true };
                         authToken = null; // chưa kết nối backend -> chưa có token thật, chỉ dùng để vào cấu hình lần đầu
                     } else {
                         throw new Error("Chưa kết nối Google Sheet. Đăng nhập admin/123 để vào cấu hình kết nối trước.");
@@ -7412,19 +7499,30 @@
                 if (currentUser.role === "Admin") populateAdminChamCongNguoiNhanSettingsList();
             }
 
-            // ==== [TAB "GIAO VIỆC"] MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM được danh sách
-            // công việc. Giao việc (tạo/sửa/xóa): CHỈ tài khoản có quyền riêng "DuocGiaoViec"
-            // (hoặc Admin) mới được phép — không đổi cơ chế bảo mật của phần thêm/sửa/xóa. ====
+            // ==== [TAB "GIAO VIỆC"] Trước đây MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều XEM
+            // được danh sách công việc; nay Admin có thể BẬT/TẮT việc HIỂN THỊ mục menu này cho
+            // TỪNG tài khoản qua quyền riêng "XemGiaoViec" (độc lập Role chung), giống hệt cách
+            // làm với "Quản lý Đội tàu" (xemDoiTau). Giao việc (tạo/sửa/xóa): CHỈ tài khoản có
+            // quyền riêng "DuocGiaoViec" (hoặc Admin) mới được phép — KHÔNG đổi cơ chế bảo mật
+            // của phần thêm/sửa/xóa. ====
             currentUserCanAssignTask = (currentUser.role === "Admin") || !!currentUser.duocGiaoViec;
-            document.getElementById("menu-giaoviec").style.display = "flex";
+            let canViewGiaoViecUI = (currentUser.role === "Admin") || !!currentUser.xemGiaoViec;
+            currentUserCanViewGiaoViec = canViewGiaoViecUI;
+            let elMenuGiaoViec = document.getElementById("menu-giaoviec");
+            if (elMenuGiaoViec) elMenuGiaoViec.style.display = canViewGiaoViecUI ? "flex" : "none";
             let gvFormBox = document.getElementById("gv-form-box");
             if (gvFormBox) gvFormBox.style.display = currentUserCanAssignTask ? "block" : "none";
             populateGiaoViecFormOptions();
             renderTaskAssignTable();
 
-            // ==== [TAB "NHẬN VIỆC"] Mọi tài khoản đã đăng nhập đều xem được (giống "Giao Việc"),
-            // chỉ hiện đúng công việc CỦA CHÍNH MÌNH (đối chiếu theo MSNV đã liên kết). ====
-            document.getElementById("menu-nhanviec").style.display = "flex";
+            // ==== [TAB "NHẬN VIỆC"] Trước đây MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều xem
+            // được (giống "Giao Việc"); nay Admin có thể BẬT/TẮT việc HIỂN THỊ mục menu này cho
+            // TỪNG tài khoản qua quyền riêng "XemNhanViec" (độc lập Role chung). Khi được xem,
+            // vẫn CHỈ hiện đúng công việc CỦA CHÍNH MÌNH (đối chiếu theo MSNV đã liên kết) như cũ. ====
+            let canViewNhanViecUI = (currentUser.role === "Admin") || !!currentUser.xemNhanViec;
+            currentUserCanViewNhanViec = canViewNhanViecUI;
+            let elMenuNhanViec = document.getElementById("menu-nhanviec");
+            if (elMenuNhanViec) elMenuNhanViec.style.display = canViewNhanViecUI ? "flex" : "none";
             renderMyTaskTable();
             updateNhanViecBadge();
             // [MỚI - THÔNG BÁO "ỨNG VIÊN CẦN ĐÁNH GIÁ"] Tải NGAY khi đăng nhập, cho MỌI tài
@@ -7446,10 +7544,16 @@
             if (recruitmentEvalPollTimer) clearInterval(recruitmentEvalPollTimer);
             recruitmentEvalPollTimer = setInterval(() => loadMyRecruitmentEvaluations(false), 15000);
 
-            // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mọi tài khoản đã đăng nhập đều được tự đăng ký nghỉ
-            // phép cho chính mình. Tự điền sẵn Họ tên/Email từ hồ sơ nhân sự đã liên kết (nếu
-            // có) để giảm thao tác nhập lại. ====
-            document.getElementById("menu-leave").style.display = "flex";
+            // ==== [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Trước đây MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP đều
+            // được tự đăng ký nghỉ phép cho chính mình; nay Admin có thể BẬT/TẮT việc HIỂN THỊ
+            // mục menu này cho TỪNG tài khoản qua quyền riêng "XemNghiPhep" (độc lập Role
+            // chung), giống hệt cách làm với "Quản lý Đội tàu" (xemDoiTau). Quy trình đăng
+            // ký/duyệt nghỉ phép GIỮ NGUYÊN như cũ, KHÔNG bị ảnh hưởng. Tự điền sẵn Họ tên/Email
+            // từ hồ sơ nhân sự đã liên kết (nếu có) để giảm thao tác nhập lại. ====
+            let canViewLeaveUI = (currentUser.role === "Admin") || !!currentUser.xemNghiPhep;
+            currentUserCanViewLeave = canViewLeaveUI;
+            let elMenuLeave = document.getElementById("menu-leave");
+            if (elMenuLeave) elMenuLeave.style.display = canViewLeaveUI ? "flex" : "none";
             prefillLeaveRequestForm();
             populateLeaveApproverList();
             loadLeaveRequests();
@@ -7663,12 +7767,20 @@
                 loadChamCongThuyenVienData();
             }
             if (pageId === "giaoviec") {
-                // [MẶC ĐỊNH MỌI TÀI KHOẢN ĐÃ ĐĂNG NHẬP ĐỀU XEM ĐƯỢC] Giống hệt "Lịch làm việc
-                // công ty" — chỉ cần đã đăng nhập là xem được danh sách công việc.
+                // [MỚI - TAB "GIAO VIỆC" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Chặn luôn cả trường hợp
+                // gọi thẳng switchPage('giaoviec') qua console (mục menu đã ẩn ở
+                // applyUserPermissions() với tài khoản không có quyền, đây là lớp bảo vệ thứ 2 —
+                // giống hệt cách làm với "daotao"/"crew" ở trên).
+                let canViewGiaoViecPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemGiaoViec);
+                if (!canViewGiaoViecPage) { alert("⚠️ Bạn không có quyền xem Giao việc. Liên hệ Admin để được cấp quyền."); return; }
                 populateGiaoViecFormOptions();
                 renderTaskAssignTable();
             }
             if (pageId === "nhanviec") {
+                // [MỚI - TAB "NHẬN VIỆC" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Lớp bảo vệ thứ 2, giống
+                // hệt cách làm với "giaoviec"/"crew" ở trên.
+                let canViewNhanViecPage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemNhanViec);
+                if (!canViewNhanViecPage) { alert("⚠️ Bạn không có quyền xem Nhận việc. Liên hệ Admin để được cấp quyền."); return; }
                 // [TAB "NHẬN VIỆC"] Mở tab -> hiện danh sách công việc của mình, đồng thời tự
                 // đánh dấu ĐÃ XEM các công việc đang hiện (chưa xem) để tắt thông báo, giống cách
                 // 1 hộp thư đến hoạt động.
@@ -7683,6 +7795,10 @@
                 loadMyRecruitmentEvaluations();
             }
             if (pageId === "leave") {
+                // [MỚI - TAB "ĐĂNG KÝ NGHỈ PHÉP" - PHÂN QUYỀN HIỂN THỊ RIÊNG] Lớp bảo vệ thứ 2,
+                // giống hệt cách làm với "giaoviec"/"nhanviec"/"crew" ở trên.
+                let canViewLeavePage = currentUser && ((currentUser.role === "Admin") || !!currentUser.xemNghiPhep);
+                if (!canViewLeavePage) { alert("⚠️ Bạn không có quyền xem Đăng ký nghỉ phép. Liên hệ Admin để được cấp quyền."); return; }
                 // [TAB "ĐĂNG KÝ NGHỈ PHÉP"] Mở tab -> tải lại danh sách approver + đơn của mình.
                 populateLeaveApproverList();
                 loadLeaveRequests();
