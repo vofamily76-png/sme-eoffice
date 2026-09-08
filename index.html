@@ -583,21 +583,27 @@
             </div>
         </div>
 
-        <!-- [MỚI - GIỚI HẠN 3 THIẾT BỊ ĐĂNG NHẬP ĐỒNG THỜI/TÀI KHOẢN] Chỉ hiện ra khi server
-             từ chối đăng nhập vì tài khoản đã đăng nhập đủ số thiết bị cho phép (action
-             "login"/"loginVerify2FA" trả về deviceLimitExceeded=true). Cho phép người dùng tự
-             chọn 1 thiết bị cũ để đăng xuất từ xa (gọi action "forceLogoutDevice", yêu cầu
-             nhập lại đúng mật khẩu để xác thực) rồi tự động thử đăng nhập lại ngay. -->
+        <!-- [GIỚI HẠN 3 THIẾT BỊ ĐĂNG NHẬP ĐỒNG THỜI/TÀI KHOẢN] Chỉ hiện ra khi server từ chối
+             đăng nhập vì tài khoản đã đăng nhập đủ số thiết bị cho phép (action "login"/
+             "loginVerify2FA" trả về deviceLimitExceeded=true). THEO YÊU CẦU: thiết bị mới
+             (thiết bị thứ 4 trở lên) KHÔNG còn quyền tự đăng xuất từ xa bất kỳ thiết bị nào
+             đang đăng nhập nữa — chỉ có thể ĐỢI 1 trong các thiết bị đó tự đăng xuất hoặc tự
+             hết hạn, rồi bấm "Thử đăng nhập lại". -->
         <div class="login-box" id="sub-device-limit-box" style="display: none; max-width: 380px;">
-            <i class="fa-solid fa-display" style="color: var(--secondary-color);"></i>
+            <i class="fa-solid fa-hourglass-half" style="color: var(--secondary-color);"></i>
             <h2>ĐÃ ĐỦ SỐ THIẾT BỊ</h2>
             <p style="font-size: 13px; color:#666; margin-bottom: 15px;">
                 Tài khoản này đang đăng nhập cùng lúc trên tối đa <b id="dl-max-devices">3</b>
-                thiết bị (giới hạn để tránh làm nghẽn hệ thống). Vui lòng chọn 1 thiết bị bên
-                dưới để đăng xuất từ xa, rồi hệ thống sẽ tự đăng nhập lại cho bạn ở thiết bị này.
+                thiết bị (giới hạn để tránh làm nghẽn hệ thống). Vui lòng đợi 1 trong các thiết
+                bị bên dưới tự đăng xuất, hoặc phiên tự hết hạn (tối đa 6 giờ), rồi bấm
+                <b>"Thử đăng nhập lại"</b>. Thiết bị này <b>không có quyền</b> tự đăng xuất các
+                thiết bị đang đăng nhập.
             </p>
             <div id="dl-device-list" style="text-align:left; margin-bottom: 10px;"></div>
             <p id="dl-error" style="color: red; margin-top: 10px; display: none;"></p>
+            <button class="btn" id="btn-device-limit-retry" onclick="retryLoginAfterDeviceLimit()">
+                <i class="fa-solid fa-rotate-right"></i> Thử đăng nhập lại
+            </button>
             <div style="margin-top: 10px;">
                 <a href="#" onclick="cancelDeviceLimitScreen()" style="font-size: 13px; color: #777; text-decoration:none;"><i class="fa-solid fa-arrow-left"></i> Quay lại Đăng nhập</a>
             </div>
@@ -7043,24 +7049,21 @@
             document.getElementById("sub-2fa-box").style.display = "none";
             document.getElementById("sub-forgot-box").style.display = "none";
             document.getElementById("dl-max-devices").innerText = maxDevices;
+            // [THEO YÊU CẦU] Chỉ HIỂN THỊ danh sách thiết bị đang chiếm chỗ để người dùng biết
+            // (VD: tự nhận ra thiết bị cũ của mình để đi đăng xuất thủ công) — KHÔNG còn nút
+            // "Đăng xuất" nào ở đây nữa, thiết bị mới không có quyền tự đăng xuất thiết bị khác.
             let listEl = document.getElementById("dl-device-list");
             listEl.innerHTML = "";
             devices.forEach(function (d) {
                 let row = document.createElement("div");
                 row.className = "dl-device-row";
-                row.style.cssText = "display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid #e2e2e2; border-radius:6px; margin-bottom:8px;";
+                row.style.cssText = "display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid #e2e2e2; border-radius:6px; margin-bottom:8px;";
                 let isThis = d.deviceId === DEVICE_ID;
                 row.innerHTML =
                     '<span style="font-size:13.5px;"><i class="fa-solid fa-display" style="color:#888; margin-right:6px;"></i>' +
                     escapeHtml(d.deviceLabel || "Thiết bị không rõ tên") +
                     (isThis ? ' <b style="color:var(--secondary-color);">(thiết bị này)</b>' : '') +
                     '</span>';
-                let kickBtn = document.createElement("button");
-                kickBtn.className = "btn";
-                kickBtn.style.cssText = "width:auto; padding:6px 12px; font-size:12.5px; margin:0;";
-                kickBtn.innerText = "Đăng xuất";
-                kickBtn.onclick = function () { kickDeviceAndRetryLogin(d.deviceId, kickBtn); };
-                row.appendChild(kickBtn);
                 listEl.appendChild(row);
             });
             document.getElementById("dl-error").style.display = "none";
@@ -7074,26 +7077,17 @@
             document.getElementById("sub-login-box").style.display = "block";
         }
 
-        async function kickDeviceAndRetryLogin(deviceIdToKick, btnEl) {
+        // [THEO YÊU CẦU] Thay cho "kickDeviceAndRetryLogin" cũ (đã bỏ): thiết bị thứ 4 trở lên
+        // KHÔNG được phép tự đăng xuất thiết bị khác nữa — hàm này chỉ đơn giản THỬ ĐĂNG NHẬP
+        // LẠI (dùng lại đúng mật khẩu vừa nhập, không cần gõ lại) để kiểm tra xem đã có "suất"
+        // thiết bị trống hay chưa (VD: người dùng vừa tự đăng xuất ở thiết bị cũ, hoặc token cũ
+        // vừa hết hạn).
+        async function retryLoginAfterDeviceLimit() {
             let errEl = document.getElementById("dl-error");
             errEl.style.display = "none";
-            if (btnEl) { btnEl.disabled = true; btnEl.innerText = "Đang xử lý..."; }
+            let btnEl = document.getElementById("btn-device-limit-retry");
+            if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fa-solid fa-rotate-right fa-spin"></i> Đang kiểm tra...'; }
             try {
-                let res = await fetch(SCRIPT_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({
-                        action: "forceLogoutDevice",
-                        username: pendingDeviceLimitUsername,
-                        password: pendingDeviceLimitPassword,
-                        deviceId: deviceIdToKick
-                    })
-                });
-                let data = await parseServerResponse(res);
-                if (data.status === "ERROR") throw new Error(data.message || "Không thể đăng xuất thiết bị này.");
-
-                // Đã nhường được 1 "suất" thiết bị -> thử đăng nhập lại ngay, tự động, không
-                // cần người dùng bấm lại nút "Đăng nhập".
                 let res2 = await fetch(SCRIPT_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -7104,9 +7098,11 @@
                 });
                 let data2 = await parseServerResponse(res2);
                 if (data2.status === "ERROR" && data2.deviceLimitExceeded) {
-                    // Trường hợp hiếm: có thiết bị khác vừa chen vào đúng lúc -> hiện lại danh
-                    // sách mới nhất để người dùng chọn lại.
+                    // Vẫn chưa có "suất" trống -> cập nhật lại danh sách thiết bị mới nhất, tiếp
+                    // tục hiển thị màn hình chờ.
                     showDeviceLimitScreen(pendingDeviceLimitUsername, pendingDeviceLimitPassword, data2.devices || [], data2.maxDevices || 3);
+                    errEl.innerText = "Vẫn còn đủ " + (data2.maxDevices || 3) + " thiết bị đang đăng nhập. Vui lòng đợi thêm rồi thử lại.";
+                    errEl.style.display = "block";
                     return;
                 }
                 if (data2.status === "ERROR") throw new Error(data2.message || "Đăng nhập không thành công.");
@@ -7134,7 +7130,7 @@
                 errEl.innerText = "❌ " + e.message;
                 errEl.style.display = "block";
             } finally {
-                if (btnEl) { btnEl.disabled = false; btnEl.innerText = "Đăng xuất"; }
+                if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Thử đăng nhập lại'; }
             }
         }
 
